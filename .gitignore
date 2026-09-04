@@ -1,32 +1,108 @@
-# If you prefer the allow list template instead of the deny list, see community template:
-# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
-#
-# Binaries for programs and plugins
+# agent-mesh-lab .gitignore
+# Principle: ignore build output, local state, secrets, and ephemeral logs.
+# Never ignore pins or evidence — see "Deliberately committed" at the bottom.
+
+### Go ###################################################################
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
-
-# Code coverage profiles and other test artifacts
 *.out
 coverage.*
 *.coverprofile
 profile.cov
-
-# Dependency directories (remove the comment below to include it)
-# vendor/
-
-# Go workspace file
 go.work
 go.work.sum
+bin/
+dist/
+# vendor/            # uncomment only if vendoring is adopted deliberately
 
-# env file
+### Python ###############################################################
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+*.egg-info/
+.eggs/
+build/
+pip-wheel-metadata/
+.ipynb_checkpoints/
+
+### Editors ##############################################################
+# JetBrains (GoLand, PyCharm) — ignore entirely; personal settings and indexes
+.idea/
+*.iml
+out/
+# VS Code — ignore personal settings, share recommended extensions
+.vscode/*
+!.vscode/extensions.json
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+
+### OS ###################################################################
+.DS_Store
+.AppleDouble
+Thumbs.db
+
+### Secrets and local environment ########################################
 .env
+.env.*
+!.env.example
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+kube.config
+*.pem
+*.key
+*.p12
+*.pfx
+*.tfvars
+!*.tfvars.example
 
-# Editor/IDE
-# .idea/
-# .vscode/
+### Kubernetes / cloud tooling ###########################################
+# Terraform (EKS fallback only)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+# Helm packaged charts (source charts and Chart.lock are committed)
+charts/**/*.tgz
+# Local cluster scratch
+.kind/
+tmp/
+.tmp/
+
+### Experiment artefacts #################################################
+# Small CSV/JSONL run outputs cited by findings.md ARE committed under
+# experiments/runs/<date>-<item>/. Only raw, large, or ephemeral output is ignored.
+experiments/runs/**/raw/
+experiments/runs/**/*.log
+*.pcap
+*.pcapng
+*.db
+*.sqlite
+*.sqlite3
+*.jsonl.gz
+*.csv.gz
+
+### Deliberately committed (do not add to this file) #####################
+# go.mod, go.sum                — Go pins
+# uv.lock / poetry.lock / requirements*.txt — Python pins
+# .python-version               — interpreter pin
+# .ko.yaml                      — image build config
+# .terraform.lock.hcl           — provider pins
+# Chart.lock                    — chart dependency pins
+# kind-config.yaml, deploy/**   — the reproducible environment
+# versions.yaml, findings.md    — the point of the repo
