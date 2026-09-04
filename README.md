@@ -24,7 +24,7 @@ One logical work item can become one or more A2A messages; each message can be d
 Directories appear when their gate needs them.
 
 ```
-agents/orchestrator/   Python, Strands Agents with A2A support
+agents/orchestrator/   Python, a2a-python; same behaviour as the worker, Agent A by default
 agents/worker/         Go, a2a-go; hosts the pre-dispatch ingress and execution ledgers
 fixtures/mockllm/      Go; OpenAI-compatible model endpoint; failure injection; invocation ledger
 fixtures/replay/       Go; controlled duplicate-delivery harness (modes M1–M3)

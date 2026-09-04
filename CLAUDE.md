@@ -18,7 +18,7 @@ An experiment lab that produces **counted, traced findings** about how A2A agent
 3. **Never write a findings entry from expectation.** If the run did not happen, there is no entry. If a run happened and the result is "as documented," that is an entry.
 4. **Fixtures must not retry.** The mock model endpoint, the replay harness, and the load client contain no retry logic, and every HTTP client they use has retries explicitly disabled and the setting recorded. The baseline experiment depends on this. Do not add "robustness" retries anywhere.
 5. **Ledgers before agent logic.** The pre-dispatch ingress ledger sits at the HTTP/JSON-RPC boundary *before* the A2A SDK sees the request. The execution/task ledger records what the SDK dispatched and every Task created. The model invocation ledger records every call with its work-item and task identity. Build and verify these before touching agent behaviour.
-6. **Scope is exactly:** a Python agent (Strands Agents with A2A support), a Go agent (official `a2a-go`), a controllable OpenAI-compatible model endpoint, a replay harness, a load client, Istio Ambient, agentgateway, an OpenTelemetry pipeline with a trace backend and Prometheus. **Do not add:** dashboards, Grafana, Kiali, an Envoy-waypoint comparison, KEDA, Karpenter, Valkey, chaos tooling, databases, memory systems, a third agent, or any other project. If you believe one is required, write a note in `docs/proposal-notes.md` and stop.
+6. **Scope is exactly:** a Python agent (official `a2a-python`), a Go agent (official `a2a-go`), a controllable OpenAI-compatible model endpoint, a replay harness, a load client, Istio Ambient, agentgateway, an OpenTelemetry pipeline with a trace backend and Prometheus. **Do not add:** dashboards, Grafana, Kiali, an Envoy-waypoint comparison, KEDA, Karpenter, Valkey, chaos tooling, databases, memory systems, a third agent, or any other project. If you believe one is required, write a note in `docs/proposal-notes.md` and stop.
 7. **A2A target is v1.0.** Canonical operation names (`SendMessage`, `SendStreamingMessage`, `GetTask`, `CancelTask`, `SubscribeToTask`). Capture the `A2A-Version` header from a real request for each SDK and record it. If an SDK negotiates 0.x, record it as a finding; do not paper over it.
 8. **Environment:** kind first. Move to EKS only on one of the four triggers in `docs/PROPOSAL.md` §5, and record which trigger fired in `findings.md`. Kustomize overlays for agents, mesh, and telemetry never reference the cluster type.
 9. **Language.** Use: tested, counted, measured, observed, reproduced, compared, found, under this configuration, for this binding, at this version. Never use: production, production-ready, battle-tested, works perfectly, robust, enterprise-grade. This applies to code comments, commit messages, README text, and findings.
@@ -40,7 +40,7 @@ agent-mesh-lab/
 │   ├── proposal-notes.md            # created only when something needs a human decision
 │   └── upstream/                    # draft issue texts, one file each
 ├── agents/
-│   ├── orchestrator/                # Python, Strands
+│   ├── orchestrator/                # Python, a2a-python; same behaviour as worker, Agent A by default
 │   └── worker/                      # Go, a2a-go; hosts the ingress and execution ledgers
 ├── fixtures/
 │   ├── mockllm/                     # Go; OpenAI-compatible; failure injection; invocation ledger
@@ -71,7 +71,7 @@ agent-mesh-lab/
 
 ```
 ## <Gate or Experiment> / <receiver> / <mode or run> — <question>
-- Versions: k8s=<> istio=<> agentgateway=<> gateway-api=<version, channel> a2a-spec=<commit> a2a-go=<> a2a-python=<> strands=<>
+- Versions: k8s=<> istio=<> agentgateway=<> gateway-api=<version, channel> a2a-spec=<commit> a2a-go=<> a2a-python=<> openai-python=<>
 - Environment: kind | eks (trigger, if eks)
 - Method: <what ran, how many repetitions>
 - Result: <counts from the three ledgers; run output path>

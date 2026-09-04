@@ -63,7 +63,7 @@ Istio Ambient and agentgateway are on the path only where required to answer the
 
 ### 4.2 Two agents, built independently, as method
 
-Two independently built agents using different language and framework stacks: a Python agent built with Strands Agents and its A2A support, and a Go agent built with the official A2A Go SDK. Two implementations make implementation-dependent differences visible rather than automatically attributed to the protocol or the network; they do not by themselves prove where the protocol/framework boundary lies, and the proposal does not claim they do. A Java agent on the official `a2a-java` SDK is added only if a finding requires a third implementation to be credible. No SDK is a subject of the talk.
+Two independently built agents using different language stacks: a Python agent built with the official A2A Python SDK, and a Go agent built with the official A2A Go SDK. Two implementations make implementation-dependent differences visible rather than automatically attributed to the protocol or the network; they do not by themselves prove where the protocol/framework boundary lies, and the proposal does not claim they do. A Java agent on the official `a2a-java` SDK is added only if a finding requires a third implementation to be credible. No SDK is a subject of the talk.
 
 ### 4.3 Evidence: three measurement boundaries, with traces to explain them
 
@@ -87,9 +87,9 @@ Two measurement questions run through everything: can one logical work item be d
 
 A separates two questions that are easy to conflate, then combines them.
 
-**A.1 Receiver semantics under controlled duplicate delivery.** A controlled sender/replay harness sends the *same serialised A2A `Message` with the same `messageId`* twice, through the gateway, to each receiver in turn — the Go receiver, then the Strands receiver. Only the receiver changes; the stimulus is identical. The three ledgers record deliveries, dispatches, tasks created, and model invocations. This answers: *when an identical message arrives twice, does this implementation deduplicate it, create a second task, or do the work again?*
+**A.1 Receiver semantics under controlled duplicate delivery.** A controlled sender/replay harness sends the *same serialised A2A `Message` with the same `messageId`* twice, through the gateway, to each receiver in turn — the Go receiver, then the Python receiver. Only the receiver changes; the stimulus is identical. The three ledgers record deliveries, dispatches, tasks created, and model invocations. This answers: *when an identical message arrives twice, does this implementation deduplicate it, create a second task, or do the work again?*
 
-**A.2 Client retry semantics.** Separately, using the real clients: when the Strands A2A client retries, does it reuse the original `messageId` or construct a new message? When the `a2a-go` client retries? This is a property of the sender and is measured independently of A.1.
+**A.2 Client retry semantics.** Separately, using the real clients: when the `a2a-python` client retries, does it reuse the original `messageId` or construct a new message? When the `a2a-go` client retries? This is a property of the sender and is measured independently of A.1.
 
 **A.3 Retry-location matrix.** With A.1 and A.2 known, failures are injected at a controlled point and retries enabled one layer at a time. Retries are first disabled at every reachable layer and the baseline *verified* retry-free by the ledgers — HTTP client libraries retry on their own under some conditions and are checked, not assumed.
 
@@ -137,7 +137,7 @@ C is not forced to produce a successful deny. The stronger finding may be a map 
 
 ### 4.5 Pins and reproducibility
 
-Pinned and recorded on day one: Kubernetes; Istio; agentgateway; Gateway API version and channel; A2A specification revision (commit); `a2a-go`; the Python A2A SDK that Strands installs; Strands. The A2A wire version each SDK actually selects is confirmed by capturing the `A2A-Version` header on a real request — Strands' A2A support is documented, but the wire version it selects is not stated publicly and is not assumed. If either SDK negotiates v0.x, that is recorded as an interoperability finding.
+Pinned and recorded on day one: Kubernetes; Istio; agentgateway; Gateway API version and channel; A2A specification revision (commit); `a2a-go`; `a2a-python`; the `openai-python` client. The A2A wire version each SDK actually selects is confirmed by capturing the `A2A-Version` header on a real request; the version an SDK selects is not assumed. If either SDK negotiates v0.x, that is recorded as an interoperability finding.
 
 All findings are re-run against current versions before the conference. The experiments, ledgers, replay harness, and configurations used for the talk will be made reproducible and publicly available. Before the CFP deadline enough is built to confirm feasibility and obtain initial findings, starting with A; a polished public lab is a deliverable of the talk, not a precondition of the submission.
 

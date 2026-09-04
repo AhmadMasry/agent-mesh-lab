@@ -4,7 +4,7 @@
 
 ## Gate 1 — 10 September: instruments trusted
 
-- [ ] **Pins recorded**: Kubernetes, Istio, agentgateway, Gateway API version *and channel*, A2A spec revision (commit), `a2a-go`, the Python A2A SDK Strands installs, Strands.
+- [x] **Pins recorded**: Kubernetes, Istio, agentgateway, Gateway API version *and channel*, A2A spec revision (commit), `a2a-go`, `a2a-python`, `openai-python`.
 - [ ] **Wire version captured**: one real request from each SDK, `A2A-Version` header value recorded. If either negotiates 0.x → interoperability finding, recorded, proposal unchanged.
 - [ ] **Three ledgers producing counts** on a single clean request:
   - pre-dispatch ingress: sits at the HTTP/JSON-RPC boundary *before* the A2A SDK sees the request; records JSON-RPC `id`, A2A `messageId`, body hash, arrival time
@@ -18,7 +18,7 @@
 
 ### A.1 — Receiver semantics under controlled duplicate delivery
 
-Replay harness modes. Run each against the Go receiver, then the Strands receiver, through the gateway. Stimulus identical across receivers.
+Replay harness modes. Run each against the Go receiver, then the Python receiver, through the gateway. Stimulus identical across receivers.
 
 | Mode | JSON-RPC `id` | A2A `messageId` | Body | Distinguishes |
 |---|---|---|---|---|
@@ -29,17 +29,17 @@ Replay harness modes. Run each against the Go receiver, then the Strands receive
 For each mode × receiver, record: deliveries (pre-dispatch), dispatches, tasks created, model invocations, and the second response's shape (same `Task`? new `Task`? error?). Twenty repetitions minimum; report counts, not one run.
 
 - [ ] M1 × Go — recorded
-- [ ] M1 × Strands — recorded
+- [ ] M1 × Python — recorded
 - [ ] M2 × Go — recorded
-- [ ] M2 × Strands — recorded
+- [ ] M2 × Python — recorded
 - [ ] M3 × Go — recorded
-- [ ] M3 × Strands — recorded
+- [ ] M3 × Python — recorded
 
 ### A.2 — Client retry identity
 
 For each real client, force one retry and capture both attempts at the pre-dispatch ledger.
 
-- [ ] Strands A2A client: on retry, `messageId` reused or regenerated? JSON-RPC `id` reused or regenerated? Body identical?
+- [ ] `a2a-python` client: on retry, `messageId` reused or regenerated? JSON-RPC `id` reused or regenerated? Body identical?
 - [ ] `a2a-go` client: same three questions.
 - [ ] Where the retry is configured (SDK option, underlying HTTP client, none available) — recorded.
 
