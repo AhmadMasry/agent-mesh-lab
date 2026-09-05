@@ -12,7 +12,7 @@
   - model invocation: records every call with the `logical_work_item_id` and `taskId` (if any) that caused it
 - [ ] **Baseline proven retry-free** by the ledgers, not by configuration: one injected failure, zero second deliveries. Check the places that retry quietly — Go's HTTP transport on stale connections, Python HTTP client defaults, any SDK-level retry — and record what had to be disabled.
 - [x] **`HTTPRoute` retry channel requirement** at the pinned Gateway API version recorded (expected: experimental).
-- [ ] **Model endpoint deterministic**: fixed latency, fixed output, failure injection by count or by `logical_work_item_id`, so two runs are comparable.
+- [x] **Model endpoint deterministic**: fixed latency, fixed output, failure injection by count or by `logical_work_item_id`, so two runs are comparable.
 
 ## Gate 2 — 14 September: A.1 and A.2 complete for both implementations
 

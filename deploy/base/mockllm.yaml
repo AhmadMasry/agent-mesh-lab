@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mockllm
+  labels:
+    app: mockllm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mockllm
+  template:
+    metadata:
+      labels:
+        app: mockllm
+    spec:
+      containers:
+        - name: mockllm
+          image: ko://github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: MOCKLLM_RESPONSE_TEXT
+              value: "This is the mockllm fixed response."
+            - name: MOCKLLM_LATENCY_MS
+              value: "200"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mockllm
+  labels:
+    app: mockllm
+spec:
+  selector:
+    app: mockllm
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
