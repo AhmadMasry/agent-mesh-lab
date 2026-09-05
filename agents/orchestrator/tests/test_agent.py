@@ -85,9 +85,87 @@ async def test_forward_mode_sends_one_downstream_message_with_new_id_and_same_wo
     assert fake.calls == 1
 
     ingress = [json.loads(l) for l in down_out.getvalue().splitlines() if '"ledger":"ingress"' in l]
-    sends = [l for l in ingress if l["method"] == "SendMessage"]
+    sends = [l for l in ingress if l["method"] == "SendMessage" and l["phase"] == "arrival"]
     assert len(sends) == 1
     assert sends[0]["a2a_version"] == "1.0"
     assert sends[0]["logical_work_item_id"] == "w3"
     assert sends[0]["messageId"] and sends[0]["messageId"] != req.message.message_id
     assert forwarder.transport_retries == 0
+
+
+@pytest.mark.asyncio
+async def test_forward_mode_with_plan_call_makes_one_model_call_then_forwards():
+    from a2a.types import TaskState
+    fake = FakeModel()
+    down_out = io.StringIO()
+    downstream = build_app(name="worker", model=fake.client(), forwarder=None, out=down_out, public_url="http://downstream")
+    down_http = httpx.AsyncClient(transport=httpx.ASGITransport(app=downstream), base_url="http://downstream")
+    forwarder = Forwarder(url="http://downstream", http_client=down_http)
+    up_out = io.StringIO()
+    handler = build_handler(name="orchestrator", model=fake.client(), forwarder=forwarder, out=up_out,
+                            public_url="http://orchestrator", plan_model_call=True)
+    task = await handler.on_message_send(_request("w4"), ServerCallContext())
+    assert task.status.state == TaskState.TASK_STATE_COMPLETED
+    callers = [h["x-caller"] for h in fake.headers]
+    assert callers == ["orchestrator", "worker"], callers
+
+
+@pytest.mark.asyncio
+async def test_forward_mode_fails_when_downstream_task_fails_without_retry():
+    from a2a.types import TaskState
+    fake = FakeModel(status=500)  # downstream's model fails, so the downstream Task fails
+    down_out = io.StringIO()
+    downstream = build_app(name="worker", model=fake.client(), forwarder=None, out=down_out, public_url="http://downstream")
+    down_http = httpx.AsyncClient(transport=httpx.ASGITransport(app=downstream), base_url="http://downstream")
+    forwarder = Forwarder(url="http://downstream", http_client=down_http)
+    up_out = io.StringIO()
+    handler = build_handler(name="orchestrator", model=None, forwarder=forwarder, out=up_out, public_url="http://orchestrator")
+    task = await handler.on_message_send(_request("w5"), ServerCallContext())
+    assert task.status.state == TaskState.TASK_STATE_FAILED
+    assert "TASK_STATE_FAILED" in task.status.message.parts[0].text
+    assert fake.calls == 1
+    downstream_sends = [l for l in down_out.getvalue().splitlines() if '"method":"SendMessage"' in l and '"ledger":"ingress"' in l and '"phase":"arrival"' in l]
+    assert len(downstream_sends) == 1
+
+
+@pytest.mark.asyncio
+async def test_plan_call_failure_fails_task_without_forwarding():
+    from a2a.types import TaskState
+    fake = FakeModel(status=500)
+    down_out = io.StringIO()
+    downstream = build_app(name="worker", model=FakeModel().client(), forwarder=None, out=down_out, public_url="http://downstream")
+    down_http = httpx.AsyncClient(transport=httpx.ASGITransport(app=downstream), base_url="http://downstream")
+    forwarder = Forwarder(url="http://downstream", http_client=down_http)
+    handler = build_handler(name="orchestrator", model=fake.client(), forwarder=forwarder, out=io.StringIO(),
+                            public_url="http://orchestrator", plan_model_call=True)
+    task = await handler.on_message_send(_request("w6"), ServerCallContext())
+    assert task.status.state == TaskState.TASK_STATE_FAILED
+    assert fake.calls == 1
+    assert '"method":"SendMessage"' not in down_out.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_cancel_emits_canceled_state():
+    from a2a.server.events import EventQueue
+    from a2a.server.agent_execution import RequestContext
+    from a2a.types import TaskState, TaskStatusUpdateEvent
+    from orchestrator.agent import LabExecutor
+    from orchestrator.ledger import LineWriter
+
+    class RecordingQueue(EventQueue):
+        """The SDK's queue interface has one abstract method; record what the executor emits."""
+
+        def __init__(self) -> None:
+            self.events = []
+
+        async def enqueue_event(self, event) -> None:
+            self.events.append(event)
+
+    out = io.StringIO()
+    executor = LabExecutor(name="orchestrator", model=FakeModel().client(), forwarder=None, writer=LineWriter(out))
+    queue = RecordingQueue()
+    ctx = RequestContext(request=_request("w7"), task_id="t-cancel", context_id="c-cancel", call_context=ServerCallContext())
+    await executor.cancel(ctx, queue)
+    assert '"state":"TASK_STATE_CANCELED"' in out.getvalue()
+    assert len(queue.events) == 1 and isinstance(queue.events[0], TaskStatusUpdateEvent)
+    assert queue.events[0].status.state == TaskState.TASK_STATE_CANCELED

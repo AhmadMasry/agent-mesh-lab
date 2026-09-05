@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"io"
 	"iter"
 
 	"github.com/a2aproject/a2a-go/v2/a2a"
@@ -20,8 +19,8 @@ type labExecutor struct {
 	lw    *lineWriter
 }
 
-func newLabExecutor(name string, model *modelClient, out io.Writer) *labExecutor {
-	return &labExecutor{name: name, model: model, lw: &lineWriter{out: out}}
+func newLabExecutor(name string, model *modelClient, lw *lineWriter) *labExecutor {
+	return &labExecutor{name: name, model: model, lw: lw}
 }
 
 func firstText(m *a2a.Message) string {

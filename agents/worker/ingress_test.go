@@ -82,7 +82,7 @@ func TestIngressMiddleware_PassesBodyThroughUnchangedAndRecordsStatus(t *testing
 		w.WriteHeader(http.StatusCreated)
 	})
 	var out bytes.Buffer
-	h := newIngressMiddleware(next, &out)
+	h := newIngressMiddleware(next, newLineWriter(&out))
 	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(a2aGoSendMessageBody))
 	r.Header.Set("A2A-Version", "1.0")
 	w := httptest.NewRecorder()
@@ -91,33 +91,58 @@ func TestIngressMiddleware_PassesBodyThroughUnchangedAndRecordsStatus(t *testing
 		t.Fatalf("downstream body differs from the wire body")
 	}
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) != 1 {
-		t.Fatalf("want exactly one ledger line, got %d: %q", len(lines), out.String())
+	if len(lines) != 2 {
+		t.Fatalf("want an arrival line and a response line, got %d: %q", len(lines), out.String())
 	}
+	var arrival, response ingressLine
+	if err := json.Unmarshal([]byte(lines[0]), &arrival); err != nil {
+		t.Fatalf("arrival line is not JSON: %v", err)
+	}
+	if err := json.Unmarshal([]byte(lines[1]), &response); err != nil {
+		t.Fatalf("response line is not JSON: %v", err)
+	}
+	if arrival.Phase != "arrival" || arrival.Status != 0 || arrival.MessageID == "" || arrival.Ledger != "ingress" {
+		t.Errorf("arrival = %+v", arrival)
+	}
+	if response.Phase != "response" || response.Status != http.StatusCreated || response.MessageID != arrival.MessageID || response.TSArrival != arrival.TSArrival || response.BodySHA256 != arrival.BodySHA256 {
+		t.Errorf("response = %+v", response)
+	}
+}
+
+// The arrival line must exist even when the handler never returns normally: it is
+// written before dispatch, so a delivery is counted the moment it is read.
+func TestIngressMiddleware_ArrivalLineIsWrittenBeforeDispatch(t *testing.T) {
+	var out bytes.Buffer
+	var seenAtDispatch string
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenAtDispatch = out.String()
+		w.WriteHeader(http.StatusOK)
+	})
+	h := newIngressMiddleware(next, newLineWriter(&out))
+	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(a2aGoSendMessageBody))
+	h.ServeHTTP(httptest.NewRecorder(), r)
 	var line ingressLine
-	if err := json.Unmarshal([]byte(lines[0]), &line); err != nil {
-		t.Fatalf("line is not JSON: %v", err)
-	}
-	if line.Status != http.StatusCreated || line.Ledger != "ingress" || line.MessageID == "" {
-		t.Errorf("line = %+v", line)
+	if err := json.Unmarshal([]byte(strings.TrimSpace(seenAtDispatch)), &line); err != nil || line.Phase != "arrival" {
+		t.Fatalf("no arrival line before dispatch: %q (%v)", seenAtDispatch, err)
 	}
 }
 
 func TestIngressMiddleware_MalformedBodyIsCountedNotRejected(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	var out bytes.Buffer
-	h := newIngressMiddleware(next, &out)
+	h := newIngressMiddleware(next, newLineWriter(&out))
 	r := httptest.NewRequest(http.MethodPost, "/", strings.NewReader("{not json"))
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 	if w.Code != http.StatusOK {
 		t.Fatalf("middleware must not reject: status %d", w.Code)
 	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 	var line ingressLine
-	if err := json.Unmarshal([]byte(strings.TrimSpace(out.String())), &line); err != nil {
+	if err := json.Unmarshal([]byte(lines[0]), &line); err != nil {
 		t.Fatalf("no ledger line for malformed body: %v", err)
 	}
-	if line.BodySHA256 != sha("{not json") || line.BodyLen != 9 || line.Method != "" {
+	if line.BodySHA256 != sha("{not json") || line.BodyLen != 9 || line.Method != "" || line.Phase != "arrival" {
 		t.Errorf("line = %+v", line)
 	}
 }

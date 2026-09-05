@@ -12,7 +12,10 @@ cd "$REPO_ROOT"
 
 NAMESPACE="lab"
 CLUSTER_NAME="agent-mesh-lab"
-LWI="${LWI:-clean-001}"
+# The work-item id carries a per-run nonce: pod logs outlive runs, and a repeated id
+# would collect an earlier run's lines as if they were this run's.
+RUN_ID="${RUN_ID:-$(date +%H%M%S)}"
+LWI="${LWI:-clean-${RUN_ID}-001}"
 RUN_ITEM="${RUN_ITEM:-2026-09-05-three-ledgers}"
 RUN_DIR="experiments/runs/${RUN_ITEM}"
 CURL_POD="ledgers-curl"
@@ -46,21 +49,22 @@ make --no-print-directory ledgers "LWI=${LWI}" "OUT=${RUN_DIR}"
 
 count_lines() { if [ -s "$1" ]; then grep -c . "$1"; else echo 0; fi; }
 
-deliveries_ingress_total=$(count_lines "${RUN_DIR}/ingress.jsonl")
-# JSON-RPC deliveries: ingress lines whose method has no space (HTTP-level
-# lines are recorded as "<METHOD> <path>").
-deliveries_ingress_jsonrpc=$(jq -s '[.[] | select(.method != "" and (.method | test(" ") | not))] | length' "${RUN_DIR}/ingress.jsonl")
+# Every delivery has an arrival line (written before dispatch) and a response
+# line; deliveries are counted on arrival lines. JSON-RPC deliveries are those
+# whose method has no space (HTTP-level lines read "<METHOD> <path>").
+ingress_arrivals_for_work_item=$(jq -s '[.[] | select(.phase == "arrival")] | length' "${RUN_DIR}/ingress.jsonl")
+deliveries_ingress_jsonrpc=$(jq -s '[.[] | select(.phase == "arrival" and .method != "" and (.method | test(" ") | not))] | length' "${RUN_DIR}/ingress.jsonl")
 dispatches=$(jq -s '[.[] | select(.event == "dispatch")] | length' "${RUN_DIR}/execution.jsonl")
-distinct_message_ids=$(jq -s '[.[] | select(.messageId != "") | .messageId] | unique | length' "${RUN_DIR}/ingress.jsonl")
+distinct_message_ids=$(jq -s '[.[] | select(.phase == "arrival" and .messageId != "") | .messageId] | unique | length' "${RUN_DIR}/ingress.jsonl")
 tasks_created=$(jq -s '[.[] | select(.event == "state" and .state == "TASK_STATE_SUBMITTED")] | length' "${RUN_DIR}/execution.jsonl")
 task_final_state=$(jq -r -s '[.[] | select(.event == "result")] | last | .state // "none"' "${RUN_DIR}/execution.jsonl")
 invocations=$(count_lines "${RUN_DIR}/invocation.jsonl")
-a2a_version_seen=$(jq -r -s '[.[] | select(.method != "" and (.method | test(" ") | not)) | .a2a_version] | unique | join("|")' "${RUN_DIR}/ingress.jsonl")
+a2a_version_seen=$(jq -r -s '[.[] | select(.phase == "arrival" and .method != "" and (.method | test(" ") | not)) | .a2a_version] | unique | join("|")' "${RUN_DIR}/ingress.jsonl")
 client_result_kind=$(jq -r -s 'last | .result_kind // "none"' "${RUN_DIR}/client.jsonl")
 
 {
-	echo "deliveries_ingress_jsonrpc,deliveries_ingress_total,dispatches,distinct_message_ids,tasks_created,task_final_state,invocations,a2a_version_seen,client_result_kind"
-	echo "${deliveries_ingress_jsonrpc},${deliveries_ingress_total},${dispatches},${distinct_message_ids},${tasks_created},${task_final_state},${invocations},${a2a_version_seen},${client_result_kind}"
+	echo "deliveries_ingress_jsonrpc,ingress_arrivals_for_work_item,dispatches,distinct_message_ids,tasks_created,task_final_state,invocations,a2a_version_seen,client_result_kind"
+	echo "${deliveries_ingress_jsonrpc},${ingress_arrivals_for_work_item},${dispatches},${distinct_message_ids},${tasks_created},${task_final_state},${invocations},${a2a_version_seen},${client_result_kind}"
 } >"${RUN_DIR}/summary.csv"
 
 echo "== summary =="

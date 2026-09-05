@@ -12,12 +12,15 @@ import (
 	"time"
 )
 
-// ingressLine is one pre-dispatch ingress ledger record: one physical HTTP
-// delivery, written before the A2A SDK sees the request. Identity fields are
-// filled from the JSON-RPC body when it parses; a body that does not parse
-// still produces a line with its hash and length.
+// ingressLine is one pre-dispatch ingress ledger record. Every physical HTTP
+// delivery produces two lines sharing ts_arrival and body_sha256: an "arrival"
+// line written before the A2A SDK sees the request, so a delivery is counted
+// even if its handler never returns, and a "response" line afterwards carrying
+// the status. Identity fields are filled from the JSON-RPC body when it parses;
+// a body that does not parse still produces lines with its hash and length.
 type ingressLine struct {
 	Ledger            string `json:"ledger"`
+	Phase             string `json:"phase"`
 	TSArrival         string `json:"ts_arrival"`
 	Remote            string `json:"remote"`
 	Method            string `json:"method"`
@@ -30,7 +33,7 @@ type ingressLine struct {
 	ContentType       string `json:"content_type"`
 	BodySHA256        string `json:"body_sha256"`
 	BodyLen           int    `json:"body_len"`
-	Status            int    `json:"status"`
+	Status            int    `json:"status,omitempty"`
 }
 
 // jsonRPCEnvelope is the tolerant view of a request body: every field is
@@ -55,6 +58,7 @@ func parseIngress(r *http.Request, body []byte) ingressLine {
 	sum := sha256.Sum256(body)
 	line := ingressLine{
 		Ledger:      "ingress",
+		Phase:       "arrival",
 		TSArrival:   time.Now().UTC().Format(time.RFC3339Nano),
 		Remote:      r.RemoteAddr,
 		A2AVersion:  r.Header.Get("A2A-Version"),
@@ -131,10 +135,14 @@ func (s *statusRecorder) Flush() {
 	}
 }
 
+// lineWriter serialises every ledger line of a process onto one stream. One
+// instance is shared by the ingress, execution, and executor writers.
 type lineWriter struct {
 	mu  sync.Mutex
 	out io.Writer
 }
+
+func newLineWriter(out io.Writer) *lineWriter { return &lineWriter{out: out} }
 
 func (w *lineWriter) write(v any) {
 	b, err := json.Marshal(v)
@@ -146,10 +154,10 @@ func (w *lineWriter) write(v any) {
 	_, _ = w.out.Write(append(b, '\n'))
 }
 
-// newIngressMiddleware reads and restores the body, serves the request, then
-// writes exactly one ingress line with the response status. It never rejects.
-func newIngressMiddleware(next http.Handler, out io.Writer) http.Handler {
-	lw := &lineWriter{out: out}
+// newIngressMiddleware reads and restores the body, writes the arrival line,
+// serves the request, then writes the response line with the status. It never
+// rejects a request.
+func newIngressMiddleware(next http.Handler, lw *lineWriter) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body []byte
 		if r.Body != nil {
@@ -158,11 +166,13 @@ func newIngressMiddleware(next http.Handler, out io.Writer) http.Handler {
 			r.Body = io.NopCloser(bytes.NewReader(body))
 		}
 		line := parseIngress(r, body)
+		lw.write(line)
 		rec := &statusRecorder{ResponseWriter: w}
 		next.ServeHTTP(rec, r)
 		if rec.status == 0 {
 			rec.status = http.StatusOK
 		}
+		line.Phase = "response"
 		line.Status = rec.status
 		lw.write(line)
 	})

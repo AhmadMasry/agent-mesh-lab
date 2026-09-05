@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"io"
 	"iter"
 	"time"
 
@@ -44,8 +43,8 @@ type executionLedger struct {
 	lw *lineWriter
 }
 
-func newExecutionLedger(inner a2asrv.RequestHandler, out io.Writer) *executionLedger {
-	return &executionLedger{RequestHandler: inner, lw: &lineWriter{out: out}}
+func newExecutionLedger(inner a2asrv.RequestHandler, lw *lineWriter) *executionLedger {
+	return &executionLedger{RequestHandler: inner, lw: lw}
 }
 
 func (e *executionLedger) dispatch(method string, req *a2a.SendMessageRequest) executionLine {

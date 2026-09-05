@@ -37,12 +37,16 @@ def app_from_env() -> Starlette:
     downstream = os.environ.get("DOWNSTREAM_A2A_URL", "")
     plan = os.environ.get("PLAN_MODEL_CALL", "off") == "on"
     max_retries = int(os.environ.get("MODEL_MAX_RETRIES", "0"))
-    model = ModelClient(
-        base_url=os.environ.get("MODEL_BASE_URL", "http://mockllm.lab.svc.cluster.local:8080/v1"),
-        model=os.environ.get("MODEL_NAME", "mock"),
-        api_key=os.environ.get("MODEL_API_KEY", "unused"),
-        max_retries=max_retries,
-    )
+    # A model client exists only where a model call can happen: model mode, or
+    # forward mode with the plan call on. Pure forward mode owns no model connection.
+    model = None
+    if not downstream or plan:
+        model = ModelClient(
+            base_url=os.environ.get("MODEL_BASE_URL", "http://mockllm.lab.svc.cluster.local:8080/v1"),
+            model=os.environ.get("MODEL_NAME", "mock"),
+            api_key=os.environ.get("MODEL_API_KEY", "unused"),
+            max_retries=max_retries,
+        )
     forwarder = Forwarder(url=downstream, caller=name) if downstream else None
     return build_app(name=name, model=model, forwarder=forwarder, out=None,
                      public_url=os.environ.get("PUBLIC_URL", f"http://{name}.lab.svc.cluster.local:8080"),

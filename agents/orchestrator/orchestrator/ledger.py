@@ -53,6 +53,7 @@ def parse_ingress(*, method: str, path: str, headers: dict[str, str], remote: st
     """Build one ingress line. Tolerant: a body that does not parse still yields a line."""
     line: dict[str, Any] = {
         "ledger": "ingress",
+        "phase": "arrival",
         "ts_arrival": now(),
         "remote": remote,
         "method": "",
@@ -64,7 +65,6 @@ def parse_ingress(*, method: str, path: str, headers: dict[str, str], remote: st
         "content_type": headers.get("content-type", ""),
         "body_sha256": hashlib.sha256(body).hexdigest(),
         "body_len": len(body),
-        "status": 0,
     }
     env: Any = None
     if body:
@@ -89,15 +89,17 @@ def parse_ingress(*, method: str, path: str, headers: dict[str, str], remote: st
 
 
 class IngressMiddleware:
-    """Pure ASGI middleware: reads and restores the body, serves the request,
-    then writes exactly one ingress line with the response status. Never rejects."""
+    """Pure ASGI middleware: reads and restores the body, writes the arrival
+    line, serves the request, then writes the response line with the status.
+    Never rejects. Paths in skip_paths (the readiness probe) are not ledgered."""
 
-    def __init__(self, app, out: TextIO | None = None) -> None:
+    def __init__(self, app, out: TextIO | None = None, skip_paths: tuple[str, ...] = ("/healthz",)) -> None:
         self.app = app
         self.writer = LineWriter(out)
+        self.skip_paths = skip_paths
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
+        if scope["type"] != "http" or scope.get("path", "") in self.skip_paths:
             await self.app(scope, receive, send)
             return
         chunks: list[bytes] = []
@@ -114,6 +116,8 @@ class IngressMiddleware:
         client = scope.get("client") or ("", 0)
         line = parse_ingress(method=scope.get("method", ""), path=scope.get("path", ""), headers=headers,
                              remote=f"{client[0]}:{client[1]}", body=body)
+        self.writer.write(line)
+        status = {"code": 0}
 
         replayed = {"done": False}
 
@@ -125,13 +129,16 @@ class IngressMiddleware:
 
         async def send_capture(message):
             if message["type"] == "http.response.start":
-                line["status"] = int(message.get("status", 0))
+                status["code"] = int(message.get("status", 0))
             await send(message)
 
         try:
             await self.app(scope, receive_replay, send_capture)
         finally:
-            self.writer.write(line)
+            response = dict(line)
+            response["phase"] = "response"
+            response["status"] = status["code"]
+            self.writer.write(response)
 
 
 def execution_line(event: str, *, method: str = "", message_id: str = "", task_id: str = "",

@@ -13,13 +13,19 @@
 //   - No Idempotency-Key or X-Idempotency-Key header is ever set by lab code.
 //
 // What net/http still does on its own with these settings, from
-// net/http/transport.go (persistConn.shouldRetryRequest): when a request is sent
-// on a reused connection and nothing was written before the connection failed,
-// the transport redials and sends the request again if the body can be rewound
-// (Request.GetBody is set, which http.NewRequest does for bytes and strings
-// readers). That replay never reaches the server, so a server-side ledger cannot
-// see it and it cannot cause duplicate work. A request that was written and then
-// lost its connection is not retried for POST without an idempotency header.
+// net/http/transport.go (persistConn.shouldRetryRequest) and request.go
+// (Request.isReplayable):
+//   - On a reused connection where nothing was written before the connection
+//     failed, the transport redials and sends the request again if the body can
+//     be rewound (Request.GetBody is set, which http.NewRequest does for bytes
+//     and strings readers). That replay never reached the server, so a
+//     server-side ledger cannot see it and it cannot cause duplicate work.
+//   - A request that was written and then lost its reused connection
+//     (transportReadFromServerError, errServerClosedIdle) is retried only if it
+//     is replayable: GET, HEAD, OPTIONS, TRACE, or any method carrying an
+//     Idempotency-Key header. That replay does reach the server twice. The lab's
+//     A2A operations are POST without an idempotency header and are never
+//     replayed once written; the agent-card fetch is a GET and can be.
 package httpclient
 
 import (

@@ -15,6 +15,9 @@ cd "$REPO_ROOT"
 NAMESPACE="lab"
 CLUSTER_NAME="agent-mesh-lab"
 RUN_ITEM="${RUN_ITEM:-2026-09-05-wire-version}"
+# Work-item ids carry a per-run nonce (pod logs outlive runs; a repeated id would
+# collect an earlier run's lines). SUMMARY_ONLY=1 reuses the ids recorded in run-id.txt.
+RUN_ID="${RUN_ID:-$(date +%H%M%S)}"
 RUN_DIR="experiments/runs/${RUN_ITEM}"
 CURL_POD="wire-version-curl"
 CURL_IMAGE="curlimages/curl:8.11.1"
@@ -23,17 +26,25 @@ WORKER_URL="http://worker.lab.svc.cluster.local:8080"
 ORCH_URL="http://orchestrator.lab.svc.cluster.local:8080"
 
 mkdir -p "$RUN_DIR"
+# SUMMARY_ONLY=1 recomputes summary.csv from the committed ledgers without touching the cluster.
+SUMMARY_ONLY="${SUMMARY_ONLY:-0}"
+if [ "$SUMMARY_ONLY" = "1" ] && [ -s "${RUN_DIR}/run-id.txt" ]; then RUN_ID="$(cat "${RUN_DIR}/run-id.txt")"; fi
+GO_LWI="wv-${RUN_ID}-go-001"
+PY_LWI="wv-${RUN_ID}-py-001"
+echo "$RUN_ID" >"${RUN_DIR}/run-id.txt"
 
 cleanup() {
 	kubectl -n "$NAMESPACE" delete pod "$CURL_POD" --ignore-not-found --wait=false >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
+if [ "$SUMMARY_ONLY" != "1" ]; then
 echo "== resetting mockllm counters and injections =="
 kubectl -n "$NAMESPACE" delete pod "$CURL_POD" --ignore-not-found --wait=true >/dev/null 2>&1 || true
 kubectl -n "$NAMESPACE" run "$CURL_POD" --image="$CURL_IMAGE" --restart=Never --command -- sleep 600 >/dev/null
 kubectl -n "$NAMESPACE" wait --for=condition=Ready "pod/${CURL_POD}" --timeout=60s >/dev/null
 kubectl -n "$NAMESPACE" exec "$CURL_POD" -- curl -s -o /dev/null -w 'reset: %{http_code}\n' -X POST "${MOCK_URL}/control/reset"
+fi
 
 run_job() {
 	local lwi="$1" target="$2"
@@ -48,23 +59,27 @@ run_job() {
 	make --no-print-directory ledgers "LWI=${lwi}" "OUT=${RUN_DIR}/${lwi}" >/dev/null
 }
 
-run_job "wv-go-001" "$WORKER_URL"
-run_job "wv-py-001" "$ORCH_URL"
+if [ "$SUMMARY_ONLY" != "1" ]; then
+	run_job "$GO_LWI" "$WORKER_URL"
+	run_job "$PY_LWI" "$ORCH_URL"
+fi
 
-# header seen at <source> for JSON-RPC deliveries of a work item
-ver_at() { jq -r -s --arg src "$2" '[.[] | select(.source == $src and .method != "" and (.method | test(" ") | not)) | .a2a_version] | unique | join("|")' "${RUN_DIR}/$1/ingress.jsonl"; }
-method_at() { jq -r -s --arg src "$2" '[.[] | select(.source == $src and .method != "" and (.method | test(" ") | not)) | .method] | unique | join("|")' "${RUN_DIR}/$1/ingress.jsonl"; }
-status_at() { jq -r -s --arg src "$2" '[.[] | select(.source == $src and .method != "" and (.method | test(" ") | not)) | .status] | unique | join("|")' "${RUN_DIR}/$1/ingress.jsonl"; }
-count_at() { jq -s --arg src "$2" '[.[] | select(.source == $src and .method != "" and (.method | test(" ") | not))] | length' "${RUN_DIR}/$1/ingress.jsonl"; }
+# header seen at <source> for JSON-RPC deliveries of a work item; deliveries are
+# arrival lines, the status comes from the matching response line
+ver_at() { jq -r -s --arg src "$2" '[.[] | select(.source == $src and .phase == "arrival" and .method != "" and (.method | test(" ") | not)) | .a2a_version] | unique | join("|")' "${RUN_DIR}/$1/ingress.jsonl"; }
+method_at() { jq -r -s --arg src "$2" '[.[] | select(.source == $src and .phase == "arrival" and .method != "" and (.method | test(" ") | not)) | .method] | unique | join("|")' "${RUN_DIR}/$1/ingress.jsonl"; }
+status_at() { jq -r -s --arg src "$2" '[.[] | select(.source == $src and .phase == "response" and .method != "" and (.method | test(" ") | not)) | .status] | unique | join("|")' "${RUN_DIR}/$1/ingress.jsonl"; }
+count_at() { jq -s --arg src "$2" '[.[] | select(.source == $src and .phase == "arrival" and .method != "" and (.method | test(" ") | not))] | length' "${RUN_DIR}/$1/ingress.jsonl"; }
 result_of() { jq -r -s 'last | "\(.result_kind // "none")/\(.state // "none")\(if .error then " error=" + .error else "" end)"' "${RUN_DIR}/$1/client.jsonl"; }
 dispatches_at() { jq -s --arg src "$2" '[.[] | select(.source == $src and .event == "dispatch")] | length' "${RUN_DIR}/$1/execution.jsonl"; }
-invocations() { if [ -s "${RUN_DIR}/$1/invocation.jsonl" ]; then grep -c . "${RUN_DIR}/$1/invocation.jsonl"; else echo 0; fi; }
+# model invocations made by the agent captured at <source> (caller field), not the whole work item
+invocations() { jq -s --arg src "$2" '[.[] | select(.caller == $src and .outcome != "stale-closed")] | length' "${RUN_DIR}/$1/invocation.jsonl"; }
 
 {
 	echo "work_item,client_sdk,captured_at,deliveries,a2a_version,method,status,dispatches,invocations,client_result"
-	echo "wv-go-001,a2a-go,worker,$(count_at wv-go-001 worker),$(ver_at wv-go-001 worker),$(method_at wv-go-001 worker),$(status_at wv-go-001 worker),$(dispatches_at wv-go-001 worker),$(invocations wv-go-001),$(result_of wv-go-001)"
-	echo "wv-py-001,a2a-go,orchestrator,$(count_at wv-py-001 orchestrator),$(ver_at wv-py-001 orchestrator),$(method_at wv-py-001 orchestrator),$(status_at wv-py-001 orchestrator),$(dispatches_at wv-py-001 orchestrator),$(invocations wv-py-001),$(result_of wv-py-001)"
-	echo "wv-py-001,a2a-python,worker,$(count_at wv-py-001 worker),$(ver_at wv-py-001 worker),$(method_at wv-py-001 worker),$(status_at wv-py-001 worker),$(dispatches_at wv-py-001 worker),$(invocations wv-py-001),$(result_of wv-py-001)"
+	echo "$GO_LWI,a2a-go,worker,$(count_at "$GO_LWI" worker),$(ver_at "$GO_LWI" worker),$(method_at "$GO_LWI" worker),$(status_at "$GO_LWI" worker),$(dispatches_at "$GO_LWI" worker),$(invocations "$GO_LWI" worker),$(result_of "$GO_LWI")"
+	echo "$PY_LWI,a2a-go,orchestrator,$(count_at "$PY_LWI" orchestrator),$(ver_at "$PY_LWI" orchestrator),$(method_at "$PY_LWI" orchestrator),$(status_at "$PY_LWI" orchestrator),$(dispatches_at "$PY_LWI" orchestrator),$(invocations "$PY_LWI" orchestrator),$(result_of "$PY_LWI")"
+	echo "$PY_LWI,a2a-python,worker,$(count_at "$PY_LWI" worker),$(ver_at "$PY_LWI" worker),$(method_at "$PY_LWI" worker),$(status_at "$PY_LWI" worker),$(dispatches_at "$PY_LWI" worker),$(invocations "$PY_LWI" worker),$(result_of "$PY_LWI")"
 } >"${RUN_DIR}/summary.csv"
 
 echo "== summary =="

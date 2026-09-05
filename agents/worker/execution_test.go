@@ -37,7 +37,7 @@ func (completingExecutor) Cancel(_ context.Context, execCtx *a2asrv.ExecutorCont
 func TestExecutionLedger_OneDispatchAndOneResultLinePerSendMessage(t *testing.T) {
 	var out bytes.Buffer
 	inner := a2asrv.NewHandler(completingExecutor{})
-	h := newExecutionLedger(inner, &out)
+	h := newExecutionLedger(inner, newLineWriter(&out))
 
 	msg := a2a.NewMessage(a2a.MessageRoleUser, a2a.NewTextPart("lwi:w1 hi"))
 	msg.ID = "msg-1"
@@ -81,7 +81,7 @@ func TestExecutionLedger_OneDispatchAndOneResultLinePerSendMessage(t *testing.T)
 func TestExecutionLedger_DelegatesGetTask(t *testing.T) {
 	var out bytes.Buffer
 	inner := a2asrv.NewHandler(completingExecutor{})
-	h := newExecutionLedger(inner, &out)
+	h := newExecutionLedger(inner, newLineWriter(&out))
 	msg := a2a.NewMessage(a2a.MessageRoleUser, a2a.NewTextPart("hi"))
 	msg.ID = "msg-2"
 	res, err := h.SendMessage(context.Background(), &a2a.SendMessageRequest{Message: msg})

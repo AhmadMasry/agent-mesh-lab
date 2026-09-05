@@ -33,5 +33,7 @@ def test_app_serves_card_and_completes_a_task_from_the_recorded_go_body():
 
     lines = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
     ingress = [l for l in lines if l["ledger"] == "ingress" and l["method"] == "SendMessage"]
-    assert len(ingress) == 1 and ingress[0]["status"] == 200 and ingress[0]["a2a_version"] == "1.0"
+    assert [l["phase"] for l in ingress] == ["arrival", "response"]
+    assert ingress[1]["status"] == 200 and ingress[0]["a2a_version"] == "1.0"
     assert ingress[0]["messageId"] == "01a06f19-cf55-7daf-af2b-a251c81a0375"
+    assert not [l for l in lines if l["ledger"] == "ingress" and "healthz" in l["method"]]

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -27,6 +28,15 @@ func getenv(k, def string) string {
 	return def
 }
 
+// modelTimeout is the model client's overall timeout (MODEL_TIMEOUT_S, default 60 s).
+// The baseline's delay-then-close run lowers it so a repetition does not take a minute.
+func modelTimeout() time.Duration {
+	if v, err := strconv.Atoi(os.Getenv("MODEL_TIMEOUT_S")); err == nil && v > 0 {
+		return time.Duration(v) * time.Second
+	}
+	return 60 * time.Second
+}
+
 func main() {
 	name := getenv("AGENT_NAME", "worker")
 	modelBase := getenv("MODEL_BASE_URL", "http://mockllm.lab.svc.cluster.local:8080/v1")
@@ -38,11 +48,12 @@ func main() {
 		log.Fatal("worker: DOWNSTREAM_A2A_URL is set but forward mode is not implemented in this gate")
 	}
 
-	// Timeouts recorded in the findings entry; the model client's response-header
-	// timeout is 60s, the model call as a whole is bounded by the client Timeout.
-	modelHTTP := httpclient.New(60 * time.Second)
-	executor := newLabExecutor(name, newModelClient(modelBase, modelName, modelKey, modelHTTP), os.Stdout)
-	handler := newExecutionLedger(a2asrv.NewHandler(executor), os.Stdout)
+	// Timeouts recorded in the findings entry; the model call as a whole is bounded
+	// by the client Timeout (MODEL_TIMEOUT_S), which is also the response-header timeout.
+	modelHTTP := httpclient.New(modelTimeout())
+	ledger := newLineWriter(os.Stdout)
+	executor := newLabExecutor(name, newModelClient(modelBase, modelName, modelKey, modelHTTP), ledger)
+	handler := newExecutionLedger(a2asrv.NewHandler(executor), ledger)
 
 	card := &a2a.AgentCard{
 		Name:        name,
@@ -61,14 +72,18 @@ func main() {
 		}},
 	}
 
-	mux := http.NewServeMux()
-	mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(card))
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
-	mux.Handle("/", a2asrv.NewJSONRPCHandler(handler))
+	// Everything A2A (card and JSON-RPC) sits behind the ingress ledger; the
+	// readiness probe does not, so probe traffic never appears as deliveries.
+	a2aMux := http.NewServeMux()
+	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(card))
+	a2aMux.Handle("/", a2asrv.NewJSONRPCHandler(handler))
+	root := http.NewServeMux()
+	root.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
+	root.Handle("/", newIngressMiddleware(a2aMux, ledger))
 
 	srv := &http.Server{
 		Addr:              listen,
-		Handler:           newIngressMiddleware(mux, os.Stdout),
+		Handler:           root,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      120 * time.Second,
@@ -83,7 +98,7 @@ func main() {
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
-	log.Printf("worker %q listening on %s; card at %s; model %s", name, listen, a2asrv.WellKnownAgentCardPath, modelBase)
+	log.Printf("worker %q listening on %s; card at %s; model %s (timeout %s)", name, listen, a2asrv.WellKnownAgentCardPath, modelBase, modelTimeout())
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}

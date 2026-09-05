@@ -29,6 +29,8 @@ orchestrator-image:
 
 step-1: orchestrator-image
 	kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply -f -
+	# The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
+	kubectl -n $(NAMESPACE) rollout restart deployment/orchestrator
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
@@ -41,29 +43,33 @@ step-3:
 	@echo "step-3: not implemented yet (Gate 3)" >&2
 	@exit 1
 
+# verify-baseline [STEP=1|2] [REPS=5]: run the baseline (checklist box 4) on the
+# running cluster; writes experiments/runs/<date>-baseline-step<STEP>/.
 verify-baseline:
-	@echo "verify-baseline: not implemented yet" >&2
-	@exit 1
+	STEP=$(if $(STEP),$(STEP),1) REPS=$(if $(REPS),$(REPS),5) experiments/gate1-baseline.sh
 
 teardown:
 	kind delete cluster --name $(CLUSTER_NAME)
 
 # ledgers LWI=<id> [OUT=<dir>]: print the four ledgers for one
-# logical_work_item_id, read from pod stdout: the worker's pre-dispatch
-# ingress and execution ledgers, mockllm's invocation ledger, and the
-# loadgen Job's client line. With OUT, each ledger is written as
-# <OUT>/<name>.jsonl containing exactly the matching lines. Failures are
-# loud; finding nothing at all for the work item is an error.
+# logical_work_item_id, read from pod stdout: both agents' pre-dispatch
+# ingress and execution ledgers (lines labelled with their source),
+# mockllm's invocation ledger, and the loadgen Job's client line. Stdout
+# carries only JSON lines (section headers go to stderr) so scripts can pipe
+# it. A source whose logs cannot be read is reported on stderr and skipped;
+# finding nothing at all for the work item is an error. With OUT, each
+# ledger is written as <OUT>/<name>.jsonl containing exactly the matching lines.
 ledgers:
 	@if [ -z "$(LWI)" ]; then \
 		echo "usage: make ledgers LWI=<id> [OUT=<dir>]" >&2; \
 		exit 1; \
 	fi
 	@set -e; \
-	WORKER=$$(kubectl logs deploy/worker -n $(NAMESPACE)) || { echo "ledgers: kubectl logs deploy/worker failed" >&2; exit 1; }; \
-	ORCH=$$(kubectl logs deploy/orchestrator -n $(NAMESPACE) 2>/dev/null || true); \
-	MOCK=$$(kubectl logs deploy/mockllm -n $(NAMESPACE)) || { echo "ledgers: kubectl logs deploy/mockllm failed" >&2; exit 1; }; \
-	CLIENT=$$(kubectl logs -n $(NAMESPACE) -l job-name=loadgen-$(LWI) --tail=-1 2>/dev/null || true); \
+	fetch() { kubectl logs "$$@" -n $(NAMESPACE) 2>/dev/null || { echo "ledgers: warning: kubectl logs $$* failed; that ledger is missing from this collection" >&2; }; }; \
+	WORKER=$$(fetch deploy/worker); \
+	ORCH=$$(fetch deploy/orchestrator); \
+	MOCK=$$(fetch deploy/mockllm); \
+	CLIENT=$$(fetch -l job-name=loadgen-$(LWI) --tail=-1); \
 	sel() { jq -R -c --arg lwi "$(LWI)" --arg ledger "$$1" --arg src "$$2" 'fromjson? | select(.ledger == $$ledger and .logical_work_item_id == $$lwi) | . + {source: $$src}' || { echo "ledgers: jq failed" >&2; exit 1; }; }; \
 	INGRESS=$$( { printf '%s\n' "$$WORKER" | sel ingress worker; printf '%s\n' "$$ORCH" | sel ingress orchestrator; } ); \
 	EXECUTION=$$( { printf '%s\n' "$$WORKER" | sel execution worker; printf '%s\n' "$$ORCH" | sel execution orchestrator; } ); \
@@ -81,7 +87,7 @@ ledgers:
 	fi; \
 	for pair in "ingress=$$INGRESS" "execution=$$EXECUTION" "invocation=$$INVOCATION" "client=$$CLIENTL"; do \
 		name=$${pair%%=*}; body=$${pair#*=}; \
-		echo "## $$name"; \
+		echo "## $$name" >&2; \
 		if [ -n "$$body" ]; then printf '%s\n' "$$body"; fi; \
 	done
 

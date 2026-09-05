@@ -70,8 +70,25 @@ def test_middleware_passes_body_through_unchanged_and_records_status():
     assert r.status_code == 201
     assert seen["body"] == GO_BODY
     lines = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
-    assert len(lines) == 1
-    assert lines[0]["status"] == 201 and lines[0]["messageId"] == "01a06f19-cf55-7daf-af2b-a251c81a0375"
+    assert [l["phase"] for l in lines] == ["arrival", "response"]
+    assert "status" not in lines[0] and lines[0]["messageId"] == "01a06f19-cf55-7daf-af2b-a251c81a0375"
+    assert lines[1]["status"] == 201 and lines[1]["messageId"] == lines[0]["messageId"]
+    assert lines[1]["ts_arrival"] == lines[0]["ts_arrival"] and lines[1]["body_sha256"] == lines[0]["body_sha256"]
+
+
+def test_middleware_arrival_line_is_written_before_dispatch():
+    out = io.StringIO()
+    seen = {}
+
+    async def endpoint(request):
+        seen["at_dispatch"] = out.getvalue()
+        return PlainTextResponse("ok")
+
+    app = Starlette(routes=[Route("/", endpoint, methods=["POST"])])
+    app.add_middleware(IngressMiddleware, out=out)
+    TestClient(app).post("/", content=GO_BODY)
+    line = json.loads(seen["at_dispatch"].strip())
+    assert line["phase"] == "arrival" and "status" not in line
 
 
 def test_middleware_malformed_body_is_counted_not_rejected():
@@ -79,5 +96,5 @@ def test_middleware_malformed_body_is_counted_not_rejected():
     app, _ = _app_with_middleware(out)
     r = TestClient(app).post("/", content=b"{not json")
     assert r.status_code == 201
-    line = json.loads(out.getvalue().strip())
-    assert line["body_sha256"] == hashlib.sha256(b"{not json").hexdigest() and line["method"] == ""
+    line = json.loads(out.getvalue().splitlines()[0])
+    assert line["body_sha256"] == hashlib.sha256(b"{not json").hexdigest() and line["method"] == "" and line["phase"] == "arrival"

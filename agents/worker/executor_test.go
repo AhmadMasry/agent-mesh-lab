@@ -77,9 +77,9 @@ func TestModelClient_DoesNotRetryOn500(t *testing.T) {
 	}
 }
 
-func sendThroughSDK(t *testing.T, ex a2asrv.AgentExecutor, out *bytes.Buffer) *a2a.Task {
+func sendThroughSDK(t *testing.T, ex a2asrv.AgentExecutor, lw *lineWriter) *a2a.Task {
 	t.Helper()
-	h := newExecutionLedger(a2asrv.NewHandler(ex), out)
+	h := newExecutionLedger(a2asrv.NewHandler(ex), lw)
 	msg := a2a.NewMessage(a2a.MessageRoleUser, a2a.NewTextPart("lwi:w1 hi"))
 	msg.ID = "msg-1"
 	msg.Metadata = map[string]any{"logical_work_item_id": "w1"}
@@ -98,8 +98,9 @@ func TestExecutor_CompletesTaskWithModelTextAndRecordsStates(t *testing.T) {
 	f, srv := newFakeModel(http.StatusOK)
 	defer srv.Close()
 	var out bytes.Buffer
-	ex := newLabExecutor("worker", newModelClient(srv.URL+"/v1", "mock", "unused", httpclient.New(5*time.Second)), &out)
-	task := sendThroughSDK(t, ex, &out)
+	lw := newLineWriter(&out)
+	ex := newLabExecutor("worker", newModelClient(srv.URL+"/v1", "mock", "unused", httpclient.New(5*time.Second)), lw)
+	task := sendThroughSDK(t, ex, lw)
 	if task.Status.State != a2a.TaskStateCompleted {
 		t.Fatalf("state = %s, want completed", task.Status.State)
 	}
@@ -123,8 +124,9 @@ func TestExecutor_FailsTaskOnModelErrorWithoutRetry(t *testing.T) {
 	f, srv := newFakeModel(http.StatusInternalServerError)
 	defer srv.Close()
 	var out bytes.Buffer
-	ex := newLabExecutor("worker", newModelClient(srv.URL+"/v1", "mock", "unused", httpclient.New(5*time.Second)), &out)
-	task := sendThroughSDK(t, ex, &out)
+	lw := newLineWriter(&out)
+	ex := newLabExecutor("worker", newModelClient(srv.URL+"/v1", "mock", "unused", httpclient.New(5*time.Second)), lw)
+	task := sendThroughSDK(t, ex, lw)
 	if task.Status.State != a2a.TaskStateFailed {
 		t.Fatalf("state = %s, want failed", task.Status.State)
 	}

@@ -106,10 +106,10 @@ class LabExecutor(AgentExecutor):
 class LedgerRequestHandler(DefaultRequestHandler):
     """DefaultRequestHandler with the execution ledger around the two send methods."""
 
-    def __init__(self, *args: Any, writer: LineWriter, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args: Any, writer: LineWriter, card: AgentCard, **kwargs: Any) -> None:
+        super().__init__(*args, agent_card=card, **kwargs)
         self.writer = writer
-        self.card: AgentCard = kwargs["agent_card"]
+        self.card = card
 
     def _dispatch(self, method: str, params: SendMessageRequest) -> dict[str, Any]:
         msg = params.message
@@ -169,4 +169,4 @@ def build_handler(*, name: str, model: ModelClient | None, forwarder: Forwarder 
     writer = LineWriter(out)
     executor = LabExecutor(name=name, model=model, forwarder=forwarder, writer=writer, plan_model_call=plan_model_call)
     return LedgerRequestHandler(agent_executor=executor, task_store=InMemoryTaskStore(),
-                                agent_card=build_card(name, public_url), writer=writer)
+                                card=build_card(name, public_url), writer=writer)

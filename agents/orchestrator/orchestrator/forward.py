@@ -5,6 +5,7 @@ client has no retry option of its own. One SendMessage per forward().
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 import httpx
@@ -34,10 +35,14 @@ class Forwarder:
             headers={"X-Caller": caller},
         )
         self._client = None
+        self._client_lock = asyncio.Lock()
 
     async def _get_client(self):
-        if self._client is None:
-            self._client = await create_client(self.url, client_config=ClientConfig(httpx_client=self._http, streaming=False))
+        # One card fetch per process, even under concurrent forwards: a second
+        # fetch would be an extra physical delivery downstream that no work item explains.
+        async with self._client_lock:
+            if self._client is None:
+                self._client = await create_client(self.url, client_config=ClientConfig(httpx_client=self._http, streaming=False))
         return self._client
 
     async def forward(self, text: str, work_item: str) -> str:
