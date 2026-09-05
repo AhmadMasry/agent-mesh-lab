@@ -10,7 +10,7 @@
   - pre-dispatch ingress: sits at the HTTP/JSON-RPC boundary *before* the A2A SDK sees the request; records JSON-RPC `id`, A2A `messageId`, body hash, arrival time
   - execution/task: records what the SDK dispatched to the executor and every `Task`/`taskId` created
   - model invocation: records every call with the `logical_work_item_id` and `taskId` (if any) that caused it
-- [ ] **Baseline proven retry-free** by the ledgers, not by configuration: one injected failure, zero second deliveries. Check the places that retry quietly — Go's HTTP transport on stale connections, Python HTTP client defaults, any SDK-level retry — and record what had to be disabled.
+- [x] **Baseline proven retry-free** by the ledgers, not by configuration: one injected failure, zero second deliveries. Check the places that retry quietly — Go's HTTP transport on stale connections, Python HTTP client defaults, any SDK-level retry — and record what had to be disabled.
 - [x] **`HTTPRoute` retry channel requirement** at the pinned Gateway API version recorded (expected: experimental).
 - [x] **Model endpoint deterministic**: fixed latency, fixed output, failure injection by count or by `logical_work_item_id`, so two runs are comparable.
 

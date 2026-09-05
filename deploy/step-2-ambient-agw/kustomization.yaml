@@ -1,0 +1,21 @@
+# Step 2: step 1 plus Istio Ambient with agentgateway as the waypoint in front of
+# the worker (Agent B). Applies on top of step 1; nothing is edited in place.
+# The Istio control plane and the Gateway API CRDs are installed by `make step-2`
+# (they are not application manifests); this overlay only enrols the namespace,
+# creates the waypoint, attaches the worker Service to it, and adds a retry-free
+# HTTPRoute for later experiments to extend.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../step-1-nomesh
+  - waypoint.yaml
+  - worker-route.yaml
+patches:
+  - path: namespace-ambient.yaml
+    target:
+      kind: Namespace
+      name: lab
+  - path: worker-use-waypoint.yaml
+    target:
+      kind: Service
+      name: worker

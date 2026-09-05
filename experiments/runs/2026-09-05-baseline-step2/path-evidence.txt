@@ -1,0 +1,70 @@
+# Path evidence for step 2: one clean loadgen -> worker request through the agentgateway waypoint.
+# Work item: p2-162903-path-01 (loadgen Job, one SendMessage, no injection armed).
+# Collected 2026-09-05 on kind cluster agent-mesh-lab. Commands are given verbatim above their output.
+
+$ istioctl ztunnel-config service
+NAMESPACE    SERVICE NAME                SERVICE VIP   WAYPOINT              ENDPOINTS
+lab          agentgateway-waypoint       10.96.245.128 None                  1/1
+lab          mockllm                     10.96.183.73  None                  1/1
+lab          orchestrator                10.96.250.63  None                  1/1
+lab          worker                      10.96.152.32  agentgateway-waypoint 1/1
+
+$ istioctl ztunnel-config workload
+NAMESPACE          POD NAME                                             ADDRESS      NODE                         WAYPOINT PROTOCOL
+lab                agentgateway-waypoint-6dd7855fcd-v2j5c               10.244.1.121 agent-mesh-lab-worker        None     TCP
+lab                mockllm-569f6c6f7c-cw5kr                             10.244.1.123 agent-mesh-lab-worker        None     HBONE
+lab                orchestrator-66c4759484-jtlkt                        10.244.1.122 agent-mesh-lab-worker        None     HBONE
+lab                worker-6f65896b9-7f9nd                               10.244.1.124 agent-mesh-lab-worker        None     HBONE
+
+$ kubectl -n lab get gateway agentgateway-waypoint -o jsonpath=... (Programmed condition)
+Accepted=True reason=Accepted message=Resource accepted
+Programmed=True reason=Programmed message=Resource programmed, assigned to service(s) agentgateway-waypoint.lab.svc.cluster.local:15008
+
+$ kubectl -n lab get httproute worker -o jsonpath=... (Accepted condition and controller)
+controller=istio.io/agentgateway-waypoint-controller parent=Service/worker:8080
+  Accepted=True reason=Accepted message=Route was valid
+  ResolvedRefs=True reason=ResolvedRefs message=All references resolved
+
+$ kubectl -n lab logs -l job-name=loadgen-p2-162903-path-01 --tail=-1   # client ledger line
+{"ledger":"client","ts":"2026-09-05T13:29:20.207696546Z","logical_work_item_id":"p2-162903-path-01","messageId":"01a071c2-6383-7909-98cb-6b1f558843c3","taskId":"01a071c2-6384-70dc-94cd-be13ba70884a","result_kind":"task","state":"TASK_STATE_COMPLETED","a2a_version":"1.0","card_protocol_versions":["1.0"]}
+
+$ kubectl -n lab logs deploy/agentgateway-waypoint | grep "request gateway="   # agentgateway access log (stdout, on by default)
+2026-09-05T13:29:20.3270Z	info	request gateway=lab/agentgateway-waypoint listener=mesh route=lab/worker endpoint=10.244.1.124:8080 src.addr=10.244.1.125:38978 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=GET http.host=worker.lab.svc.cluster.local http.path=/.well-known/agent-card.json http.version=HTTP/1.1 http.status=200 protocol=http duration=1ms
+2026-09-05T13:29:20.207364Z	info	request gateway=lab/agentgateway-waypoint listener=mesh route=lab/worker endpoint=10.244.1.124:8080 src.addr=10.244.1.125:38978 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=worker.lab.svc.cluster.local http.path=/ http.version=HTTP/1.1 http.status=200 protocol=http duration=203ms
+
+$ kubectl -n istio-system logs -l app=ztunnel --prefix | grep 'p2-162903-path-01'   # ztunnel HBONE hop to the waypoint
+[pod/ztunnel-7x7bf/istio-proxy] 2026-09-05T13:29:20.208387Z	info	access	connection complete	src.addr=10.244.1.125:46486 src.workload="loadgen-p2-162903-path-01-5mtln" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.121:15008 dst.hbone_addr=10.96.152.32:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="agentgateway-waypoint-6dd7855fcd-v2j5c" dst.namespace="lab" dst.identity="spiffe://cluster.local/ns/lab/sa/agentgateway-waypoint" dst.cluster="Kubernetes" direction="outbound" bytes_sent=609 bytes_recv=1265 duration="208ms"
+
+$ kubectl -n lab get pod -l gateway.networking.k8s.io/gateway-name=agentgateway-waypoint -o jsonpath=...   # observed agentgateway image
+image=cr.agentgateway.dev/agentgateway:v1.5.0
+imageID=cr.agentgateway.dev/agentgateway@sha256:bf2f339ef326d32def2aaeb44b1b4549801293c19b89e764a4228667d97d9896
+
+$ kubectl -n lab logs deploy/agentgateway-waypoint | head -8   # version the binary reports
+2026-09-05T13:28:24.074964Z	info	agentgateway_app::commands::run	version: {
+  "version": "1.5.0",
+  "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+  "rust_version": "1.98.0",
+  "build_profile": "release",
+  "build_target": "aarch64-unknown-linux-gnu"
+}	
+2026-09-05T13:28:24.075224Z	info	agentgateway_app::commands::run	running with config: ipv6Enabled: true
+
+# The receiver's own pre-dispatch ingress ledger records the peer address. At step 2 that peer is the
+# waypoint pod (10.244.1.121); at step 1 (no mesh) it was the client pod. Captured live at 13:29:20 for
+# the path-proof work item, before run 3 of the baseline restarted the worker and rotated its log:
+$ kubectl -n lab logs deploy/worker --tail=-1 | grep "p2-162903-path-01" | jq -c 'select(.ledger=="ingress" and .phase=="arrival")'
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-05T13:29:20.003918296Z","remote":"10.244.1.121:50839","method":"SendMessage","id":"7e71d617-d5b9-4171-b9c9-1d10d29cb631","messageId":"01a071c2-6383-7909-98cb-6b1f558843c3","taskId":"","logical_work_item_id":"p2-162903-path-01","a2a_version":"1.0","content_type":"application/json","body_sha256":"ff560de5bfdf359e7197c6044e930e6cf6115403b683b85559797affe5137e15","body_len":282}
+
+# The same field over the 20 committed baseline work items (reproducible from the files in this directory):
+$ cat b2-*/ingress.jsonl | jq -r 'select(.source=="worker" and .phase=="arrival")|.remote' | cut -d: -f1 | sort | uniq -c
+  20 10.244.1.121
+$ cat b2-*/ingress.jsonl | jq -r 'select(.source=="orchestrator" and .phase=="arrival")|.remote' | cut -d: -f1 | sort | uniq -c    # run 4 loadgen->orchestrator: not through the waypoint
+   1 10.244.1.144
+   1 10.244.1.145
+   1 10.244.1.146
+   1 10.244.1.147
+   1 10.244.1.148
+
+# For comparison, the same field at step 1 (no mesh), from the committed step-1 run:
+$ jq -r 'select(.source=="worker" and .phase=="arrival")|.remote' experiments/runs/2026-09-05-baseline-step1/b1-113315-r1-01/ingress.jsonl
+10.244.1.71:49424

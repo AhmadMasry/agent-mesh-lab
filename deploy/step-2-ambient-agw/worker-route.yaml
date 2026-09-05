@@ -1,0 +1,18 @@
+# HTTPRoute for the worker Service through the waypoint. No retry stanza: the
+# baseline is measured with every layer's retries off. Gate 3's R2 run adds the
+# experimental `retry` field here and nowhere else.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: worker
+  namespace: lab
+spec:
+  parentRefs:
+    - group: ""
+      kind: Service
+      name: worker
+      port: 8080
+  rules:
+    - backendRefs:
+        - name: worker
+          port: 8080

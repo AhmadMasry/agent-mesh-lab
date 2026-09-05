@@ -35,9 +35,29 @@ step-1: orchestrator-image
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
 
-step-2:
-	@echo "step-2: not implemented yet (Gate 2)" >&2
-	@exit 1
+# step-2: Istio Ambient with agentgateway as the waypoint. Versions come from
+# versions.yaml (gateway-api v1.6.2 experimental; istio 1.31.0 via the istioctl on
+# PATH; agentgateway v1.5.0 through the waypoint image annotation in the overlay).
+# A setup target, like step-1: it rotates all three Deployments, and the worker's
+# log is a ledger source, so do not re-run it against a baseline in progress.
+# The overlay pulls in step-1, whose orchestrator Deployment needs the buildpacks
+# image; ko builds the Go images inline, so orchestrator-image is the only
+# prerequisite that makes step-2 runnable on a cluster that never ran step-1.
+GATEWAY_API_VERSION := v1.6.2
+step-2: orchestrator-image
+	# Applied unconditionally: a present CRD does not tell us the channel it came
+	# from, and the experimental channel is what carries HTTPRoute.Retry.
+	kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/experimental-install.yaml
+	istioctl version --remote=false
+	istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -y
+	kubectl kustomize deploy/step-2-ambient-agw | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply -f -
+	# ztunnel captures a pod when it starts, so pods that predate the namespace's
+	# ambient label are restarted to be enrolled.
+	kubectl -n $(NAMESPACE) rollout restart deployment/mockllm deployment/worker deployment/orchestrator
+	kubectl -n $(NAMESPACE) rollout status deployment/agentgateway-waypoint --timeout=180s
+	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
+	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=120s
+	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
 
 step-3:
 	@echo "step-3: not implemented yet (Gate 3)" >&2
