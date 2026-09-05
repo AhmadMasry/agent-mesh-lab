@@ -14,7 +14,7 @@ cd "$REPO_ROOT"
 
 NAMESPACE="lab"
 CLUSTER_NAME="agent-mesh-lab"
-RUN_ITEM="${RUN_ITEM:-2026-09-05-wire-version}"
+RUN_ITEM="${RUN_ITEM:-$(date +%F)-wire-version}"
 # Work-item ids carry a per-run nonce (pod logs outlive runs; a repeated id would
 # collect an earlier run's lines). SUMMARY_ONLY=1 reuses the ids recorded in run-id.txt.
 RUN_ID="${RUN_ID:-$(date +%H%M%S)}"
@@ -28,17 +28,26 @@ ORCH_URL="http://orchestrator.lab.svc.cluster.local:8080"
 mkdir -p "$RUN_DIR"
 # SUMMARY_ONLY=1 recomputes summary.csv from the committed ledgers without touching the cluster.
 SUMMARY_ONLY="${SUMMARY_ONLY:-0}"
-if [ "$SUMMARY_ONLY" = "1" ] && [ -s "${RUN_DIR}/run-id.txt" ]; then RUN_ID="$(cat "${RUN_DIR}/run-id.txt")"; fi
+if [ "$SUMMARY_ONLY" = "1" ]; then
+	[ -s "${RUN_DIR}/run-id.txt" ] || { echo "SUMMARY_ONLY=1 needs ${RUN_DIR}/run-id.txt from a previous run" >&2; exit 1; }
+	RUN_ID="$(cat "${RUN_DIR}/run-id.txt")"
+else
+	echo "$RUN_ID" >"${RUN_DIR}/run-id.txt"
+fi
 GO_LWI="wv-${RUN_ID}-go-001"
 PY_LWI="wv-${RUN_ID}-py-001"
-echo "$RUN_ID" >"${RUN_DIR}/run-id.txt"
+for lwi in "$GO_LWI" "$PY_LWI"; do
+	if [ "$SUMMARY_ONLY" = "1" ] && [ ! -s "${RUN_DIR}/${lwi}/ingress.jsonl" ]; then
+		echo "SUMMARY_ONLY=1: missing ${RUN_DIR}/${lwi}/ingress.jsonl" >&2; exit 1
+	fi
+done
 
 cleanup() {
 	kubectl -n "$NAMESPACE" delete pod "$CURL_POD" --ignore-not-found --wait=false >/dev/null 2>&1 || true
 }
-trap cleanup EXIT
 
 if [ "$SUMMARY_ONLY" != "1" ]; then
+trap cleanup EXIT
 echo "== resetting mockllm counters and injections =="
 kubectl -n "$NAMESPACE" delete pod "$CURL_POD" --ignore-not-found --wait=true >/dev/null 2>&1 || true
 kubectl -n "$NAMESPACE" run "$CURL_POD" --image="$CURL_IMAGE" --restart=Never --command -- sleep 600 >/dev/null

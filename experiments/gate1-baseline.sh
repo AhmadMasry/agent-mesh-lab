@@ -18,7 +18,7 @@ NAMESPACE="lab"
 CLUSTER_NAME="agent-mesh-lab"
 STEP="${STEP:-1}"
 REPS="${REPS:-5}"
-RUN_ITEM="${RUN_ITEM:-2026-09-05-baseline-step${STEP}}"
+RUN_ITEM="${RUN_ITEM:-$(date +%F)-baseline-step${STEP}}"
 RUN_DIR="experiments/runs/${RUN_ITEM}"
 CURL_POD="baseline-curl"
 CURL_IMAGE="curlimages/curl:8.11.1"
@@ -66,9 +66,10 @@ job() { # $1 = lwi, $2 = target url, $3 = seconds to wait before collecting (an 
 	kubectl -n "$NAMESPACE" delete job "loadgen-$1" --ignore-not-found --wait=true >/dev/null 2>&1 || true
 	sed -e "s/\${LWI}/$1/g" -e "s#\${TARGET_URL}#$2#g" deploy/base/loadgen-job.yaml \
 		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply -f - >/dev/null 2>&1
+	JOB_NOTE=""
 	kubectl -n "$NAMESPACE" wait --for=condition=complete "job/loadgen-$1" --timeout=240s >/dev/null 2>&1 \
 		|| kubectl -n "$NAMESPACE" wait --for=condition=failed "job/loadgen-$1" --timeout=10s >/dev/null 2>&1 \
-		|| echo "warning: job loadgen-$1 reached neither complete nor failed"
+		|| { JOB_NOTE="job loadgen-$1 reached neither complete nor failed within the timeout"; echo "warning: $JOB_NOTE" >&2; }
 	sleep "${3:-1}"
 	mkdir -p "${RUN_DIR}/$1"
 	make --no-print-directory ledgers "LWI=$1" "OUT=${RUN_DIR}/$1" >/dev/null
@@ -98,22 +99,22 @@ run_type() { # $1 = run id, $2 = label, $3 = target, $4 = injection JSON templat
 		job "$lwi" "$target" "$wait"
 		local c; c=$(counts "$lwi")
 		echo "  $lwi: $c"
-		ROWS+=("$id,$label,$lwi,$c,$notes")
+		ROWS+=("$id,$label,$lwi,$c,${notes}${JOB_NOTE:+ ${JOB_NOTE}}")
 	done
 }
 
 for r in $RUNS; do
 	case "$r" in
-	1) run_type 1 "close@model,loadgen->worker" "$WORKER_URL" '{"mode":"close","lwi":"__LWI__"}' "" ;;
-	2) run_type 2 "http500@model,loadgen->worker" "$WORKER_URL" '{"mode":"http500","lwi":"__LWI__"}' "" ;;
+	1) run_type 1 "close@model; loadgen->worker" "$WORKER_URL" '{"mode":"close","lwi":"__LWI__"}' "" ;;
+	2) run_type 2 "http500@model; loadgen->worker" "$WORKER_URL" '{"mode":"http500","lwi":"__LWI__"}' "" ;;
 	3) set_env worker MODEL_TIMEOUT_S=5
-	   run_type 3 "delay-then-close@model 8s > worker timeout 5s,loadgen->worker" "$WORKER_URL" '{"mode":"delay-then-close","lwi":"__LWI__","delay_ms":8000}' "worker MODEL_TIMEOUT_S=5" 10
+	   run_type 3 "delay-then-close@model 8s > worker timeout 5s; loadgen->worker" "$WORKER_URL" '{"mode":"delay-then-close","lwi":"__LWI__","delay_ms":8000}' "worker MODEL_TIMEOUT_S=5" 10
 	   set_env worker MODEL_TIMEOUT_S- ;;
-	4) run_type 4 "close@model,loadgen->orchestrator->worker" "$ORCH_URL" '{"mode":"close","lwi":"__LWI__"}' "" ;;
+	4) run_type 4 "close@model; loadgen->orchestrator->worker" "$ORCH_URL" '{"mode":"close","lwi":"__LWI__"}' "" ;;
 	5) set_env orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=0
-	   run_type 5 "close@model for the orchestrator's own call,max_retries=0" "$ORCH_URL" '{"mode":"close","lwi":"__LWI__"}' "orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=0" ;;
+	   run_type 5 "close@model for the orchestrator's own call; PLAN_MODEL_CALL=on; max_retries=0" "$ORCH_URL" '{"mode":"close","lwi":"__LWI__"}' "orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=0" ;;
 	6) set_env orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=2
-	   run_type 6 "control: close@model for the orchestrator's own call,openai default max_retries=2" "$ORCH_URL" '{"mode":"close","lwi":"__LWI__"}' "orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=2"
+	   run_type 6 "control: close@model for the orchestrator's own call; PLAN_MODEL_CALL=on; openai default max_retries=2" "$ORCH_URL" '{"mode":"close","lwi":"__LWI__"}' "orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=2"
 	   set_env orchestrator PLAN_MODEL_CALL=off MODEL_MAX_RETRIES=0 ;;
 	7) echo "== run 7: stale keep-alive connection, two sequential requests per work item =="
 	   for i in $(seq 1 "$REPS"); do
@@ -126,7 +127,7 @@ for r in $RUNS; do
 	   	job "$lwi" "$WORKER_URL"
 	   	c=$(counts "$lwi"); echo "  $lwi: $c"
 	   	stale_closed=$(jq -s '[.[] | select(.outcome=="stale-closed")] | length' "${RUN_DIR}/$lwi/invocation.jsonl")
-	   	ROWS+=("7,stale: two requests on one keep-alive connection,$lwi,$c,stale_closed_lines=$stale_closed (second Job replaces the first; client.jsonl holds the second request)")
+	   	ROWS+=("7,stale: two sequential requests on one keep-alive connection; loadgen->worker,$lwi,$c,stale_closed_lines=$stale_closed (second Job replaces the first; client.jsonl holds the second request)${JOB_NOTE:+ ${JOB_NOTE}}")
 	   done ;;
 	esac
 done
@@ -136,7 +137,7 @@ done
 if [ ! -s "${RUN_DIR}/summary.csv" ]; then
 	echo "run,label,work_item,deliveries_worker,deliveries_orchestrator,dispatches_worker,invocations,invocations_by_caller,client_result,notes" >"${RUN_DIR}/summary.csv"
 fi
-printf '%s\n' "${ROWS[@]}" >>"${RUN_DIR}/summary.csv"
+if [ "${#ROWS[@]}" -gt 0 ]; then printf '%s\n' "${ROWS[@]}" >>"${RUN_DIR}/summary.csv"; fi
 
 echo "== summary =="
 cat "${RUN_DIR}/summary.csv"

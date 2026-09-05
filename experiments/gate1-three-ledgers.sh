@@ -16,7 +16,7 @@ CLUSTER_NAME="agent-mesh-lab"
 # would collect an earlier run's lines as if they were this run's.
 RUN_ID="${RUN_ID:-$(date +%H%M%S)}"
 LWI="${LWI:-clean-${RUN_ID}-001}"
-RUN_ITEM="${RUN_ITEM:-2026-09-05-three-ledgers}"
+RUN_ITEM="${RUN_ITEM:-$(date +%F)-three-ledgers}"
 RUN_DIR="experiments/runs/${RUN_ITEM}"
 CURL_POD="ledgers-curl"
 CURL_IMAGE="curlimages/curl:8.11.1"
@@ -58,7 +58,8 @@ dispatches=$(jq -s '[.[] | select(.event == "dispatch")] | length' "${RUN_DIR}/e
 distinct_message_ids=$(jq -s '[.[] | select(.phase == "arrival" and .messageId != "") | .messageId] | unique | length' "${RUN_DIR}/ingress.jsonl")
 tasks_created=$(jq -s '[.[] | select(.event == "state" and .state == "TASK_STATE_SUBMITTED")] | length' "${RUN_DIR}/execution.jsonl")
 task_final_state=$(jq -r -s '[.[] | select(.event == "result")] | last | .state // "none"' "${RUN_DIR}/execution.jsonl")
-invocations=$(count_lines "${RUN_DIR}/invocation.jsonl")
+# model calls made for the work item; a stale-closed line records a connection close, not a call
+invocations=$(jq -s '[.[] | select(.outcome != "stale-closed")] | length' "${RUN_DIR}/invocation.jsonl")
 a2a_version_seen=$(jq -r -s '[.[] | select(.phase == "arrival" and .method != "" and (.method | test(" ") | not)) | .a2a_version] | unique | join("|")' "${RUN_DIR}/ingress.jsonl")
 client_result_kind=$(jq -r -s 'last | .result_kind // "none"' "${RUN_DIR}/client.jsonl")
 

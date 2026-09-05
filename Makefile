@@ -70,6 +70,7 @@ ledgers:
 	ORCH=$$(fetch deploy/orchestrator); \
 	MOCK=$$(fetch deploy/mockllm); \
 	CLIENT=$$(fetch -l job-name=loadgen-$(LWI) --tail=-1); \
+	if [ -z "$$CLIENT" ]; then echo "ledgers: warning: no pod logs for job loadgen-$(LWI) (no such Job, or its pods are gone)" >&2; fi; \
 	sel() { jq -R -c --arg lwi "$(LWI)" --arg ledger "$$1" --arg src "$$2" 'fromjson? | select(.ledger == $$ledger and .logical_work_item_id == $$lwi) | . + {source: $$src}' || { echo "ledgers: jq failed" >&2; exit 1; }; }; \
 	INGRESS=$$( { printf '%s\n' "$$WORKER" | sel ingress worker; printf '%s\n' "$$ORCH" | sel ingress orchestrator; } ); \
 	EXECUTION=$$( { printf '%s\n' "$$WORKER" | sel execution worker; printf '%s\n' "$$ORCH" | sel execution orchestrator; } ); \
