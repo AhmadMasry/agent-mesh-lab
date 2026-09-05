@@ -1,7 +1,7 @@
 # Job template for the a2a-go load client. It is NOT listed in the base
 # kustomization: a Job in the overlay would run on every apply, and each
 # experiment run needs its own Job named after the work item. Experiment
-# scripts substitute ${LWI} and pipe the result to `ko apply -f -`.
+# scripts substitute ${LWI} and ${TARGET_URL} and pipe the result to `ko apply -f -`.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -24,7 +24,7 @@ spec:
           image: ko://github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
           env:
             - name: TARGET_URL
-              value: "http://worker.lab.svc.cluster.local:8080"
+              value: "${TARGET_URL}"
             - name: LWI
               value: "${LWI}"
             - name: TEXT

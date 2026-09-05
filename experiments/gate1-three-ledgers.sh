@@ -34,7 +34,7 @@ kubectl -n "$NAMESPACE" exec "$CURL_POD" -- curl -s -o /dev/null -w 'reset: %{ht
 
 echo "== launching loadgen Job for logical_work_item_id=${LWI} =="
 kubectl -n "$NAMESPACE" delete job "loadgen-${LWI}" --ignore-not-found --wait=true >/dev/null 2>&1 || true
-sed "s/\${LWI}/${LWI}/g" deploy/base/loadgen-job.yaml \
+sed -e "s/\${LWI}/${LWI}/g" -e "s#\${TARGET_URL}#${TARGET_URL:-http://worker.lab.svc.cluster.local:8080}#g" deploy/base/loadgen-job.yaml \
 	| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply -f - >/dev/null
 # A Job that fails is a recorded outcome, so wait for either condition.
 kubectl -n "$NAMESPACE" wait --for=condition=complete "job/loadgen-${LWI}" --timeout=180s >/dev/null 2>&1 \

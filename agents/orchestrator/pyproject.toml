@@ -5,4 +5,21 @@ requires-python = ">=3.10"
 dependencies = [
     "a2a-sdk[http-server]==1.1.2",
     "openai==3.8.0",
+    "uvicorn==0.52.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# Deprecation notices raised inside dependencies (the A2A SDK's proto validators, the Starlette
+# test client) are not lab code; lab code keeps the default warning behaviour.
+filterwarnings = [
+  "ignore::DeprecationWarning:a2a.*",
+  "ignore::DeprecationWarning:starlette.*",
+  "ignore::DeprecationWarning:pydantic.*",
 ]
