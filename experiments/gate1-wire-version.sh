@@ -60,7 +60,7 @@ run_job() {
 	echo "== loadgen Job ${lwi} -> ${target} =="
 	kubectl -n "$NAMESPACE" delete job "loadgen-${lwi}" --ignore-not-found --wait=true >/dev/null 2>&1 || true
 	sed -e "s/\${LWI}/${lwi}/g" -e "s#\${TARGET_URL}#${target}#g" deploy/base/loadgen-job.yaml \
-		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply -f - >/dev/null
+		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply --platform="linux/$(go env GOARCH)" -f - >/dev/null
 	kubectl -n "$NAMESPACE" wait --for=condition=complete "job/loadgen-${lwi}" --timeout=180s >/dev/null 2>&1 \
 		|| kubectl -n "$NAMESPACE" wait --for=condition=failed "job/loadgen-${lwi}" --timeout=10s >/dev/null 2>&1 \
 		|| echo "warning: job loadgen-${lwi} reached neither complete nor failed within the timeout"

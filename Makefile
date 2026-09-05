@@ -6,7 +6,10 @@ KIND_CONFIG  := kind-config.yaml
 NAMESPACE    := lab
 
 ORCHESTRATOR_IMAGE := orchestrator:dev
-PACK_BUILDER := paketobuildpacks/builder-jammy-base
+# Pinned by digest; matches the digest recorded in the wire-version findings entry
+# and confirmed against the local image with:
+#   docker image inspect paketobuildpacks/builder-jammy-base --format '{{index .RepoDigests 0}}'
+PACK_BUILDER := paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
 
 .PHONY: cluster-kind cluster-eks step-1 step-2 step-3 verify-baseline teardown ledgers test orchestrator-image
 
@@ -28,7 +31,7 @@ orchestrator-image:
 	kind load docker-image $(ORCHESTRATOR_IMAGE) --name $(CLUSTER_NAME)
 
 step-1: orchestrator-image
-	kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply -f -
+	kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
 	# The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
 	kubectl -n $(NAMESPACE) rollout restart deployment/orchestrator
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
@@ -49,8 +52,9 @@ step-2: orchestrator-image
 	# from, and the experimental channel is what carries HTTPRoute.Retry.
 	kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/experimental-install.yaml
 	istioctl version --remote=false
+	istioctl version --remote=false | grep -q 1.31.0 || { echo "istioctl on PATH is not the pinned 1.31.0 (see versions.yaml)" >&2; exit 1; }
 	istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -y
-	kubectl kustomize deploy/step-2-ambient-agw | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply -f -
+	kubectl kustomize deploy/step-2-ambient-agw | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
 	# ztunnel captures a pod when it starts, so pods that predate the namespace's
 	# ambient label are restarted to be enrolled.
 	kubectl -n $(NAMESPACE) rollout restart deployment/mockllm deployment/worker deployment/orchestrator
@@ -76,7 +80,9 @@ teardown:
 # ingress and execution ledgers (lines labelled with their source),
 # mockllm's invocation ledger, and the loadgen Job's client line. Stdout
 # carries only JSON lines (section headers go to stderr) so scripts can pipe
-# it. A source whose logs cannot be read is reported on stderr and skipped;
+# it. `kubectl logs deploy/<name>` reads one pod, so this collection assumes
+# exactly one replica of each agent and of mockllm. A source whose logs
+# cannot be read is reported on stderr and skipped;
 # finding nothing at all for the work item is an error. With OUT, each
 # ledger is written as <OUT>/<name>.jsonl containing exactly the matching lines.
 ledgers:

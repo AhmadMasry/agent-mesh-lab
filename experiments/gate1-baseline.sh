@@ -65,7 +65,7 @@ job() { # $1 = lwi, $2 = target url, $3 = seconds to wait before collecting (an 
 	# delays the mock's response also delays its ledger line; collect only after it has landed)
 	kubectl -n "$NAMESPACE" delete job "loadgen-$1" --ignore-not-found --wait=true >/dev/null 2>&1 || true
 	sed -e "s/\${LWI}/$1/g" -e "s#\${TARGET_URL}#$2#g" deploy/base/loadgen-job.yaml \
-		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply -f - >/dev/null 2>&1
+		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply --platform="linux/$(go env GOARCH)" -f - >/dev/null 2>&1
 	JOB_NOTE=""
 	kubectl -n "$NAMESPACE" wait --for=condition=complete "job/loadgen-$1" --timeout=240s >/dev/null 2>&1 \
 		|| kubectl -n "$NAMESPACE" wait --for=condition=failed "job/loadgen-$1" --timeout=10s >/dev/null 2>&1 \

@@ -9,8 +9,8 @@ import (
 
 // invocationLine is one line of the model invocation ledger: one JSON
 // object per call to /v1/chat/completions, written to stdout. Field names
-// are exactly those in the shared ledger contract (docs/experiment-a
-// constraints); encoding/json with a struct keeps them stable across
+// follow the identity-field convention in CLAUDE.md (see "Identity fields"
+// under Conventions); encoding/json with a struct keeps them stable across
 // changes to this file.
 type invocationLine struct {
 	Ledger            string  `json:"ledger"`
