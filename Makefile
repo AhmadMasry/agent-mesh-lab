@@ -21,6 +21,7 @@ cluster-eks:
 step-1:
 	kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply -f -
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
+	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=120s
 
 step-2:
 	@echo "step-2: not implemented yet (Gate 2)" >&2
@@ -37,34 +38,41 @@ verify-baseline:
 teardown:
 	kind delete cluster --name $(CLUSTER_NAME)
 
-# ledgers LWI=<id> [OUT=<dir>]: print the mockllm invocation-ledger lines
-# for one logical_work_item_id, read from the running mockllm pod's stdout.
-# This is a skeleton for the model invocation ledger only; Task 4 extends
-# it to also print the worker's pre-dispatch ingress and execution ledgers
-# for the same work item.
+# ledgers LWI=<id> [OUT=<dir>]: print the four ledgers for one
+# logical_work_item_id, read from pod stdout: the worker's pre-dispatch
+# ingress and execution ledgers, mockllm's invocation ledger, and the
+# loadgen Job's client line. With OUT, each ledger is written as
+# <OUT>/<name>.jsonl containing exactly the matching lines. Failures are
+# loud; finding nothing at all for the work item is an error.
 ledgers:
 	@if [ -z "$(LWI)" ]; then \
 		echo "usage: make ledgers LWI=<id> [OUT=<dir>]" >&2; \
 		exit 1; \
 	fi
-	@LOGS=$$(kubectl logs deploy/mockllm -n $(NAMESPACE)) || { \
-		echo "ledgers: kubectl logs failed" >&2; \
-		exit 1; \
-	}; \
-	LINES=$$(printf '%s\n' "$$LOGS" | \
-		jq -R -c --arg lwi "$(LWI)" 'fromjson? | select(.ledger == "invocation" and .logical_work_item_id == $$lwi)') || { \
-		echo "ledgers: jq failed" >&2; \
-		exit 1; \
-	}; \
-	if [ -z "$$LINES" ]; then \
-		echo "ledgers: no invocation ledger lines found for logical_work_item_id=$(LWI)" >&2; \
-		exit 1; \
+	@set -e; \
+	WORKER=$$(kubectl logs deploy/worker -n $(NAMESPACE)) || { echo "ledgers: kubectl logs deploy/worker failed" >&2; exit 1; }; \
+	MOCK=$$(kubectl logs deploy/mockllm -n $(NAMESPACE)) || { echo "ledgers: kubectl logs deploy/mockllm failed" >&2; exit 1; }; \
+	CLIENT=$$(kubectl logs -n $(NAMESPACE) -l job-name=loadgen-$(LWI) --tail=-1 2>/dev/null || true); \
+	sel() { jq -R -c --arg lwi "$(LWI)" --arg ledger "$$1" 'fromjson? | select(.ledger == $$ledger and .logical_work_item_id == $$lwi)' || { echo "ledgers: jq failed" >&2; exit 1; }; }; \
+	INGRESS=$$(printf '%s\n' "$$WORKER" | sel ingress); \
+	EXECUTION=$$(printf '%s\n' "$$WORKER" | sel execution); \
+	INVOCATION=$$(printf '%s\n' "$$MOCK" | sel invocation); \
+	CLIENTL=$$(printf '%s\n' "$$CLIENT" | sel client); \
+	if [ -z "$$INGRESS$$EXECUTION$$INVOCATION$$CLIENTL" ]; then \
+		echo "ledgers: no ledger lines of any kind for logical_work_item_id=$(LWI)" >&2; exit 1; \
 	fi; \
 	if [ -n "$(OUT)" ]; then \
 		mkdir -p "$(OUT)"; \
-		printf '%s\n' "$$LINES" > "$(OUT)/invocation.jsonl"; \
+		for pair in "ingress=$$INGRESS" "execution=$$EXECUTION" "invocation=$$INVOCATION" "client=$$CLIENTL"; do \
+			name=$${pair%%=*}; body=$${pair#*=}; \
+			if [ -n "$$body" ]; then printf '%s\n' "$$body" > "$(OUT)/$$name.jsonl"; else : > "$(OUT)/$$name.jsonl"; fi; \
+		done; \
 	fi; \
-	printf '%s\n' "$$LINES"
+	for pair in "ingress=$$INGRESS" "execution=$$EXECUTION" "invocation=$$INVOCATION" "client=$$CLIENTL"; do \
+		name=$${pair%%=*}; body=$${pair#*=}; \
+		echo "## $$name"; \
+		if [ -n "$$body" ]; then printf '%s\n' "$$body"; fi; \
+	done
 
 test:
 	go test ./...

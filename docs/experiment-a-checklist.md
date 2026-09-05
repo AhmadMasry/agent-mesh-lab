@@ -6,7 +6,7 @@
 
 - [x] **Pins recorded**: Kubernetes, Istio, agentgateway, Gateway API version *and channel*, A2A spec revision (commit), `a2a-go`, `a2a-python`, `openai-python`.
 - [ ] **Wire version captured**: one real request from each SDK, `A2A-Version` header value recorded. If either negotiates 0.x → interoperability finding, recorded, proposal unchanged.
-- [ ] **Three ledgers producing counts** on a single clean request:
+- [x] **Three ledgers producing counts** on a single clean request:
   - pre-dispatch ingress: sits at the HTTP/JSON-RPC boundary *before* the A2A SDK sees the request; records JSON-RPC `id`, A2A `messageId`, body hash, arrival time
   - execution/task: records what the SDK dispatched to the executor and every `Task`/`taskId` created
   - model invocation: records every call with the `logical_work_item_id` and `taskId` (if any) that caused it
