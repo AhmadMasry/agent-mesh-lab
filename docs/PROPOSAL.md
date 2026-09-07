@@ -2,6 +2,7 @@
 
 *KubeCon + CloudNativeCon Europe 2027, Barcelona, 15–18 March 2027. CFP closes 11 October 2026.*
 *Ahmad Al-Masry (Harri) and Jackie Maertens (Microsoft; Istio maintainer). Revised 4 September 2026 after fourth external review. Supersedes v5. Correction release; the design is frozen after this version. Further changes come from experiment data, not prose review.*
+*Author's note, 5 September 2026: the Python agent is built directly on the official `a2a-python` SDK; §4.2, §4.4 A.1/A.2 and §4.5 were edited in place to say so. No design change.*
 
 **Track: Agentic AI.** Locked.
 **Case study: No.** This is an experimental investigation, not a real-world organisational implementation.
