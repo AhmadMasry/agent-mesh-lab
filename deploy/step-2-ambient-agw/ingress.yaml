@@ -1,0 +1,40 @@
+# agentgateway as an ingress gateway (GatewayClass istio-agentgateway, Istio 1.30+),
+# configured by istiod over xDS like the waypoint. Shape from
+# https://istio.io/latest/docs/ambient/usage/agentgateway/ (fetched 2026-09-08):
+# the service-type annotation asks for a ClusterIP Service because kind has no
+# load balancer; the image annotation pins the same upstream release as the
+# waypoint. No experiment routes through this gateway yet: loadgen targets the
+# agents' Services directly, so the baselines counted through the waypoint are
+# unaffected. A run that enters through it needs its own findings entry.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agentgateway-ingress
+  namespace: lab
+  annotations:
+    networking.istio.io/service-type: ClusterIP
+    gateway.istio.io/agentgatewayImage: cr.agentgateway.dev/agentgateway:v1.5.0
+spec:
+  gatewayClassName: istio-agentgateway
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+# Routes everything entering the ingress to Agent A (the orchestrator), which is
+# the client-facing agent in the proposal's topology. No retry stanza.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: orchestrator-ingress
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+  rules:
+    - backendRefs:
+        - name: orchestrator
+          port: 8080
