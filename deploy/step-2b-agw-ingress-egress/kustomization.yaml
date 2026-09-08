@@ -1,0 +1,21 @@
+# Step 2b: step 2 plus two more agentgateway proxies, both driven by agentgateway's own
+# control plane (GatewayClass `agentgateway`, installed by `make step-2b` from the
+# project's Helm charts) rather than by istiod. istiod keeps the waypoint between the
+# two agents exactly as step 2 left it. Applies on top of step 2; nothing is edited in
+# place. The decision this overlay implements is dated 2026-09-08 in
+# docs/proposal-notes.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../step-2-ambient-agw
+  - ingress.yaml
+  - egress.yaml
+patches:
+  - path: worker-model-url.yaml
+    target:
+      kind: Deployment
+      name: worker
+  - path: orchestrator-model-url.yaml
+    target:
+      kind: Deployment
+      name: orchestrator

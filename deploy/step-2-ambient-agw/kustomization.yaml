@@ -3,15 +3,13 @@
 # The Istio control plane and the Gateway API CRDs are installed by `make step-2`
 # (they are not application manifests); this overlay only enrols the namespace,
 # creates the waypoint, attaches the worker Service to it, and adds a retry-free
-# HTTPRoute for later experiments to extend, plus an agentgateway ingress Gateway
-# (ingress.yaml) that no experiment routes through yet.
+# HTTPRoute for later experiments to extend.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../step-1-nomesh
   - waypoint.yaml
   - worker-route.yaml
-  - ingress.yaml
 patches:
   - path: namespace-ambient.yaml
     target:

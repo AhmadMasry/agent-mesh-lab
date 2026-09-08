@@ -1,0 +1,62 @@
+# agentgateway as an ingress gateway in front of Agent A (the orchestrator), under
+# agentgateway's own control plane. Shape from the agentgateway documentation's Istio
+# ambient ingress page (agentgateway.dev/docs/kubernetes/latest/integrations/istio/
+# ambient/ambient-ingress/, read 2026-09-08 from the site source at
+# github.com/agentgateway/website, assets/agw-docs/pages/integrations/istio/ambient/
+# ambient-ingress.md): a Gateway of class `agentgateway` in the ambient-labelled
+# `agentgateway-system` namespace with an HTTP listener on 80 and
+# allowedRoutes.namespaces.from: All, and an HTTPRoute in the backend namespace with
+# a cross-namespace parentRef. The controller provisions a Deployment and a Service
+# named after the Gateway.
+#
+# Two departures from the page, both recorded in the findings entry. The page's
+# generated Service is a LoadBalancer and the page reaches it with `kubectl
+# port-forward`; kind has no load balancer and every request in this lab is sent from
+# inside the cluster, so AgentgatewayParameters forces the Service to ClusterIP. And
+# the page pins a listener hostname (www.example.com); this listener matches any
+# host, because the clients here address the gateway by its in-cluster Service name.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: agentgateway-ingress-params
+  namespace: agentgateway-system
+spec:
+  service:
+    spec:
+      type: ClusterIP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agentgateway-ingress
+  namespace: agentgateway-system
+spec:
+  gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef:
+      group: agentgateway.dev
+      kind: AgentgatewayParameters
+      name: agentgateway-ingress-params
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# Routes everything entering the ingress to Agent A (the orchestrator), which is the
+# client-facing agent in the proposal's topology. No retry stanza and no filters.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: orchestrator-ingress
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-system
+  rules:
+    - backendRefs:
+        - name: orchestrator
+          port: 8080

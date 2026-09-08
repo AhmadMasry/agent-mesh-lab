@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Gate 1 / baseline proven retry-free (checklist box 4), step 1 (no mesh) or
-# step 2 (STEP=2: same runs through the mesh path).
+# step 2 (STEP=2: same runs through the mesh path). STEP is a label, not a switch:
+# it names the run directory and the work-item ids, and the path is whatever the
+# cluster currently has applied, so STEP=2b with RUN4_URL set counts the same runs
+# through the agentgateway ingress and egress.
 #
 # Seven run types, REPS repetitions each, every repetition a fresh work item.
 # For each, the four ledgers are collected and the counts that would reveal a
@@ -25,6 +28,20 @@ CURL_IMAGE="curlimages/curl:8.11.1"
 MOCK_URL="http://mockllm.lab.svc.cluster.local:8080"
 WORKER_URL="http://worker.lab.svc.cluster.local:8080"
 ORCH_URL="http://orchestrator.lab.svc.cluster.local:8080"
+# Run 4's entry point, meaning the URL loadgen resolves the agent card from. It
+# defaults to the orchestrator's own Service, which is what steps 1 and 2 measured;
+# step 2b sets it to the agentgateway ingress Service so the request enters through
+# that gateway.
+#
+# Runs 5 and 6 keep ORCH_URL, and that fixes where the card is fetched from, not
+# where the request goes: the a2a-go client is built from the card and sends every
+# request to the interface URL the card advertises. At steps 1 and 2 the card
+# advertises the orchestrator's own Service, so the card fetch and the POST both go
+# there. With the step-2b overlay applied the card advertises the ingress, so a run 5
+# or 6 request would fetch the card from ORCH_URL and then send its POST through the
+# ingress. Runs 5 and 6 were counted once, in the step-1 entry, and have not been run
+# at step 2b.
+RUN4_URL="${RUN4_URL:-$ORCH_URL}"
 RUNS="${RUNS:-1 2 3 4 5 6 7}"
 # Work-item ids carry a per-invocation nonce: pod logs outlive a run, and a
 # repeated id would collect an earlier run's lines as if they were retries.
@@ -110,7 +127,7 @@ for r in $RUNS; do
 	3) set_env worker MODEL_TIMEOUT_S=5
 	   run_type 3 "delay-then-close@model 8s > worker timeout 5s; loadgen->worker" "$WORKER_URL" '{"mode":"delay-then-close","lwi":"__LWI__","delay_ms":8000}' "worker MODEL_TIMEOUT_S=5" 10
 	   set_env worker MODEL_TIMEOUT_S- ;;
-	4) run_type 4 "close@model; loadgen->orchestrator->worker" "$ORCH_URL" '{"mode":"close","lwi":"__LWI__"}' "" ;;
+	4) run_type 4 "close@model; loadgen->orchestrator->worker" "$RUN4_URL" '{"mode":"close","lwi":"__LWI__"}' "" ;;
 	5) set_env orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=0
 	   run_type 5 "close@model for the orchestrator's own call; PLAN_MODEL_CALL=on; max_retries=0" "$ORCH_URL" '{"mode":"close","lwi":"__LWI__"}' "orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=0" ;;
 	6) set_env orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=2

@@ -1,0 +1,27 @@
+# Two changes to Agent A for step 2b.
+#
+# MODEL_BASE_URL: the same external host as the worker, so the orchestrator's own model
+# calls (PLAN_MODEL_CALL=on, run types 5 and 6) also leave through the egress waypoint.
+#
+# PUBLIC_URL: the agent card's advertised interface URL becomes the ingress gateway,
+# which is what puts the ingress on the request path rather than only in front of the
+# card fetch. a2a-go's client is built from the card (`a2aclient.NewFromCard`) and sends
+# every JSON-RPC request to the interface URL the card declares, so a client that
+# resolves the card through the ingress but reads back the orchestrator's own Service
+# address would send the request straight to the agent. Advertising the gateway is how
+# A2A addresses an agent that sits behind one. The value matches the Service the
+# agentgateway controller provisions for the `agentgateway-ingress` Gateway.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+spec:
+  template:
+    spec:
+      containers:
+        - name: orchestrator
+          env:
+            - name: MODEL_BASE_URL
+              value: "http://model.lab.internal:8080/v1"
+            - name: PUBLIC_URL
+              value: "http://agentgateway-ingress.agentgateway-system.svc.cluster.local"

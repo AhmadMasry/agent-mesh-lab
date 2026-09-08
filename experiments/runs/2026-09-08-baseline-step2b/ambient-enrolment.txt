@@ -1,0 +1,156 @@
+Ambient enrolment evidence for the two agentgateway proxies added in step 2b.
+Captured 2026-09-08 on the kind cluster agent-mesh-lab, after the baseline runs.
+The two proxies enrol by different mechanisms, as the two documentation pages
+prescribe, and each is proved separately below.
+
+================================================================================
+NAMESPACE LABELS -- the two mechanisms start here
+================================================================================
+
+$ kubectl get ns agentgateway-system agentgateway-egress lab -L istio.io/dataplane-mode
+NAME                  STATUS   AGE   DATAPLANE-MODE
+agentgateway-system   Active   22m   ambient
+agentgateway-egress   Active   21m   
+lab                   Active   26h   ambient
+
+  agentgateway-system is labelled ambient, as the ingress page instructs
+  ("kubectl label ns agentgateway-system istio.io/dataplane-mode=ambient --overwrite").
+  `make step-2b` runs it between the two Helm installs and the overlay, so the ingress
+  proxy pod is created after the label; the page's step of restarting an already-running
+  gateway proxy pod was not performed. The order of operations, from the API server:
+
+$ kubectl get ns agentgateway-system -o jsonpath='{range .metadata.managedFields[*]}{.manager} {.operation} {.time}{"\n"}{end}'
+helm Apply 2026-09-08T19:50:06Z
+kubectl-label Update 2026-09-08T19:51:28Z
+
+$ kubectl -n agentgateway-system get pods -o custom-columns=NAME:.metadata.name,START:.status.startTime
+NAME                                    START
+agentgateway-864d45549-tbr2j            2026-09-08T19:50:09Z
+agentgateway-ingress-6848b5848f-4d5j4   2026-09-08T19:51:49Z
+
+  So the ingress proxy pod started 21 s after the label and the controller pod 79 s
+  before it. Both are listed at HBONE in the workload table below, so that table
+  records the state of both pods; it does not by itself show that starting after the
+  label is what made a restart unnecessary.
+
+  agentgateway-egress is deliberately left unlabelled, as the egress page instructs:
+  "By default, leave the agentgateway-egress namespace unlabeled for ambient mode. If
+  you do label that namespace with istio.io/dataplane-mode=ambient, make sure the
+  waypoint pods opt out with istio.io/dataplane-mode=none; otherwise ztunnel capture
+  can conflict with the waypoint's HBONE listener on port 15008." Observed, and not
+  asked for in the overlay: the agentgateway controller stamps that opt-out on the
+  waypoint pod itself, so the pod would stay uncaptured even if the namespace were
+  labelled later. The overlay sets no pod label; this one comes from the controller:
+
+$ kubectl -n agentgateway-egress get pods -L istio.io/dataplane-mode
+NAME                          READY   STATUS    RESTARTS   AGE   DATAPLANE-MODE
+agw-egress-674bb755bc-9gd66   1/1     Running   0          21m   none
+
+================================================================================
+INGRESS -- enrolled by ztunnel capture, identity from its own ServiceAccount
+================================================================================
+
+$ istioctl ztunnel-config workload --workload-namespace agentgateway-system
+NAMESPACE           POD NAME                              ADDRESS     NODE                  WAYPOINT PROTOCOL
+agentgateway-system agentgateway-864d45549-tbr2j          10.244.1.88 agent-mesh-lab-worker None     HBONE
+agentgateway-system agentgateway-ingress-6848b5848f-4d5j4 10.244.1.92 agent-mesh-lab-worker None     HBONE
+
+  The ingress proxy pod is listed at PROTOCOL HBONE. The controller pod beside it,
+  which is not a data-plane hop and predates the namespace label, is listed at HBONE
+  too; see the note on ordering above.
+
+$ kubectl -n agentgateway-system get pod -l gateway.networking.k8s.io/gateway-name=agentgateway-ingress \
+    -o jsonpath='{.items[0].spec.serviceAccountName}'
+agentgateway-ingress
+
+$ kubectl -n istio-system logs -l app=ztunnel --tail=-1 | grep 'src.namespace="agentgateway-system"' | grep 'dst.service="orchestrator'
+  (the ingress -> orchestrator hop, HBONE to the orchestrator pod's 15008 with
+  dst.hbone_addr :8080; ztunnel writes the line when the connection closes, so the
+  first covers the card fetch at 19:53:09 and the second the five run-4 requests
+  from 20:03:49 to 20:05:09)
+2026-09-08T19:54:39.946496Z	info	access	connection complete	src.addr=10.244.1.92:43234 src.workload="agentgateway-ingress-6848b5848f-4d5j4" src.namespace="agentgateway-system" src.identity="spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress" src.cluster="Kubernetes" dst.addr=10.244.1.93:15008 dst.hbone_addr=10.244.1.93:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-5854f7d74b-rnvvf" dst.namespace="lab" dst.identity="spiffe://cluster.local/ns/lab/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=611 bytes_recv=149 duration="90005ms"
+2026-09-08T20:06:39.927325Z	info	access	connection complete	src.addr=10.244.1.92:54710 src.workload="agentgateway-ingress-6848b5848f-4d5j4" src.namespace="agentgateway-system" src.identity="spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress" src.cluster="Kubernetes" dst.addr=10.244.1.93:15008 dst.hbone_addr=10.244.1.93:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-5854f7d74b-rnvvf" dst.namespace="lab" dst.identity="spiffe://cluster.local/ns/lab/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=7935 bytes_recv=3285 duration="170008ms"
+
+  The orchestrator's own pre-dispatch ingress ledger recorded those same requests
+  arriving from 10.244.1.92, the ingress proxy pod. The card fetch is in
+  path-evidence.txt; the five run-4 SendMessage arrivals are one per work item in
+  b2b-225719-r4-*/ingress.jsonl:
+
+$ jq -c 'select(.phase=="arrival" and .source=="orchestrator")' b2b-225719-r4-*/ingress.jsonl
+{"source":"orchestrator","remote":"10.244.1.92:42279","method":"SendMessage","logical_work_item_id":"b2b-225719-r4-01","a2a_version":"1.0","body_len":280}
+{"source":"orchestrator","remote":"10.244.1.92:42279","method":"SendMessage","logical_work_item_id":"b2b-225719-r4-02","a2a_version":"1.0","body_len":280}
+{"source":"orchestrator","remote":"10.244.1.92:42279","method":"SendMessage","logical_work_item_id":"b2b-225719-r4-03","a2a_version":"1.0","body_len":280}
+{"source":"orchestrator","remote":"10.244.1.92:42279","method":"SendMessage","logical_work_item_id":"b2b-225719-r4-04","a2a_version":"1.0","body_len":280}
+{"source":"orchestrator","remote":"10.244.1.92:42279","method":"SendMessage","logical_work_item_id":"b2b-225719-r4-05","a2a_version":"1.0","body_len":280}
+
+  All five run-4 SendMessage arrivals came from 10.244.1.92, the ingress proxy pod,
+  on one source port. That connection carried ten HTTP requests across the five work
+  items, not five: each run-4 loadgen Job fetches the agent card and then sends its
+  SendMessage, and both legs traverse the ingress. Counting every ingress-ledger
+  arrival at the orchestrator by peer and method:
+
+$ kubectl -n lab logs deploy/orchestrator | jq -r 'select(.ledger=="ingress" and .phase=="arrival") | "\(.remote) \(.method)"' | sort | uniq -c
+   5 10.244.1.92:42279 GET /.well-known/agent-card.json
+   5 10.244.1.92:42279 SendMessage
+   1 10.244.1.92:42703 GET /.well-known/agent-card.json
+
+  Port 42279 is the run-4 connection, ten requests over one connection, which is why
+  ztunnel logged a single line for all of them. Port 42703 is the earlier path-proof
+  card fetch, and its own ztunnel line is the first of the two above.
+
+================================================================================
+EGRESS -- enrolled as a mesh waypoint with its own Istio identity, NOT captured
+================================================================================
+
+The egress waypoint does not join the mesh by ztunnel capture. It is given an
+Istio identity by AgentgatewayParameters.spec.istio.enabled, terminates HBONE on
+its own 15008 listener, and is bound to the destination by the ServiceEntry's
+use-waypoint labels.
+
+$ kubectl -n agentgateway-egress get agentgatewayparameters agw-egress-params -o jsonpath='{.spec}'
+{"istio":{"enabled":true},"service":{"spec":{"type":"ClusterIP"}}}
+
+$ kubectl -n agentgateway-egress logs deploy/agw-egress | grep caclient
+  (the proxy fetches its own workload certificate from istiod for its ServiceAccount)
+2026-09-08T19:51:49.703547Z	info	control::caclient	Fetching certificate for identity: spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress	
+2026-09-08T19:51:49.736405Z	info	control::caclient	Successfully fetched certificate for identity: spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress	
+
+$ istioctl ztunnel-config workload --workload-namespace agentgateway-egress
+NAMESPACE           POD NAME                    ADDRESS     NODE                  WAYPOINT PROTOCOL
+agentgateway-egress agw-egress-674bb755bc-9gd66 10.244.1.91 agent-mesh-lab-worker None     TCP
+
+  PROTOCOL TCP, not HBONE: ztunnel does not capture this pod, which is what the
+  egress page requires so that capture cannot conflict with the waypoint's own
+  HBONE listener on 15008. Contrast the ingress pod above, which is HBONE.
+
+$ istioctl ztunnel-config service --service-namespace lab
+NAMESPACE SERVICE NAME          SERVICE VIP           WAYPOINT              ENDPOINTS
+lab       agentgateway-waypoint 10.96.24.209          None                  1/1
+lab       mockllm               10.96.82.24           None                  1/1
+lab       model-external        240.240.0.1,2001:2::1 agw-egress            1/1
+lab       orchestrator          10.96.90.27           None                  1/1
+lab       worker                10.96.30.166          agentgateway-waypoint 1/1
+
+  model-external, the ServiceEntry host model.lab.internal, is bound to WAYPOINT
+  agw-egress and carries the auto-allocated address 240.240.0.1. worker is still
+  bound to the istiod-driven agentgateway-waypoint; mockllm and orchestrator to none.
+
+$ kubectl -n istio-system logs -l app=ztunnel --tail=-1 | grep 'dst.workload="agw-egress'
+  (the worker -> egress waypoint hop: dst.addr is the egress pod on 15008, and both
+  SPIFFE identities are present -- the client's lab/default and the waypoint's own
+  agentgateway-egress/agw-egress. The first line is the pre-baseline smoke call from
+  a curl pod, the second the path-proof request from the worker, then the baseline.)
+2026-09-08T19:52:37.376605Z	info	access	connection complete	src.addr=10.244.1.94:56232 src.workload="step2b-curl" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=233 bytes_recv=401 duration="208ms"
+2026-09-08T19:55:34.400113Z	info	access	connection complete	src.addr=10.244.1.90:43928 src.workload="worker-849bbfb8c8-fmjpj" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=463 bytes_recv=401 duration="90208ms"
+2026-09-08T20:00:41.167992Z	info	access	connection complete	src.addr=10.244.1.90:53074 src.workload="worker-849bbfb8c8-fmjpj" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=4590 bytes_recv=1945 duration="184934ms"
+2026-09-08T20:01:02.818784Z	info	access	connection complete	src.addr=10.244.1.107:43742 src.workload="worker-7dfbf5d785-mfpwg" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=459 bytes_recv=0 duration="5003ms"
+2026-09-08T20:01:37.967074Z	info	access	connection complete	src.addr=10.244.1.107:50212 src.workload="worker-7dfbf5d785-mfpwg" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=459 bytes_recv=0 duration="5001ms"
+2026-09-08T20:02:11.389116Z	info	access	connection complete	src.addr=10.244.1.107:40792 src.workload="worker-7dfbf5d785-mfpwg" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=459 bytes_recv=0 duration="5001ms"
+2026-09-08T20:02:44.386869Z	info	access	connection complete	src.addr=10.244.1.107:50374 src.workload="worker-7dfbf5d785-mfpwg" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=459 bytes_recv=0 duration="5002ms"
+2026-09-08T20:03:18.300900Z	info	access	connection complete	src.addr=10.244.1.107:34900 src.workload="worker-7dfbf5d785-mfpwg" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=459 bytes_recv=0 duration="5001ms"
+2026-09-08T20:06:39.711463Z	info	access	connection complete	src.addr=10.244.1.113:35646 src.workload="worker-849bbfb8c8-cbdh5" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=2295 bytes_recv=980 duration="169697ms"
+
+$ kubectl -n agentgateway-egress logs deploy/agw-egress | grep -E "info\s+request" | head -2
+  (the model call at the waypoint itself, with the caller's SPIFFE identity on the
+  request line; the full log is egress-access-log.txt)
+2026-09-08T19:54:04.397008717Z 2026-09-08T19:54:04.396855Z	info	request gateway=agentgateway-egress/agw-egress listener=inner-http route=agentgateway-egress/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.90:51132 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 http.status=200 protocol=http duration=203ms

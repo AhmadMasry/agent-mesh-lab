@@ -1,0 +1,16 @@
+# The worker reaches the model through the egress waypoint by addressing the external
+# host from the ServiceEntry instead of the mock's Service. The page's step 9 is
+# explicit that the client keeps pointing at the backend address, not the waypoint
+# address; Istio steers the request. Same path suffix as the step-1 and step-2 value.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          env:
+            - name: MODEL_BASE_URL
+              value: "http://model.lab.internal:8080/v1"

@@ -11,7 +11,7 @@ ORCHESTRATOR_IMAGE := orchestrator:dev
 #   docker image inspect paketobuildpacks/builder-jammy-base --format '{{index .RepoDigests 0}}'
 PACK_BUILDER := paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
 
-.PHONY: cluster-kind cluster-eks step-1 step-2 step-3 verify-baseline teardown ledgers test orchestrator-image
+.PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-3 verify-baseline teardown ledgers test orchestrator-image
 
 cluster-kind:
 	@if kind get clusters 2>/dev/null | grep -qx "$(CLUSTER_NAME)"; then \
@@ -61,6 +61,36 @@ step-2: orchestrator-image
 	kubectl -n $(NAMESPACE) rollout status deployment/agentgateway-waypoint --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=120s
+	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
+
+# step-2b: two more agentgateway proxies, an ingress in front of Agent A and an
+# egress waypoint between Agent B and the model, both under agentgateway's own
+# control plane. The waypoint from step 2 is untouched and stays driven by istiod.
+# The two Helm installs and the namespace label follow the agentgateway
+# documentation's Istio ambient ingress and egress pages; the chart version is
+# pinned in versions.yaml under agentgateway-controlplane. The documented install
+# adds --set controller.image.pullPolicy=Always, which is omitted here because a
+# pinned tag is not re-pulled; the omission is recorded in the findings entry.
+# Like step-1 and step-2 this is a setup target: it rotates the worker and the
+# orchestrator, whose logs are ledger sources, and `ko apply` can rotate the mock
+# as well, so do not run it against a baseline in progress. The overlay pulls in
+# step-2, whose orchestrator Deployment needs the buildpacks image, so
+# orchestrator-image is a prerequisite here for the same reason it is on step-2.
+AGENTGATEWAY_CHART_VERSION := v1.5.0
+step-2b: orchestrator-image
+	helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
+		--create-namespace --namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION)
+	helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
+		--namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION) --wait
+	# The ingress page labels the proxy namespace ambient so the hop from the
+	# gateway pod to the backend pod is HBONE like every other hop in the mesh.
+	kubectl label ns agentgateway-system istio.io/dataplane-mode=ambient --overwrite
+	kubectl kustomize deploy/step-2b-agw-ingress-egress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
+	kubectl -n agentgateway-system wait --for=condition=Programmed gateway/agentgateway-ingress --timeout=180s
+	kubectl -n agentgateway-egress wait --for=condition=Programmed gateway/agw-egress --timeout=180s
+	# ko rebuilds the Go images, so the mock can rotate on this apply too.
+	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
+	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
 
 step-3:

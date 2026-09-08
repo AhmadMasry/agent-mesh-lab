@@ -1,0 +1,177 @@
+Path evidence for step 2b: agentgateway ingress and egress under agentgateway's own
+control plane. Captured 2026-09-08 on the kind cluster agent-mesh-lab, before the
+baseline runs. Every command is shown with the output it produced.
+
+Pod addresses at the time of capture (kubectl -n <ns> get pods -o wide):
+  lab/orchestrator-5854f7d74b-rnvvf                     10.244.1.93
+  lab/worker-849bbfb8c8-fmjpj                           10.244.1.90
+  lab/mockllm-6b9d766c89-xh224                          10.244.1.89
+  lab/agentgateway-waypoint-6dd7855fcd-t7dtd            10.244.1.55   (istiod-driven, step 2)
+  lab/step2b-curl                                       10.244.1.94   (in-cluster client)
+  agentgateway-system/agentgateway-ingress-6848b5848f-4d5j4  10.244.1.92
+  agentgateway-system/agentgateway-864d45549-tbr2j      10.244.1.88   (control plane)
+  agentgateway-egress/agw-egress-674bb755bc-9gd66       10.244.1.91
+
+================================================================================
+HOP 1 -- ingress: client -> agentgateway-ingress -> orchestrator
+================================================================================
+
+$ kubectl -n lab exec step2b-curl -- curl -sS -i --max-time 20 \
+    http://agentgateway-ingress.agentgateway-system.svc.cluster.local/.well-known/agent-card.json
+HTTP/1.1 200 OK
+date: Tue, 08 Sep 2026 19:53:09 GMT
+server: uvicorn
+content-length: 485
+content-type: application/json
+
+{"name":"orchestrator","description":"agent-mesh-lab agent: one model call per message","supportedInterfaces":[{"url":"http://agentgateway-ingress.agentgateway-system.svc.cluster.local","protocolBinding":"JSONRPC","protocolVersion":"1.0"}],"version":"0.0.0","capabilities":{"streaming":false},"defaultInputModes":["text/plain"],"defaultOutputModes":["text/plain"],"skills":[{"id":"answer","name":"answer","description":"returns the model's answer to the message text","tags":["lab"]}]}
+$ kubectl -n agentgateway-system logs deploy/agentgateway-ingress | grep -E "info\s+request"
+2026-09-08T19:53:09.944816Z	info	request gateway=agentgateway-system/agentgateway-ingress listener=http route=lab/orchestrator-ingress endpoint=10.244.1.93:8080 src.addr=10.244.1.94:47565 http.method=GET http.host=agentgateway-ingress.agentgateway-system.svc.cluster.local http.path=/.well-known/agent-card.json http.version=HTTP/1.1 http.status=200 protocol=http duration=4ms
+
+$ kubectl -n lab logs deploy/orchestrator | grep '"ledger":"ingress"'
+  (remote is 10.244.1.92, the ingress gateway pod; at step 2 the same field held the
+  client pod's own address, because no gateway stood in front of Agent A)
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-08T19:53:09.942041Z","remote":"10.244.1.92:42703","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-08T19:53:09.942041Z","remote":"10.244.1.92:42703","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0,"status":200}
+
+$ kubectl -n istio-system logs -l app=ztunnel --tail=-1 | grep 'agentgateway-ingress'
+  (the client -> ingress hop is HBONE: dst.addr :15008, dst.hbone_addr :80)
+2026-09-08T19:53:09.945188Z	info	access	connection complete	src.addr=10.244.1.94:49654 src.workload="step2b-curl" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.92:15008 dst.hbone_addr=10.244.1.92:80 dst.service="agentgateway-ingress.agentgateway-system.svc.cluster.local" dst.workload="agentgateway-ingress-6848b5848f-4d5j4" dst.namespace="agentgateway-system" dst.identity="spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress" dst.cluster="Kubernetes" direction="inbound" bytes_sent=611 bytes_recv=149 duration="4ms"
+2026-09-08T19:53:09.945303Z	info	access	connection complete	src.addr=10.244.1.94:37424 src.workload="step2b-curl" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.92:15008 dst.hbone_addr=10.244.1.92:80 dst.service="agentgateway-ingress.agentgateway-system.svc.cluster.local" dst.workload="agentgateway-ingress-6848b5848f-4d5j4" dst.namespace="agentgateway-system" dst.identity="spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=149 bytes_recv=611 duration="5ms"
+
+================================================================================
+HOP 2 -- egress: worker -> agw-egress -> mockllm
+================================================================================
+
+One clean loadgen -> worker request, work item p2b-225346-path-01, no injection
+(the mock was reset first; POST /control/reset returned 204). The worker's
+MODEL_BASE_URL is http://model.lab.internal:8080/v1, the external host from the
+ServiceEntry, not the mock's Service: the egress page's step 9 says to keep the
+client pointed at the backend address rather than the waypoint address.
+
+$ kubectl -n lab exec step2b-curl -- curl -s -X POST http://mockllm.lab.svc.cluster.local:8080/control/reset
+reset=204
+
+$ sed -e 's/${LWI}/p2b-225346-path-01/g' -e 's#${TARGET_URL}#http://worker.lab.svc.cluster.local:8080#g' \
+    deploy/base/loadgen-job.yaml | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab \
+    ko apply --platform=linux/arm64 -f -
+job.batch/loadgen-p2b-225346-path-01 created
+$ kubectl -n lab wait --for=condition=complete job/loadgen-p2b-225346-path-01 --timeout=120s
+job.batch/loadgen-p2b-225346-path-01 condition met
+
+$ make ledgers LWI=p2b-225346-path-01 OUT=experiments/runs/2026-09-08-baseline-step2b/p2b-225346-path-01
+  (the four ledgers for this work item are committed beside this file; counts:
+   1 delivery at the worker, 1 dispatch, 1 model invocation by caller "worker"
+   with outcome "ok", client result task/TASK_STATE_COMPLETED)
+-- ingress.jsonl --
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-08T19:54:04.192319716Z","remote":"10.244.1.55:59513","method":"SendMessage","id":"cf691982-b991-44e5-a5ae-01b13981f194","messageId":"01a08295-b420-7095-a788-0924d458d762","taskId":"","logical_work_item_id":"p2b-225346-path-01","a2a_version":"1.0","content_type":"application/json","body_sha256":"84d658053a4a6c7a6c1955f54d3402e741da96dda993e9ac99bfd4a142e31723","body_len":284,"source":"worker"}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-08T19:54:04.192319716Z","remote":"10.244.1.55:59513","method":"SendMessage","id":"cf691982-b991-44e5-a5ae-01b13981f194","messageId":"01a08295-b420-7095-a788-0924d458d762","taskId":"","logical_work_item_id":"p2b-225346-path-01","a2a_version":"1.0","content_type":"application/json","body_sha256":"84d658053a4a6c7a6c1955f54d3402e741da96dda993e9ac99bfd4a142e31723","body_len":284,"status":200,"source":"worker"}
+-- execution.jsonl --
+{"ledger":"execution","ts":"2026-09-08T19:54:04.192414966Z","event":"dispatch","method":"SendMessage","messageId":"01a08295-b420-7095-a788-0924d458d762","taskId":"","logical_work_item_id":"p2b-225346-path-01","source":"worker"}
+{"ledger":"execution","ts":"2026-09-08T19:54:04.192506925Z","event":"state","messageId":"01a08295-b420-7095-a788-0924d458d762","taskId":"01a08295-b420-76e1-959a-f05731fa8110","contextId":"01a08295-b420-773e-80b5-241a50ad90be","logical_work_item_id":"p2b-225346-path-01","state":"TASK_STATE_SUBMITTED","source":"worker"}
+{"ledger":"execution","ts":"2026-09-08T19:54:04.192513383Z","event":"state","messageId":"01a08295-b420-7095-a788-0924d458d762","taskId":"01a08295-b420-76e1-959a-f05731fa8110","contextId":"01a08295-b420-773e-80b5-241a50ad90be","logical_work_item_id":"p2b-225346-path-01","state":"TASK_STATE_WORKING","source":"worker"}
+{"ledger":"execution","ts":"2026-09-08T19:54:04.3972348Z","event":"state","messageId":"01a08295-b420-7095-a788-0924d458d762","taskId":"01a08295-b420-76e1-959a-f05731fa8110","contextId":"01a08295-b420-773e-80b5-241a50ad90be","logical_work_item_id":"p2b-225346-path-01","state":"TASK_STATE_COMPLETED","source":"worker"}
+{"ledger":"execution","ts":"2026-09-08T19:54:04.397854425Z","event":"result","method":"SendMessage","messageId":"01a08295-b420-7095-a788-0924d458d762","taskId":"01a08295-b420-76e1-959a-f05731fa8110","contextId":"01a08295-b420-773e-80b5-241a50ad90be","logical_work_item_id":"p2b-225346-path-01","result_kind":"task","state":"TASK_STATE_COMPLETED","source":"worker"}
+-- invocation.jsonl --
+{"ledger":"invocation","ts":"2026-09-08T19:54:04.396378633Z","logical_work_item_id":"p2b-225346-path-01","messageId":"01a08295-b420-7095-a788-0924d458d762","taskId":"01a08295-b420-76e1-959a-f05731fa8110","caller":"worker","body_sha256":"72ed1272060bfad556741f86e3f032511fd5abb2199e97e6e007fd6cb3c04f71","stream":false,"injection":"none","outcome":"ok","latency_ms":201.12,"source":"mockllm"}
+-- client.jsonl --
+{"ledger":"client","ts":"2026-09-08T19:54:04.398800133Z","logical_work_item_id":"p2b-225346-path-01","messageId":"01a08295-b420-7095-a788-0924d458d762","taskId":"01a08295-b420-76e1-959a-f05731fa8110","result_kind":"task","state":"TASK_STATE_COMPLETED","a2a_version":"1.0","card_protocol_versions":["1.0"],"source":"loadgen"}
+
+$ kubectl -n agentgateway-egress logs deploy/agw-egress | grep -E "info\s+request"
+  (the first line is the smoke-test request from step2b-curl that preceded this run;
+   the second is the worker's model call for p2b-225346-path-01, src.addr 10.244.1.90)
+2026-09-08T19:52:37.374786Z	info	request gateway=agentgateway-egress/agw-egress listener=inner-http route=agentgateway-egress/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.94:50236 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 http.status=200 protocol=http duration=204ms
+2026-09-08T19:54:04.396855Z	info	request gateway=agentgateway-egress/agw-egress listener=inner-http route=agentgateway-egress/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.90:51132 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 http.status=200 protocol=http duration=203ms
+
+$ kubectl -n istio-system logs -l app=ztunnel --tail=-1 | grep 'dst.service="model.lab.internal"'
+  (the worker -> agw-egress hop is HBONE to the waypoint's 15008 listener, carrying the
+   ServiceEntry's auto-allocated address 240.240.0.1:8080 as dst.hbone_addr; ztunnel
+   writes this line when the connection closes, which is why its duration is the
+   worker HTTP client's 90 s IdleConnTimeout and not the 203 ms request)
+2026-09-08T19:52:37.376605Z	info	access	connection complete	src.addr=10.244.1.94:56232 src.workload="step2b-curl" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=233 bytes_recv=401 duration="208ms"
+2026-09-08T19:55:34.400113Z	info	access	connection complete	src.addr=10.244.1.90:43928 src.workload="worker-849bbfb8c8-fmjpj" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.91:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-egress-674bb755bc-9gd66" dst.namespace="agentgateway-egress" dst.identity="spiffe://cluster.local/ns/agentgateway-egress/sa/agw-egress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=463 bytes_recv=401 duration="90208ms"
+
+================================================================================
+HOP 3 -- the ServiceEntry is bound to the egress waypoint
+================================================================================
+### istioctl ztunnel-config service --node agent-mesh-lab-worker
+NAMESPACE           SERVICE NAME                SERVICE VIP           WAYPOINT              ENDPOINTS
+agentgateway-egress agw-egress                  10.96.208.219         None                  1/1
+agentgateway-system agentgateway                10.96.244.255         None                  1/1
+agentgateway-system agentgateway-ingress        10.96.176.170         None                  1/1
+default             kubernetes                  10.96.0.1             None                  1/1
+istio-system        istiod                      10.96.177.215         None                  1/1
+istio-system        istiod-revision-tag-default 10.96.68.199          None                  1/1
+kube-system         kube-dns                    10.96.0.10            None                  2/2
+lab                 agentgateway-waypoint       10.96.24.209          None                  1/1
+lab                 mockllm                     10.96.82.24           None                  1/1
+lab                 model-external              240.240.0.1,2001:2::1 agw-egress            1/1
+lab                 orchestrator                10.96.90.27           None                  1/1
+lab                 worker                      10.96.30.166          agentgateway-waypoint 1/1
+
+### kubectl -n lab get serviceentry model-external -o yaml (labels and spec)
+labels: {"istio.io/use-waypoint":"agw-egress","istio.io/use-waypoint-namespace":"agentgateway-egress"}
+spec: {"endpoints":[{"address":"mockllm.lab.svc.cluster.local"}],"hosts":["model.lab.internal"],"location":"MESH_EXTERNAL","ports":[{"name":"http","number":8080,"protocol":"HTTP"}],"resolution":"DNS"}
+
+### gateways
+NAMESPACE             NAME                    CLASS                         ADDRESS         PROGRAMMED   AGE
+agentgateway-egress   agw-egress              agentgateway                  10.96.208.219   True         3m32s
+agentgateway-system   agentgateway-ingress    agentgateway                  10.96.176.170   True         3m32s
+lab                   agentgateway-waypoint   istio-agentgateway-waypoint   10.96.24.209    True         25h
+
+### httproute status
+controller=agentgateway.dev/agentgateway conditions=[{"lastTransitionTime":"2026-09-08T19:51:49Z","message":"","observedGeneration":1,"reason":"Accepted","status":"True","type":"Accepted"},{"lastTransitionTime":"2026-09-08T19:51:49Z","message":"","observedGeneration":1,"reason":"ResolvedRefs","status":"True","type":"ResolvedRefs"}]
+
+controller=agentgateway.dev/agentgateway conditions=[{"lastTransitionTime":"2026-09-08T19:51:49Z","message":"","observedGeneration":1,"reason":"Accepted","status":"True","type":"Accepted"},{"lastTransitionTime":"2026-09-08T19:51:49Z","message":"","observedGeneration":1,"reason":"ResolvedRefs","status":"True","type":"ResolvedRefs"}]
+
+================================================================================
+Versions observed on the running proxies and control plane
+================================================================================
+### kubectl -n agentgateway-system get deploy,pods -o custom-columns
+agentgateway-864d45549-tbr2j
+  image=cr.agentgateway.dev/controller:v1.5.0
+  imageID=cr.agentgateway.dev/controller@sha256:319489cb86b7f901a52a3fc532ad07f136c92756f88cf02a4040909e20001120
+agentgateway-ingress-6848b5848f-4d5j4
+  image=cr.agentgateway.dev/agentgateway:v1.5.0
+  imageID=cr.agentgateway.dev/agentgateway@sha256:bf2f339ef326d32def2aaeb44b1b4549801293c19b89e764a4228667d97d9896
+
+### kubectl -n agentgateway-egress get pods (images)
+agw-egress-674bb755bc-9gd66
+  image=cr.agentgateway.dev/agentgateway:v1.5.0
+  imageID=cr.agentgateway.dev/agentgateway@sha256:bf2f339ef326d32def2aaeb44b1b4549801293c19b89e764a4228667d97d9896
+
+### control plane startup line
+{"time":"2026-09-08T19:51:26.034445671Z","level":"info","msg":"starting agentgateway","component":"default"}
+{"time":"2026-09-08T19:51:26.042849504Z","level":"info","msg":"sync complete","component":"istio","name":"xDS TLS Secret","attempt":2,"time":3189375}
+{"time":"2026-09-08T19:51:26.042920921Z","level":"info","msg":"starting","component":"istio.controllers","controller":"XdsTLSMaterialController"}
+{"time":"2026-09-08T19:51:26.044931504Z","level":"info","msg":"sync complete","component":"istio","name":"discovery namespace filter","attempt":2,"time":2024416}
+
+### ingress gateway startup version line
+2026-09-08T19:51:49.804447Z	info	agentgateway_app::commands::run	version: {
+  "version": "1.5.0",
+
+### egress gateway startup version line
+2026-09-08T19:51:49.701798Z	info	agentgateway_app::commands::run	version: {
+  "version": "1.5.0",
+### ingress gateway version block
+2026-09-08T19:51:49.804447Z	info	agentgateway_app::commands::run	version: {
+  "version": "1.5.0",
+  "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+  "rust_version": "1.98.0",
+  "build_profile": "release",
+  "build_target": "aarch64-unknown-linux-gnu"
+}	
+
+### egress gateway version block
+2026-09-08T19:51:49.701798Z	info	agentgateway_app::commands::run	version: {
+  "version": "1.5.0",
+  "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+  "rust_version": "1.98.0",
+  "build_profile": "release",
+  "build_target": "aarch64-unknown-linux-gnu"
+}	
+
+### controller deployment image + helm releases
+NAME             	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART                   	APP VERSION
+agentgateway     	agentgateway-system	1       	2026-09-08 22:50:09.255942 +0300 EEST	deployed	agentgateway-v1.5.0     	v1.5.0     
+agentgateway-crds	agentgateway-system	1       	2026-09-08 22:50:05.982795 +0300 EEST	deployed	agentgateway-crds-v1.5.0	v1.5.0     
