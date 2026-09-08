@@ -1,6 +1,11 @@
 # Draft issue — agentgateway: log timestamps drop leading zeros in the sub-second field
 
-Status: **draft, not filed.** A human files it. No link here until it is filed.
+Status: **filed and fixed.** Issue agentgateway/agentgateway#3369 (filed 2026-09-08, closed); fix merged the same day as
+pull request agentgateway/agentgateway#3370 (`fix(telemetry): zero-pad the sub-second part of log timestamps`, merge
+commit 98ada8a496613339d9e9a0f3b4d3e865ee28b79c on `main`). Versions up to v1.5.0 carry the defect; the first release
+containing the fix is recorded here when it is published.
+- https://github.com/agentgateway/agentgateway/issues/3369
+- https://github.com/agentgateway/agentgateway/pull/3370
 
 Project: agentgateway
 Version observed: `1.5.0` (`cr.agentgateway.dev/agentgateway:v1.5.0`,
@@ -54,6 +59,18 @@ agentgateway `.407967`) and are **not** instances of this defect; the remaining 
 Effect on ordering: in one clean request the agent-card `GET` (kubelet `.003363962`) is emitted before the
 `SendMessage` `POST` (kubelet `.207514087`), but agentgateway prints them as `.3270` and `.207364`, so a
 reader sorting on agentgateway's own timestamps puts them in the wrong order.
+
+## Where it comes from (read at tag v1.5.0)
+
+`crates/core/src/telemetry/date.rs`, `write()`: the cached part of the timestamp ends at the `.` and the
+microseconds are appended with `itoa::Buffer::format(micros)`, which renders `3270` for 3270 µs; the
+value is never zero-padded to six digits (lines 20 to 26 at the tag). The cached prefix was introduced by
+PR #177 ("Performance optimizations, mostly around logs", merged 2025-07-16). A `{:06}` format of `micros`
+would print `.003270`.
+
+Searched 2026-09-07 across issues and pull requests in agentgateway/agentgateway (timestamp, leading zero,
+access log time, fractional seconds, subsec, nanosecond, log format, time format, RFC3339): nothing similar,
+open or closed.
 
 ## Not shared with ztunnel
 
