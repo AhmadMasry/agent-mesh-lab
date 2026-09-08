@@ -98,7 +98,8 @@ counts() {
 	local dw do dsp inv byc res
 	dw=$(jq -s '[.[] | select(.source=="worker" and .phase=="arrival" and .method != "" and (.method|test(" ")|not))] | length' "$d/ingress.jsonl")
 	do=$(jq -s '[.[] | select(.source=="orchestrator" and .phase=="arrival" and .method != "" and (.method|test(" ")|not))] | length' "$d/ingress.jsonl")
-	dsp=$(jq -s '[.[] | select(.source=="worker" and .event=="dispatch")] | length' "$d/execution.jsonl")
+	# dispatches are executor entries since Gate 2 Task 0: event "execute", not the SDK's "received"
+	dsp=$(jq -s '[.[] | select(.source=="worker" and .event=="execute")] | length' "$d/execution.jsonl")
 	inv=$(jq -s '[.[] | select(.outcome != "stale-closed")] | length' "$d/invocation.jsonl")
 	byc=$(jq -r -s '[.[] | select(.outcome != "stale-closed") | .caller] | group_by(.) | map("\(.[0])=\(length)") | join("+")' "$d/invocation.jsonl")
 	res=$(jq -r -s 'if length == 0 then "none" else (last | "\(.result_kind // "none")/\(.state // "none")\(if .error then " error" else "" end)") end' "$d/client.jsonl")

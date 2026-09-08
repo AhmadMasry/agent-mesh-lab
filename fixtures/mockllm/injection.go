@@ -46,6 +46,12 @@ func newInjectionConfig(req injectRequest) (*injectionConfig, error) {
 	if hasCount == hasLWI {
 		return nil, fmt.Errorf("exactly one of at_count or lwi must be given")
 	}
+	// Invocation counts are 1-indexed, so a count below 1 names an invocation
+	// that cannot happen; rejecting it here keeps an armed injection that never
+	// fires from being mistaken for one that fired and was not counted.
+	if hasCount && *req.AtCount < 1 {
+		return nil, fmt.Errorf("at_count must be >= 1")
+	}
 	cfg := &injectionConfig{Mode: req.Mode, LWI: req.LWI}
 	if hasCount {
 		cfg.AtCount = *req.AtCount

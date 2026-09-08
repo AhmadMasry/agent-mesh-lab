@@ -64,7 +64,24 @@ class LabExecutor(AgentExecutor):
             error=error,
         ))
 
+    def _entered(self, context: RequestContext) -> None:
+        """Record that the SDK handed this message to the executor.
+
+        The execution ledger's "received" line says the SDK accepted a request;
+        this line says agent behaviour actually started for it, which is what
+        the experiment scripts count as a dispatch.
+        """
+        msg = context.message
+        self.writer.write(execution_line(
+            "execute",
+            message_id=msg.message_id if msg is not None else "",
+            task_id=context.task_id or "",
+            context_id=context.context_id or "",
+            work_item=struct_get(msg.metadata, "logical_work_item_id") if msg is not None else "",
+        ))
+
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
+        self._entered(context)
         msg = context.message
         work_item = struct_get(msg.metadata, "logical_work_item_id") if msg is not None else ""
         text = context.get_user_input()
@@ -111,9 +128,13 @@ class LedgerRequestHandler(DefaultRequestHandler):
         self.writer = writer
         self.card = card
 
-    def _dispatch(self, method: str, params: SendMessageRequest) -> dict[str, Any]:
+    def _received(self, method: str, params: SendMessageRequest) -> dict[str, Any]:
+        """Record that the SDK accepted this request, before the inner handler runs.
+
+        The executor's "execute" line, not this one, says agent behaviour started.
+        """
         msg = params.message
-        line = execution_line("dispatch", method=method, message_id=msg.message_id, task_id=msg.task_id,
+        line = execution_line("received", method=method, message_id=msg.message_id, task_id=msg.task_id,
                               context_id=msg.context_id, work_item=struct_get(msg.metadata, "logical_work_item_id"))
         self.writer.write(line)
         return line
@@ -132,7 +153,7 @@ class LedgerRequestHandler(DefaultRequestHandler):
         self.writer.write(line)
 
     async def on_message_send(self, params: SendMessageRequest, context: ServerCallContext) -> Message | Task:
-        base = self._dispatch("SendMessage", params)
+        base = self._received("SendMessage", params)
         try:
             result = await super().on_message_send(params, context)
         except Exception as exc:
@@ -142,7 +163,7 @@ class LedgerRequestHandler(DefaultRequestHandler):
         return result
 
     async def on_message_send_stream(self, params: SendMessageRequest, context: ServerCallContext) -> AsyncGenerator[Event]:
-        base = self._dispatch("SendStreamingMessage", params)
+        base = self._received("SendStreamingMessage", params)
         last: Any = None
         async for event in super().on_message_send_stream(params, context):
             if isinstance(event, (Task, Message)):

@@ -14,6 +14,7 @@ import (
 	"github.com/a2aproject/a2a-go/v2/a2aclient"
 	"github.com/a2aproject/a2a-go/v2/a2aclient/agentcard"
 
+	"github.com/AhmadMasry/agent-mesh-lab/internal/a2areq"
 	"github.com/AhmadMasry/agent-mesh-lab/internal/httpclient"
 )
 
@@ -72,7 +73,7 @@ func main() {
 		os.Exit(3)
 	}
 
-	req := buildSendRequest(lwi, text)
+	req := a2areq.Build(lwi, text)
 	line.MessageID = req.Message.ID
 	res, err := client.SendMessage(ctx, req)
 	if err != nil {

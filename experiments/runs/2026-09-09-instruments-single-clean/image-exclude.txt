@@ -1,0 +1,32 @@
+# Buildpacks project.toml exclude, measured on the rolled-out orchestrator image, 2026-09-08T22:09:09Z.
+
+## Application directory in the image (project.toml excludes .venv, .pytest_cache, tests)
+/workspace
+.
+..
+.python-version
+Procfile
+orchestrator
+project.toml
+pyproject.toml
+uv.lock
+
+## Is pytest importable in the image?
+pytest origin: /layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages/pytest/__init__.py
+
+## Buildpacks that ran
+  paketo-buildpacks/ca-certificates 3.12.7
+  paketo-buildpacks/python-package-managers-install 0.25.0
+  paketo-buildpacks/python-package-managers-run 0.6.3
+  paketo-buildpacks/python-start 0.17.16
+  paketo-buildpacks/procfile 5.13.7
+
+## What this measures
+The three paths are gone from the application directory in the image. pytest is
+still importable, and it is not coming from any of them: its origin is the
+buildpack's own layer. paketo-buildpacks/python-package-managers-run runs plain
+`uv sync` with no --no-dev (pkg/packagers/uv/uv_runner.go, args := []string{"sync"};
+BP_UV_INSTALL_GROUPS only adds groups), and uv includes the dev dependency group
+by default, which is where pytest==9.1.1 comes from in uv.lock. So the exclude
+cannot remove it; only changing the lockfile's default groups could, and that
+would take `uv run pytest -q` with it.

@@ -54,7 +54,8 @@ count_lines() { if [ -s "$1" ]; then grep -c . "$1"; else echo 0; fi; }
 # whose method has no space (HTTP-level lines read "<METHOD> <path>").
 ingress_arrivals_for_work_item=$(jq -s '[.[] | select(.phase == "arrival")] | length' "${RUN_DIR}/ingress.jsonl")
 deliveries_ingress_jsonrpc=$(jq -s '[.[] | select(.phase == "arrival" and .method != "" and (.method | test(" ") | not))] | length' "${RUN_DIR}/ingress.jsonl")
-dispatches=$(jq -s '[.[] | select(.event == "dispatch")] | length' "${RUN_DIR}/execution.jsonl")
+# dispatches are executor entries since Gate 2 Task 0: event "execute", not the SDK's "received"
+dispatches=$(jq -s '[.[] | select(.event == "execute")] | length' "${RUN_DIR}/execution.jsonl")
 distinct_message_ids=$(jq -s '[.[] | select(.phase == "arrival" and .messageId != "") | .messageId] | unique | length' "${RUN_DIR}/ingress.jsonl")
 tasks_created=$(jq -s '[.[] | select(.event == "state" and .state == "TASK_STATE_SUBMITTED")] | length' "${RUN_DIR}/execution.jsonl")
 task_final_state=$(jq -r -s '[.[] | select(.event == "result")] | last | .state // "none"' "${RUN_DIR}/execution.jsonl")

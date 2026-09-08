@@ -11,6 +11,7 @@ from starlette.responses import PlainTextResponse
 from starlette.routing import Route
 
 from orchestrator.agent import build_handler
+from orchestrator.control import Injector
 from orchestrator.forward import Forwarder
 from orchestrator.ledger import IngressMiddleware
 from orchestrator.model import ModelClient
@@ -25,10 +26,16 @@ def build_app(*, name: str, model: ModelClient | None, forwarder: Forwarder | No
     async def healthz(_request):
         return PlainTextResponse("ok\n")
 
+    # The control endpoints sit outside the ingress ledger, like the readiness
+    # probe, so arming a work item is never counted as a delivery.
+    injector = Injector()
     routes = [*create_agent_card_routes(card), *create_jsonrpc_routes(handler, rpc_url="/"),
-              Route("/healthz", healthz, methods=["GET"])]
+              Route("/healthz", healthz, methods=["GET"]),
+              Route("/control/inject", injector.handle_inject, methods=["POST"]),
+              Route("/control/reset", injector.handle_reset, methods=["POST"])]
     app = Starlette(routes=routes)
-    app.add_middleware(IngressMiddleware, out=out)
+    app.add_middleware(IngressMiddleware, out=out, injector=injector,
+                       skip_paths=("/healthz", "/control/inject", "/control/reset"))
     return app
 
 

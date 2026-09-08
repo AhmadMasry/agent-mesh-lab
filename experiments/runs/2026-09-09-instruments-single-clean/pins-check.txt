@@ -1,0 +1,33 @@
+# Pins re-checked on 2026-09-09 from documents fetched in this session.
+# No value moved, so versions.yaml is unchanged by this task.
+
+a2a-go = v2.5.0 (unchanged)
+  https://api.github.com/repos/a2aproject/a2a-go/releases/latest
+  tag_name "v2.5.0", name "v2.5.0", published_at "2026-08-18T12:40:33Z" -- still the
+  latest release, and the version pinned in go.mod.
+
+a2a-python (a2a-sdk) = 1.1.2 (unchanged)
+  https://pypi.org/pypi/a2a-sdk/json
+  info.version "1.1.2", uploaded 2026-07-22T13:40:49 -- still the latest published
+  version, and the version pinned in pyproject.toml.
+
+httpx = 0.28.1, as resolved in agents/orchestrator/uv.lock (line 543).
+  This is the client the a2a-python Forwarder uses. The openai client uses httpx2
+  2.12.0, resolved separately in the same lockfile; both are unchanged.
+
+httpx retries semantics at 0.28.1
+  https://raw.githubusercontent.com/encode/httpx/0.28.1/httpx/_transports/default.py
+  - HTTPTransport.__init__      line 147: `retries: int = 0`
+  - AsyncHTTPTransport.__init__ line 291: `retries: int = 0`
+  - both pass it straight through: line 165 / line 309 `retries=retries` into
+    httpcore.ConnectionPool
+  - module docstring line 18: "# Using advanced httpcore configuration, with
+    connection retries."
+  The retry is a connect-failure retry only. httpcore 1.0.9 (uv.lock line 517),
+  _sync/connection.py:
+  https://raw.githubusercontent.com/encode/httpcore/1.0.9/httpcore/_sync/connection.py
+    line 110: `retries_left = self._retries`
+    line 159: `except (ConnectError, ConnectTimeout):`
+    line 160-162: `if retries_left <= 0: raise` / `retries_left -= 1`
+  Nothing retries a request that was sent: only the connect attempt is repeated,
+  and only when retries > 0. The lab's Forwarder passes retries=0 explicitly.

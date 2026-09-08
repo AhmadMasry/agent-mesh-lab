@@ -1,0 +1,88 @@
+# Receiver control endpoints, probed in-cluster on 2026-09-08T22:09:25Z.
+# Nothing real is armed: the arm/disarm pair uses a throwaway work item that is
+# never sent, and each receiver is reset last, so both injectors are left unarmed.
+# close-after-read is served by the Go receiver and rejected with a reason by the
+# Python one: ASGI has no portable connection hijack.
+
+== http://worker.lab.svc.cluster.local:8080 ==
+reset (want 204)
+  POST http://worker.lab.svc.cluster.local:8080/control/reset 
+   HTTP 204 
+
+arm a throwaway work item (want 204)
+  POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"probe-never-sent"}
+   HTTP 204 
+
+unknown mode (want 400)
+  POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"nonsense","lwi":"x"}
+  unknown mode  HTTP 400 
+
+missing lwi (want 400)
+  POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch"}
+  lwi is required  HTTP 400 
+
+close-after-read (204 at the Go receiver, 400 with a reason at the Python one)
+  POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"close-after-read","lwi":"probe-never-sent-2"}
+   HTTP 204 
+
+GET inject (want 405)
+  GET http://worker.lab.svc.cluster.local:8080/control/inject 
+  method not allowed  HTTP 405 
+
+GET reset (want 405)
+  GET http://worker.lab.svc.cluster.local:8080/control/reset 
+  method not allowed  HTTP 405 
+
+GET healthz (want 200)
+  GET http://worker.lab.svc.cluster.local:8080/healthz 
+  ok  HTTP 200 
+
+POST healthz (405 at the Go receiver; the Python one has no such route)
+  POST http://worker.lab.svc.cluster.local:8080/healthz 
+  method not allowed  HTTP 405 
+
+reset, leaving nothing armed (want 204)
+  POST http://worker.lab.svc.cluster.local:8080/control/reset 
+   HTTP 204 
+
+== http://orchestrator.lab.svc.cluster.local:8080 ==
+reset (want 204)
+  POST http://orchestrator.lab.svc.cluster.local:8080/control/reset 
+   HTTP 204 
+
+arm a throwaway work item (want 204)
+  POST http://orchestrator.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"probe-never-sent"}
+   HTTP 204 
+
+unknown mode (want 400)
+  POST http://orchestrator.lab.svc.cluster.local:8080/control/inject {"mode":"nonsense","lwi":"x"}
+  {"error":"unknown mode"} HTTP 400 
+
+missing lwi (want 400)
+  POST http://orchestrator.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch"}
+  {"error":"lwi is required"} HTTP 400 
+
+close-after-read (204 at the Go receiver, 400 with a reason at the Python one)
+  POST http://orchestrator.lab.svc.cluster.local:8080/control/inject {"mode":"close-after-read","lwi":"probe-never-sent-2"}
+  {"error":"close-after-read is not supported by this receiver"} HTTP 400 
+
+GET inject (want 405)
+  GET http://orchestrator.lab.svc.cluster.local:8080/control/inject 
+  Method Not Allowed HTTP 405 
+
+GET reset (want 405)
+  GET http://orchestrator.lab.svc.cluster.local:8080/control/reset 
+  Method Not Allowed HTTP 405 
+
+GET healthz (want 200)
+  GET http://orchestrator.lab.svc.cluster.local:8080/healthz 
+  ok  HTTP 200 
+
+POST healthz (405 at the Go receiver; the Python one has no such route)
+  POST http://orchestrator.lab.svc.cluster.local:8080/healthz 
+  Method Not Allowed HTTP 405 
+
+reset, leaving nothing armed (want 204)
+  POST http://orchestrator.lab.svc.cluster.local:8080/control/reset 
+   HTTP 204 
+

@@ -14,6 +14,8 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, TextIO
 
+from orchestrator.control import MODE_HTTP503_BEFORE_DISPATCH, Injector
+
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
@@ -91,12 +93,16 @@ def parse_ingress(*, method: str, path: str, headers: dict[str, str], remote: st
 class IngressMiddleware:
     """Pure ASGI middleware: reads and restores the body, writes the arrival
     line, serves the request, then writes the response line with the status.
-    Never rejects. Paths in skip_paths (the readiness probe) are not ledgered."""
+    It rejects a request only when the injector has an armed work item matching
+    it, and then only after the delivery has been counted. Paths in skip_paths
+    (the readiness probe and the control endpoints) are not ledgered."""
 
-    def __init__(self, app, out: TextIO | None = None, skip_paths: tuple[str, ...] = ("/healthz",)) -> None:
+    def __init__(self, app, out: TextIO | None = None, skip_paths: tuple[str, ...] = ("/healthz",),
+                 injector: Injector | None = None) -> None:
         self.app = app
         self.writer = LineWriter(out)
         self.skip_paths = skip_paths
+        self.injector = injector
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope.get("path", "") in self.skip_paths:
@@ -117,15 +123,38 @@ class IngressMiddleware:
         line = parse_ingress(method=scope.get("method", ""), path=scope.get("path", ""), headers=headers,
                              remote=f"{client[0]}:{client[1]}", body=body)
         self.writer.write(line)
+
+        # The arrival is on the ledger before this point, so an injected failure
+        # is still a counted delivery. take disarms the work item, so one arming
+        # fires once; nothing here repeats or retries.
+        mode = self.injector.take(line["logical_work_item_id"]) if self.injector is not None else None
+        if mode == MODE_HTTP503_BEFORE_DISPATCH:
+            payload = b'{"error":"injected"}'
+            await send({"type": "http.response.start", "status": 503, "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(payload)).encode("latin-1")),
+            ]})
+            await send({"type": "http.response.body", "body": payload})
+            response = dict(line)
+            response["phase"] = "response"
+            response["status"] = 503
+            response["injection"] = mode
+            self.writer.write(response)
+            return
+
         status = {"code": 0}
 
         replayed = {"done": False}
 
         async def receive_replay():
+            # The body was consumed here, so it is replayed once. Everything
+            # after that is the real ASGI conversation: a streaming response
+            # awaits receive() to watch for a client disconnect, and answering
+            # that with a synthetic disconnect would cut the stream short.
             if not replayed["done"]:
                 replayed["done"] = True
                 return {"type": "http.request", "body": body, "more_body": False}
-            return {"type": "http.disconnect"}
+            return await receive()
 
         async def send_capture(message):
             if message["type"] == "http.response.start":

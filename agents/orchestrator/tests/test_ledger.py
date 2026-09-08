@@ -1,10 +1,11 @@
 """Ingress ledger: one line per physical delivery, written before the SDK sees the request."""
+import asyncio
 import hashlib
 import io
 import json
 
 from starlette.applications import Starlette
-from starlette.responses import PlainTextResponse
+from starlette.responses import PlainTextResponse, StreamingResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
@@ -98,3 +99,33 @@ def test_middleware_malformed_body_is_counted_not_rejected():
     assert r.status_code == 201
     line = json.loads(out.getvalue().splitlines()[0])
     assert line["body_sha256"] == hashlib.sha256(b"{not json").hexdigest() and line["method"] == "" and line["phase"] == "arrival"
+
+
+# The middleware replays the body it read, so the app's receive() is the
+# middleware's, not the server's. A streaming response also awaits receive() to
+# watch for a client disconnect, so the replay must hand the rest of the ASGI
+# conversation back to the real receive instead of reporting a disconnect.
+def test_streaming_response_survives_replayed_receive():
+    out = io.StringIO()
+
+    async def stream(request):
+        await request.body()  # the SDK reads the body before responding
+
+        async def chunks():
+            yield b"first-chunk;"
+            await asyncio.sleep(0)
+            yield b"second-chunk;"
+            await asyncio.sleep(0)
+            yield b"third-chunk"
+
+        return StreamingResponse(chunks(), media_type="text/plain")
+
+    app = Starlette(routes=[Route("/", stream, methods=["POST"])])
+    app.add_middleware(IngressMiddleware, out=out)
+    r = TestClient(app).post("/", content=GO_BODY)
+
+    assert r.status_code == 200
+    assert r.text == "first-chunk;second-chunk;third-chunk"
+    lines = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+    assert [l["phase"] for l in lines] == ["arrival", "response"]
+    assert lines[1]["status"] == 200

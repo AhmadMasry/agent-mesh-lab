@@ -80,7 +80,8 @@ method_at() { jq -r -s --arg src "$2" '[.[] | select(.source == $src and .phase 
 status_at() { jq -r -s --arg src "$2" '[.[] | select(.source == $src and .phase == "response" and .method != "" and (.method | test(" ") | not)) | .status] | unique | join("|")' "${RUN_DIR}/$1/ingress.jsonl"; }
 count_at() { jq -s --arg src "$2" '[.[] | select(.source == $src and .phase == "arrival" and .method != "" and (.method | test(" ") | not))] | length' "${RUN_DIR}/$1/ingress.jsonl"; }
 result_of() { jq -r -s 'last | "\(.result_kind // "none")/\(.state // "none")\(if .error then " error=" + .error else "" end)"' "${RUN_DIR}/$1/client.jsonl"; }
-dispatches_at() { jq -s --arg src "$2" '[.[] | select(.source == $src and .event == "dispatch")] | length' "${RUN_DIR}/$1/execution.jsonl"; }
+# dispatches are executor entries since Gate 2 Task 0: event "execute", not the SDK's "received"
+dispatches_at() { jq -s --arg src "$2" '[.[] | select(.source == $src and .event == "execute")] | length' "${RUN_DIR}/$1/execution.jsonl"; }
 # model invocations made by the agent captured at <source> (caller field), not the whole work item
 invocations() { jq -s --arg src "$2" '[.[] | select(.caller == $src and .outcome != "stale-closed")] | length' "${RUN_DIR}/$1/invocation.jsonl"; }
 

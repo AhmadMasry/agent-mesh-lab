@@ -45,7 +45,22 @@ func (e *labExecutor) state(execCtx *a2asrv.ExecutorContext, st a2a.TaskState, e
 	e.lw.write(line)
 }
 
+// entered records that the SDK handed this message to the executor. The
+// execution ledger's "received" line says the SDK accepted a request; this
+// line says agent behaviour actually started for it, which is what the
+// experiment scripts count as a dispatch.
+func (e *labExecutor) entered(execCtx *a2asrv.ExecutorContext) {
+	line := executionLine{Ledger: "execution", TS: now(), Event: "execute", TaskID: string(execCtx.TaskID),
+		ContextID: execCtx.ContextID}
+	if execCtx.Message != nil {
+		line.MessageID = execCtx.Message.ID
+		line.LogicalWorkItemID = workItemOf(execCtx.Message)
+	}
+	e.lw.write(line)
+}
+
 func (e *labExecutor) Execute(ctx context.Context, execCtx *a2asrv.ExecutorContext) iter.Seq2[a2a.Event, error] {
+	e.entered(execCtx)
 	return func(yield func(a2a.Event, error) bool) {
 		// The SDK requires the first event to be a Task or a Message; emitting a
 		// Task here is what makes every dispatched message become a Task.

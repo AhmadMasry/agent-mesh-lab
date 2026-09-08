@@ -5,10 +5,12 @@ import uuid
 
 import httpx
 import pytest
+from a2a.server.agent_execution import RequestContext
 from a2a.server.context import ServerCallContext
+from a2a.server.events import EventQueue
 from a2a.types import Message, Part, Role, SendMessageRequest
 
-from orchestrator.agent import build_handler
+from orchestrator.agent import LabExecutor, build_handler
 from orchestrator.forward import Forwarder
 from orchestrator.ledger import LineWriter
 from orchestrator.server import build_app
@@ -29,6 +31,59 @@ def _events(out: io.StringIO, kind: str) -> list[dict]:
     return [json.loads(l) for l in out.getvalue().splitlines() if l.strip() and json.loads(l).get("event") == kind]
 
 
+def _lines(out: io.StringIO) -> list[dict]:
+    return [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+
+
+class RecordingQueue(EventQueue):
+    """The SDK's queue interface has one abstract method; record what the executor emits."""
+
+    def __init__(self) -> None:
+        self.events: list = []
+
+    async def enqueue_event(self, event) -> None:
+        self.events.append(event)
+
+
+# "Dispatched" must mean the executor ran, so the executor writes its own entry
+# line before the first Task state it emits. Driving the executor directly keeps
+# the assertion about what the executor wrote, not the handler's lines around it.
+@pytest.mark.asyncio
+async def test_execute_writes_execute_line_before_submitted_state():
+    out = io.StringIO()
+    fake = FakeModel()
+    executor = LabExecutor(name="orchestrator", model=fake.client(), forwarder=None, writer=LineWriter(out))
+    req = _request("w-exec")
+    ctx = RequestContext(request=req, task_id="t-exec", context_id="c-exec", call_context=ServerCallContext())
+    await executor.execute(ctx, RecordingQueue())
+
+    lines = _lines(out)
+    assert lines, "the executor wrote no ledger lines"
+    assert lines[0]["event"] == "execute", lines
+    assert lines[0]["messageId"] == req.message.message_id
+    assert lines[0]["taskId"] == "t-exec" and lines[0]["contextId"] == "c-exec"
+    assert lines[0]["logical_work_item_id"] == "w-exec"
+    assert lines[1]["event"] == "state" and lines[1]["state"] == "TASK_STATE_SUBMITTED"
+    assert len(_events(out, "execute")) == 1
+    assert fake.calls == 1
+
+
+# The handler's entry line says the SDK accepted a request, so it is named
+# "received"; "dispatched" is now the executor's own "execute" line.
+@pytest.mark.asyncio
+async def test_request_handler_writes_received_not_dispatch():
+    fake = FakeModel()
+    out = io.StringIO()
+    handler = build_handler(name="orchestrator", model=fake.client(), forwarder=None, out=out,
+                            public_url="http://orchestrator")
+    await handler.on_message_send(_request("w-received"), ServerCallContext())
+    assert len(_events(out, "received")) == 1
+    assert _events(out, "dispatch") == []
+    received = _events(out, "received")[0]
+    assert received["method"] == "SendMessage" and received["logical_work_item_id"] == "w-received"
+    assert _lines(out)[0]["event"] == "received"
+
+
 @pytest.mark.asyncio
 async def test_model_mode_completes_task_with_model_text_and_records_states():
     fake = FakeModel()
@@ -45,7 +100,7 @@ async def test_model_mode_completes_task_with_model_text_and_records_states():
     assert h["x-a2a-task-id"] == task.id and h["x-a2a-message-id"] == req.message.message_id
     assert h["x-logical-work-item-id"] == "w1" and h["x-caller"] == "orchestrator"
     assert _states(out) == ["TASK_STATE_SUBMITTED", "TASK_STATE_WORKING", "TASK_STATE_COMPLETED"]
-    assert len(_events(out, "dispatch")) == 1 and len(_events(out, "result")) == 1
+    assert len(_events(out, "received")) == 1 and len(_events(out, "result")) == 1
     assert _events(out, "result")[0]["result_kind"] == "task" and _events(out, "result")[0]["taskId"] == task.id
 
 
@@ -146,20 +201,7 @@ async def test_plan_call_failure_fails_task_without_forwarding():
 
 @pytest.mark.asyncio
 async def test_cancel_emits_canceled_state():
-    from a2a.server.events import EventQueue
-    from a2a.server.agent_execution import RequestContext
     from a2a.types import TaskState, TaskStatusUpdateEvent
-    from orchestrator.agent import LabExecutor
-    from orchestrator.ledger import LineWriter
-
-    class RecordingQueue(EventQueue):
-        """The SDK's queue interface has one abstract method; record what the executor emits."""
-
-        def __init__(self) -> None:
-            self.events = []
-
-        async def enqueue_event(self, event) -> None:
-            self.events.append(event)
 
     out = io.StringIO()
     executor = LabExecutor(name="orchestrator", model=FakeModel().client(), forwarder=None, writer=LineWriter(out))

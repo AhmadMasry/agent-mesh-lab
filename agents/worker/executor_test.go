@@ -145,14 +145,83 @@ func TestExecutor_FailsTaskOnModelErrorWithoutRetry(t *testing.T) {
 func stateSequence(t *testing.T, ledger string) []string {
 	t.Helper()
 	var states []string
-	for _, raw := range strings.Split(strings.TrimSpace(ledger), "\n") {
-		var l executionLine
-		if err := json.Unmarshal([]byte(raw), &l); err != nil {
-			t.Fatalf("bad line %q: %v", raw, err)
-		}
+	for _, l := range executionLines(t, ledger) {
 		if l.Event == "state" {
 			states = append(states, l.State)
 		}
 	}
 	return states
+}
+
+// executionLines parses every execution ledger line in order.
+func executionLines(t *testing.T, ledger string) []executionLine {
+	t.Helper()
+	var lines []executionLine
+	for _, raw := range strings.Split(strings.TrimSpace(ledger), "\n") {
+		if raw == "" {
+			continue
+		}
+		var l executionLine
+		if err := json.Unmarshal([]byte(raw), &l); err != nil {
+			t.Fatalf("bad line %q: %v", raw, err)
+		}
+		lines = append(lines, l)
+	}
+	return lines
+}
+
+// "Dispatched" must mean the executor ran, not that the SDK accepted the
+// request, so the executor writes its own entry line before the first Task
+// state it emits. The executor gets its own writer here so the assertion is
+// about what the executor wrote, not about the wrapper's lines around it.
+func TestExecute_WritesExecuteLineBeforeSubmittedState(t *testing.T) {
+	f, srv := newFakeModel(http.StatusOK)
+	defer srv.Close()
+	var exOut, wrapOut bytes.Buffer
+	ex := newLabExecutor("worker", newModelClient(srv.URL+"/v1", "mock", "unused", httpclient.New(5*time.Second)), newLineWriter(&exOut))
+	h := newExecutionLedger(a2asrv.NewHandler(ex), newLineWriter(&wrapOut))
+	msg := a2a.NewMessage(a2a.MessageRoleUser, a2a.NewTextPart("lwi:w1 hi"))
+	msg.ID = "msg-1"
+	msg.Metadata = map[string]any{"logical_work_item_id": "w1"}
+	res, err := h.SendMessage(context.Background(), &a2a.SendMessageRequest{Message: msg})
+	if err != nil {
+		t.Fatalf("SendMessage: %v", err)
+	}
+	task, ok := res.(*a2a.Task)
+	if !ok {
+		t.Fatalf("result is %T, want *a2a.Task", res)
+	}
+	if n := f.calls.Load(); n != 1 {
+		t.Errorf("model called %d times, want 1", n)
+	}
+	lines := executionLines(t, exOut.String())
+	if len(lines) < 2 {
+		t.Fatalf("executor wrote %d lines, want at least an execute line and a state line: %q", len(lines), exOut.String())
+	}
+	first := lines[0]
+	if first.Event != "execute" {
+		t.Fatalf("first executor line is event %q, want execute: %q", first.Event, exOut.String())
+	}
+	if first.MessageID != "msg-1" || first.LogicalWorkItemID != "w1" {
+		t.Errorf("execute line identity = %+v, want messageId msg-1 and work item w1", first)
+	}
+	if first.TaskID != string(task.ID) || first.ContextID != task.ContextID {
+		t.Errorf("execute line task/context = %q/%q, want %q/%q", first.TaskID, first.ContextID, task.ID, task.ContextID)
+	}
+	if lines[1].Event != "state" || lines[1].State != string(a2a.TaskStateSubmitted) {
+		t.Errorf("second executor line = %+v, want the submitted state line", lines[1])
+	}
+	if n := len(executeLines(lines)); n != 1 {
+		t.Errorf("execute lines = %d, want exactly 1", n)
+	}
+}
+
+func executeLines(lines []executionLine) []executionLine {
+	var out []executionLine
+	for _, l := range lines {
+		if l.Event == "execute" {
+			out = append(out, l)
+		}
+	}
+	return out
 }

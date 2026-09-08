@@ -37,6 +37,26 @@ func modelTimeout() time.Duration {
 	return 60 * time.Second
 }
 
+// newRootMux puts everything A2A (card and JSON-RPC) behind the ingress ledger
+// and leaves the readiness probe and the control endpoints in front of it, so
+// neither probe traffic nor arming a work item ever appears as a delivery. None
+// of these patterns carries a method: a wrong method reaches the handler's own
+// 405 instead of falling through to the A2A handler and being counted.
+func newRootMux(a2a http.Handler, lw *lineWriter, inj *injector) *http.ServeMux {
+	root := http.NewServeMux()
+	root.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		_, _ = w.Write([]byte("ok\n"))
+	})
+	root.HandleFunc("/control/inject", inj.handleInject)
+	root.HandleFunc("/control/reset", inj.handleReset)
+	root.Handle("/", newIngressMiddleware(a2a, lw, inj))
+	return root
+}
+
 func main() {
 	name := getenv("AGENT_NAME", "worker")
 	modelBase := getenv("MODEL_BASE_URL", "http://mockllm.lab.svc.cluster.local:8080/v1")
@@ -72,14 +92,11 @@ func main() {
 		}},
 	}
 
-	// Everything A2A (card and JSON-RPC) sits behind the ingress ledger; the
-	// readiness probe does not, so probe traffic never appears as deliveries.
 	a2aMux := http.NewServeMux()
 	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(card))
 	a2aMux.Handle("/", a2asrv.NewJSONRPCHandler(handler))
-	root := http.NewServeMux()
-	root.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok\n")) })
-	root.Handle("/", newIngressMiddleware(a2aMux, ledger))
+	inj := newInjector()
+	root := newRootMux(a2aMux, ledger, inj)
 
 	srv := &http.Server{
 		Addr:              listen,

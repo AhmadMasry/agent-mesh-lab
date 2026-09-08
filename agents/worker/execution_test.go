@@ -3,9 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"iter"
-	"strings"
 	"testing"
 
 	"github.com/a2aproject/a2a-go/v2/a2a"
@@ -34,7 +32,9 @@ func (completingExecutor) Cancel(_ context.Context, execCtx *a2asrv.ExecutorCont
 	}
 }
 
-func TestExecutionLedger_OneDispatchAndOneResultLinePerSendMessage(t *testing.T) {
+// The wrapper's entry line says the SDK accepted a request, so it is named
+// "received"; "dispatched" is now the executor's own "execute" line.
+func TestExecutionLedger_OneReceivedAndOneResultLinePerSendMessage(t *testing.T) {
 	var out bytes.Buffer
 	inner := a2asrv.NewHandler(completingExecutor{})
 	h := newExecutionLedger(inner, newLineWriter(&out))
@@ -51,27 +51,30 @@ func TestExecutionLedger_OneDispatchAndOneResultLinePerSendMessage(t *testing.T)
 		t.Fatalf("result is %T, want *a2a.Task", res)
 	}
 
-	var dispatch, result []executionLine
-	for _, raw := range strings.Split(strings.TrimSpace(out.String()), "\n") {
-		var l executionLine
-		if err := json.Unmarshal([]byte(raw), &l); err != nil {
-			t.Fatalf("bad line %q: %v", raw, err)
-		}
+	var received, result []executionLine
+	all := executionLines(t, out.String())
+	for _, l := range all {
 		if l.Ledger != "execution" {
 			t.Errorf("ledger = %q", l.Ledger)
 		}
+		if l.Event == "dispatch" {
+			t.Errorf("a line named dispatch remains: %+v", l)
+		}
 		switch l.Event {
-		case "dispatch":
-			dispatch = append(dispatch, l)
+		case "received":
+			received = append(received, l)
 		case "result":
 			result = append(result, l)
 		}
 	}
-	if len(dispatch) != 1 || len(result) != 1 {
-		t.Fatalf("dispatch=%d result=%d lines, want 1 and 1: %s", len(dispatch), len(result), out.String())
+	if len(all) == 0 || all[0].Event != "received" {
+		t.Fatalf("first wrapper line is %q, want received: %s", all[0].Event, out.String())
 	}
-	if dispatch[0].MessageID != "msg-1" || dispatch[0].LogicalWorkItemID != "w1" || dispatch[0].Method != "SendMessage" {
-		t.Errorf("dispatch line = %+v", dispatch[0])
+	if len(received) != 1 || len(result) != 1 {
+		t.Fatalf("received=%d result=%d lines, want 1 and 1: %s", len(received), len(result), out.String())
+	}
+	if received[0].MessageID != "msg-1" || received[0].LogicalWorkItemID != "w1" || received[0].Method != "SendMessage" {
+		t.Errorf("received line = %+v", received[0])
 	}
 	if result[0].ResultKind != "task" || result[0].TaskID != string(task.ID) || result[0].State != string(a2a.TaskStateCompleted) || result[0].MessageID != "msg-1" {
 		t.Errorf("result line = %+v (task %s %s)", result[0], task.ID, task.Status.State)

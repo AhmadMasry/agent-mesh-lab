@@ -1,4 +1,4 @@
-package main
+package a2areq
 
 import (
 	"reflect"
@@ -8,13 +8,13 @@ import (
 	"github.com/a2aproject/a2a-go/v2/a2a"
 )
 
-func TestBuildSendRequest_CarriesWorkItemIdentityAndFreshMessageID(t *testing.T) {
-	req := buildSendRequest("lwi-42", "hello")
+func TestBuild_FreshMessageIDAndWorkItemMetadata(t *testing.T) {
+	req := Build("lwi-42", "hello")
 	if req.Message == nil {
 		t.Fatalf("message is nil")
 	}
 	if req.Message.ID == "" {
-		t.Errorf("messageId is empty; the client must create it")
+		t.Errorf("messageId is empty; the caller must create it")
 	}
 	if got := req.Message.Metadata["logical_work_item_id"]; got != "lwi-42" {
 		t.Errorf("metadata.logical_work_item_id = %v, want lwi-42", got)
@@ -26,14 +26,15 @@ func TestBuildSendRequest_CarriesWorkItemIdentityAndFreshMessageID(t *testing.T)
 	if len(req.Message.Parts) != 1 || !reflect.DeepEqual(req.Message.Parts[0].Content, want.Content) {
 		t.Errorf("parts = %+v, want one text part 'lwi:lwi-42 hello'", req.Message.Parts)
 	}
-	if req.Message.TaskID != "" {
-		t.Errorf("taskId = %q, want empty on a first message", req.Message.TaskID)
+	other := Build("lwi-42", "hello")
+	if req.Message.ID == other.Message.ID || !strings.Contains(req.Message.ID, "-") {
+		t.Errorf("messageIds %q and %q should be distinct UUIDs", req.Message.ID, other.Message.ID)
 	}
 }
 
-func TestBuildSendRequest_TwoCallsGetDistinctMessageIDs(t *testing.T) {
-	a, b := buildSendRequest("x", "t"), buildSendRequest("x", "t")
-	if a.Message.ID == b.Message.ID || !strings.Contains(a.Message.ID, "-") {
-		t.Fatalf("messageIds %q and %q should be distinct UUIDs", a.Message.ID, b.Message.ID)
+func TestBuild_NoTaskIDOnFirstMessage(t *testing.T) {
+	req := Build("x", "t")
+	if req.Message.TaskID != "" {
+		t.Errorf("taskId = %q, want empty on a first message", req.Message.TaskID)
 	}
 }

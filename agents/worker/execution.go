@@ -9,12 +9,13 @@ import (
 	"github.com/a2aproject/a2a-go/v2/a2asrv"
 )
 
-// executionLine is one execution/task ledger record: what the SDK dispatched
-// to the executor and what came back, plus the Task states the executor emits.
+// executionLine is one execution/task ledger record: what the SDK received,
+// when the executor was entered, what came back, and the Task states the
+// executor emits.
 type executionLine struct {
 	Ledger            string `json:"ledger"`
 	TS                string `json:"ts"`
-	Event             string `json:"event"` // dispatch | result | state
+	Event             string `json:"event"` // received | execute | result | state
 	Method            string `json:"method,omitempty"`
 	MessageID         string `json:"messageId"`
 	TaskID            string `json:"taskId"`
@@ -36,8 +37,9 @@ func workItemOf(m *a2a.Message) string {
 }
 
 // executionLedger decorates an a2asrv.RequestHandler. Embedding delegates the
-// eleven protocol methods; the two send methods are wrapped to record dispatch
-// and result. The SDK, not this wrapper, decides whether a Task exists.
+// eleven protocol methods; the two send methods are wrapped to record what the
+// SDK received and what it returned. The SDK, not this wrapper, decides whether
+// a Task exists. The executor writes its own "execute" line when it is entered.
 type executionLedger struct {
 	a2asrv.RequestHandler
 	lw *lineWriter
@@ -47,8 +49,11 @@ func newExecutionLedger(inner a2asrv.RequestHandler, lw *lineWriter) *executionL
 	return &executionLedger{RequestHandler: inner, lw: lw}
 }
 
-func (e *executionLedger) dispatch(method string, req *a2a.SendMessageRequest) executionLine {
-	line := executionLine{Ledger: "execution", TS: now(), Event: "dispatch", Method: method}
+// received records that the SDK accepted this request. It is written before
+// the inner handler is called; the executor's "execute" line, not this one, is
+// what says agent behaviour started.
+func (e *executionLedger) received(method string, req *a2a.SendMessageRequest) executionLine {
+	line := executionLine{Ledger: "execution", TS: now(), Event: "received", Method: method}
 	if req != nil && req.Message != nil {
 		line.MessageID = req.Message.ID
 		line.TaskID = string(req.Message.TaskID)
@@ -81,14 +86,14 @@ func (e *executionLedger) result(base executionLine, res a2a.SendMessageResult, 
 }
 
 func (e *executionLedger) SendMessage(ctx context.Context, req *a2a.SendMessageRequest) (a2a.SendMessageResult, error) {
-	base := e.dispatch("SendMessage", req)
+	base := e.received("SendMessage", req)
 	res, err := e.RequestHandler.SendMessage(ctx, req)
 	e.result(base, res, err)
 	return res, err
 }
 
 func (e *executionLedger) SendStreamingMessage(ctx context.Context, req *a2a.SendMessageRequest) iter.Seq2[a2a.Event, error] {
-	base := e.dispatch("SendStreamingMessage", req)
+	base := e.received("SendStreamingMessage", req)
 	inner := e.RequestHandler.SendStreamingMessage(ctx, req)
 	return func(yield func(a2a.Event, error) bool) {
 		var last a2a.SendMessageResult

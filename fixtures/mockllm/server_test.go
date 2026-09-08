@@ -456,3 +456,91 @@ func TestStaleModeClosesConnectionAfterItGoesIdle(t *testing.T) {
 		t.Fatalf("expected request 2 to fail on the closed connection, got status %d", resp2.StatusCode)
 	}
 }
+
+// injectResponse posts an inject body and returns the status and body without
+// asserting on them, so a rejection can be inspected.
+func injectResponse(t *testing.T, base string, body string) (int, string) {
+	t.Helper()
+	resp, err := freshClient().Post(base+"/control/inject", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("inject: %v", err)
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+	return resp.StatusCode, string(b)
+}
+
+// at_count is 1-indexed. Zero or negative could never fire, so it is rejected
+// at the control endpoint rather than accepted as an injection that silently
+// never happens.
+func TestInject_RejectsAtCountBelowOne(t *testing.T) {
+	ts, _ := newTestServer(t)
+	for _, body := range []string{
+		`{"mode":"http500","at_count":0}`,
+		`{"mode":"http500","at_count":-1}`,
+	} {
+		code, got := injectResponse(t, ts.URL, body)
+		if code != http.StatusBadRequest {
+			t.Errorf("inject %s: status = %d, want 400", body, code)
+		}
+		if !strings.Contains(got, "at_count must be >= 1") {
+			t.Errorf("inject %s: body = %q, want it to name the at_count rule", body, got)
+		}
+	}
+	code, _ := injectResponse(t, ts.URL, `{"mode":"http500","at_count":1}`)
+	if code != http.StatusNoContent {
+		t.Errorf("at_count 1 was rejected with status %d", code)
+	}
+}
+
+// panicWriter fails the response mid-flight. The invocation ledger must still
+// carry the call: a counted invocation cannot depend on the response finishing.
+type panicWriter struct{ header http.Header }
+
+func (p *panicWriter) Header() http.Header {
+	if p.header == nil {
+		p.header = http.Header{}
+	}
+	return p.header
+}
+
+func (p *panicWriter) Write([]byte) (int, error) { panic("injected panic while writing the response") }
+
+func (p *panicWriter) WriteHeader(int) {}
+
+func TestInvocationLine_WrittenWhenHandlerPanics(t *testing.T) {
+	ledger := &syncBuffer{}
+	s := newServer(testConfig(), ledger)
+	req, err := http.NewRequest(http.MethodPost, "/v1/chat/completions",
+		strings.NewReader(`{"model":"mock","messages":[{"role":"user","content":"lwi:panic-1 hi"}]}`))
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Logical-Work-Item-Id", "panic-1")
+	req.Header.Set("X-Caller", "worker")
+
+	panicked := func() (p bool) {
+		defer func() {
+			if r := recover(); r != nil {
+				p = true
+			}
+		}()
+		s.handleChatCompletions(&panicWriter{}, req)
+		return false
+	}()
+	if !panicked {
+		t.Fatalf("the test writer did not panic, so this test proves nothing")
+	}
+
+	line, ok := findLastInvocationLine(ledger.String())
+	if !ok {
+		t.Fatalf("no invocation line after the panic: %q", ledger.String())
+	}
+	if line.LogicalWorkItemID != "panic-1" {
+		t.Errorf("invocation line = %+v, want the work item panic-1", line)
+	}
+}

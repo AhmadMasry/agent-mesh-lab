@@ -265,7 +265,17 @@ func (s *server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		Injection:         "none",
 	}
 
+	// The ledger line is written from a defer that reads the final line, so a
+	// call is counted even when serving it does not finish normally: a hijacked
+	// connection, or a panic on the way out. The second, asynchronous
+	// "stale-closed" line still comes from connState, not from here.
 	start := time.Now()
+	defer func() {
+		line.TS = nowRFC3339Nano()
+		line.LatencyMs = float64(time.Since(start).Microseconds()) / 1000.0
+		s.ledger.writeLine(line)
+	}()
+
 	switch {
 	case fire && mode == modeHTTP500:
 		line.Injection = mode
@@ -309,7 +319,4 @@ func (s *server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		s.writeNormalResponse(w, req, bodySHA256)
 		line.Outcome = "ok"
 	}
-	line.TS = nowRFC3339Nano()
-	line.LatencyMs = float64(time.Since(start).Microseconds()) / 1000.0
-	s.ledger.writeLine(line)
 }

@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -33,7 +35,26 @@ type ingressLine struct {
 	ContentType       string `json:"content_type"`
 	BodySHA256        string `json:"body_sha256"`
 	BodyLen           int    `json:"body_len"`
-	Status            int    `json:"status,omitempty"`
+	// Status is a pointer so the two cases stay distinguishable on the wire: an
+	// arrival line, which carries no status key at all, and a response line for
+	// a connection closed before any status was written, which carries an
+	// explicit 0. A plain int with omitempty would collapse them, and the
+	// Python receiver writes status unconditionally on response lines.
+	Status *int `json:"status,omitempty"`
+	// Injection names the receiver-side mode that fired for this delivery, on
+	// the response line only. Absent on every request that was served normally.
+	Injection string `json:"injection,omitempty"`
+}
+
+// responseLine turns an arrival line into the matching response line. Every
+// response line carries a status, including 0 for a connection closed before
+// anything was written.
+func responseLine(arrival ingressLine, status int, injection string) ingressLine {
+	line := arrival
+	line.Phase = "response"
+	line.Status = &status
+	line.Injection = injection
+	return line
 }
 
 // jsonRPCEnvelope is the tolerant view of a request body: every field is
@@ -154,10 +175,28 @@ func (w *lineWriter) write(v any) {
 	_, _ = w.out.Write(append(b, '\n'))
 }
 
+// hijackAndClose takes the connection away from net/http and closes it, so the
+// client sees the connection go away with no status of any kind. hijacked says
+// whether the connection was taken: while it is false the caller still owns the
+// ResponseWriter and may answer, and once it is true nothing may be written, so
+// a close error is reported with hijacked true and no response is possible.
+func hijackAndClose(w http.ResponseWriter) (hijacked bool, err error) {
+	hj, ok := w.(http.Hijacker)
+	if !ok {
+		return false, errors.New("response writer does not support hijacking")
+	}
+	conn, _, err := hj.Hijack()
+	if err != nil {
+		return false, err
+	}
+	return true, conn.Close()
+}
+
 // newIngressMiddleware reads and restores the body, writes the arrival line,
-// serves the request, then writes the response line with the status. It never
-// rejects a request.
-func newIngressMiddleware(next http.Handler, lw *lineWriter) http.Handler {
+// serves the request, then writes the response line with the status. It rejects
+// a request only when the injector has an armed work item matching it, and then
+// only after the delivery has already been counted on the arrival line.
+func newIngressMiddleware(next http.Handler, lw *lineWriter, inj *injector) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body []byte
 		if r.Body != nil {
@@ -167,13 +206,47 @@ func newIngressMiddleware(next http.Handler, lw *lineWriter) http.Handler {
 		}
 		line := parseIngress(r, body)
 		lw.write(line)
+		// The arrival is on the ledger before this point, so an injected
+		// failure is still a counted delivery. take disarms the work item, so
+		// one arming fires once; nothing here repeats or retries.
+		if mode, ok := inj.take(line.LogicalWorkItemID); ok {
+			switch mode {
+			case modeHTTP503BeforeDispatch:
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte(`{"error":"injected"}`))
+				lw.write(responseLine(line, http.StatusServiceUnavailable, mode))
+				return
+			case modeCloseAfterRead:
+				// Recorded as what actually reached the client, not as the close
+				// that was asked for: 0 when the connection was taken away, and
+				// the status actually written when it could not be.
+				status := 0
+				hijacked, err := hijackAndClose(w)
+				switch {
+				case !hijacked:
+					log.Printf("ingress: close-after-read could not hijack the connection: %v", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					status = http.StatusInternalServerError
+				case err != nil:
+					// Taken away, so nothing may be written; the client sees the
+					// connection go away either way.
+					log.Printf("ingress: close-after-read hijacked the connection but closing it failed: %v", err)
+				}
+				lw.write(responseLine(line, status, mode))
+				return
+			default:
+				// Unreachable while arm is unexported and every routed path
+				// validates the mode. Serving the request normally keeps an
+				// unknown mode from turning into a dropped delivery.
+				log.Printf("ingress: armed mode %q is not served here; serving the request normally", mode)
+			}
+		}
 		rec := &statusRecorder{ResponseWriter: w}
 		next.ServeHTTP(rec, r)
 		if rec.status == 0 {
 			rec.status = http.StatusOK
 		}
-		line.Phase = "response"
-		line.Status = rec.status
-		lw.write(line)
+		lw.write(responseLine(line, rec.status, ""))
 	})
 }
