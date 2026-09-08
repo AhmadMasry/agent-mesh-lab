@@ -1,0 +1,42 @@
+# Job template for the duplicate-delivery harness. Like loadgen-job.yaml it is
+# NOT listed in the base kustomization: a Job in the overlay would run on every
+# apply, and each replay needs its own Job named after the work item. The
+# `replay` Make target substitutes ${LWI}, ${TARGET_URL} and ${MODE} and pipes
+# the result to `ko apply -f -`.
+#
+# This is the in-cluster path: the Job's pod is ztunnel-captured, so the request
+# reaches the receiver through the istiod-driven waypoint. `make ledgers
+# LWI=<id>` reads the two client lines from this pod's log.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: replay-${LWI}
+  namespace: lab
+  labels:
+    app: replay
+    lwi: "${LWI}"
+spec:
+  # No retry: a failed attempt is a counted outcome, and a second pod would be a
+  # third and fourth delivery that no ledger asked for.
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: replay
+        lwi: "${LWI}"
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: replay
+          image: ko://github.com/AhmadMasry/agent-mesh-lab/fixtures/replay
+          env:
+            - name: TARGET_URL
+              value: "${TARGET_URL}"
+            - name: LWI
+              value: "${LWI}"
+            - name: MODE
+              value: "${MODE}"
+            - name: TEXT
+              value: "hello"
+            - name: GAP_MS
+              value: "${GAP_MS}"

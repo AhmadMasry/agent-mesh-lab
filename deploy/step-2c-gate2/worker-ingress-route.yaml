@@ -1,0 +1,26 @@
+# The worker's own route through the agentgateway ingress, so an out-of-cluster
+# stimulus can address either receiver on the one Gateway. No retry stanza and no
+# filters, the same as the orchestrator's route.
+#
+# The route is keyed by hostname. Step 2b's `orchestrator-ingress` route sets no
+# hostnames, so it matches every host; Gateway API ranks a route with a matching
+# hostname above one without (a more specific hostname match wins, and a route
+# with no hostnames matches every host at the lowest specificity), so
+# `Host: worker.lab.internal` reaches the worker and every other host still
+# reaches the orchestrator. `orchestrator-ingress` is left exactly as step 2b
+# wrote it.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: worker-ingress
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-system
+  hostnames:
+    - worker.lab.internal
+  rules:
+    - backendRefs:
+        - name: worker
+          port: 8080

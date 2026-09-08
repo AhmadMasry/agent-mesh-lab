@@ -1,0 +1,12 @@
+# Enrols the orchestrator Service on its own waypoint, so an in-cluster stimulus
+# to the Python receiver traverses a gateway the way one to the worker does. A
+# Service-scoped waypoint is selected by the client's ztunnel, so this takes
+# effect without restarting any pod. The waypoint named here is the orchestrator's
+# own, not the worker's; the reason is in orchestrator-waypoint.yaml.
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+  namespace: lab
+  labels:
+    istio.io/use-waypoint: agentgateway-waypoint-orch

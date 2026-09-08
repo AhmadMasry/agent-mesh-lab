@@ -1,0 +1,43 @@
+# Step 2c: the Gate 2 stimulus paths, both reachable for both receivers.
+# Applies on top of step 2b; nothing in step 2b is edited in place.
+#
+# Step 2b left the worker Service bound to the istiod-driven waypoint step 2
+# created, and the ingress carrying one catch-all HTTPRoute to the orchestrator.
+# Gate 2 sends the same message twice to either receiver, from inside the
+# cluster and from outside it, so this overlay adds what was missing:
+#
+#   orchestrator-waypoint.yaml      a second istiod-driven waypoint, for the
+#     orchestrator Service alone, so an in-cluster stimulus to the Python
+#     receiver traverses a gateway the way one to the worker does.
+#   orchestrator-use-waypoint.yaml  binds Service/orchestrator to that waypoint.
+#   worker-ingress-route.yaml       gives the worker its own hostname on the
+#     agentgateway ingress, so an out-of-cluster stimulus can reach it.
+#
+# Two waypoint instances, one per receiver Service, rather than one shared.
+# Measured on 2026-09-09 at Istio 1.31.0 with GatewayClass
+# istio-agentgateway-waypoint and agentgateway v1.5.0: with both Services bound
+# to a single waypoint, requests addressed to the orchestrator Service were
+# answered by the worker, and adding a matching Service-attached HTTPRoute for
+# the orchestrator inverted it so both Services were answered by the
+# orchestrator. Reproduction and draft issue text:
+# docs/upstream/istio-waypoint-shared-by-two-services-misroutes.md; the decision
+# is dated 2026-09-09 in docs/proposal-notes.md.
+#
+# What every Gate 2 entry states in its Method. An in-cluster stimulus reaches
+# its receiver through that receiver's own istiod-driven waypoint. An
+# out-of-cluster stimulus reaches its receiver through the agentgateway ingress
+# and no waypoint: the ingress, under agentgateway's own control plane, dials
+# the backend pod on port 15008 rather than the Service VIP, so a Service-scoped
+# waypoint is not selected on the ingress -> receiver hop. Both facts were
+# measured, not assumed; the evidence is in the Task 1 report.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../step-2b-agw-ingress-egress
+  - orchestrator-waypoint.yaml
+  - worker-ingress-route.yaml
+patches:
+  - path: orchestrator-use-waypoint.yaml
+    target:
+      kind: Service
+      name: orchestrator
