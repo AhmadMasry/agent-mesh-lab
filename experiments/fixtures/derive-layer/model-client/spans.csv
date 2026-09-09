@@ -1,0 +1,11 @@
+trace_id,span_id,parent_span_id,service,operation,start_us,duration_us,lab_work_item,lab_message_id,http_status
+t0,c0,,loadgen,HTTP POST,100,1000,,,200
+t0,w1,wp1,worker,POST /,110,1000,,,200
+t0,wc1,w1,worker,HTTP POST,120,1000,,,500
+t0,e1,wc1,agw-egress,POST /*,121,1000,,,
+t0,eb1,e1,agw-egress,POST mockllm.lab.svc.cluster.local:8080,122,1000,,,
+t0,m1,eb1,mockllm,POST /v1/chat/completions,123,1000,,,500
+t0,wc2,w1,worker,HTTP POST,300,1000,,,200
+t0,e2,wc2,agw-egress,POST /*,301,1000,,,
+t0,eb2,e2,agw-egress,POST mockllm.lab.svc.cluster.local:8080,302,1000,,,
+t0,m2,eb2,mockllm,POST /v1/chat/completions,303,1000,,,200

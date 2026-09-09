@@ -11,7 +11,7 @@ ORCHESTRATOR_IMAGE := orchestrator:dev
 #   docker image inspect paketobuildpacks/builder-jammy-base --format '{{index .RepoDigests 0}}'
 PACK_BUILDER := paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
 
-.PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers replay replay-waypoint replay-ingress export-trace retry-on retry-off test orchestrator-image
+.PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers matrix replay replay-waypoint replay-ingress export-trace retry-on retry-off test orchestrator-image
 
 cluster-kind:
 	@if kind get clusters 2>/dev/null | grep -qx "$(CLUSTER_NAME)"; then \
@@ -436,6 +436,30 @@ replay-ingress:
 	if [ -n "$(OUT)" ]; then mkdir -p "$(OUT)"; printf '%s\n' "$$out" > "$(OUT)/client.jsonl"; fi; \
 	exit $$rc
 
+# matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress>] [REPS=20]
+#
+# One row of the A.3 retry-location matrix. RUN names the row and, with SUB, its
+# sub-row; RECEIVER names the SDK under test, `go` being the worker and `py` the
+# orchestrator. The script switches on exactly the knobs that row names, arms the
+# injection that row names once per repetition, sends one stimulus per
+# repetition, and writes the three ledgers, the client lines and the exported
+# trace per work item under experiments/runs/<date>-a3-<run>-<receiver>[-<sub>]/,
+# with one summary row per repetition. Everything it changed is put back on every
+# exit path, loudly.
+#
+# The script takes more than this target passes: DRY_RUN (default on, one
+# repetition under a scratch nonce whose directory is deleted), RUN_ID, RUN_ITEM,
+# COLLECT_WAIT and TRACE_WAIT are read from the environment, so a chunked or
+# re-nonced run calls experiments/gate3-matrix.sh directly. REPS is defaulted
+# here rather than passed through empty, because the script refuses an empty
+# value rather than silently spending repetitions.
+matrix:
+	@if [ -z "$(RUN)" ] || [ -z "$(RECEIVER)" ]; then \
+		echo "usage: make matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress>] [REPS=20]" >&2; \
+		exit 1; \
+	fi
+	RUN=$(RUN) RECEIVER=$(RECEIVER) SUB=$(SUB) REPS=$(if $(REPS),$(REPS),20) experiments/gate3-matrix.sh
+
 # verify-baseline [STEP=1|2] [REPS=5]: run the baseline (checklist box 4) on the
 # running cluster; writes experiments/runs/<date>-baseline-step<STEP>/.
 verify-baseline:
@@ -515,3 +539,22 @@ test:
 		printf '%s\n' "$$out" | diff -u experiments/fixtures/jaeger-trace-sample.spans.csv - >&2 || true; \
 		exit 1; \
 	fi
+	@# The layer derivation the matrix harness labels every second delivery with,
+	@# run against committed fixtures. Four are real repetitions copied from
+	@# experiments/runs/ (Task 2's three gateway retry probes and one Task 3
+	@# baseline work item); the rest are synthetic, because a derivation with a
+	@# label no test can reach is a derivation nobody has read. The expected
+	@# labels are in experiments/fixtures/derive-layer/expected.txt.
+	@fail=0; \
+	while read -r name receiver expected; do \
+		[ -n "$$name" ] || continue; \
+		case "$$name" in \#*) continue ;; esac; \
+		got=$$(experiments/lib/derive-layer.sh experiments/fixtures/derive-layer/$$name $$receiver | sed -n 's/^layer=//p'); \
+		if [ "$$got" = "$$expected" ]; then \
+			echo "ok  derive-layer: $$name -> $$got"; \
+		else \
+			echo "FAIL derive-layer: $$name -> $$got, expected $$expected" >&2; \
+			fail=1; \
+		fi; \
+	done < experiments/fixtures/derive-layer/expected.txt; \
+	[ "$$fail" = "0" ] || exit 1

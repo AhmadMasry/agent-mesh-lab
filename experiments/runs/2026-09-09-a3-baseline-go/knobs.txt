@@ -1,0 +1,14 @@
+== 2026-09-09T15:10:23Z | RUN=baseline RECEIVER=go | RUN_ID=181023 | REPS=20 ==
+row knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport MODEL_RETRIES=<left as deployed> route-retry=none
+receiver injection per repetition: none
+mock injection per repetition: {"mode":"close","lwi":"__LWI__"}
+stimulus: loadgen-job
+-- before --
+deployment/worker MODEL_RETRIES=
+deployment/orchestrator MODEL_MAX_RETRIES=0
+deployment/orchestrator DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+deployment/orchestrator PLAN_MODEL_CALL=off
+CLIENT_* on any Deployment in lab (empty means none):
+the Job this run renders: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport
+2026-09-09T15:10:23Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-09T15:10:23Z baseline retry-free assertion passed: stanzas=0 MODEL_RETRIES=<unset> CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport

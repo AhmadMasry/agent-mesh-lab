@@ -328,6 +328,71 @@ spend repetitions. The worker's own model client has one retry knob for the
 matrix rows, `MODEL_RETRIES`, which defaults to 0 and has a unit test that fails
 if that default changes.
 
+### The A.3 retry-location matrix
+
+One row of the matrix per invocation:
+
+```
+make matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress|ingress-incluster>] [REPS=20]
+RUN=<row> RECEIVER=<go|py> [SUB=<sub>] [REPS=20] [DRY_RUN=on|off] [RUN_ID=<nonce>] [RUN_ITEM=<name>] experiments/gate3-matrix.sh
+```
+
+`RUN` names the row and `SUB` its sub-row, which `R1` (`http`, `sdk`) and `R2`
+(`waypoint`, `ingress`, `ingress-incluster`) have and the others do not.
+`RECEIVER` names the SDK under test: `go` is the worker, `py` the orchestrator,
+which is put into model mode for its rows by unsetting `DOWNSTREAM_A2A_URL` for
+the run and is put back afterwards.
+
+Which gateway a row means is not the same object for the two receivers, because
+the two are not behind the same proxy: the worker sits behind its own
+istiod-driven waypoint, and the orchestrator behind the agentgateway ingress its
+agent card advertises. So `R2`'s gateway sub-row is `waypoint` for the Go
+receiver and `ingress-incluster` for the Python one, and `R4` composes with the
+waypoint route at the Go receiver and the ingress route at the Python one. Rows
+that would switch a retry on for a route the stimulus never crosses are refused
+before anything is sent, each with its reason: any row naming the waypoint route
+for the Python receiver, because no `HTTPRoute` names the orchestrator Service
+as a parent; and `ingress-incluster` on the Go receiver, because an in-cluster
+Job to the worker Service crosses the worker's waypoint rather than the ingress.
+The per-route stanza assertion cannot catch either case on its own, since the
+stanza does land on a live route, just not one that receiver's stimulus
+crosses. Each row switches on exactly the knobs it names — the client's
+through the Job template, the receiver's model client through `kubectl set env`,
+the gateway's through `make retry-on` — arms one injection per repetition keyed
+by that repetition's work item, sends one stimulus, and then collects the three
+ledgers, the client lines and the exported trace into
+`experiments/runs/<date>-a3-<run>-<receiver>[-<sub>]/<work item>/`. `summary.csv`
+holds one row per repetition and `knobs.txt` holds every knob's value and every
+route's stanza count, per route and cluster-wide, before the run and again after
+it whatever way it ended. Everything the run changed is put back from a trap on
+`EXIT`, `INT` and `TERM`; a `SIGKILL` is the one path no trap covers, and
+`knobs.txt` names the exact `kubectl set env` that puts the change back. A
+restore that fails says so and leaves the script non-zero.
+
+Which layer made a second delivery is decided by `experiments/lib/derive-layer.sh`
+from one repetition's ledgers and trace, and from nothing else: no knob value
+reaches it, so a row cannot be labelled by what it was expected to do. The
+ledgers say whether there was a second delivery and whether it was
+byte-identical; a new JSON-RPC id under the same `messageId` is the SDK resend.
+Byte-identical deliveries are separated by parent span ids rather than by
+service names, because at step 3 a proxy always sits between the client and the
+receiver: two receiver server spans under one parent span id, or under two
+parents that are themselves one proxy span, is the gateway, and anything else is
+the client's HTTP layer. A second model call is the receiver's if two calls
+entered the egress waypoint and the proxy's if one call entered it and was sent
+upstream twice. `make test` runs the derivation against committed fixtures in
+`experiments/fixtures/derive-layer/`, three of them real gateway retries from
+the Task 2 probes.
+
+The `baseline` row asserts rather than assumes: zero `retry:` stanzas across
+every HTTPRoute, no `CLIENT_*` on any Deployment, the receiver's model-retry knob
+read back off the live object, and the Job rendered with all three client knobs
+off. Its injection is one `close` at the model endpoint, as Gate 1's baseline
+used, so the failure is raw and any second delivery would be somebody's retry.
+Every invocation runs its own one-repetition dry run first, under a scratch work
+item whose directory is deleted, and every work-item id carries the run's
+wall-clock nonce, because the trace backend and the pod logs both outlive a run.
+
 **A cluster that has been up for a day on a laptop.** ztunnel's workload certificates live 24 hours and, at Istio
 1.31.0, are renewed on a timer that does not advance while the Docker Desktop VM is paused by host sleep. Observed
 on 2026-09-08: after a day of sleep/wake cycles every mesh hop failed with "certificate expired" while the
