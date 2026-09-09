@@ -1,0 +1,70 @@
+== the spike: does an AgentgatewayPolicy reach an istiod-driven agentgateway waypoint? ==
+-- policy applied
+agentgatewaypolicy.agentgateway.dev/tracing-waypoint-spike created
+
+-- policy read back
+status:
+  ancestors:
+  - ancestorRef:
+      group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-waypoint
+      namespace: lab
+    conditions:
+    - lastTransitionTime: "2026-09-09T07:43:02Z"
+      message: Policy accepted
+      observedGeneration: 1
+      reason: Valid
+      status: "True"
+      type: Accepted
+    - lastTransitionTime: "2026-09-09T07:43:02Z"
+      message: Attached to all targets
+      observedGeneration: 1
+      reason: Attached
+      status: "True"
+      type: Attached
+    controllerName: agentgateway.dev/agentgateway
+
+-- one clean request to the worker through agentgateway-waypoint, work item g2c-spike1-worker
+export-trace: lab.work_item=g2c-spike1-worker window 2026-09-09T06:44:07Z..2026-09-09T07:45:07Z -> 8 span(s) in $HOME/.claude/jobs/66f42ee1/tmp/spike-worker/spans.csv
+
+-- services in that trace
+   2 agw-egress
+   2 loadgen
+   1 mockllm
+   3 worker
+
+-- parentage (a parent_span_id naming no exported span is a hop that emitted none)
+span_id,parent_span_id,service,operation
+038df67bfb3ece4a,,loadgen,HTTP GET
+0a5b17a7368e05d0,77548906ecd39c43,worker,GET /.well-known/agent-card.json
+38262f9ce7f24ae7,,loadgen,HTTP POST
+2427aa957904c6fc,b0b0e5f546dd36eb,worker,POST /
+ba9d653ec0e3986e,2427aa957904c6fc,worker,HTTP POST
+87f4e151f0e25cad,ba9d653ec0e3986e,agw-egress,POST /*
+9c96ba4027f1aba1,87f4e151f0e25cad,agw-egress,POST mockllm.lab.svc.cluster.local:8080
+e1e585b7b0708827,9c96ba4027f1aba1,mockllm,POST /v1/chat/completions
+
+-- the waypoint proxy's own config_dump (port-forward to 15000, the read agentgateway's retry page documents)
+config_dump bytes:    50605
+top-level keys: backends, binds, config, models, policies, routes, services, version, workloads
+occurrences of the string "tracing": 1
+occurrences of "otel-collector": 9
+policies the proxy holds: 0
+where "tracing" appears:
+{"ipv6Enabled":true,"network":"","selfIdentity":{"wds":{"name":"agentgateway-waypoint-6dd7855fcd-t7dtd","namespace":"lab","cluster_id":"Kubernetes"}},"terminationMaxDeadline":"5s","terminationMinDeadline":"0s","numWorkerThreads":2,"adminAddr":{"Localhost":[true,15000]},"statsAddr":{"SocketAddr":"[::]:15020"},"histograms":"classic","readinessAddr":{"SocketAddr":"[::]:15021"},"selfAddr":{"gateway":"agentgateway-waypoint","namespace":"lab"},"hbone":{"windowSize":4194304,"connectionWindowSize":16777216,"frameSize":1048576,"poolMaxStreamsPerConn":100,"poolUnusedReleaseTimeout":{"secs":300,"nanos":0
+what the otel-collector occurrences are:
+telemetry/otel-collector
+
+the single "tracing" occurrence, in context (the grep that produced this line asked for 90
+characters of leading context and the match has fewer, so it printed nothing; the value is
+quoted in the section below, read back from the same file with a fixed-width window):
+
+-- outcome: the policy is Accepted and Attached by controller agentgateway.dev/agentgateway, the proxy's own
+   config_dump holds 0 policies and no tracing backend, and the request produced 0 spans from the waypoint.
+
+-- the proxy's own tracing setting in that dump
+   "spiffe": null, "tracing": null, "metrics": { ... }
+
+-- the policy was removed again: it produced no span, so it does not stay in the overlay
+agentgatewaypolicy.agentgateway.dev "tracing-waypoint-spike" deleted from lab namespace

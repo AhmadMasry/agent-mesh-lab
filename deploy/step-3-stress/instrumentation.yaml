@@ -1,13 +1,15 @@
 # The Instrumentation resource the OpenTelemetry Operator reads when a pod asks for
-# Python auto-instrumentation. It is created here, in lab, so that Task 1 has only an
-# annotation to add; no pod carries that annotation yet, so applying this changes the
-# behaviour of nothing.
+# Python auto-instrumentation.
 #
-# The annotation Task 1 will add is instrumentation.opentelemetry.io/inject-python,
-# whose value is "true" for a resource in the same namespace, a bare name for one in
-# the current namespace, or "<namespace>/<name>" for one elsewhere.
+# **Nothing asks for it.** No pod carries the instrumentation.opentelemetry.io/inject-python
+# annotation: the Python agent is instrumented by the OpenTelemetry distro installed in its
+# own image and started by `opentelemetry-instrument`, which is the author's decision of
+# 2026-09-09. This resource and the Operator install are kept as the record of the route
+# that was measured, in four states, and not taken; the counts are in findings.md and the
+# evidence in experiments/runs/2026-09-09-a3-trace-per-work-item/python-injection/.
+# Removing the Operator from step 3 altogether is a separate decision, not taken here.
 #
-# Fields, the image tag, and the header-capture variable are pinned in versions.yaml
+# Fields, the image tag, and the header-capture variables are pinned in versions.yaml
 # under opentelemetry-operator and otel-python-autoinstrumentation.
 apiVersion: opentelemetry.io/v1alpha1
 kind: Instrumentation
@@ -23,7 +25,18 @@ spec:
     - tracecontext
     - baggage
   python:
-    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python:0.64b0
+    # 0.65b0, not the 0.64b0 the Operator release notes name, for a measured reason.
+    # The injected directory and this agent's virtualenv share the `opentelemetry`
+    # namespace package at run time, so the two have to carry the same
+    # opentelemetry-api: 0.64b0 carries 1.43.0 and this project resolves 1.44.0
+    # transitively under google-api-core, and the mismatch stops the
+    # instrumentation initialising (ImportError on _OTEL_PYTHON_EVENT_LOGGER_PROVIDER,
+    # which 1.43.0 defines and 1.44.0 removed). 0.65b0 carries 1.44.0 and matches.
+    # It is not an unsourced choice: the Operator repository at v0.158.0 pins the
+    # 0.65b0 packages in autoinstrumentation/python/requirements.txt even though its
+    # release notes and versions.txt say 0.64b0, an inconsistency already recorded in
+    # versions.yaml. Both images and what each carries were read in the Task 1 session.
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python:0.65b0
     env:
       # The four identity headers this lab carries on every model call and every
       # agent-to-agent request. The ASGI instrumentation records each named header on
@@ -32,4 +45,12 @@ spec:
       # copies the first element of each onto lab.work_item, lab.message_id,
       # lab.task_id and lab.caller.
       - name: OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+        value: "X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller"
+      # The same four on the client side, so the agent's outbound forward is
+      # attributable to the work item as well as its inbound request. Read at
+      # opentelemetry-python-contrib v0.64b0: opentelemetry-util-http defines
+      # OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST beside the server
+      # variable, and the httpx instrumentation reads it, producing the same
+      # http.request.header.<name> attribute with a list value.
+      - name: OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
         value: "X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller"

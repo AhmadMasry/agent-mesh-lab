@@ -6,6 +6,21 @@ dependencies = [
     "a2a-sdk[http-server]==1.1.2",
     "openai==3.9.0",
     "uvicorn==0.52.4",
+    # Telemetry, installed in the image and started by the `opentelemetry-instrument`
+    # launcher in the Procfile. No OpenTelemetry code exists in this project; these are
+    # here so the launcher and the two instrumentations it needs are present, and so the
+    # versions are the project's own rather than an injected directory's. The two
+    # instrumentations are the ones this agent's traffic goes through: Starlette, which
+    # is what the A2A SDK's server is built on, and httpx, which is what its client uses.
+    # opentelemetry-instrumentation-asgi arrives under the Starlette one.
+    #
+    # 0.65b0 and 1.44.0 are one release, "Version 1.44.0/0.65b0"; the project already
+    # resolved opentelemetry-api 1.44.0 transitively, so nothing else moves. Pinned in
+    # versions.yaml under otel-python-distro.
+    "opentelemetry-distro==0.65b0",
+    "opentelemetry-exporter-otlp-proto-http==1.44.0",
+    "opentelemetry-instrumentation-starlette==0.65b0",
+    "opentelemetry-instrumentation-httpx==0.65b0",
 ]
 
 [dependency-groups]

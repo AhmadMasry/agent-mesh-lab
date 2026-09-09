@@ -261,3 +261,54 @@ def test_retry_on_mode_is_asked_for_by_name(monkeypatch):
     monkeypatch.delenv("CLIENT_TRANSPORT_RESEND")
     monkeypatch.setenv("CLIENT_RETRY_ON", "transport+503")
     assert not isinstance(Forwarder(url="http://downstream/").transport, ResendOnceTransport)
+
+
+class HTTPForwardingFakeClient:
+    """Stands in for the a2a-python client by doing the part this test is about: sending
+    the forward over the Forwarder's own httpx client, so the request the transport
+    records is the request a forward puts on the wire."""
+
+    def __init__(self, http: httpx.AsyncClient) -> None:
+        self._http = http
+        self.requests: list[SendMessageRequest] = []
+
+    def send_message(self, request: SendMessageRequest):
+        self.requests.append(request)
+        http = self._http
+
+        async def stream():
+            await http.post("http://downstream/", json={"jsonrpc": "2.0", "id": "fixed", "method": "SendMessage"})
+            response = StreamResponse()
+            response.message.CopyFrom(Message(message_id="downstream", role=Role.ROLE_AGENT, parts=[Part(text="the fixed answer")]))
+            yield response
+
+        return stream()
+
+
+async def test_forward_request_carries_identity_headers():
+    """A forward names its work item, its own new messageId and its caller in headers.
+
+    The work item travels in Message.metadata, where no HTTP instrumentation reads
+    it, so the downstream agent's server span could not otherwise be attributed to
+    the work item. The headers are beside the message, not in it: the A2A body is
+    unchanged. The task id is not among them because the forward has none yet.
+    """
+    recorder = RecordingTransport()
+    client = httpx.AsyncClient(transport=recorder, headers={"X-Caller": "orchestrator"})
+    forwarder = Forwarder(url="http://downstream/", http_client=client)
+    forwarder._client = HTTPForwardingFakeClient(client)
+
+    assert await forwarder.forward("hello", "lwi-1") == "the fixed answer"
+
+    assert len(recorder.headers) == 1
+    sent = recorder.headers[0]
+    assert sent["x-logical-work-item-id"] == "lwi-1"
+    assert sent["x-caller"] == "orchestrator"
+    assert sent["x-a2a-message-id"] == forwarder._client.requests[0].message.message_id
+    assert "x-a2a-task-id" not in sent
+
+    # The two per-forward headers are scoped to the forward: a request the client
+    # sends outside one (the downstream card fetch is the real case) carries neither.
+    await client.post("http://downstream/", json={})
+    assert "x-logical-work-item-id" not in recorder.headers[1]
+    assert "x-a2a-message-id" not in recorder.headers[1]

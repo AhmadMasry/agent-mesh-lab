@@ -29,3 +29,11 @@ spec:
               value: "${LWI}"
             - name: TEXT
               value: "hello"
+            # Tracing. The load client emits spans only when it is told where to
+            # send them, so these two are what start a work item's trace at the
+            # client; a run of an earlier gate's script without them is unchanged
+            # in every other respect.
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.telemetry.svc.cluster.local:4318"
+            - name: OTEL_SERVICE_NAME
+              value: "loadgen"

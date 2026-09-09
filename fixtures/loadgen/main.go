@@ -38,7 +38,39 @@ import (
 
 	"github.com/AhmadMasry/agent-mesh-lab/internal/a2areq"
 	"github.com/AhmadMasry/agent-mesh-lab/internal/httpclient"
+	labotel "github.com/AhmadMasry/agent-mesh-lab/internal/otel"
 )
+
+// identityTransport puts the two identity headers a load client knows on every
+// request it sends: the work item this Job exists to send, and its own name.
+// They are static because one Job sends one work item.
+//
+// They exist because an A2A request carries the work item inside
+// Message.metadata, which no HTTP instrumentation reads, so the receiver's
+// server span would otherwise have nothing to attribute it to. Nothing about
+// the A2A message changes: these are HTTP headers beside it, and the body is
+// untouched.
+type identityTransport struct {
+	base     http.RoundTripper
+	workItem string
+}
+
+func (t identityTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// A RoundTripper may not modify the request it was given.
+	next := req.Clone(req.Context())
+	next.Header.Set("X-Logical-Work-Item-Id", t.workItem)
+	next.Header.Set("X-Caller", "loadgen")
+	return t.base.RoundTrip(next)
+}
+
+// instrument wraps a client's transport so its requests carry the identity
+// headers and a trace context. The client's own settings, including whichever
+// retry knob built it, are the ones it was constructed with; nothing here adds
+// a retry or changes a timeout.
+func instrument(hc *http.Client, workItem string) *http.Client {
+	hc.Transport = labotel.Transport(identityTransport{base: hc.Transport, workItem: workItem})
+	return hc
+}
 
 type clientLine struct {
 	Ledger string `json:"ledger"`
@@ -107,15 +139,33 @@ func main() {
 		fmt.Println(string(b))
 	}
 
+	// Tracing, if OTEL_EXPORTER_OTLP_ENDPOINT names a collector; nothing at all
+	// otherwise. This process is a Job that exits as soon as its one send is
+	// done, and a batch span processor flushes on a timer, so every exit path
+	// below goes through done(), which shuts the provider down first.
+	otelShutdown, err := labotel.Setup(context.Background())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "loadgen: tracing setup:", err)
+		os.Exit(2)
+	}
+	done := func(code int) {
+		flushCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := otelShutdown(flushCtx); err != nil {
+			fmt.Fprintln(os.Stderr, "loadgen: tracing shutdown:", err)
+		}
+		os.Exit(code)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	hc := k.httpClient(90 * time.Second)
+	hc := instrument(k.httpClient(90*time.Second), lwi)
 
 	card, err := agentcard.NewResolver(hc).Resolve(ctx, target)
 	if err != nil {
 		line.Error = "resolve card: " + err.Error()
 		emit()
-		os.Exit(3)
+		done(3)
 	}
 	for _, iface := range card.SupportedInterfaces {
 		line.CardProtocolVersions = append(line.CardProtocolVersions, string(iface.ProtocolVersion))
@@ -124,7 +174,7 @@ func main() {
 	if err != nil {
 		line.Error = "create client: " + err.Error()
 		emit()
-		os.Exit(3)
+		done(3)
 	}
 
 	req := a2areq.Build(lwi, text)
@@ -138,7 +188,7 @@ func main() {
 		if !k.sdkResend {
 			// The process exits non-zero only because no result object exists
 			// to describe.
-			os.Exit(3)
+			done(3)
 		}
 		// The SDK-layer resend asked for by CLIENT_SDK_RESEND: the same request
 		// object, handed to SendMessage a second time. What the SDK then puts on
@@ -149,7 +199,7 @@ func main() {
 		if err != nil {
 			line.Error = err.Error()
 			emit()
-			os.Exit(3)
+			done(3)
 		}
 	}
 	switch r := res.(type) {
@@ -164,4 +214,5 @@ func main() {
 		line.ResultKind = fmt.Sprintf("%T", res)
 	}
 	emit()
+	done(0)
 }

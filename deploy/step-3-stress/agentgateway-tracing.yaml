@@ -1,0 +1,62 @@
+# OTLP export for the two proxies that agentgateway's own control plane drives: the
+# ingress in front of Agent A and the egress waypoint in front of the model.
+#
+# The proxy emits no traces until asked to ("The agentgateway proxy does not emit
+# traces by default", the project's tracing setup page), and what asks it is an
+# AgentgatewayPolicy targeting the Gateway, with the settings under
+# spec.frontend.tracing. The shape and every field below were read at Task 0 and are
+# recorded, with their URLs, in experiments/runs/2026-09-09-a3-pipeline/sources.md;
+# the CRD on this cluster was read back with `kubectl explain`.
+#
+# A policy selects a target in its own namespace ("The object must be in the same
+# namespace as the policy", the CRD's own description of targetRefs), so this is two
+# objects rather than one: each sits beside the Gateway it configures. The backendRef,
+# by contrast, names a Service in another namespace, which is the shape the project's
+# OTel-collector page documents.
+#
+# Both sampling settings are set because they cover different requests, and their
+# defaults differ: randomSampling decides a request that carries no trace context and
+# defaults to false, clientSampling decides one that does and defaults to true. This
+# lab counts hops, so a sampled-away hop would read as a missing one; both are on.
+#
+# The two istiod-driven waypoints in `lab` are not targeted here. Whether a policy
+# reaches them at all is the Task 1 spike, recorded in findings.md.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: tracing
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-ingress
+  frontend:
+    tracing:
+      backendRef:
+        name: otel-collector
+        namespace: telemetry
+        port: 4317
+      protocol: GRPC
+      randomSampling: "true"
+      clientSampling: "true"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: tracing
+  namespace: agentgateway-egress
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agw-egress
+  frontend:
+    tracing:
+      backendRef:
+        name: otel-collector
+        namespace: telemetry
+        port: 4317
+      protocol: GRPC
+      randomSampling: "true"
+      clientSampling: "true"

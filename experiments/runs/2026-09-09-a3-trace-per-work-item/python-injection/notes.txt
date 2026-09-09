@@ -1,0 +1,61 @@
+Four measured states of the OpenTelemetry Operator's Python injection against this agent.
+
+**None of them is what the lab runs.** The author decided on 2026-09-09 that the Python
+agent is instrumented by the OpenTelemetry distro installed in its own image and started
+by `opentelemetry-instrument`, so no pod is annotated for injection, the overlay sets no
+PYTHONPATH, and no version has to be matched across a boundary. The counted five
+repetitions in the parent directory ran under that launcher, not under any state below;
+the proof that the pod carries no injection is ../launcher-proof.txt.
+
+These four are the record of the route that was measured and not taken. Each is one
+request, made to show what a configuration does rather than to count a behaviour under
+load. The import resolution behind them is in ../injection-shadowing.txt.
+
+  1. case-default-pythonpath-*        The Operator's default PYTHONPATH, its own
+     a3t-inject-default-pythonpath/   directory first. Its protobuf (7.36.0 at image
+                                      0.65b0, 7.35.1 at 0.64b0) shadows the agent's own
+                                      6.33.6, which a2a-sdk 1.1.2 requires
+                                      (protobuf<7,>=5.29.5).
+                                      COUNTED: 1 delivery, 0 executor entries, 0 Tasks,
+                                      0 model invocations; the execution and client
+                                      ledgers both carry "'FieldDescriptor' object has
+                                      no attribute 'label'".
+
+  2. case-mismatched-api-*            PYTHONPATH naming the agent's site-packages, with
+     a3t-inject-mismatched-api/       image 0.64b0, whose opentelemetry-api 1.43.0 is
+                                      shadowed by the agent's 1.44.0 inside the shared
+                                      opentelemetry namespace package.
+                                      COUNTED: 1/1/1/1 and TASK_STATE_COMPLETED, and
+                                      0 orchestrator spans; the trace holds 5, all from
+                                      the worker, the egress and the mock. Auto-
+                                      initialisation died with ImportError on
+                                      _OTEL_PYTHON_EVENT_LOGGER_PROVIDER.
+
+  3. case-lockfile-pin-*              PYTHONPATH, image 0.64b0, and opentelemetry-api
+     a3t-inject-lockfile-pin/         pinned to 1.43.0 in the agent's pyproject and
+                                      lockfile so the two agree. Measured at the
+                                      controller's request; the pin was reverted and is
+                                      in no commit, and relocking had also moved
+                                      google-api-core 2.36.0 -> 2.34.0.
+                                      COUNTED: 1/1/1/1 completed; 64 spans across 2
+                                      trace ids; orchestrator 54, worker 3, ingress 2,
+                                      egress 2, loadgen 2, mockllm 1.
+
+  4. case-restored-*                  PYTHONPATH and image 0.65b0, whose
+     a3t-inject-restored/             opentelemetry-api 1.44.0 already matches the
+     a3t-inject-restored-2/           agent's, with the lockfile untouched. Measured
+                                      twice, before and after state 3.
+                                      COUNTED: 64 spans, orchestrator 54, the same shape
+                                      as state 3.
+
+States 3 and 4 are indistinguishable in what they measure: both give one trace joining
+the ingress, the orchestrator, the worker, the egress and the mock. They differ only in
+which side of the coupling moves, the agent's lockfile or the injected image tag, and the
+author chose neither.
+
+For comparison, the launcher the lab does run produces 62 spans with orchestrator 53. The
+two-span gap is the downstream agent-card fetch, which a Python process makes once in its
+life: the three states above were each the first request after a rollout and paid for it,
+while the counted five ran warm.
+
+The write-up is ../../../../docs/upstream/otel-operator-python-injection-shadows-app-dependencies.md.

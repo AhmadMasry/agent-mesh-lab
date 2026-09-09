@@ -1,0 +1,26 @@
+Cluster and workload versions, once per invocation that filled this directory.
+
+Invocations before the second fix round overwrote this file rather than appending, so only
+the invocations from that round on are in the record. The orchestrator's image digest is
+recorded per pod from now on, the tag alone being the same string across every build.
+
+== 2026-09-09T13:31:11Z | RUN_ID=163111 | REPS=5 | RECEIVERS=orchestrator ==
+Client Version: v1.37.0
+Kustomize Version: v5.8.1
+Server Version: v1.37.0
+client version: 1.31.0
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS     IMAGES                                                                                                                 SELECTOR
+agentgateway-waypoint        1/1     1            1           43h   agentgateway   cr.agentgateway.dev/agentgateway:v1.5.0                                                                                gateway.networking.k8s.io/gateway-name=agentgateway-waypoint
+agentgateway-waypoint-orch   1/1     1            1           14h   agentgateway   cr.agentgateway.dev/agentgateway:v1.5.0                                                                                gateway.networking.k8s.io/gateway-name=agentgateway-waypoint-orch
+mockllm                      1/1     1            1           43h   mockllm        kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:2a350b301688d72bd4e0adccdc25b319868a23a6f8bd6d0d1154951c5e5112ad   app=mockllm
+orchestrator                 1/1     1            1           43h   orchestrator   orchestrator:dev                                                                                                       app=orchestrator
+worker                       1/1     1            1           43h   worker         kind.local/worker-918a018b7a581926ead34dec2ba0fb83:43439c268108f10d46011ffba66ceff534d09d54ae91d8c8b1affa90d0d3a001    app=worker
+orchestrator image digests, by pod:
+POD                             PHASE     IMAGE              IMAGEID
+orchestrator-75dffdbdb6-n8mjs   Running   orchestrator:dev   sha256:43baecac1af2660470fca193af39c1e60726b4b511a79d5a9cc71e84f00c70f1
+NAMESPACE             NAME                         CLASS                         ADDRESS         PROGRAMMED   AGE
+agentgateway-egress   agw-egress                   agentgateway                  10.96.208.219   True         17h
+agentgateway-system   agentgateway-ingress         agentgateway                  10.96.176.170   True         17h
+lab                   agentgateway-waypoint        istio-agentgateway-waypoint   10.96.24.209    True         43h
+lab                   agentgateway-waypoint-orch   istio-agentgateway-waypoint   10.96.36.80     True         14h
+

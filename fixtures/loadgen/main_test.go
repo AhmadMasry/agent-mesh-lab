@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -93,5 +94,34 @@ func TestKnobs_RetryOnModeIsAskedForByName(t *testing.T) {
 	t.Setenv("CLIENT_RETRIES", "0")
 	if _, plain := knobsFromEnv().httpClient(time.Second).Transport.(*http.Transport); !plain {
 		t.Errorf("CLIENT_RETRY_ON alone wrapped the transport; the mode is not a switch")
+	}
+}
+
+// An A2A request carries the logical work item inside Message.metadata, where no
+// HTTP instrumentation can see it. The load client therefore also sends it as a
+// header, along with the name of the caller, so the receiver's server span can
+// be attributed to the work item. One Job sends one work item, so both values
+// are fixed for the life of the process.
+func TestLoadgen_RequestsCarryIdentityHeaders(t *testing.T) {
+	arrived := make(chan http.Header, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		arrived <- r.Header.Clone()
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	client := instrument(httpclient.New(10*time.Second), "lwi-1")
+	resp, err := client.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("sending the request: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	header := <-arrived
+	if got := header.Get("X-Logical-Work-Item-Id"); got != "lwi-1" {
+		t.Errorf("X-Logical-Work-Item-Id: got %q, want %q", got, "lwi-1")
+	}
+	if got := header.Get("X-Caller"); got != "loadgen" {
+		t.Errorf("X-Caller: got %q, want %q", got, "loadgen")
 	}
 }

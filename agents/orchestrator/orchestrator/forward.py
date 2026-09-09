@@ -3,6 +3,13 @@
 The httpx client is built by hand with connection retries off; the a2a-python
 client has no retry option of its own. One SendMessage per forward().
 
+Every forward also names itself in three headers beside the message:
+``X-Logical-Work-Item-Id``, ``X-A2A-Message-Id`` (the id this forward minted) and
+``X-Caller``. The work item travels in ``Message.metadata``, which no HTTP
+instrumentation reads, so without the headers the downstream agent's server span
+could not be attributed to the work item. The A2A body is unchanged by them, and
+no task id is sent because the forward has none yet.
+
 Three knobs exist for Experiment A.2, which asks what a client puts on the wire
 when it retries. All three are read from the environment, all three default to
 off, and `test_knobs_default_off` asserts that:
@@ -29,6 +36,8 @@ from __future__ import annotations
 import asyncio
 import os
 import uuid
+from contextvars import ContextVar
+from dataclasses import dataclass
 
 import httpx
 from a2a.client import ClientConfig, create_client
@@ -72,6 +81,35 @@ RETRY_ON_TRANSPORT_OR_503 = "transport+503"
 def _retry_on() -> str:
     """Read the mode. Only the exact string "transport+503" widens it."""
     return RETRY_ON_TRANSPORT_OR_503 if os.getenv("CLIENT_RETRY_ON") == RETRY_ON_TRANSPORT_OR_503 else RETRY_ON_TRANSPORT
+
+
+@dataclass(frozen=True)
+class ForwardIdentity:
+    """The two identity values that change from one forward to the next."""
+
+    work_item: str = ""
+    message_id: str = ""
+
+
+# Read by the request event hook below. A context variable rather than an
+# attribute because two forwards can be in flight at once in this process, and
+# each asyncio task carries its own copy; the default is empty, so a request the
+# client sends outside a forward (the downstream card fetch) carries neither header.
+FORWARD_IDENTITY: ContextVar[ForwardIdentity] = ContextVar("forward_identity", default=ForwardIdentity())
+
+
+async def set_identity_headers(request: httpx.Request) -> None:
+    """Put the current forward's identity on the request about to be sent.
+
+    A request event hook, because the SDK builds and sends the request itself and
+    takes no per-request headers from this agent. X-Caller is not set here: it
+    never changes, so it is a client-level header.
+    """
+    identity = FORWARD_IDENTITY.get()
+    if identity.work_item:
+        request.headers["X-Logical-Work-Item-Id"] = identity.work_item
+    if identity.message_id:
+        request.headers["X-A2A-Message-Id"] = identity.message_id
 
 
 class ResendOnceTransport(httpx.AsyncBaseTransport):
@@ -132,6 +170,9 @@ class Forwarder:
             self.transport = transport
             http_client = httpx.AsyncClient(transport=transport, timeout=timeout, headers={"X-Caller": caller})
         self._http = http_client
+        # Attached whether the client was built here or handed in, so a forward
+        # carries its identity however this Forwarder was constructed.
+        self._http.event_hooks["request"].append(set_identity_headers)
         self._client = None
         self._client_lock = asyncio.Lock()
 
@@ -167,15 +208,21 @@ class Forwarder:
         msg = Message(message_id=str(uuid.uuid4()), role=Role.ROLE_USER, parts=[Part(text=text)],
                       metadata={"logical_work_item_id": work_item})
         request = SendMessageRequest(message=msg)
+        # Scoped to the send, so the identity on the wire is this forward's. A
+        # resend is the same forward and carries the same two values.
+        token = FORWARD_IDENTITY.set(ForwardIdentity(work_item=work_item, message_id=msg.message_id))
         try:
-            last = await self._invoke(client, request)
-        except Exception:
-            if not self.sdk_resend:
-                raise
-            # The SDK-layer resend asked for by CLIENT_SDK_RESEND: the same
-            # request object handed back to send_message. Only a failure of the
-            # send itself is resent; a downstream answer this agent then rejects
-            # is interpreted below and never re-sent.
-            self.sdk_resends += 1
-            last = await self._invoke(client, request)
+            try:
+                last = await self._invoke(client, request)
+            except Exception:
+                if not self.sdk_resend:
+                    raise
+                # The SDK-layer resend asked for by CLIENT_SDK_RESEND: the same
+                # request object handed back to send_message. Only a failure of the
+                # send itself is resent; a downstream answer this agent then rejects
+                # is interpreted below and never re-sent.
+                self.sdk_resends += 1
+                last = await self._invoke(client, request)
+        finally:
+            FORWARD_IDENTITY.reset(token)
         return self._interpret(last)

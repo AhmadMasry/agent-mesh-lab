@@ -237,6 +237,25 @@ list; the Go instrumentation sets `lab.work_item`, `lab.message_id`,
 `lab.task_id` and `lab.caller` directly. A `transform` processor copies the first
 form onto the second, so every query reads one spelling.
 
+What is instrumented, and what a work item's trace is made of. The three Go
+binaries use `internal/otel`: one `Setup` per process, which installs a tracer
+provider only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, an `otelhttp` handler
+wrapper on each server, and an `otelhttp` transport wrapper on each outbound
+client. The Python agent has no OpenTelemetry code either: it carries the
+OpenTelemetry distro as a dependency and starts under `opentelemetry-instrument`,
+named in its Procfile, configured only by the environment the step-3 overlay
+sets. The OpenTelemetry Operator is installed and its `Instrumentation` resource
+exists, but nothing is annotated for injection; that route was measured in four
+states and not kept, and `findings.md` carries the counts. The ingress and the
+egress proxies export because one `AgentgatewayPolicy` each says so; the
+istiod-driven waypoints export nothing, and appear in a trace only as a parent
+span id that no exported span carries. Because an A2A request keeps the work item
+inside `Message.metadata`, where no HTTP instrumentation can see it, every lab
+client also sends it as a header, and the Go handler wrappers and the Python
+header capture put it on the span, so a work item is queryable. Reading one
+work item gives two traces, not one: the client fetches the agent card and
+sends the message as two separate roots.
+
 Traces come out of the backend one work item at a time:
 
 ```

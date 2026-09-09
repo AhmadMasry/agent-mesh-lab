@@ -1,0 +1,37 @@
+== the Python agent runs under the opentelemetry-instrument launcher, with no Operator injection ==
+pod: orchestrator-54c75bd7df-sfd58
+
+-- init containers (an injected pod carries opentelemetry-auto-instrumentation-python here)
+(none)
+-- pod annotations (no instrumentation.opentelemetry.io/inject-python)
+{"ambient.istio.io/redirection":"enabled","kubectl.kubernetes.io/restartedAt":"2026-09-09T16:02:20+03:00"}
+
+-- the image's web process, from the Procfile
+[[processes]]
+  type = "web"
+  command = ["opentelemetry-instrument python -m orchestrator.server"]
+  direct = false
+-- the launcher and the instrumentations are installed in the image's own virtualenv
+opentelemetry-bootstrap
+opentelemetry-instrument
+opentelemetry_distro-0.65b0.dist-info
+opentelemetry_exporter_otlp_proto_http-1.44.0.dist-info
+opentelemetry_instrumentation_asgi-0.65b0.dist-info
+opentelemetry_instrumentation_httpx-0.65b0.dist-info
+opentelemetry_instrumentation_starlette-0.65b0.dist-info
+opentelemetry_sdk-1.44.0.dist-info
+
+-- PID 1 after the launcher exec'd it: the command is the Procfile's target, and the
+   PYTHONPATH the launcher set points inside the image's own virtualenv, not at any
+   injected directory.
+/layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/bin/python -m orchestrator.server
+
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.telemetry.svc.cluster.local:4318
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller
+OTEL_LOGS_EXPORTER=none
+OTEL_METRICS_EXPORTER=none
+OTEL_PROPAGATORS=tracecontext,baggage
+OTEL_SERVICE_NAME=orchestrator
+OTEL_TRACES_EXPORTER=otlp
+PYTHONPATH=/layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages/opentelemetry/instrumentation/auto_instrumentation:/workspace

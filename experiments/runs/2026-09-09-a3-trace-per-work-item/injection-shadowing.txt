@@ -1,0 +1,99 @@
+Import resolution inside the running orchestrator pod, under the two PYTHONPATH
+orderings the OpenTelemetry Operator can produce.
+
+Both were produced in the same pod by invoking the application's own interpreter with
+the variable set, so no Deployment changed to produce them. Only stdout is kept here;
+the interpreter also writes the auto-instrumentation's own start-up messages to stderr,
+which are quoted separately at the end.
+
+What the application's lockfile (agents/orchestrator/uv.lock) pins, for comparison:
+
+    protobuf          6.33.6      (a2a-sdk 1.1.2 declares protobuf<7,>=5.29.5)
+    opentelemetry-api 1.44.0      (transitive, under google-api-core 2.36.0)
+    a2a-sdk           1.1.2
+    httpx             0.28.1
+    grpcio            not in the lockfile; this agent uses the JSON-RPC binding
+
+The pod's injected image:
+ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python:0.65b0
+
+==============================================================================
+A. The Operator's default: its two entries only. The application's site-packages
+   is reached through the interpreter, which searches it after PYTHONPATH.
+   RESULT: the application's protobuf is shadowed by the injected one, and every
+   SendMessage then fails inside the A2A SDK with
+   "'FieldDescriptor' object has no attribute 'label'".
+==============================================================================
+PYTHONPATH = /otel-auto-instrumentation-python/opentelemetry/instrumentation/auto_instrumentation:/otel-auto-instrumentation-python
+sys.path:
+    (empty: the script directory)
+    /otel-auto-instrumentation-python/opentelemetry/instrumentation/auto_instrumentation
+    /otel-auto-instrumentation-python
+    /layers/paketo-buildpacks_python-package-managers-run/uv-env/.local/share/uv/python/cpython-3.13.15-linux-x86_64-gnu/lib/python313.zip
+    /layers/paketo-buildpacks_python-package-managers-run/uv-env/.local/share/uv/python/cpython-3.13.15-linux-x86_64-gnu/lib/python3.13
+    /layers/paketo-buildpacks_python-package-managers-run/uv-env/.local/share/uv/python/cpython-3.13.15-linux-x86_64-gnu/lib/python3.13/lib-dynload
+    /layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages
+imports:
+    google.protobuf: 7.36.0   /otel-auto-instrumentation-python/google/protobuf/__init__.py
+    grpc: NOT IMPORTABLE (ModuleNotFoundError: No module named 'grpc')
+    opentelemetry: 1.44.0   _NamespacePath(['/otel-auto-instrumentation-python/opentelemetry', '/layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages/opentelemetry'])
+    opentelemetry.environment_variables: 1.44.0   /otel-auto-instrumentation-python/opentelemetry/environment_variables/__init__.py
+    a2a: 1.1.2   /layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages/a2a/__init__.py
+check: does opentelemetry.environment_variables define _OTEL_PYTHON_EVENT_LOGGER_PROVIDER?
+    False
+
+==============================================================================
+B. The workaround for A, measured while it was in place: the application's
+   site-packages named in the container's own PYTHONPATH, which the Operator places
+   between its two entries (internal/instrumentation/python.go at v0.158.0 composes
+   "<prefix>:<existing>:<suffix>"). No overlay sets this now; the author chose the
+   distro launcher over the injection route, so both A and B are history rather than
+   configuration. The measurement is why.
+   RESULT: the application keeps its own protobuf, and the instrumentation is still
+   importable from the third entry.
+==============================================================================
+PYTHONPATH = /otel-auto-instrumentation-python/opentelemetry/instrumentation/auto_instrumentation:/layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages:/otel-auto-instrumentation-python
+sys.path:
+    (empty: the script directory)
+    /otel-auto-instrumentation-python/opentelemetry/instrumentation/auto_instrumentation
+    /layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages
+    /otel-auto-instrumentation-python
+    /layers/paketo-buildpacks_python-package-managers-run/uv-env/.local/share/uv/python/cpython-3.13.15-linux-x86_64-gnu/lib/python313.zip
+    /layers/paketo-buildpacks_python-package-managers-run/uv-env/.local/share/uv/python/cpython-3.13.15-linux-x86_64-gnu/lib/python3.13
+    /layers/paketo-buildpacks_python-package-managers-run/uv-env/.local/share/uv/python/cpython-3.13.15-linux-x86_64-gnu/lib/python3.13/lib-dynload
+imports:
+    google.protobuf: 6.33.6   /layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages/google/protobuf/__init__.py
+    grpc: NOT IMPORTABLE (ModuleNotFoundError: No module named 'grpc')
+    opentelemetry: 1.44.0   _NamespacePath(['/layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages/opentelemetry', '/otel-auto-instrumentation-python/opentelemetry'])
+    opentelemetry.environment_variables: 1.44.0   /layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages/opentelemetry/environment_variables/__init__.py
+    a2a: 1.1.2   /layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages/a2a/__init__.py
+check: does opentelemetry.environment_variables define _OTEL_PYTHON_EVENT_LOGGER_PROVIDER?
+    False
+
+==============================================================================
+What changes between A and B
+==============================================================================
+
+    module                              A (Operator default)          B (overlay)
+    google.protobuf                     7.36.0, injected directory    6.33.6, the venv
+    opentelemetry.environment_variables 1.44.0, injected directory    1.44.0, the venv
+    a2a                                 1.1.2, the venv               1.1.2, the venv
+
+  The `opentelemetry` namespace package spans both directories in both orderings;
+  only the order of its __path__ changes. That is why the two directories have to
+  agree on opentelemetry-api: with injected image 0.64b0, whose opentelemetry-api is
+  1.43.0, ordering B resolves opentelemetry.environment_variables from the venv at
+  1.44.0 while opentelemetry._events comes from the injected directory at 1.43.0 and
+  imports a name 1.44.0 removed. The check at the end of each probe reports whether
+  _OTEL_PYTHON_EVENT_LOGGER_PROVIDER is defined; under image 0.65b0 both orderings
+  report False, because both resolve the 1.44.0 module, and nothing asks for it.
+
+==============================================================================
+The start-up messages the same invocations write to stderr
+==============================================================================
+    import psutil
+  File "/otel-auto-instrumentation-python/psutil/__init__.py", line 94, in <module>
+    from . import _pslinux as _psplatform
+  File "/otel-auto-instrumentation-python/psutil/_pslinux.py", line 26, in <module>
+    from . import _psutil_linux as cext
+ImportError: /otel-auto-instrumentation-python/psutil/_psutil_linux.abi3.so: cannot open shared object file: No such file or directory

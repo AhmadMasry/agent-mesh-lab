@@ -7,11 +7,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	labotel "github.com/AhmadMasry/agent-mesh-lab/internal/otel"
 )
 
 const (
@@ -31,6 +34,23 @@ const (
 )
 
 func main() {
+	// Tracing, if OTEL_EXPORTER_OTLP_ENDPOINT names a collector; nothing at all
+	// otherwise. The deferred shutdown flushes whatever the batch processor is
+	// still holding when the server stops. This adds no outbound call of the
+	// fixture's own beyond the span export, so there is still no client retry
+	// setting here to disable.
+	otelShutdown, err := labotel.Setup(context.Background())
+	if err != nil {
+		log.Fatalf("mockllm: tracing setup: %v", err)
+	}
+	defer func() {
+		flushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := otelShutdown(flushCtx); err != nil {
+			log.Printf("mockllm: tracing shutdown: %v", err)
+		}
+	}()
+
 	cfg := Config{
 		ResponseText:      getEnv("MOCKLLM_RESPONSE_TEXT", defaultResponseText),
 		LatencyMs:         getEnvInt("MOCKLLM_LATENCY_MS", defaultLatencyMs),
@@ -50,6 +70,9 @@ func main() {
 		IdleTimeout:       cfg.IdleTimeout,
 	}
 	s.configureHTTPServer(httpServer)
+	// Wrapped here rather than inside configureHTTPServer, so the connection
+	// tracking that stale mode depends on stays exactly as the tests exercise it.
+	httpServer.Handler = labotel.Handler("mockllm", httpServer.Handler)
 
 	log.Printf("mockllm: listening on %s (latency_ms=%d, response_text_len=%d)",
 		httpServer.Addr, cfg.LatencyMs, len(cfg.ResponseText))

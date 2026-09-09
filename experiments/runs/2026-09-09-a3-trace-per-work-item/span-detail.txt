@@ -1,0 +1,32 @@
+Per-receiver span detail, derived from the five repetitions' spans.csv files.
+A parent_span_id naming no span in the same export is a hop that carried the
+trace context on and exported nothing of its own.
+
+== worker ==
+  shape seen in 5 of 5 repetitions: 8 spans across 2 trace ids, of sizes [2, 6]
+  roots, one per trace (2):
+    loadgen: HTTP GET
+    loadgen: HTTP POST
+  spans whose parent was never exported (2):
+    worker: GET /.well-known/agent-card.json
+    worker: POST /
+  spans carrying lab.work_item (3):
+    mockllm: POST /v1/chat/completions
+    worker: GET /.well-known/agent-card.json
+    worker: POST /
+
+== orchestrator ==
+  shape seen in 5 of 5 repetitions: 62 spans across 2 trace ids, of sizes [4, 58]
+  roots, one per trace (2):
+    loadgen: HTTP GET
+    loadgen: HTTP POST
+  spans whose parent was never exported (2):
+    orchestrator: GET /.well-known/agent-card.json
+    worker: POST /
+  spans carrying lab.work_item (5):
+    mockllm: POST /v1/chat/completions
+    orchestrator: GET /.well-known/agent-card.json
+    orchestrator: POST
+    orchestrator: POST /
+    worker: POST /
+

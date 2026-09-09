@@ -1,0 +1,21 @@
+# The Go agent's tracing, which is two variables.
+#
+# internal/otel.Setup installs a tracer provider only when OTEL_EXPORTER_OTLP_ENDPOINT
+# is set, so this patch is what turns tracing on for the worker; without it the same
+# binary emits nothing. The endpoint is the collector's OTLP HTTP Service and carries a
+# scheme, because the exporter appends "/v1/traces" to it and defaults to HTTPS
+# otherwise. OTEL_SERVICE_NAME names the service a span is attributed to.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  template:
+    spec:
+      containers:
+        - name: worker
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.telemetry.svc.cluster.local:4318"
+            - name: OTEL_SERVICE_NAME
+              value: "worker"

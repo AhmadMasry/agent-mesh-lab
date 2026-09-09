@@ -8,8 +8,23 @@
 #   jaeger.yaml            the trace backend, all-in-one with in-memory storage
 #   prometheus.yaml        Prometheus and the scrape jobs for istiod, ztunnel, the
 #                          agentgateway proxies and the collector
-#   instrumentation.yaml   the Instrumentation resource the Operator reads for Python
-#                          injection; no pod is annotated for injection at this step
+#   instrumentation.yaml   the Instrumentation resource the Operator would read if any pod
+#                          asked for Python injection. None does: the Python agent starts
+#                          under its own opentelemetry-instrument launcher, and this
+#                          resource is kept as the record of a route that was measured
+#   agentgateway-tracing.yaml
+#                          OTLP export for the ingress and the egress waypoint, the two
+#                          proxies agentgateway's own control plane drives
+#
+# What the patches add:
+#   orchestrator-instrumentation.yaml
+#                          the environment the Python agent's opentelemetry-instrument
+#                          launcher reads: its service name, the collector endpoint and
+#                          protocol, which signals are exported, the propagators, and the
+#                          identity headers to capture. No injection annotation
+#   worker-tracing.yaml, mockllm-tracing.yaml
+#                          the collector endpoint and service name the Go binaries'
+#                          internal/otel reads; without the endpoint they emit nothing
 #
 # The OpenTelemetry Operator itself is installed by `make step-3` from its Helm chart,
 # the way `make step-2b` installs agentgateway's control plane: it is a controller,
@@ -24,3 +39,17 @@ resources:
   - jaeger.yaml
   - prometheus.yaml
   - instrumentation.yaml
+  - agentgateway-tracing.yaml
+patches:
+  - path: orchestrator-instrumentation.yaml
+    target:
+      kind: Deployment
+      name: orchestrator
+  - path: worker-tracing.yaml
+    target:
+      kind: Deployment
+      name: worker
+  - path: mockllm-tracing.yaml
+    target:
+      kind: Deployment
+      name: mockllm

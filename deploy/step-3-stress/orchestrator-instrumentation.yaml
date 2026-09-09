@@ -1,0 +1,62 @@
+# The Python agent's telemetry, which is a launcher and a list of variables.
+#
+# The agent is instrumented by the OpenTelemetry distro installed in its own image and
+# started by `opentelemetry-instrument`, named in the project's Procfile. There is no
+# OpenTelemetry code in the agent, and the Operator injects nothing into this pod: the
+# annotation route was measured in four states and not kept (author's decision,
+# 2026-09-09; the counts and the reason are in findings.md and in
+# experiments/runs/2026-09-09-a3-trace-per-work-item/python-injection/).
+#
+# Everything the launcher reads is set here rather than in the image, so the same image
+# runs untraced anywhere these are absent, the way the Go binaries do.
+#
+#   OTEL_SERVICE_NAME              the service a span is attributed to, and the name the
+#                                  run scripts count spans by.
+#   OTEL_EXPORTER_OTLP_ENDPOINT    the collector's OTLP HTTP Service. It carries a scheme
+#                                  because the exporter appends the signal path to it and
+#                                  would otherwise default to HTTPS.
+#   OTEL_EXPORTER_OTLP_PROTOCOL    http/protobuf, matching the endpoint's port.
+#   OTEL_TRACES_EXPORTER           otlp. Metrics and logs are off: this lab reads metrics
+#                                  from Prometheus scrapes and ledgers from stdout, so an
+#                                  OTLP metrics or logs pipeline would carry nothing
+#                                  anything here reads.
+#   OTEL_PROPAGATORS               the same pair internal/otel installs in the Go
+#                                  binaries, so a trace crosses the two languages.
+#   OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+#   OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+#                                  the four identity headers, recorded on the span as
+#                                  http.request.header.<lowercased name, - to _>, each
+#                                  holding a list; the collector's transform processor
+#                                  copies the first element onto lab.*. Both directions,
+#                                  so the agent's outbound forward is attributable to the
+#                                  work item as well as its inbound request: measured
+#                                  without the client one, the forward's client span
+#                                  carried no lab.* at all.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+spec:
+  template:
+    spec:
+      containers:
+        - name: orchestrator
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "orchestrator"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.telemetry.svc.cluster.local:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_METRICS_EXPORTER
+              value: "none"
+            - name: OTEL_LOGS_EXPORTER
+              value: "none"
+            - name: OTEL_PROPAGATORS
+              value: "tracecontext,baggage"
+            - name: OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+              value: "X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller"
+            - name: OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+              value: "X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller"

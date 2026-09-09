@@ -1,0 +1,18 @@
+The collector's own span counter, read twice 60 s apart with no work item in flight.
+Metric: otelcol_receiver_accepted_spans from the collector's internal telemetry
+endpoint (:8888/metrics at otel/opentelemetry-collector-contrib:0.160.0), reached by a
+short-lived port-forward. Nothing was sent to the lab between the two reads; the only
+traffic is the readiness probes of the three lab pods.
+
+-- first read, 2026-09-09T13:34:26Z
+otelcol_receiver_accepted_spans{receiver="otlp",transport="grpc"} 158
+otelcol_receiver_accepted_spans{receiver="otlp",transport="http"} 56551
+
+-- second read, 2026-09-09T13:35:26Z
+otelcol_receiver_accepted_spans{receiver="otlp",transport="grpc"} 158
+otelcol_receiver_accepted_spans{receiver="otlp",transport="http"} 56701
+
+-- difference over 60 s
+   otelcol_receiver_accepted_spans{receiver="otlp",transport="grpc"}: 0
+   otelcol_receiver_accepted_spans{receiver="otlp",transport="http"}: 150
+   TOTAL: 150 spans accepted in 60 s

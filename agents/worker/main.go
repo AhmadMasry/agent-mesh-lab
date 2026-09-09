@@ -19,6 +19,7 @@ import (
 	"github.com/a2aproject/a2a-go/v2/a2asrv"
 
 	"github.com/AhmadMasry/agent-mesh-lab/internal/httpclient"
+	labotel "github.com/AhmadMasry/agent-mesh-lab/internal/otel"
 )
 
 func getenv(k, def string) string {
@@ -68,9 +69,28 @@ func main() {
 		log.Fatal("worker: DOWNSTREAM_A2A_URL is set but forward mode is not implemented in this gate")
 	}
 
+	// Tracing, if OTEL_EXPORTER_OTLP_ENDPOINT names a collector; nothing at all
+	// otherwise. The deferred shutdown flushes whatever the batch processor is
+	// still holding when the server stops.
+	otelShutdown, err := labotel.Setup(context.Background())
+	if err != nil {
+		log.Fatalf("worker: tracing setup: %v", err)
+	}
+	defer func() {
+		flushCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := otelShutdown(flushCtx); err != nil {
+			log.Printf("worker: tracing shutdown: %v", err)
+		}
+	}()
+
 	// Timeouts recorded in the findings entry; the model call as a whole is bounded
 	// by the client Timeout (MODEL_TIMEOUT_S), which is also the response-header timeout.
+	// The transport is wrapped so the model call is a client span carrying the
+	// trace context onward; internal/httpclient's own settings are untouched by
+	// the wrap, and no retry is added by it.
 	modelHTTP := httpclient.New(modelTimeout())
+	modelHTTP.Transport = labotel.Transport(modelHTTP.Transport)
 	ledger := newLineWriter(os.Stdout)
 	executor := newLabExecutor(name, newModelClient(modelBase, modelName, modelKey, modelHTTP), ledger)
 	handler := newExecutionLedger(a2asrv.NewHandler(executor), ledger)
@@ -100,7 +120,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              listen,
-		Handler:           root,
+		Handler:           labotel.Handler("worker", root),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      120 * time.Second,

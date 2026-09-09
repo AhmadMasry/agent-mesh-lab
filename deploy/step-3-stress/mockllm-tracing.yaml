@@ -1,0 +1,17 @@
+# The model fixture's tracing, the same two variables as the worker's. The mock is the
+# last hop of a work item, so its span is how a run tells "the model was called" from
+# "the call was made and never arrived".
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mockllm
+spec:
+  template:
+    spec:
+      containers:
+        - name: mockllm
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.telemetry.svc.cluster.local:4318"
+            - name: OTEL_SERVICE_NAME
+              value: "mockllm"

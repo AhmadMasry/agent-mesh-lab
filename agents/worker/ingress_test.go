@@ -13,6 +13,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	labotel "github.com/AhmadMasry/agent-mesh-lab/internal/otel"
 )
 
 // Recorded on 2026-09-05 from the a2a-go v2.5.0 client against a request-dump
@@ -343,5 +345,39 @@ func TestParseIngress_A2APythonSendMessageBody(t *testing.T) {
 	line := parseIngress(r, []byte(a2aPythonSendMessageBody))
 	if line.Method != "SendMessage" || line.ID != "0de35010-f9b9-48c4-9c03-b7a3c3774d19" || line.MessageID != "3534b263-1d7c-45b6-a6cb-cc165fe5e1b5" || line.LogicalWorkItemID != "py-dump" || line.A2AVersion != "1.0" {
 		t.Errorf("got method=%q id=%q messageId=%q lwi=%q ver=%q", line.Method, line.ID, line.MessageID, line.LogicalWorkItemID, line.A2AVersion)
+	}
+}
+
+// The same close, with the mux wrapped the way main wraps it. main serves the
+// root mux through otel.Handler, and close-after-read works by taking the
+// connection away from net/http through http.Hijacker, which a wrapped
+// ResponseWriter only offers if the wrapper re-exposes it. The A.3 matrix rows
+// arm this injection through the deployed binary, so the wrapping must not be
+// what stops the connection closing; this test is that assertion, and it fails
+// with a status instead of a transport error if the interface is ever lost.
+func TestIngress_CloseAfterRead_ClosesBehindTheTracingHandler(t *testing.T) {
+	out := &syncBuffer{}
+	inj := newInjector()
+	inj.arm(modeCloseAfterRead, "go-dump")
+	var called atomic.Int32
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { called.Add(1); w.WriteHeader(http.StatusOK) })
+	srv := httptest.NewServer(labotel.Handler("worker", newIngressMiddleware(next, newLineWriter(out), inj)))
+	defer srv.Close()
+
+	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{DisableKeepAlives: true}}
+	resp, err := client.Post(srv.URL+"/", "application/json", strings.NewReader(a2aGoSendMessageBody))
+	if err == nil {
+		_ = resp.Body.Close()
+		t.Fatalf("want a transport error, got status %d", resp.StatusCode)
+	}
+	if !strings.Contains(err.Error(), "EOF") {
+		t.Errorf("client error = %v, want one mentioning EOF", err)
+	}
+	if n := called.Load(); n != 0 {
+		t.Errorf("handler was invoked %d times, want 0", n)
+	}
+	lines := waitForIngressLines(t, out, 2)
+	if lines[1].Phase != "response" || statusOf(t, lines[1]) != 0 || lines[1].Injection != modeCloseAfterRead {
+		t.Errorf("response = %+v, want phase response, status 0, injection close-after-read", lines[1])
 	}
 }
