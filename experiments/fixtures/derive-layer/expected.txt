@@ -1,10 +1,13 @@
 # Fixtures for experiments/lib/derive-layer.sh, exercised by `make test`.
 # Columns: fixture directory, receiver service, the layer the derivation must name.
-# The four `gateway-*` and `none-baseline` fixtures are real repetitions copied
-# from experiments/runs/ (Task 2's three gateway retry probes and one Task 3
-# baseline work item). The rest are synthetic: the lab has not yet run a row that
-# produces them, and a derivation with no test for a label it can return is a
-# derivation nobody has read.
+# Six fixtures are real repetitions copied from experiments/runs/: Task 2's three
+# gateway retry probes, one Task 3 baseline work item at each receiver, and one
+# Task 4 R1 py/http work item (client-http-py, below) exercising the proxy-span
+# fallback -- the Python receiver's IngressMiddleware answers a refused delivery
+# before the orchestrator's own OTel span opens, so that delivery is visible only
+# at the agentgateway-ingress in front of it and in the ledger. The rest are
+# synthetic: the lab has not yet run a row that produces them, and a derivation
+# with no test for a label it can return is a derivation nobody has read.
 gateway-waypoint worker gateway
 gateway-ingress worker gateway
 gateway-egress worker gateway
@@ -12,6 +15,7 @@ none-baseline worker none
 none-baseline-py orchestrator none
 client-http-waypoint worker client-http
 client-http-ingress orchestrator client-http
+client-http-py orchestrator client-http
 client-sdk worker client-sdk
 model-client worker model-client
 not-attributable worker not-attributable

@@ -41,6 +41,56 @@
 #           (the client sent twice, so each attempt crossed the proxy separately
 #           and got a context of its own)
 #
+#       FALLBACK when the receiver itself did not open a span for every delivery
+#       (fewer receiver server spans than deliveries): a receiver-side injection
+#       can answer before the receiver's own instrumentation opens a span for
+#       that delivery -- measured at the Python receiver's `IngressMiddleware`,
+#       which answers `http503-before-dispatch` and returns before the inner
+#       Starlette app (and the OTel auto-instrumentation it carries) ever runs,
+#       Gate 3 Task 4 R1. The refused delivery is still visible one hop out, at
+#       the nearest proxy that DID export a span for the delivery that got
+#       through -- named from that span's own parent, never assumed. The
+#       discriminator is the number of upstream attempts PER inbound span, not
+#       whether the inbound spans have distinct parents: measured on the
+#       agentgateway ingress at Task 4 R1 py/http, in 20 of 20 the two inbound
+#       spans share ONE loadgen parent (the client's HTTP-layer retry loops
+#       inside the round-tripper, below the span it opens, `internal/httpclient
+#       /httpclient.go`), each carrying exactly one upstream attempt of its own:
+#
+#         N inbound spans into that proxy, N = deliveries, each carrying
+#         one upstream attempt of its own                       -> client-http
+#           (each delivery crossed the proxy as a separate inbound request,
+#           whether or not those requests share one client-side parent span;
+#           measured on the agentgateway ingress at Task 4, R1 py/http)
+#         one inbound span into that proxy carrying two upstream attempts
+#                                                                 -> gateway
+#           (the proxy re-sent the one delivery it received; the ingress-hop
+#           mirror of the egress rule in (c) below)
+#         anything else, or no exporting proxy in front of the receiver
+#         (a dangling parent)                                  -> not-attributable
+#
+#       The ledger-first rule (a) is checked before this fallback is ever
+#       reached, so a second delivery under a new JSON-RPC id is still
+#       client-sdk regardless of how many receiver spans exist.
+#
+#       CAVEAT: the proxy's inbound-entry count is read from the EXPORTED
+#       trace, not from the proxy itself, and `make export-trace` selects
+#       whole traces by an attribute only a receiver or the mock span ever
+#       carries. A delivery is visible here only when its own trace also
+#       contains a span that carries that attribute -- which happens when both
+#       deliveries share one trace (measured at Task 4 R1 py/http: the client's
+#       HTTP-layer retry loops inside one client span, so both attempts and
+#       both proxy entries land in the trace the successful delivery's
+#       receiver span gets tagged into), and does not happen when a refused
+#       delivery gets its own, separately-selected trace with no tagged span
+#       anywhere in it (measured at R1 py/sdk: two SendMessage calls, two
+#       trace ids, and the refused attempt's trace is simply never returned).
+#       An undercounted `proxy_entries` cannot mislabel here, only fall
+#       through: `client-http` needs the exact count, `gateway` needs exactly
+#       one entry with two upstream attempts, so a proxy-hop delivery this
+#       fallback cannot see degrades to `not-attributable` rather than being
+#       misread as one of the other two. Say this before R2 or R4 lean on it.
+#
 #   (c) Two model invocations under one delivery are the receiver's model client
 #       or the egress gateway, and both reach the model endpoint through the same
 #       hop, so the discriminator is how many calls ENTERED that hop:
@@ -209,6 +259,60 @@ def service_of(span_id):
     return parent["service"] if parent else ""
 
 
+def nearest_proxy_service():
+    """The service that exported the immediate parent of a receiver entry span
+    that DOES exist, i.e. the proxy that forwarded the delivery which reached
+    the receiver's own instrumentation. Used only as a fallback vantage point
+    when some other delivery's receiver span never opened, so it is read from a
+    real span's own parent rather than assumed or hardcoded per receiver. Empty
+    when no receiver entry has an exported parent (a dangling parent, or no
+    receiver entry at all), in which case there is no proxy to fall back to."""
+    for r in receiver_entries:
+        svc = service_of(r.get("parent_span_id") or "")
+        if svc:
+            return svc
+    return ""
+
+
+def upstream_of(entry):
+    """The proxy's own child spans directly under one inbound entry span: its
+    upstream attempts for that one delivery. Distinct from `proxy_upstream`
+    below, which pools every such child across every entry; this is per entry,
+    which is the actual discriminator (Task 4 fix round 1) -- not whether the
+    entries have distinct parents, which the client-http shape measured at the
+    agentgateway ingress does not have (both entries share one loadgen parent)."""
+    return [r for r in rows if r["service"] == entry["service"] and (r.get("parent_span_id") or "") == entry["span_id"]]
+
+
+def proxy_fallback():
+    """Attribute a second delivery from the nearest exporting proxy's own
+    entries when the receiver itself recorded fewer server spans than
+    deliveries. Reached only after the ledger-first client-sdk rule and the
+    byte-identical check, so this only ever sees a byte-identical second
+    delivery the receiver did not fully instrument."""
+    proxy = nearest_proxy_service()
+    if not proxy:
+        return "not-attributable", (f"{deliveries} deliveries on the ledger but {len(receiver_entries)} "
+                                    f"{receiver} server spans in the trace and no receiver entry has an "
+                                    "exported parent to fall back to / so the second delivery has no span "
+                                    "to be attributed from")
+    proxy_entries = entry_spans(proxy)
+    proxy_upstream = [r for r in rows if r["service"] == proxy and parent_class(r) == proxy]
+    per_entry_upstream = [len(upstream_of(e)) for e in proxy_entries]
+    if len(proxy_entries) == deliveries and all(n == 1 for n in per_entry_upstream):
+        return "client-http", (f"the {proxy} in front of {receiver} shows {len(proxy_entries)} inbound spans "
+                               "with one upstream attempt each, one per delivery, regardless of whether they "
+                               f"share one client-side parent / so the client sent this delivery {deliveries} "
+                               f"times and the {receiver} span for the refused one never opened")
+    if len(proxy_entries) == 1 and len(proxy_upstream) >= 2:
+        return "gateway", (f"the {proxy} in front of {receiver} shows one inbound span with "
+                           f"{len(proxy_upstream)} upstream attempts / so the proxy re-sent the delivery it "
+                           "received")
+    return "not-attributable", (f"{deliveries} deliveries on the ledger but {len(receiver_entries)} {receiver} "
+                                f"server spans, {len(proxy_entries)} {proxy} entries and {len(proxy_upstream)} "
+                                "upstream attempts in the trace / which names no layer")
+
+
 def decide():
     if deliveries >= 2:
         if rpc_id_same == "no" and msg_same == "yes":
@@ -218,10 +322,8 @@ def decide():
             return "not-attributable", (f"the two arrivals are not byte-identical (messageId_same={msg_same} "
                                         f"rpc_id_same={rpc_id_same} body_same={body_same}) and do not match a "
                                         "known resend shape")
-        if len(receiver_entries) < 2:
-            return "not-attributable", (f"{deliveries} deliveries on the ledger but {len(receiver_entries)} "
-                                        f"{receiver} server spans in the trace / so the second delivery has no "
-                                        "span to be attributed from")
+        if len(receiver_entries) < deliveries:
+            return proxy_fallback()
         p1 = receiver_entries[0].get("parent_span_id") or ""
         p2 = receiver_entries[1].get("parent_span_id") or ""
         if p1 and p1 == p2:

@@ -48,7 +48,7 @@ For each real client, force one retry and capture both attempts at the pre-dispa
 Prerequisite: A.1 and A.2 results exist, so every matrix row can be interpreted.
 
 - [x] Baseline row filled for both receivers
-- [ ] R1 (client retry only) — both receivers
+- [x] R1 (client retry only) — both receivers
 - [ ] R2 (gateway `HTTPRoute` retry only) — both receivers. Record whether the gateway replayed an identical body and `messageId` (measure at pre-dispatch ledger; do not assume). Record whether request-body buffering was required for the retry to fire on a POST.
 - [ ] R3 (model-client retry only) — both receivers
 - [ ] R4 (composed) — both receivers
