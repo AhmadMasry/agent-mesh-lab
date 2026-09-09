@@ -51,7 +51,7 @@ Prerequisite: A.1 and A.2 results exist, so every matrix row can be interpreted.
 - [x] R1 (client retry only) — both receivers
 - [x] R2 (gateway `HTTPRoute` retry only) — both receivers. Record whether the gateway replayed an identical body and `messageId` (measure at pre-dispatch ledger; do not assume). Record whether request-body buffering was required for the retry to fire on a POST.
 - [x] R3 (model-client retry only) — both receivers
-- [ ] R4 (composed) — both receivers
+- [x] R4 (composed) — both receivers
 - [ ] Each row classified: safe / inefficient / potentially dangerous, with the one-line reason.
 - [ ] Traces attached to each row attributing every second delivery to a layer. Where a trace could not attribute it, say so; the ledgers still count.
 
