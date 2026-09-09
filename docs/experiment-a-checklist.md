@@ -40,7 +40,7 @@ For each mode × receiver, record: deliveries (pre-dispatch), dispatches, tasks 
 For each real client, force one retry and capture both attempts at the pre-dispatch ledger.
 
 - [ ] `a2a-python` client: on retry, `messageId` reused or regenerated? JSON-RPC `id` reused or regenerated? Body identical?
-- [ ] `a2a-go` client: same three questions.
+- [x] `a2a-go` client: same three questions.
 - [ ] Where the retry is configured (SDK option, underlying HTTP client, none available) — recorded.
 
 ## Gate 3 — 17 September: A.3 matrix
@@ -61,3 +61,4 @@ Prerequisite: A.1 and A.2 results exist, so every matrix row can be interpreted.
 - Numbers first, interpretation second, no adjective without a count behind it.
 - Any behaviour that looks like a project gap gets a minimal reproduction and a draft issue the same day. File it only when the reproduction holds against the pinned version; link it only once filed.
 - Anything that would change the *proposal* is written here as a note and left for after the runs. The proposal is frozen.
+

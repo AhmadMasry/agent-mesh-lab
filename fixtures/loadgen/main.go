@@ -1,13 +1,35 @@
 // Command loadgen sends exactly one A2A SendMessage with the a2a-go client and
-// prints one client-ledger line. It contains no retry logic: the a2a-go client
-// has no retry option, and the HTTP client comes from internal/httpclient.
+// prints one client-ledger line per attempt. It contains no retry logic of its
+// own: the a2a-go client has no retry option, and the HTTP client comes from
+// internal/httpclient, whose default carries none.
+//
+// Two knobs exist for Experiment A.2, which asks what a client puts on the wire
+// when it retries. Both are read from the environment, both default to off, and
+// TestKnobs_DefaultOff asserts that:
+//
+//   - CLIENT_RETRIES=<n>     n > 0 builds the HTTP client with
+//     httpclient.NewRetryingOn, which re-sends the same bytes when the send
+//     fails. Unset, empty, or anything that is not a positive integer leaves the
+//     no-retry client in place.
+//   - CLIENT_RETRY_ON=<mode> what CLIENT_RETRIES re-sends on: "transport"
+//     (default; a transport error only) or "transport+503" (also one re-send on
+//     an HTTP 503 response, and on no other status). The mode is not a switch:
+//     with CLIENT_RETRIES unset there is no retry to widen.
+//   - CLIENT_SDK_RESEND=on   after a failed send, invoke the SDK's SendMessage
+//     once more with the same request object, and print a second client line
+//     with attempt 2. Any other value leaves it off.
+//
+// The A.2 run script sets one of them for one measured repetition. Nothing else
+// in the lab sets either, so every other run sends exactly once.
 package main
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/a2aproject/a2a-go/v2/a2a"
@@ -19,8 +41,11 @@ import (
 )
 
 type clientLine struct {
-	Ledger               string   `json:"ledger"`
-	TS                   string   `json:"ts"`
+	Ledger string `json:"ledger"`
+	TS     string `json:"ts"`
+	// Attempt is 1 on the only send this fixture makes unless CLIENT_SDK_RESEND
+	// asked for a second one, which prints its own line with attempt 2.
+	Attempt              int      `json:"attempt"`
 	LogicalWorkItemID    string   `json:"logical_work_item_id"`
 	MessageID            string   `json:"messageId"`
 	TaskID               string   `json:"taskId"`
@@ -38,6 +63,34 @@ func getenv(k, def string) string {
 	return def
 }
 
+// knobs holds the opt-in retry settings, read once from the environment.
+type knobs struct {
+	retries   int
+	retryOn   httpclient.RetryOn
+	sdkResend bool
+}
+
+// knobsFromEnv reads the knobs. A value that is not a positive integer, or a
+// resend value that is not exactly "on", leaves the knob off: a run script typo
+// must not turn into a retry nobody asked for.
+func knobsFromEnv() knobs {
+	k := knobs{retryOn: httpclient.ParseRetryOn(os.Getenv("CLIENT_RETRY_ON"))}
+	if n, err := strconv.Atoi(os.Getenv("CLIENT_RETRIES")); err == nil && n > 0 {
+		k.retries = n
+	}
+	k.sdkResend = os.Getenv("CLIENT_SDK_RESEND") == "on"
+	return k
+}
+
+// httpClient builds the client these knobs ask for: the lab's no-retry client
+// unless CLIENT_RETRIES asked for more.
+func (k knobs) httpClient(timeout time.Duration) *http.Client {
+	if k.retries > 0 {
+		return httpclient.NewRetryingOn(timeout, k.retries, k.retryOn)
+	}
+	return httpclient.New(timeout)
+}
+
 func main() {
 	target := os.Getenv("TARGET_URL")
 	lwi := os.Getenv("LWI")
@@ -46,7 +99,8 @@ func main() {
 		os.Exit(2)
 	}
 	text := getenv("TEXT", "hello")
-	line := clientLine{Ledger: "client", LogicalWorkItemID: lwi, A2AVersion: string(a2a.Version)}
+	k := knobsFromEnv()
+	line := clientLine{Ledger: "client", Attempt: 1, LogicalWorkItemID: lwi, A2AVersion: string(a2a.Version)}
 	emit := func() {
 		line.TS = time.Now().UTC().Format(time.RFC3339Nano)
 		b, _ := json.Marshal(line)
@@ -55,7 +109,7 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	hc := httpclient.New(90 * time.Second)
+	hc := k.httpClient(90 * time.Second)
 
 	card, err := agentcard.NewResolver(hc).Resolve(ctx, target)
 	if err != nil {
@@ -77,11 +131,26 @@ func main() {
 	line.MessageID = req.Message.ID
 	res, err := client.SendMessage(ctx, req)
 	if err != nil {
-		// A failed request is a recorded outcome; the process still exits non-zero
-		// only because no result object exists to describe.
+		// A failed attempt is a recorded outcome, printed before anything else
+		// happens, so the line exists whatever the next attempt does.
 		line.Error = err.Error()
 		emit()
-		os.Exit(3)
+		if !k.sdkResend {
+			// The process exits non-zero only because no result object exists
+			// to describe.
+			os.Exit(3)
+		}
+		// The SDK-layer resend asked for by CLIENT_SDK_RESEND: the same request
+		// object, handed to SendMessage a second time. What the SDK then puts on
+		// the wire is what A.2 measures, so nothing here is changed for it.
+		line.Attempt = 2
+		line.Error = ""
+		res, err = client.SendMessage(ctx, req)
+		if err != nil {
+			line.Error = err.Error()
+			emit()
+			os.Exit(3)
+		}
 	}
 	switch r := res.(type) {
 	case *a2a.Task:

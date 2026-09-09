@@ -1,0 +1,65 @@
+================================================================
+Written summary of the first probe, 2026-09-09T03:54:48Z
+================================================================
+# THIS SECTION IS A WRITTEN SUMMARY, NOT CAPTURED OUTPUT. The request bodies
+# are shown as placeholders and the ledger lines are rendered with shortened
+# field names, so the exit codes below cannot be recomputed from it. The raw
+# capture that can be is the section at the end of this file; the two agree.
+#
+# What a close-after-read at the worker looks like to a client, on two hops.
+# Run on 2026-09-09T03:54:48Z from an in-cluster curl pod (curlimages/curl:8.11.1).
+# Same injection mode, same body shape, two work items, one delivery each.
+# The worker pod is worker-65459559bd-lzgrx at 10.244.1.173; the probe pod is a2-probe at 10.244.1.221.
+
+## hop 1: through the worker Service VIP, so through the worker's istiod-driven agentgateway waypoint
+$ curl -X POST http://worker.lab.svc.cluster.local:8080/control/inject -d '{"mode":"close-after-read","lwi":"a2-probe-svc-065448"}'  ->  204
+$ curl -X POST http://worker.lab.svc.cluster.local:8080/ -d '<one SendMessage for a2-probe-svc-065448>'
+http_code=503 curl_exit=0
+
+## hop 2: straight to the worker pod IP, so no Service and no waypoint on the hop
+$ curl -X POST http://worker.lab.svc.cluster.local:8080/control/inject -d '{"mode":"close-after-read","lwi":"a2-probe-pod-065448"}'  ->  204
+$ curl -X POST http://10.244.1.173:8080/ -d '<one SendMessage for a2-probe-pod-065448>'
+http_code=000 curl_exit=52
+
+## what the worker's own pre-dispatch ingress ledger recorded for each
+{"lwi":"a2-probe-svc-065448","phase":"arrival","status":null,"injection":null,"peer":"10.244.1.55","id":"a2-probe-svc-065448","messageId":"msg-a2-probe-svc-065448"}
+{"lwi":"a2-probe-svc-065448","phase":"response","status":0,"injection":"close-after-read","peer":"10.244.1.55","id":"a2-probe-svc-065448","messageId":"msg-a2-probe-svc-065448"}
+{"lwi":"a2-probe-pod-065448","phase":"arrival","status":null,"injection":null,"peer":"10.244.1.221","id":"a2-probe-pod-065448","messageId":"msg-a2-probe-pod-065448"}
+{"lwi":"a2-probe-pod-065448","phase":"response","status":0,"injection":"close-after-read","peer":"10.244.1.221","id":"a2-probe-pod-065448","messageId":"msg-a2-probe-pod-065448"}
+
+## disarming whatever is left
+$ curl -X POST http://worker.lab.svc.cluster.local:8080/control/reset  ->  204
+
+================================================================
+Raw capture, 2026-09-09T04:52:57Z
+================================================================
+# Unedited command lines and output, captured with tee from the
+# in-cluster curl pod a2-probe2 (curlimages/curl:8.11.1) at 10.244.1.20.
+# The worker is pod worker-65459559bd-lzgrx at 10.244.1.173.
+# Two fresh work items, one delivery each, nothing else armed.
+
+$ kubectl -n lab exec a2-probe2 -- curl -s -o /dev/null -w 'http_code=%{http_code} exit=%{exitcode}\n' -X POST -H 'Content-Type: application/json' -d '{"mode":"close-after-read","lwi":"a2-probe2-svc-075256"}' http://worker.lab.svc.cluster.local:8080/control/inject
+http_code=204 exit=0
+
+# hop 1: through the worker Service VIP, so through the worker's istiod-driven agentgateway waypoint
+$ kubectl -n lab exec a2-probe2 -- curl -s -o /dev/null -w 'http_code=%{http_code} exit=%{exitcode}\n' -X POST -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":"a2-probe2-svc-075256","method":"SendMessage","params":{"message":{"messageId":"msg-a2-probe2-svc-075256","role":"ROLE_USER","parts":[{"text":"lwi:a2-probe2-svc-075256 hello"}],"metadata":{"logical_work_item_id":"a2-probe2-svc-075256"}}}}' http://worker.lab.svc.cluster.local:8080/
+http_code=503 exit=0
+
+$ kubectl -n lab exec a2-probe2 -- curl -s -o /dev/null -w 'http_code=%{http_code} exit=%{exitcode}\n' -X POST -H 'Content-Type: application/json' -d '{"mode":"close-after-read","lwi":"a2-probe2-pod-075256"}' http://worker.lab.svc.cluster.local:8080/control/inject
+http_code=204 exit=0
+
+# hop 2: straight to the worker pod IP, so no Service and no waypoint on the hop
+$ kubectl -n lab exec a2-probe2 -- curl -s -o /dev/null -w 'http_code=%{http_code} exit=%{exitcode}\n' -X POST -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":"a2-probe2-pod-075256","method":"SendMessage","params":{"message":{"messageId":"msg-a2-probe2-pod-075256","role":"ROLE_USER","parts":[{"text":"lwi:a2-probe2-pod-075256 hello"}],"metadata":{"logical_work_item_id":"a2-probe2-pod-075256"}}}}' http://10.244.1.173:8080/
+http_code=000 exit=52
+command terminated with exit code 52
+(kubectl exec reported non-zero; curl's own line is above)
+
+# the worker's pre-dispatch ingress ledger for both work items, copied unedited from kubectl logs
+$ kubectl -n lab logs deploy/worker | grep -F -e 'a2-probe2-svc-075256' -e 'a2-probe2-pod-075256'
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-09T04:52:57.554179169Z","remote":"10.244.1.55:45069","method":"SendMessage","id":"a2-probe2-svc-075256","messageId":"msg-a2-probe2-svc-075256","taskId":"","logical_work_item_id":"a2-probe2-svc-075256","a2a_version":"","content_type":"application/json","body_sha256":"1d34a57a44d8aa476327850df3521a011b5ad665ab5144872defe64a43f1e4e7","body_len":260}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-09T04:52:57.554179169Z","remote":"10.244.1.55:45069","method":"SendMessage","id":"a2-probe2-svc-075256","messageId":"msg-a2-probe2-svc-075256","taskId":"","logical_work_item_id":"a2-probe2-svc-075256","a2a_version":"","content_type":"application/json","body_sha256":"1d34a57a44d8aa476327850df3521a011b5ad665ab5144872defe64a43f1e4e7","body_len":260,"status":0,"injection":"close-after-read"}
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-09T04:52:57.646811252Z","remote":"10.244.1.20:48875","method":"SendMessage","id":"a2-probe2-pod-075256","messageId":"msg-a2-probe2-pod-075256","taskId":"","logical_work_item_id":"a2-probe2-pod-075256","a2a_version":"","content_type":"application/json","body_sha256":"1e542352d769564f012ec42835b4d3ec3f8e8908d887123caa40e68db65df912","body_len":260}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-09T04:52:57.646811252Z","remote":"10.244.1.20:48875","method":"SendMessage","id":"a2-probe2-pod-075256","messageId":"msg-a2-probe2-pod-075256","taskId":"","logical_work_item_id":"a2-probe2-pod-075256","a2a_version":"","content_type":"application/json","body_sha256":"1e542352d769564f012ec42835b4d3ec3f8e8908d887123caa40e68db65df912","body_len":260,"status":0,"injection":"close-after-read"}
+
+$ kubectl -n lab exec a2-probe2 -- curl -s -o /dev/null -w 'http_code=%{http_code} exit=%{exitcode}\n' -X POST http://worker.lab.svc.cluster.local:8080/control/reset
+http_code=204 exit=0
