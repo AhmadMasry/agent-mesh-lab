@@ -39,7 +39,7 @@ For each mode × receiver, record: deliveries (pre-dispatch), dispatches, tasks 
 
 For each real client, force one retry and capture both attempts at the pre-dispatch ledger.
 
-- [ ] `a2a-python` client: on retry, `messageId` reused or regenerated? JSON-RPC `id` reused or regenerated? Body identical?
+- [x] `a2a-python` client: on retry, `messageId` reused or regenerated? JSON-RPC `id` reused or regenerated? Body identical?
 - [x] `a2a-go` client: same three questions.
 - [ ] Where the retry is configured (SDK option, underlying HTTP client, none available) — recorded.
 
