@@ -1,0 +1,49 @@
+# Versions reported by the running cluster. Read-only commands, captured 2026-09-09T01:55:55Z,
+# after the run recorded in this directory and on the same cluster, which was not
+# reinstalled or upgraded between the run and this capture. The two Gateway pods
+# named below are the ones the entry's Result cites by address: 10.244.1.168 and
+# 10.244.1.92.
+
+$ istioctl version
+client version: 1.31.0
+control plane version: 1.31.0
+data plane version:  (2 proxies), 1.31.0 (2 proxies)
+
+$ kubectl -n lab get pod -l gateway.networking.k8s.io/gateway-name=agentgateway-waypoint-orch -o wide
+NAME                                          READY   STATUS    RESTARTS   AGE    IP             NODE                    NOMINATED NODE   READINESS GATES
+agentgateway-waypoint-orch-59fb497555-tt25r   1/1     Running   0          3h2m   10.244.1.168   agent-mesh-lab-worker   <none>           <none>
+
+$ kubectl -n agentgateway-system get pod -l gateway.networking.k8s.io/gateway-name=agentgateway-ingress -o wide
+NAME                                    READY   STATUS    RESTARTS   AGE    IP            NODE                    NOMINATED NODE   READINESS GATES
+agentgateway-ingress-6848b5848f-4d5j4   1/1     Running   0          6h4m   10.244.1.92   agent-mesh-lab-worker   <none>           <none>
+
+$ kubectl get nodes -o wide
+NAME                           STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION            CONTAINER-RUNTIME
+agent-mesh-lab-control-plane   Ready    control-plane   32h   v1.37.0   172.18.0.2    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+agent-mesh-lab-worker          Ready    <none>          32h   v1.37.0   172.18.0.3    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+
+# Re-captured 2026-09-09T02:07:40Z (review fix round 1): the block above used `-o wide`, which carries
+# READY/STATUS/RESTARTS/AGE/IP/NODE but not IMAGE or CREATED, so it did not actually support this
+# entry's Method-sentence citation of the image tag and creation timestamps. Re-run with
+# custom-columns for the same two pods, read-only, on the same cluster, not reinstalled or upgraded
+# since the run. Both pods are unchanged from the run: same names, same IPs, same images, and the
+# same creation timestamps already implied by the AGE values above (3h2m and 6h4m as of
+# 2026-09-09T01:55:55Z) -- neither pod has restarted since.
+
+$ istioctl version
+client version: 1.31.0
+control plane version: 1.31.0
+data plane version:  (2 proxies), 1.31.0 (2 proxies)
+
+$ kubectl -n lab get pod -l gateway.networking.k8s.io/gateway-name=agentgateway-waypoint-orch -o "custom-columns=NAME:.metadata.name,IP:.status.podIP,IMAGE:.spec.containers[0].image,CREATED:.metadata.creationTimestamp"
+NAME                                          IP             IMAGE                                     CREATED
+agentgateway-waypoint-orch-59fb497555-tt25r   10.244.1.168   cr.agentgateway.dev/agentgateway:v1.5.0   2026-09-08T22:53:22Z
+
+$ kubectl -n agentgateway-system get pod -l gateway.networking.k8s.io/gateway-name=agentgateway-ingress -o "custom-columns=NAME:.metadata.name,IP:.status.podIP,IMAGE:.spec.containers[0].image,CREATED:.metadata.creationTimestamp"
+NAME                                    IP            IMAGE                                     CREATED
+agentgateway-ingress-6848b5848f-4d5j4   10.244.1.92   cr.agentgateway.dev/agentgateway:v1.5.0   2026-09-08T19:51:49Z
+
+$ kubectl get nodes -o wide
+NAME                           STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION            CONTAINER-RUNTIME
+agent-mesh-lab-control-plane   Ready    control-plane   32h   v1.37.0   172.18.0.2    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+agent-mesh-lab-worker          Ready    <none>          32h   v1.37.0   172.18.0.3    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4

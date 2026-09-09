@@ -31,7 +31,7 @@ For each mode × receiver, record: deliveries (pre-dispatch), dispatches, tasks 
 - [x] M1 × Go — recorded
 - [x] M1 × Python — recorded
 - [x] M2 × Go — recorded
-- [ ] M2 × Python — recorded
+- [x] M2 × Python — recorded
 - [ ] M3 × Go — recorded
 - [ ] M3 × Python — recorded
 
