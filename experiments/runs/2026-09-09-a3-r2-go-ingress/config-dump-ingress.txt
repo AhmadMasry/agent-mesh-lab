@@ -1,0 +1,76 @@
+== 2026-09-09T18:13:20Z | R2/ingress go config_dump capture (Task 5) ==
+kubectl -n agentgateway-system port-forward deploy/agentgateway-ingress 15003:15000
+curl -s http://127.0.0.1:15003/config_dump | jq '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value]'
+
+[
+  {
+    "key": "lab/orchestrator-ingress.00.http",
+    "name": "orchestrator-ingress",
+    "namespace": "lab",
+    "kind": "HTTPRoute",
+    "matches": [
+      {
+        "path": {
+          "pathPrefix": "/"
+        }
+      }
+    ],
+    "backends": [
+      {
+        "weight": 1,
+        "service": {
+          "name": "lab/orchestrator.lab.svc.cluster.local",
+          "port": 8080
+        }
+      }
+    ],
+    "inlinePolicies": [
+      {
+        "retry": {
+          "attempts": 1,
+          "backoff": "100ms",
+          "codes": [
+            "503 Service Unavailable"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "key": "lab/worker-ingress.00.http",
+    "name": "worker-ingress",
+    "namespace": "lab",
+    "kind": "HTTPRoute",
+    "hostnames": [
+      "worker.lab.internal"
+    ],
+    "matches": [
+      {
+        "path": {
+          "pathPrefix": "/"
+        }
+      }
+    ],
+    "backends": [
+      {
+        "weight": 1,
+        "service": {
+          "name": "lab/worker.lab.svc.cluster.local",
+          "port": 8080
+        }
+      }
+    ],
+    "inlinePolicies": [
+      {
+        "retry": {
+          "attempts": 1,
+          "backoff": "100ms",
+          "codes": [
+            "503 Service Unavailable"
+          ]
+        }
+      }
+    ]
+  }
+]
+2026-09-09T18:13:23Z agentgateway-system/agentgateway-ingress holds 2 retry policy/policies in its own config_dump
