@@ -56,3 +56,29 @@ recorded the arrival from the ingress pod's address, not from a waypoint's. A Se
 therefore not on the ingress to receiver hop. Every Gate 2 entry's Method states it that way: an in-cluster
 stimulus reaches its receiver through that receiver's own istiod-driven waypoint; an out-of-cluster stimulus
 reaches its receiver through the agentgateway ingress and no waypoint.
+
+## 2026-09-09 — one extra retry-location row, on the egress route (author's addition)
+
+Decision by the author, taken when the Gate 3 plan was finalised and written down here when the row was run,
+on 2026-09-09/10. The proposal's §4.4 A.3 matrix names five rows: a baseline and R1 to R4, whose retry
+locations are the client, the gateway in front of the receiver, the receiver's own model client, and the four
+composed. None of them puts a retry on the hop between the receiver and the model endpoint, which at step 2b
+became a proxy of its own: the `agw-egress` waypoint under agentgateway's own control plane, carrying the
+route to `model.lab.internal`. The author adds one row there.
+
+The question it answers: does an egress gateway retry duplicate a model call, and what does the model endpoint
+see when it does? Method: `make retry-on ROUTE=egress` (one stanza, `attempts: 1`, `backoff: 100ms`,
+`codes: [500, 503]`, on `agentgateway-egress/model-via-agw`), every other retry layer asserted off, the mock
+armed `http500` keyed by the repetition's work item so that both the call and its re-send are answered 500 —
+the row measures the duplication, not a recovery — an in-cluster loadgen Job as the stimulus, the Python
+receiver in model mode, twenty repetitions per receiver through the same harness every other row uses,
+`experiments/gate3-matrix.sh RUN=egress`.
+
+Consequences the author accepts: (1) the results table Gate 3 fills has one row more than the proposal's
+template, marked as an addition rather than as one of the five; (2) the row carries no checklist box, because
+the checklist follows the proposal; (3) it is counted and classified by the same rules as the five, so it can
+be read beside them. The proposal text is unchanged.
+
+The entry is `## Gate 3 / both receivers / egress-route retry — Does an egress gateway retry duplicate a model
+call, and what does the mock see?` in `findings.md`, with its runs under
+`experiments/runs/2026-09-10-a3-egress-go/` and `experiments/runs/2026-09-10-a3-egress-py/`.
