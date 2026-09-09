@@ -1,0 +1,21 @@
+# Evidence for the Result line "POST /v1/traces -> HTTP 200, body {"partialSuccess":{}}".
+#
+# This capture is EVIDENCE ONLY, not a second count. The counted probe of this entry is
+# work item pipeline-probe-065020, posted at 06:53Z and exported to
+# pipeline-probe-065020/spans.csv. That POST's response was read from the terminal and
+# not written to a file, so the same request was repeated here under a fresh work item,
+# probe-evidence-070950, purely to capture the response line. The entry's counts are
+# unchanged by it and do not include it.
+#
+# kubectl -n lab exec -i a2-curl -- curl -sS -i -X POST -H 'Content-Type: application/json' \
+#   --data-binary @- http://otel-collector.telemetry.svc.cluster.local:4318/v1/traces
+# (payload identical in shape to probe-span.json, with a fresh nonce and fresh ids)
+# The response's HTTP header block came back CRLF-terminated, as HTTP requires; the line
+# endings below are normalised to LF so the committed file and the working copy agree.
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Wed, 09 Sep 2026 07:10:18 GMT
+Content-Length: 21
+
+{"partialSuccess":{}}

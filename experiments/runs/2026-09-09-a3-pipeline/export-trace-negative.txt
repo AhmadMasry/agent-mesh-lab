@@ -1,0 +1,16 @@
+# Evidence for the Result line "A query for a work item that was never sent returns 0 rows
+# and exit status 2". A read-only query; nothing was sent to any agent.
+#
+# make export-trace LWI=never-sent-070950 OUT=<scratch dir, deleted afterwards>
+
+export-trace: lab.work_item=never-sent-070950 window 2026-09-09T06:10:31Z..2026-09-09T07:11:31Z -> 0 span(s) in $HOME/.claude/jobs/66f42ee1/tmp/negative-export/spans.csv
+export-trace: no span carried lab.work_item=never-sent-070950 in that window
+make: *** [export-trace] Error 2
+
+# make exit status: 2
+# (GNU make reports any recipe failure as its own 2; the recipe's own status is also 2
+#  for this case, which is the documented "no span matched" code.)
+# rows in the scratch spans.csv (header only):
+1
+# the scratch spans.csv itself:
+trace_id,span_id,parent_span_id,service,operation,start_us,duration_us,lab_work_item,lab_message_id,http_status

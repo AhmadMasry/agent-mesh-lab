@@ -1,0 +1,13 @@
+# The telemetry namespace holds the collector, the trace backend and Prometheus.
+#
+# It carries no istio.io/dataplane-mode label, so its pods are not ztunnel-captured.
+# The reason is that this namespace is a sink for the measurement, not a hop under
+# test: the experiments count what happens between the client, the gateways and the
+# agents, and putting the collector behind a waypoint would add a gateway to the
+# path that no row in the matrix is asking about. Traffic from the ambient-enrolled
+# lab namespace to these Services leaves ztunnel as plaintext to an out-of-mesh
+# destination.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: telemetry

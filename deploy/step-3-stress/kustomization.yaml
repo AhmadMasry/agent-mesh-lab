@@ -1,0 +1,26 @@
+# Step 3: the telemetry pipeline. Applies on top of step 2c; nothing in any earlier
+# overlay is edited in place, and no agent, fixture or gateway is touched by it.
+#
+# What this adds:
+#   namespace.yaml         the telemetry namespace, deliberately not ambient-enrolled
+#   otel-collector.yaml    the collector: OTLP in, identity attributes lifted, three
+#                          exporters out
+#   jaeger.yaml            the trace backend, all-in-one with in-memory storage
+#   prometheus.yaml        Prometheus and the scrape jobs for istiod, ztunnel, the
+#                          agentgateway proxies and the collector
+#   instrumentation.yaml   the Instrumentation resource the Operator reads for Python
+#                          injection; no pod is annotated for injection at this step
+#
+# The OpenTelemetry Operator itself is installed by `make step-3` from its Helm chart,
+# the way `make step-2b` installs agentgateway's control plane: it is a controller,
+# not an application manifest, and its CRDs have to exist before this overlay's
+# Instrumentation resource can be applied.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../step-2c-gate2
+  - namespace.yaml
+  - otel-collector.yaml
+  - jaeger.yaml
+  - prometheus.yaml
+  - instrumentation.yaml

@@ -1,0 +1,35 @@
+# The Instrumentation resource the OpenTelemetry Operator reads when a pod asks for
+# Python auto-instrumentation. It is created here, in lab, so that Task 1 has only an
+# annotation to add; no pod carries that annotation yet, so applying this changes the
+# behaviour of nothing.
+#
+# The annotation Task 1 will add is instrumentation.opentelemetry.io/inject-python,
+# whose value is "true" for a resource in the same namespace, a bare name for one in
+# the current namespace, or "<namespace>/<name>" for one elsewhere.
+#
+# Fields, the image tag, and the header-capture variable are pinned in versions.yaml
+# under opentelemetry-operator and otel-python-autoinstrumentation.
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: lab-python
+  namespace: lab
+spec:
+  exporter:
+    # The collector's OTLP HTTP Service. The auto-instrumentation appends the signal
+    # path to this base URL, so it carries a scheme and no path.
+    endpoint: http://otel-collector.telemetry.svc.cluster.local:4318
+  propagators:
+    - tracecontext
+    - baggage
+  python:
+    image: ghcr.io/open-telemetry/opentelemetry-operator/autoinstrumentation-python:0.64b0
+    env:
+      # The four identity headers this lab carries on every model call and every
+      # agent-to-agent request. The ASGI instrumentation records each named header on
+      # the server span as http.request.header.<lowercased name, - replaced by _>,
+      # holding a list of that header's values; the collector's transform processor
+      # copies the first element of each onto lab.work_item, lab.message_id,
+      # lab.task_id and lab.caller.
+      - name: OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+        value: "X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller"

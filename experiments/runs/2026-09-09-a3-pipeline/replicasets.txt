@@ -1,0 +1,114 @@
+# ReplicaSet history of the three lab Deployments, read 2026-09-09T07:08:40Z, after make step-3.
+#
+# Why this file exists: the first draft of the Task 0 findings entry claimed the step-3
+# apply had dropped two retry knobs from the live orchestrator. It had not. Revision
+# numbers, not creation timestamps, say which template was live: a ReplicaSet is reused
+# when a Deployment returns to a template it has had before, and is given a new revision
+# number then, so the newest revision can sit on an older object. The rows below are
+# sorted by creation time and carry the revision, so both orders are visible.
+#
+# Command:
+#   kubectl -n lab get rs -l app=<name> --sort-by=.metadata.creationTimestamp \
+#     -o custom-columns='NAME:.metadata.name,REV:.metadata.annotations.deployment\.kubernetes\.io/revision,\
+#     CREATED:.metadata.creationTimestamp,REPLICAS:.status.replicas,IMAGE:.spec.template.spec.containers[0].image,\
+#     ENV:.spec.template.spec.containers[0].env[*].name'
+
+## orchestrator
+NAME                      REV   CREATED                REPLICAS   IMAGE              ENV
+orchestrator-75fb9f4987   27    2026-09-09T01:08:15Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL
+orchestrator-66dc5c7ff9   20    2026-09-09T03:04:42Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL,CLIENT_RETRIES
+orchestrator-5c6c875656   24    2026-09-09T03:05:37Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL,CLIENT_TRANSPORT_RESEND
+orchestrator-856f59c98c   26    2026-09-09T03:07:28Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL,CLIENT_SDK_RESEND
+orchestrator-5cb7595ff9   40    2026-09-09T03:08:29Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL
+orchestrator-5b87f75f5f   39    2026-09-09T03:08:38Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL,CLIENT_SDK_RESEND
+orchestrator-768f495c95   35    2026-09-09T03:09:32Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL,CLIENT_RETRIES
+orchestrator-677bb884d    37    2026-09-09T03:10:27Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL,CLIENT_TRANSPORT_RESEND
+orchestrator-78f74875b    45    2026-09-09T04:06:12Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL
+orchestrator-9c5ff448b    44    2026-09-09T04:07:19Z   0          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES,DOWNSTREAM_A2A_URL,CLIENT_TRANSPORT_RESEND,CLIENT_RETRY_ON
+orchestrator-5c76587b5d   46    2026-09-09T06:51:14Z   1          orchestrator:dev   MODEL_BASE_URL,PUBLIC_URL,AGENT_NAME,PORT,DOWNSTREAM_A2A_URL,PLAN_MODEL_CALL,MODEL_NAME,MODEL_API_KEY,MODEL_MAX_RETRIES
+
+## worker
+NAME                REV   CREATED                REPLICAS   IMAGE                                                                                                                 ENV
+worker-59dfb44569   6     2026-09-07T17:59:06Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:6bd50096cb814012b3ae673c0dc45a54340069177a55333b494d3dff10429652   AGENT_NAME,MODEL_BASE_URL,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL
+worker-75b59d5744   5     2026-09-07T18:03:11Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:6bd50096cb814012b3ae673c0dc45a54340069177a55333b494d3dff10429652   AGENT_NAME,MODEL_BASE_URL,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL,MODEL_TIMEOUT_S
+worker-849bbfb8c8   9     2026-09-08T19:51:49Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:42bafd89a668c587b8bd9808388d084d5eac040558b299364bd10ed9fcb512f3   MODEL_BASE_URL,AGENT_NAME,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL
+worker-7dfbf5d785   8     2026-09-08T20:00:39Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:42bafd89a668c587b8bd9808388d084d5eac040558b299364bd10ed9fcb512f3   MODEL_BASE_URL,AGENT_NAME,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL,MODEL_TIMEOUT_S
+worker-8884c5cb4    10    2026-09-08T21:41:00Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:f8c7ae851e0fd71dbfc8130c4e0f0c25544812da6b941db2f122e8295a976c7b   MODEL_BASE_URL,AGENT_NAME,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL
+worker-68bf489ddb   11    2026-09-08T21:46:00Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:4ae403ddc1c1f249618c753a1c2080e2f9c0d4be9696c477212b0cb1987501ca   MODEL_BASE_URL,AGENT_NAME,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL
+worker-844bb769b7   12    2026-09-08T22:07:53Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:358b6eb9bd6b6b2035f471dfa6776336161e688dcc3066d1bffddbc6f0a4fc4d   MODEL_BASE_URL,AGENT_NAME,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL
+worker-566955d45d   13    2026-09-08T22:38:33Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:d360b2cccb5672341185d872a5419f947b3273f2df0fe3fbe2bb13ba52dc74ef   MODEL_BASE_URL,AGENT_NAME,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL
+worker-667b757c4    14    2026-09-08T22:53:22Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:20b2b33afdfcc1868b6c20353100b88c162004a9492970ddc8fc315cfdd7e6f2   MODEL_BASE_URL,AGENT_NAME,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL
+worker-65459559bd   15    2026-09-08T23:15:22Z   0          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:ff447dfa2fecdc32c0157ec9dea40853c262b2d5e2ce5461c3e8193c6456011f   MODEL_BASE_URL,AGENT_NAME,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL
+worker-f957d7797    16    2026-09-09T06:51:14Z   1          kind.local/worker-918a018b7a581926ead34dec2ba0fb83:76e254c6a92ab53ca92ce259240ef9c1ab41e621c67b04f4b0f57ce46cbd065a   MODEL_BASE_URL,AGENT_NAME,MODEL_NAME,MODEL_API_KEY,PUBLIC_URL
+
+## mockllm
+NAME                 REV   CREATED                REPLICAS   IMAGE                                                                                                                  ENV
+mockllm-7996cfddbf   1     2026-09-07T17:38:58Z   0          kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:f7eece9e8242f831899c5d5047e2aa09541b06f4bf9473b8d5c2d86b896ab8d0   MOCKLLM_RESPONSE_TEXT,MOCKLLM_LATENCY_MS
+mockllm-5bfbf5df86   2     2026-09-07T17:59:06Z   0          kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:f7eece9e8242f831899c5d5047e2aa09541b06f4bf9473b8d5c2d86b896ab8d0   MOCKLLM_RESPONSE_TEXT,MOCKLLM_LATENCY_MS
+mockllm-6b9d766c89   3     2026-09-08T19:51:49Z   0          kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:51658b64510dcddfbf5adbd9be702cddd6e3f441d5a2ad69613c1b192328b597   MOCKLLM_RESPONSE_TEXT,MOCKLLM_LATENCY_MS
+mockllm-56bf7f6f88   4     2026-09-08T21:41:00Z   0          kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:217f383d9098717fdbefb823d542ed62fc2a503fbb47b8d37030e7ef1759b053   MOCKLLM_RESPONSE_TEXT,MOCKLLM_LATENCY_MS
+mockllm-5cbf958b86   5     2026-09-08T22:07:53Z   0          kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:150f0de7c4afaa9ad335a7c265f4697c5a89a41a8c83402a76339742472ba1be   MOCKLLM_RESPONSE_TEXT,MOCKLLM_LATENCY_MS
+mockllm-d9fc6fd66    6     2026-09-08T22:38:33Z   0          kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:8639aa41c59e22eb2731d23d36b4365587c0c62d53fd78fcf5e38ee2d3b26d72   MOCKLLM_RESPONSE_TEXT,MOCKLLM_LATENCY_MS
+mockllm-7456c67d49   7     2026-09-08T22:53:22Z   0          kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:eeb0d809a52c983f6f4e767955fc36aa5dd83abcebcbae824c6c6948ac589c16   MOCKLLM_RESPONSE_TEXT,MOCKLLM_LATENCY_MS
+mockllm-77cc6879f4   8     2026-09-08T23:15:22Z   0          kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:8dd5192f91871812a3561de068a19915ab215cf47bc16164a8bba05c3c200ef0   MOCKLLM_RESPONSE_TEXT,MOCKLLM_LATENCY_MS
+mockllm-6f6dd6479d   9     2026-09-09T06:51:14Z   1          kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:50f8a3b2e2a7bb34e6f88952aaaf8c28cb443380769b6ba207ba1dff655d9b08   MOCKLLM_RESPONSE_TEXT,MOCKLLM_LATENCY_MS
+
+## orchestrator: the ReplicaSet holding revision 45, with its revision-history annotation
+# kubectl -n lab get rs orchestrator-78f74875b -o jsonpath='{.metadata.annotations}'
+{"deployment.kubernetes.io/desired-replicas":"1","deployment.kubernetes.io/max-replicas":"2","deployment.kubernetes.io/revision":"45","deployment.kubernetes.io/revision-history":"41,43"}
+
+## kubectl -n lab rollout history deploy/orchestrator --revision=45   (live immediately before step 3)
+deployment.apps/orchestrator with revision #45
+Pod Template:
+  Labels:	app=orchestrator
+	pod-template-hash=78f74875b
+  Annotations:	kubectl.kubernetes.io/restartedAt: 2026-09-09T07:06:12+03:00
+  Containers:
+   orchestrator:
+    Image:	orchestrator:dev
+    Port:	8080/TCP (http)
+    Host Port:	0/TCP (http)
+    Readiness:	http-get http://:http/healthz delay=2s timeout=1s period=2s successThreshold=1 failureThreshold=5
+    Environment:
+      MODEL_BASE_URL:	http://model.lab.internal:8080/v1
+      PUBLIC_URL:	http://agentgateway-ingress.agentgateway-system.svc.cluster.local
+      AGENT_NAME:	orchestrator
+      PORT:	8080
+      PLAN_MODEL_CALL:	off
+      MODEL_NAME:	mock
+      MODEL_API_KEY:	unused
+      MODEL_MAX_RETRIES:	0
+      DOWNSTREAM_A2A_URL:	http://worker.lab.svc.cluster.local:8080
+    Mounts:	<none>
+  Volumes:	<none>
+  Node-Selectors:	<none>
+  Tolerations:	<none>
+
+
+## kubectl -n lab rollout history deploy/orchestrator --revision=46   (created by the step-3 apply, 06:51:14Z)
+deployment.apps/orchestrator with revision #46
+Pod Template:
+  Labels:	app=orchestrator
+	pod-template-hash=5c76587b5d
+  Annotations:	kubectl.kubernetes.io/restartedAt: 2026-09-09T07:06:12+03:00
+  Containers:
+   orchestrator:
+    Image:	orchestrator:dev
+    Port:	8080/TCP (http)
+    Host Port:	0/TCP (http)
+    Readiness:	http-get http://:http/healthz delay=2s timeout=1s period=2s successThreshold=1 failureThreshold=5
+    Environment:
+      MODEL_BASE_URL:	http://model.lab.internal:8080/v1
+      PUBLIC_URL:	http://agentgateway-ingress.agentgateway-system.svc.cluster.local
+      AGENT_NAME:	orchestrator
+      PORT:	8080
+      DOWNSTREAM_A2A_URL:	http://worker.lab.svc.cluster.local:8080
+      PLAN_MODEL_CALL:	off
+      MODEL_NAME:	mock
+      MODEL_API_KEY:	unused
+      MODEL_MAX_RETRIES:	0
+    Mounts:	<none>
+  Volumes:	<none>
+  Node-Selectors:	<none>
+  Tolerations:	<none>
+

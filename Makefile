@@ -11,7 +11,7 @@ ORCHESTRATOR_IMAGE := orchestrator:dev
 #   docker image inspect paketobuildpacks/builder-jammy-base --format '{{index .RepoDigests 0}}'
 PACK_BUILDER := paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
 
-.PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers replay replay-waypoint replay-ingress test orchestrator-image
+.PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers replay replay-waypoint replay-ingress export-trace test orchestrator-image
 
 cluster-kind:
 	@if kind get clusters 2>/dev/null | grep -qx "$(CLUSTER_NAME)"; then \
@@ -98,10 +98,13 @@ step-2b: orchestrator-image
 # gives the worker its own hostname on the step-2b ingress, so an
 # out-of-cluster stimulus can reach either receiver. The two receivers do not
 # share one waypoint; the measured reason is in the kustomization comment.
-# Applies on top of step 2b and is re-runnable: the overlay adds one Gateway,
-# one Service label and one HTTPRoute and edits nothing in place, and `ko apply`
-# rebuilds the Go images from the same sources to the same digests, so the
-# Deployments are unchanged by a repeat run. Unlike step-1, step-2 and
+# Applies on top of step 2b: the overlay adds one Gateway, one Service label and
+# one HTTPRoute and edits nothing in place. It is not free to repeat, though.
+# Measured on 2026-09-09 while running step 3 (evidence in
+# experiments/runs/2026-09-09-a3-pipeline/replicasets.txt): `ko apply` rebuilds
+# the Go images from unchanged sources to NEW digests, so the worker and the mock
+# Deployments roll on every repeat run. Both are ledger sources, so this and every
+# other setup target stay out of a measurement in progress. Unlike step-1, step-2 and
 # step-2b this does not depend on orchestrator-image: the Python image is
 # already in the cluster and this overlay does not change its Deployment.
 step-2c:
@@ -113,9 +116,136 @@ step-2c:
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
 
+# step-3: the telemetry pipeline. The OpenTelemetry Operator comes from its Helm
+# chart, the way step-2b installs agentgateway's control plane and for the same
+# reason: it is a controller with CRDs, not an application manifest, and this
+# overlay's Instrumentation resource cannot be applied until those CRDs exist.
+# The chart version is held here, mirroring AGENTGATEWAY_CHART_VERSION, and is
+# recorded in versions.yaml under opentelemetry-operator with the release whose
+# appVersion it carries.
+#
+# The overlay itself adds only new objects: the telemetry namespace and its three
+# Deployments, plus one Instrumentation resource in lab. It declares no change to
+# any agent, fixture or gateway. `ko apply` is used rather than `kubectl apply -k`
+# because the overlay pulls in deploy/base, whose Deployments carry ko:// image
+# references that only ko resolves; `kubectl apply -k` would send those strings to
+# the cluster as image names.
+#
+# This is still a setup target, and running it does rotate all three lab pods.
+# Measured on 2026-09-09, with the evidence in
+# experiments/runs/2026-09-09-a3-pipeline/replicasets.txt: ko rebuilt the worker
+# and the mock from unchanged sources to new digests, so those two Deployments
+# rolled; and the orchestrator rolled because the declared env list orders
+# DOWNSTREAM_A2A_URL fifth where `kubectl set env` and the Gate 2 A.2 restore had
+# left it ninth, the same nine names with the same nine values in a different
+# order, which is still a pod-template change. No retry knob was set on the live
+# object before that apply or after it. Both agents' logs are ledger sources, so
+# do not run this against a measurement in progress.
+#
+# The certificate check runs first, as the experiment scripts do, because a
+# cluster left asleep for a day has an expired ztunnel workload certificate and
+# every mesh hop fails until ztunnel is restarted.
+OTEL_OPERATOR_CHART_VERSION := 0.122.0
+OTEL_OPERATOR_NS            := opentelemetry-operator-system
+TELEMETRY_NS                := telemetry
 step-3:
-	@echo "step-3: not implemented yet (Gate 3)" >&2
-	@exit 1
+	@set -e; \
+	echo "== certificate check =="; \
+	certs=$$(istioctl ztunnel-config certificates --node $(CLUSTER_NAME)-worker); \
+	printf '%s\n' "$$certs"; \
+	if printf '%s\n' "$$certs" | awk '$$1 ~ /ns\/lab\/sa\/default$$/ && $$2 == "Leaf" { print $$4 }' | grep -qx true; then \
+		echo "certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted"; \
+	else \
+		echo "certificate check: VALID CERT is not true; restarting ztunnel" >&2; \
+		kubectl -n istio-system rollout restart daemonset/ztunnel; \
+		kubectl -n istio-system rollout status daemonset/ztunnel --timeout=180s; \
+		istioctl ztunnel-config certificates --node $(CLUSTER_NAME)-worker \
+			| awk '$$1 ~ /ns\/lab\/sa\/default$$/ && $$2 == "Leaf" { print $$4 }' | grep -qx true \
+			|| { echo "certificate check: VALID CERT still not true after a ztunnel restart" >&2; exit 1; }; \
+		echo "certificate check: VALID CERT true after a ztunnel restart"; \
+	fi
+	helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+	helm repo update open-telemetry
+	# The two admissionWebhooks values are the pair the chart README gives for a
+	# self-signed certificate generated by Helm, which is how this cluster avoids
+	# needing cert-manager for the Operator's webhooks.
+	helm upgrade --install opentelemetry-operator open-telemetry/opentelemetry-operator \
+		--version $(OTEL_OPERATOR_CHART_VERSION) \
+		--namespace $(OTEL_OPERATOR_NS) --create-namespace \
+		--set admissionWebhooks.certManager.enabled=false \
+		--set admissionWebhooks.autoGenerateCert.enabled=true \
+		--wait
+	kubectl -n $(OTEL_OPERATOR_NS) rollout status deployment/opentelemetry-operator --timeout=180s
+	kubectl kustomize deploy/step-3-stress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
+	kubectl -n $(TELEMETRY_NS) rollout status deployment/otel-collector --timeout=180s
+	kubectl -n $(TELEMETRY_NS) rollout status deployment/jaeger --timeout=180s
+	kubectl -n $(TELEMETRY_NS) rollout status deployment/prometheus --timeout=180s
+	@echo
+	@echo "trace backend query Service: jaeger.$(TELEMETRY_NS).svc.cluster.local:16686 (its own UI and API; nothing else is installed)"
+	@echo "read it from this host with: kubectl -n $(TELEMETRY_NS) port-forward svc/jaeger 16686:16686  then open http://127.0.0.1:16686"
+
+# export-trace LWI=<id> OUT=<dir> [LOOKBACK=<seconds>]
+#
+# Writes the trace that carries lab.work_item=<id> into the run directory: the
+# raw query response as <OUT>/trace.json, and one row per span as
+# <OUT>/spans.csv. Exits 0 when at least one span was written and 2 when the
+# query matched none, so a run script can tell "no trace" from "query failed".
+# GNU make collapses any recipe failure onto its own exit 2, so a caller that
+# needs the difference runs this target and reads spans.csv, or reads the
+# message this recipe prints.
+#
+# The query is Jaeger's stable /api/v3/traces binding, reached through a
+# short-lived port-forward this recipe starts and stops. Its parameters are the
+# ones jaeger-idl documents for that binding: query.attributes as a URL-encoded
+# JSON map matched against span and resource attributes, and the two required
+# RFC-3339 bounds. LOOKBACK is how many seconds before now the window opens
+# (default one hour); the window closes one minute in the future so a span
+# written moments ago is inside it.
+#
+# spans.csv is produced from trace.json by experiments/lib/jaeger-spans.jq, and
+# that program is exercised by `make test` against a response captured from this
+# API, so a change to it that stops parsing a real response fails the tests.
+JAEGER_QUERY_PORT := 16687
+EXPORT_LOOKBACK    = $(or $(LOOKBACK),3600)
+export-trace:
+	@if [ -z "$(LWI)" ] || [ -z "$(OUT)" ]; then \
+		echo "usage: make export-trace LWI=<logical_work_item_id> OUT=<dir> [LOOKBACK=<seconds>]" >&2; \
+		exit 1; \
+	fi
+	@set -u; \
+	if curl -s -o /dev/null --max-time 1 http://127.0.0.1:$(JAEGER_QUERY_PORT)/ 2>/dev/null; then \
+		echo "export-trace: something already answers on 127.0.0.1:$(JAEGER_QUERY_PORT); refusing to query a listener this target did not start" >&2; \
+		exit 1; \
+	fi; \
+	pf=""; \
+	trap 'if [ -n "$$pf" ]; then kill $$pf >/dev/null 2>&1 || true; fi' EXIT INT TERM; \
+	kubectl -n $(TELEMETRY_NS) port-forward svc/jaeger $(JAEGER_QUERY_PORT):16686 >/dev/null 2>&1 & \
+	pf=$$!; \
+	up=0; \
+	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do \
+		if curl -s -o /dev/null --max-time 1 http://127.0.0.1:$(JAEGER_QUERY_PORT)/ ; then up=1; break; fi; \
+		sleep 0.5; \
+	done; \
+	if [ "$$up" != "1" ]; then echo "export-trace: port-forward to svc/jaeger did not come up" >&2; exit 1; fi; \
+	now=$$(date -u +%s); \
+	stamp() { date -u -r "$$1" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$$1" +%Y-%m-%dT%H:%M:%SZ; }; \
+	tmin=$$(stamp $$((now - $(EXPORT_LOOKBACK)))); \
+	tmax=$$(stamp $$((now + 60))); \
+	mkdir -p "$(OUT)"; \
+	curl -sS -G "http://127.0.0.1:$(JAEGER_QUERY_PORT)/api/v3/traces" \
+		--data-urlencode 'query.attributes={"lab.work_item":"$(LWI)"}' \
+		--data-urlencode "query.start_time_min=$$tmin" \
+		--data-urlencode "query.start_time_max=$$tmax" \
+		--data-urlencode "query.search_depth=100" \
+		-o "$(OUT)/trace.json" || { echo "export-trace: the query to the trace backend failed" >&2; exit 1; }; \
+	jq -r -s -f experiments/lib/jaeger-spans.jq "$(OUT)/trace.json" > "$(OUT)/spans.csv" \
+		|| { echo "export-trace: jaeger-spans.jq could not read $(OUT)/trace.json" >&2; exit 1; }; \
+	rows=$$(($$(grep -c '' "$(OUT)/spans.csv") - 1)); \
+	echo "export-trace: lab.work_item=$(LWI) window $$tmin..$$tmax -> $$rows span(s) in $(OUT)/spans.csv"; \
+	if [ "$$rows" -lt 1 ]; then \
+		echo "export-trace: no span carried lab.work_item=$(LWI) in that window" >&2; \
+		exit 2; \
+	fi
 
 # replay MODE=<M1|M2|M3> RECEIVER=<go|py> VIA=<waypoint|ingress> LWI=<id> [OUT=<dir>] [GAP_MS=<n>]
 #
@@ -286,3 +416,16 @@ ledgers:
 
 test:
 	go test ./...
+	@# The jq program that `make export-trace` turns a query response into
+	@# spans.csv with, run against a response captured from the running trace
+	@# backend in the Task 0 probe. A change that stops it reading a real
+	@# response fails here.
+	@out=$$(jq -r -s -f experiments/lib/jaeger-spans.jq experiments/fixtures/jaeger-trace-sample.json) || \
+		{ echo "jaeger-spans.jq: could not read experiments/fixtures/jaeger-trace-sample.json" >&2; exit 1; }; \
+	if [ "$$out" = "$$(cat experiments/fixtures/jaeger-trace-sample.spans.csv)" ]; then \
+		echo "ok  jaeger-spans.jq: fixture rows unchanged"; \
+	else \
+		echo "FAIL jaeger-spans.jq: output differs from experiments/fixtures/jaeger-trace-sample.spans.csv" >&2; \
+		printf '%s\n' "$$out" | diff -u experiments/fixtures/jaeger-trace-sample.spans.csv - >&2 || true; \
+		exit 1; \
+	fi
