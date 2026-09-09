@@ -32,7 +32,7 @@ For each mode × receiver, record: deliveries (pre-dispatch), dispatches, tasks 
 - [x] M1 × Python — recorded
 - [x] M2 × Go — recorded
 - [x] M2 × Python — recorded
-- [ ] M3 × Go — recorded
+- [x] M3 × Go — recorded
 - [ ] M3 × Python — recorded
 
 ### A.2 — Client retry identity
