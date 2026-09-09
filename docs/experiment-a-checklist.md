@@ -29,7 +29,7 @@ Replay harness modes. Run each against the Go receiver, then the Python receiver
 For each mode × receiver, record: deliveries (pre-dispatch), dispatches, tasks created, model invocations, and the second response's shape (same `Task`? new `Task`? error?). Twenty repetitions minimum; report counts, not one run.
 
 - [x] M1 × Go — recorded
-- [ ] M1 × Python — recorded
+- [x] M1 × Python — recorded
 - [ ] M2 × Go — recorded
 - [ ] M2 × Python — recorded
 - [ ] M3 × Go — recorded
