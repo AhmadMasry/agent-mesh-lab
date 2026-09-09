@@ -1,0 +1,38 @@
+== 2026-09-09T21:06:24Z | RUN=R3 RECEIVER=py | RUN_ID=000624 | REPS=20 ==
+Client Version: v1.37.0
+Kustomize Version: v5.8.1
+Server Version: v1.37.0
+client version: 1.31.0
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE    CONTAINERS     IMAGES                                                                                                                 SELECTOR
+agentgateway-waypoint        1/1     1            1           2d3h   agentgateway   cr.agentgateway.dev/agentgateway:v1.5.0                                                                                gateway.networking.k8s.io/gateway-name=agentgateway-waypoint
+agentgateway-waypoint-orch   1/1     1            1           22h    agentgateway   cr.agentgateway.dev/agentgateway:v1.5.0                                                                                gateway.networking.k8s.io/gateway-name=agentgateway-waypoint-orch
+mockllm                      1/1     1            1           2d3h   mockllm        kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:44082d5b8c322f08a3e41589bdc8b7f6c9af48a4125da160e7a2d63179fbe563   app=mockllm
+orchestrator                 1/1     1            1           2d3h   orchestrator   orchestrator:dev                                                                                                       app=orchestrator
+worker                       1/1     1            1           2d3h   worker         kind.local/worker-918a018b7a581926ead34dec2ba0fb83:7f5add707f7631ef7bf62a90661b2b42d4a94c735aabd5f1aad5845df2a27ac5    app=worker
+orchestrator image digests, by pod:
+POD                             PHASE     IMAGE              IMAGEID
+orchestrator-75dffdbdb6-dhk2q   Running   orchestrator:dev   sha256:43baecac1af2660470fca193af39c1e60726b4b511a79d5a9cc71e84f00c70f1
+NAMESPACE             NAME                   HOSTNAMES                 AGE
+agentgateway-egress   model-via-agw          ["model.lab.internal"]    25h
+lab                   orchestrator-ingress                             25h
+lab                   worker                                           2d3h
+lab                   worker-ingress         ["worker.lab.internal"]   22h
+NAMESPACE             NAME                         CLASS                         ADDRESS         PROGRAMMED   AGE
+agentgateway-egress   agw-egress                   agentgateway                  10.96.208.219   True         25h
+agentgateway-system   agentgateway-ingress         agentgateway                  10.96.176.170   True         25h
+lab                   agentgateway-waypoint        istio-agentgateway-waypoint   10.96.24.209    True         2d3h
+lab                   agentgateway-waypoint-orch   istio-agentgateway-waypoint   10.96.36.80     True         22h
+
+
+== 2026-09-09T21:51:37Z | read back after the run, controller ruling ==
+worker pod:   worker-7b4d5566bd-hdxwg imageID=sha256:931e1d242aa9f2de564012e7a282105cbf52592e90222ef8b7546bc62a54baf4 created=2026-09-09T21:05:33Z
+mockllm pod:  mockllm-5998f4bbfd-6wc6j imageID=sha256:4a5a227a26e21b02d4e0c6b98128b917ad50d6922ce660cc066054d587cb4e50 created=2026-09-09T19:37:22Z
+deployment/worker lab.agent-mesh/go-sources=dc72c724b8308f76baa9f742aa5a7c7086d5d260
+deployment/mockllm lab.agent-mesh/go-sources=dc72c724b8308f76baa9f742aa5a7c7086d5d260
+note: the worker pod above is not the pod that served this run's own repetitions -- it has restarted since,
+from this task's own later rows and guard verification (kubectl set env / kubectl annotate only, never a
+rebuild), each time onto the same image this run's own header block records above
+(kind.local/worker-918a018b7a581926ead34dec2ba0fb83:7f5add70...); its imageID is unchanged across those
+restarts, which is exactly what "kubectl set env restarts a pod onto the image already loaded" means. The
+mockllm pod was never restarted after the 19:37Z build (nothing in this task sets a knob on it), so its
+creation timestamp above is the build event itself.

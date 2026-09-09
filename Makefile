@@ -11,6 +11,17 @@ ORCHESTRATOR_IMAGE := orchestrator:dev
 #   docker image inspect paketobuildpacks/builder-jammy-base --format '{{index .RepoDigests 0}}'
 PACK_BUILDER := paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
 
+# GO_SOURCES_HASH: a content hash of the tracked Go sources the worker and mock
+# Deployments are built from (test files excluded: ko does not compile them, and a
+# test-only commit must not force a rebuild). Time-independent, unlike a ko-built
+# image's own tag or digest, which this repository has measured to change on every
+# `ko apply` even from an unchanged tree (see step-2c's and step-3's comments below).
+# Every step target that runs `ko apply` stamps both Deployments with this value as
+# a metadata annotation (no rollout of its own) so a later check can tell "this
+# image was built from this source" without rebuilding anything itself; see
+# experiments/gate3-matrix.sh's image_fresh_or_die().
+GO_SOURCES_HASH := $(shell git ls-files -s -- agents/worker fixtures/mockllm internal go.mod go.sum ':!**/*_test.go' | git hash-object --stdin)
+
 .PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers matrix replay replay-waypoint replay-ingress export-trace retry-on retry-off test orchestrator-image
 
 cluster-kind:
@@ -37,6 +48,7 @@ step-1: orchestrator-image
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
+	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
 # step-2: Istio Ambient with agentgateway as the waypoint. Versions come from
 # versions.yaml (gateway-api v1.6.2 experimental; istio 1.31.0 via the istioctl on
@@ -62,6 +74,7 @@ step-2: orchestrator-image
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
+	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
 # step-2b: two more agentgateway proxies, an ingress in front of Agent A and an
 # egress waypoint between Agent B and the model, both under agentgateway's own
@@ -92,6 +105,7 @@ step-2b: orchestrator-image
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
+	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
 # step-2c: the Gate 2 stimulus paths. Adds a second istiod-driven waypoint for
 # the orchestrator Service, so each receiver has a waypoint of its own, and
@@ -115,6 +129,7 @@ step-2c:
 	kubectl -n $(NAMESPACE) rollout status deployment/agentgateway-waypoint-orch --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
+	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
 # step-3: the telemetry pipeline. The OpenTelemetry Operator comes from its Helm
 # chart, the way step-2b installs agentgateway's control plane and for the same
@@ -180,6 +195,7 @@ step-3:
 	kubectl -n $(TELEMETRY_NS) rollout status deployment/otel-collector --timeout=180s
 	kubectl -n $(TELEMETRY_NS) rollout status deployment/jaeger --timeout=180s
 	kubectl -n $(TELEMETRY_NS) rollout status deployment/prometheus --timeout=180s
+	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 	@echo
 	@echo "trace backend query Service: jaeger.$(TELEMETRY_NS).svc.cluster.local:16686 (its own UI and API; nothing else is installed)"
 	@echo "read it from this host with: kubectl -n $(TELEMETRY_NS) port-forward svc/jaeger 16686:16686  then open http://127.0.0.1:16686"

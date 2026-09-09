@@ -58,15 +58,54 @@ throughout the Makefile and `experiments/*.sh`, so the built images match
 whatever architecture this machine's Go toolchain reports — no per-host edit
 needed.
 
-The Go binaries are rebuilt by `ko` on every apply, so a change to them reaches
-the cluster on the next `make` target or experiment run. **The Python agent is
-not**: it is built by Cloud Native Buildpacks under the fixed tag
-`orchestrator:dev` and loaded into kind, so changing anything under
-`agents/orchestrator/` needs `make orchestrator-image` followed by
-`kubectl -n lab rollout restart deployment/orchestrator`. A `kubectl set env` on
-that Deployment restarts the pod onto the image already loaded under that tag,
-which is the old one; a run that only sets an environment variable will measure
-the code that was there before. This was measured the hard way in Gate 2 A.2.
+The worker and mock Deployments do not rebuild themselves: a change under
+`agents/worker/`, `fixtures/mockllm/`, or `internal/` reaches them only
+through a step target's `ko apply` (`step-1`, `step-2`, `step-2b`, `step-2c`,
+`step-3` — not `cluster-kind`, which only creates the kind cluster), which
+re-resolves every `ko://` reference from the current checkout and rolls the
+affected Deployments; `kubectl set env` restarts a pod onto whatever image
+the Deployment already names, and rebuilds nothing. This was measured the
+hard way in Gate 3 Task 6: `MODEL_RETRIES` was added to
+`agents/worker/main.go` without a following `make step-3`, so
+`kubectl set env deployment/worker MODEL_RETRIES=1` set the variable on a
+binary with no code path that read it, and a twenty-repetition run measured
+nothing before the gap was found. Every one of those five step targets now
+also stamps both Deployments with a metadata annotation,
+`lab.agent-mesh/go-sources=<hash>` (`GO_SOURCES_HASH` in the Makefile: a
+content hash of the tracked Go sources under those paths plus `go.mod` and
+`go.sum`, test files excluded since `ko` does not compile them and a
+test-only commit must not force a rebuild), and
+`experiments/gate3-matrix.sh`'s `image_fresh_or_die()` checks this before
+every row: it recomputes the same hash from the checkout with the same
+command and refuses unless a Deployment's own annotation matches it exactly
+— never by rebuilding anything or by comparing a freshly built image's own
+tag, which this repository has separately measured is not stable across time
+even on an unchanged checkout. This is metadata, not a binding to the image
+itself, so it has one accepted gap: `kubectl rollout undo`, `kubectl set
+image`, or a hand-run `ko apply` all change the running binary without
+touching the annotation, and the guard would then pass a Deployment whose
+sources have not changed but whose image has. That trade is deliberate:
+ReplicaSet pruning (the flaw the previous version of this guard had) was
+automatic and silent, where each of these is a deliberate operator action,
+and only a step target ever changes either Deployment's image in this lab.
+**`fixtures/loadgen/` and `fixtures/replay/` are different**: the loadgen Job
+is piped through `ko apply` by the experiment scripts themselves
+(`experiments/gate3-matrix.sh`'s `send_loadgen_job`) on every repetition, and
+`make replay-waypoint` does the same for the replay Job on every invocation,
+so both are rebuilt fresh every time they run and cannot go stale — which is
+why the guard above does not cover them and does not need to.
+`make replay-ingress` is different again: it runs no Job and no `ko apply` at
+all, only a host `go build` of the replay fixture driven against a
+port-forward, which is if anything a stronger freshness guarantee than a
+rebuild-on-apply Job. **The Python agent is not built by `ko`** at all: it is
+built by Cloud Native Buildpacks under the fixed tag `orchestrator:dev` and
+loaded into kind, so changing anything under `agents/orchestrator/` needs
+`make orchestrator-image` followed by
+`kubectl -n lab rollout restart deployment/orchestrator`. A `kubectl set env`
+on that Deployment restarts the pod onto the image already loaded under that
+tag, which is the old one; a run that only sets an environment variable will
+measure the code that was there before. This was measured the hard way in
+Gate 2 A.2.
 
 To bring up Gate 1's step-1 (no mesh) baseline and step-2 (Istio Ambient with
 the agentgateway waypoint) baseline:

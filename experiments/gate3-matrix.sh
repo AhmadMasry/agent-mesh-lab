@@ -480,6 +480,100 @@ else
 	echo "certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted"
 fi
 
+# --- image freshness -----------------------------------------------------------
+# A Deployment's env var means nothing to a binary built before the code that
+# reads it existed: `kubectl set env` restarts the pod onto whatever image the
+# Deployment already names, it does not rebuild anything. Measured the hard way
+# at Task 6 (RUN=R3 RECEIVER=go, before this check existed): MODEL_RETRIES was
+# added to agents/worker/main.go one commit after the worker image then running
+# was last built (Task 2's own report: "make step-3 was not run"), so setting
+# MODEL_RETRIES=1 on the live Deployment did nothing — a full twenty-repetition
+# run showed invocations=1 in every one of the 20 work items, silently.
+#
+# The first version of this check compared the running Deployment's image
+# against what `ko build --push=false` resolves from the checkout right now,
+# and it was wrong: `ko`'s own tag is not a pure content hash of the Go source
+# — two builds of byte-identical code, run minutes apart, resolved to two
+# different tags (measured directly, this task: `kind.local/worker-…:7f5add70…`
+# then `kind.local/worker-…:bdf46076…` for the same checkout), almost certainly
+# because the OCI image's own `Created` field defaults to build wall-clock time.
+# That check would have refused every future row once enough time passed,
+# whether or not the code had actually changed — a false refusal, not a safe
+# one, and it would have blocked R3/py, which never needed a rebuild at all.
+#
+# Second correction, ruled after review: the ReplicaSet-timestamp version above
+# degrades toward PASSING a stale image as Kubernetes prunes old ReplicaSets
+# (default revisionHistoryLimit 10). It read the *earliest* ReplicaSet still
+# carrying a Deployment's declared image as the image's true build time; once
+# the ReplicaSet that first carried a stale image is pruned, the next-earliest
+# surviving one with that same image is *later*, which only ever makes the
+# comparison "a commit lands after the deploy" true LESS often — the guard
+# passes more as history churns, never refuses more. Measured directly on this
+# cluster: the worker Deployment was at revision 37, 11 ReplicaSets survived,
+# only 2 of them carried its current image, and revisions 23-35 (the ones that
+# would have anchored an earlier build) were already gone — a margin of about
+# nine ReplicaSets before this exact drift would have started passing a stale
+# image. That direction is backwards from what this check exists to guarantee.
+#
+# Replaced with a stamped source hash instead of anything computed from
+# ReplicaSet history or from a freshly built image's own tag (which this
+# repository has separately measured is not stable across time either, above).
+# Every step target that runs `ko apply` (see the Makefile) annotates both the
+# worker and the mock Deployment with `lab.agent-mesh/go-sources=<hash>`, a
+# content hash of the tracked Go sources those two binaries are built from
+# (`GO_SOURCES_HASH` in the Makefile; test files excluded, since ko does not
+# compile them and a test-only commit must not force a rebuild). This check
+# recomputes that same hash from the checkout with the same command and
+# compares it against each Deployment's own stamp — nothing here is derived
+# from elapsed time, ReplicaSet count, or a second build, so nothing here can
+# drift. It refuses, rather than silently passing, when: the checkout has an
+# uncommitted change under the hashed paths (nothing to compare against); the
+# hash itself cannot be computed at all (git unreadable is refused, never
+# treated as "assume current"); a Deployment carries no such annotation; or the
+# annotation differs from the checkout hash. It is read-only against the
+# cluster (`kubectl get` only) and records the checkout hash, each Deployment's
+# annotation, and every one of its running pods' own `imageID` in `knobs.txt`.
+#
+# One accepted gap, recorded rather than discovered later: the annotation is
+# Deployment metadata, not a binding to the image itself, so `kubectl rollout
+# undo`, `kubectl set image`, or a hand-run `ko apply` all change the running
+# binary without touching it — the guard would then pass a Deployment whose
+# Go sources have not changed but whose image has. Narrower than the version
+# this replaced (which did catch a rollback) but the right trade: ReplicaSet
+# pruning was automatic and silent, each of these is a deliberate operator
+# action, and only a step target ever changes either Deployment's image in
+# this lab.
+GO_SOURCES_PATHS=(agents/worker fixtures/mockllm internal go.mod go.sum)
+GO_SOURCES_DIRTY="$(git status --porcelain -- "${GO_SOURCES_PATHS[@]}" 2>/dev/null || true)"
+if [ -n "$GO_SOURCES_DIRTY" ]; then
+	echo "gate3-matrix: ${GO_SOURCES_PATHS[*]} has an uncommitted change; a stale image cannot be ruled out against a change with no commit to hash. Commit or stash before running RUN=${RUN}." >&2
+	exit 1
+fi
+CHECKOUT_GO_SOURCES_HASH="$(git ls-files -s -- "${GO_SOURCES_PATHS[@]}" ':!**/*_test.go' 2>/dev/null | git hash-object --stdin 2>/dev/null || true)"
+if [ -z "$CHECKOUT_GO_SOURCES_HASH" ]; then
+	echo "gate3-matrix: could not compute the Go-sources hash from this checkout (git ls-files or git hash-object failed or returned nothing); refusing to guess whether any Deployment is current" >&2
+	exit 1
+fi
+image_fresh_or_die() {
+	local deploy="$1"
+	local annotation pod_ids
+	annotation="$(kubectl -n "$NAMESPACE" get "deployment/${deploy}" -o jsonpath='{.metadata.annotations.lab\.agent-mesh/go-sources}' 2>/dev/null || true)"
+	pod_ids="$(kubectl -n "$NAMESPACE" get pods -l "app=${deploy}" -o jsonpath='{range .items[*]}{.metadata.name}={.status.containerStatuses[0].imageID}{" "}{end}' 2>/dev/null || true)"
+	printf '%s image freshness: deployment/%s checkout-go-sources-hash=%s annotation=%s pod-imageIDs: %s\n' \
+		"$(date -u +%FT%TZ)" "$deploy" "$CHECKOUT_GO_SOURCES_HASH" "${annotation:-<none>}" "${pod_ids:-<none>}" |
+		tee -a "$KNOBS_FILE"
+	if [ -z "$annotation" ]; then
+		echo "gate3-matrix: deployment/${deploy} carries no lab.agent-mesh/go-sources annotation; it was never stamped by a step target's ko apply, or the annotation was cleared. Rebuild and reload with 'make step-3' (or the step that last changed it, never mid-run) before running RUN=${RUN}." >&2
+		exit 1
+	fi
+	if [ "$annotation" != "$CHECKOUT_GO_SOURCES_HASH" ]; then
+		echo "gate3-matrix: deployment/${deploy} is stamped lab.agent-mesh/go-sources=${annotation}, but this checkout's Go sources hash to ${CHECKOUT_GO_SOURCES_HASH}. Rebuild and reload with 'make step-3' (never mid-run) before running RUN=${RUN}." >&2
+		exit 1
+	fi
+}
+image_fresh_or_die worker
+image_fresh_or_die mockllm
+
 {
 	printf '%s\n' "$HEADER"
 	kubectl version
