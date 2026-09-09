@@ -1,0 +1,13 @@
+# The two routes on the agentgateway ingress with no retry stanza: the baseline
+# state of `worker-ingress` (hostname worker.lab.internal, step 2c) and of the
+# `orchestrator-ingress` catch-all (step 2b). `make retry-off ROUTE=ingress`
+# applies exactly this.
+#
+# The step-2b file also carries the Gateway and its parameters. Only the
+# HTTPRoute documents of the rendered stream are applied; the filter is
+# experiments/lib/httproute-only.awk and the Makefile is what runs it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../../step-2b-agw-ingress-egress/ingress.yaml
+  - ../../../../step-2c-gate2/worker-ingress-route.yaml

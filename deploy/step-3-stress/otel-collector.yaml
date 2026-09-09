@@ -34,6 +34,36 @@ data:
 
     processors:
       batch: {}
+      # The readiness probes of the three lab pods are by far the largest source of
+      # spans in an idle cluster: 150 spans a minute with no work item in flight,
+      # against the handful a work item produces. They are dropped here rather than
+      # at each agent, because the probe endpoints are deliberately in front of every
+      # ledger and no agent should learn about tracing to serve one. Measured on both
+      # sides of this processor in
+      # experiments/runs/2026-09-09-a3-gateway-retry-mechanics/collector-span-rate.txt:
+      # without it, 150 spans accepted and 150 exported in 60 s; with it, 150 accepted,
+      # 150 into the filter, 0 out of it and 0 exported.
+      #
+      # Four conditions, because the three probes are described by three different
+      # vocabularies, all read off real probe spans in this cluster:
+      #   url.path      the Go binaries (worker, mockllm) under otelhttp's semconv
+      #   http.route    the Python agent's server span
+      #   http.target   the same span's older spelling, kept so a semconv change on
+      #                 either side does not silently stop matching
+      #   the name      the Python agent's two ASGI "http send" child spans per probe,
+      #                 which carry no path attribute at all and are only identifiable
+      #                 by the name they inherit from their parent
+      # A span is dropped when any one condition is true: the filter processor's
+      # README at this tag says the conditions are ORed together. `trace_conditions`
+      # with path-prefixed paths is the syntax that README documents at 0.160.0; the
+      # `traces.span` spelling it calls deprecated is not used here.
+      filter:
+        error_mode: ignore
+        trace_conditions:
+          - span.attributes["url.path"] == "/healthz"
+          - span.attributes["http.route"] == "/healthz"
+          - span.attributes["http.target"] == "/healthz"
+          - IsMatch(span.name, "^GET /healthz")
       # One work item is identified by four headers on the wire. Two instrumentations
       # put them on a span under two different names, and every query in this gate
       # reads one name, so the two spellings are joined here rather than in either
@@ -77,7 +107,7 @@ data:
       pipelines:
         traces:
           receivers: [otlp]
-          processors: [transform, batch]
+          processors: [filter, transform, batch]
           exporters: [otlp, debug]
         metrics:
           receivers: [otlp]

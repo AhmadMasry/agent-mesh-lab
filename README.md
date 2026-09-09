@@ -285,6 +285,49 @@ Storage is in-memory, so a restart of that pod loses every trace it holds. The
 traces a `findings.md` entry cites are the exported copies under
 `experiments/runs/`, not the ones in the backend.
 
+### Gateway retries
+
+Every route in this lab carries no `retry` stanza in its baseline state. The
+experimental Gateway API `HTTPRouteRule.retry` field goes on for one measured run
+and comes off again:
+
+```
+make retry-on ROUTE=<waypoint|ingress|egress> [OUT=<dir>]
+make retry-off [ROUTE=<waypoint|ingress|egress>] [OUT=<dir>]
+```
+
+`waypoint` is the `worker` route the istiod-driven agentgateway waypoint serves,
+`ingress` is both routes on the agentgateway ingress, and `egress` is the route
+to the model endpoint on the egress waypoint. The stanza is `attempts: 1`,
+`backoff: 100ms`, and `codes: [503]`, except on the egress route, where it is
+`[500, 503]` because the failure injected on that hop is the model endpoint's
+500. Both targets are `kubectl apply` of route objects and nothing else: the
+manifests under `deploy/step-3-stress/retry/<route>/{off,on}` read the step-2,
+2b and 2c route files rather than copying them, and the rendered stream is cut
+down to its `HTTPRoute` documents by `experiments/lib/httproute-only.awk`. No
+image is built and no Deployment is rolled. Both print how many `retry:` lines
+exist across every HTTPRoute in the cluster, and with `OUT` they write the route
+objects read back from the API server into `<dir>/routes.txt`. `retry-off` with
+no `ROUTE` puts all three route sets back, which is the state every run that is
+not measuring a gateway retry has to start and end in.
+
+What each route's retry does to a request is counted by:
+
+```
+ROUTE=<waypoint|ingress|egress> REPS=5 experiments/gate3-gateway-retry-mechanics.sh
+ROUTE=<waypoint|ingress|egress> DUMP_ONLY=on experiments/gate3-gateway-retry-mechanics.sh
+```
+
+It switches the stanza on, injects one failure per repetition on the hop that
+route serves, and counts what the receiver's pre-dispatch ledger or the model
+endpoint's invocation ledger recorded, then switches the stanza off again and
+disarms every injector. `DUMP_ONLY=on` reads the proxy's own `/config_dump`,
+which says whether the proxy holds the policy, and sends nothing: that is a
+different question from whether the proxy fired it, and re-asking it must not
+spend repetitions. The worker's own model client has one retry knob for the
+matrix rows, `MODEL_RETRIES`, which defaults to 0 and has a unit test that fails
+if that default changes.
+
 **A cluster that has been up for a day on a laptop.** ztunnel's workload certificates live 24 hours and, at Istio
 1.31.0, are renewed on a timer that does not advance while the Docker Desktop VM is paused by host sleep. Observed
 on 2026-09-08: after a day of sleep/wake cycles every mesh hop failed with "certificate expired" while the

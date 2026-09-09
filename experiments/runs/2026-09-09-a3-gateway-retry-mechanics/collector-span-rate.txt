@@ -1,0 +1,30 @@
+How this was measured: the collector's own telemetry endpoint (:8888/metrics at
+otel/opentelemetry-collector-contrib:0.160.0), read twice 60 s apart through a
+short-lived port-forward, once with the traces pipeline as Task 1 left it and once
+with the filter processor in front of it. Nothing was sent to the lab in either
+window; the only traffic is the readiness probes of the three lab pods.
+
+== before the filter processor (traces pipeline: transform, batch) ==
+-- first read, 2026-09-09T14:22:31Z
+otelcol_exporter_sent_spans{exporter="debug"} 50
+otelcol_exporter_sent_spans{exporter="otlp",server_address="jaeger.telemetry.svc.cluster.local",server_port="4317"} 50
+otelcol_processor_incoming_items{otel_signal="traces",processor="transform"} 50
+otelcol_processor_outgoing_items{otel_signal="traces",processor="transform"} 50
+otelcol_receiver_accepted_spans{receiver="otlp",transport="http"} 50
+-- second read, 2026-09-09T14:23:31Z
+otelcol_exporter_sent_spans{exporter="debug"} 200
+otelcol_exporter_sent_spans{exporter="otlp",server_address="jaeger.telemetry.svc.cluster.local",server_port="4317"} 200
+otelcol_processor_incoming_items{otel_signal="traces",processor="transform"} 200
+otelcol_processor_outgoing_items{otel_signal="traces",processor="transform"} 200
+otelcol_receiver_accepted_spans{receiver="otlp",transport="http"} 200
+
+== after the filter processor (traces pipeline: filter, transform, batch) ==
+-- first read, 2026-09-09T14:27:32Z
+otelcol_processor_incoming_items{otel_signal="traces",processor="filter"} 25
+otelcol_processor_outgoing_items{otel_signal="traces",processor="filter"} 0
+otelcol_receiver_accepted_spans{receiver="otlp",transport="http"} 25
+-- second read, 2026-09-09T14:28:32Z
+otelcol_processor_incoming_items{otel_signal="traces",processor="filter"} 175
+otelcol_processor_outgoing_items{otel_signal="traces",processor="filter"} 0
+otelcol_receiver_accepted_spans{receiver="otlp",transport="http"} 175
+

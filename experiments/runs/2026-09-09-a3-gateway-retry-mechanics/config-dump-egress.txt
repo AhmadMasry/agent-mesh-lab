@@ -1,0 +1,41 @@
+== 2026-09-09T14:21:08Z | ROUTE=egress | RUN_ID=172108 | REPS=5 ==
+kubectl -n agentgateway-egress port-forward deploy/agw-egress 15002:15000
+curl -s http://127.0.0.1:15002/config_dump | jq '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value]'
+
+[
+  {
+    "key": "agentgateway-egress/model-via-agw.00.inner-http",
+    "name": "model-via-agw",
+    "namespace": "agentgateway-egress",
+    "kind": "HTTPRoute",
+    "hostnames": [
+      "model.lab.internal"
+    ],
+    "matches": [
+      {
+        "path": {
+          "pathPrefix": "/"
+        }
+      }
+    ],
+    "backends": [
+      {
+        "weight": 1,
+        "backend": "agentgateway-egress/mockllm"
+      }
+    ],
+    "inlinePolicies": [
+      {
+        "retry": {
+          "attempts": 1,
+          "backoff": "100ms",
+          "codes": [
+            "500 Internal Server Error",
+            "503 Service Unavailable"
+          ]
+        }
+      }
+    ]
+  }
+]
+2026-09-09T14:21:42Z agentgateway-egress/agw-egress holds 1 retry policy/policies in its own config_dump

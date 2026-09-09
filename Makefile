@@ -11,7 +11,7 @@ ORCHESTRATOR_IMAGE := orchestrator:dev
 #   docker image inspect paketobuildpacks/builder-jammy-base --format '{{index .RepoDigests 0}}'
 PACK_BUILDER := paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
 
-.PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers replay replay-waypoint replay-ingress export-trace test orchestrator-image
+.PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers replay replay-waypoint replay-ingress export-trace retry-on retry-off test orchestrator-image
 
 cluster-kind:
 	@if kind get clusters 2>/dev/null | grep -qx "$(CLUSTER_NAME)"; then \
@@ -246,6 +246,92 @@ export-trace:
 		echo "export-trace: no span carried lab.work_item=$(LWI) in that window" >&2; \
 		exit 2; \
 	fi
+
+# retry-on ROUTE=<waypoint|ingress|egress> [OUT=<dir>]
+# retry-off [ROUTE=<waypoint|ingress|egress>] [OUT=<dir>]
+#
+# Switches the experimental HTTPRoute retry stanza on for one route set and off
+# again. The stanza is `retry: {attempts: 1, codes: [...], backoff: 100ms}`; the
+# codes are [503] on the waypoint and ingress routes and [500, 503] on the egress
+# route, because the failure injected on that hop is the model endpoint's 500.
+# The three route sets are:
+#
+#   waypoint  the `worker` HTTPRoute in `lab`, attached to the worker Service and
+#             served by the istiod-driven agentgateway waypoint (step 2)
+#   ingress   `worker-ingress` and the `orchestrator-ingress` catch-all, both on
+#             the agentgateway ingress under agentgateway's own control plane
+#             (steps 2b and 2c)
+#   egress    `model-via-agw` in `agentgateway-egress`, the route to
+#             model.lab.internal on the egress waypoint (step 2b)
+#
+# What these targets touch is routes and nothing else. The manifests come from
+# deploy/step-3-stress/retry/<route>/{off,on}, which read the step-2/2b/2c route
+# files rather than copying them, and the rendered stream is filtered to its
+# HTTPRoute documents by experiments/lib/httproute-only.awk before it reaches
+# `kubectl apply`. No image is built and no Deployment is rolled: this is
+# `kubectl apply` of route objects, not `ko apply` of the overlay.
+#
+# `retry-off` with no ROUTE puts all three route sets back, which is the state
+# every run that is not measuring a gateway retry has to start and end in. Both
+# targets then print how many `retry:` lines exist across every HTTPRoute in the
+# cluster, and with OUT they write the route objects read back from the API
+# server into <OUT>/routes.txt, so a run directory records the routes as the
+# cluster held them rather than as the manifests declared them.
+#
+# LoadRestrictionsNone is needed because each kustomization reads a route file
+# from an earlier overlay instead of copying it; that is the point of the layout,
+# and the relocatability it costs is not something this repository uses.
+RETRY_DIR    := deploy/step-3-stress/retry
+RETRY_ROUTES := waypoint ingress egress
+
+define retry_readback
+	echo "== retry stanzas across every HTTPRoute in the cluster =="; \
+	routes=$$(kubectl get httproute -A -o yaml); \
+	n=$$(printf '%s\n' "$$routes" | grep -c 'retry:' || true); \
+	echo "kubectl get httproute -A -o yaml | grep -c 'retry:' -> $$n"; \
+	if [ -n "$(OUT)" ]; then \
+		mkdir -p "$(OUT)"; \
+		printf '%s\n' "$$routes" > "$(OUT)/routes.txt"; \
+		echo "route objects read back into $(OUT)/routes.txt"; \
+	fi
+endef
+
+# The render is not piped straight into `kubectl apply`. A recipe shell is
+# whatever /bin/sh is on the host, and `set -o pipefail` is not portable across
+# those, so a kustomize or awk failure in the middle of a pipeline would be hidden
+# behind a successful `kubectl apply` of nothing. The rendered routes are captured
+# first and refused when empty, which is the same guarantee without depending on
+# the shell. `set -e` then carries the apply's own status.
+define retry_apply
+	rendered=$$(kubectl kustomize --load-restrictor=LoadRestrictionsNone "$$dir" | awk -f experiments/lib/httproute-only.awk); \
+	if [ -z "$$rendered" ]; then \
+		echo "retry: $$dir rendered no HTTPRoute; nothing was applied" >&2; \
+		exit 1; \
+	fi; \
+	printf '%s\n' "$$rendered" | kubectl apply -f -
+endef
+
+retry-on:
+	@case "$(ROUTE)" in \
+	waypoint | ingress | egress) ;; \
+	*) echo "usage: make retry-on ROUTE=<waypoint|ingress|egress> [OUT=<dir>]" >&2; exit 1 ;; \
+	esac
+	@set -e; \
+	dir="$(RETRY_DIR)/$(ROUTE)/on"; \
+	$(retry_apply); \
+	$(retry_readback)
+
+retry-off:
+	@case "$(ROUTE)" in \
+	'' | waypoint | ingress | egress) ;; \
+	*) echo "usage: make retry-off [ROUTE=<waypoint|ingress|egress>] [OUT=<dir>]" >&2; exit 1 ;; \
+	esac
+	@set -e; \
+	for route in $(if $(ROUTE),$(ROUTE),$(RETRY_ROUTES)); do \
+		dir="$(RETRY_DIR)/$$route/off"; \
+		$(retry_apply); \
+	done; \
+	$(retry_readback)
 
 # replay MODE=<M1|M2|M3> RECEIVER=<go|py> VIA=<waypoint|ingress> LWI=<id> [OUT=<dir>] [GAP_MS=<n>]
 #

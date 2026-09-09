@@ -1,0 +1,209 @@
+apiVersion: v1
+items:
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"HTTPRoute","metadata":{"annotations":{},"name":"model-via-agw","namespace":"agentgateway-egress"},"spec":{"hostnames":["model.lab.internal"],"parentRefs":[{"name":"agw-egress","sectionName":"inner-http"}],"rules":[{"backendRefs":[{"group":"agentgateway.dev","kind":"AgentgatewayBackend","name":"mockllm"}],"matches":[{"path":{"type":"PathPrefix","value":"/"}}]}]}}
+    creationTimestamp: "2026-09-08T19:51:49Z"
+    generation: 3
+    name: model-via-agw
+    namespace: agentgateway-egress
+    resourceVersion: "257800"
+    uid: ce86a070-c449-49b0-a22b-745a81170fe2
+  spec:
+    hostnames:
+    - model.lab.internal
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agw-egress
+      sectionName: inner-http
+    rules:
+    - backendRefs:
+      - group: agentgateway.dev
+        kind: AgentgatewayBackend
+        name: mockllm
+        weight: 1
+      matches:
+      - path:
+          type: PathPrefix
+          value: /
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-08T19:51:49Z"
+        message: ""
+        observedGeneration: 3
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-08T19:51:49Z"
+        message: ""
+        observedGeneration: 3
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: agentgateway.dev/agentgateway
+      parentRef:
+        group: gateway.networking.k8s.io
+        kind: Gateway
+        name: agw-egress
+        namespace: agentgateway-egress
+        sectionName: inner-http
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"HTTPRoute","metadata":{"annotations":{},"name":"orchestrator-ingress","namespace":"lab"},"spec":{"parentRefs":[{"name":"agentgateway-ingress","namespace":"agentgateway-system"}],"rules":[{"backendRefs":[{"name":"orchestrator","port":8080}]}]}}
+    creationTimestamp: "2026-09-08T19:51:49Z"
+    generation: 7
+    name: orchestrator-ingress
+    namespace: lab
+    resourceVersion: "258273"
+    uid: 4ef1abe2-0aa2-4625-a699-488ea9a05c8d
+  spec:
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-ingress
+      namespace: agentgateway-system
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: orchestrator
+        port: 8080
+        weight: 1
+      matches:
+      - path:
+          type: PathPrefix
+          value: /
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-08T19:51:49Z"
+        message: ""
+        observedGeneration: 7
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-08T19:51:49Z"
+        message: ""
+        observedGeneration: 7
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: agentgateway.dev/agentgateway
+      parentRef:
+        group: gateway.networking.k8s.io
+        kind: Gateway
+        name: agentgateway-ingress
+        namespace: agentgateway-system
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"HTTPRoute","metadata":{"annotations":{},"name":"worker","namespace":"lab"},"spec":{"parentRefs":[{"group":"","kind":"Service","name":"worker","port":8080}],"rules":[{"backendRefs":[{"name":"worker","port":8080}]}]}}
+    creationTimestamp: "2026-09-07T17:59:06Z"
+    generation: 9
+    name: worker
+    namespace: lab
+    resourceVersion: "258146"
+    uid: 2123b32a-c0f6-4b21-a671-ef13e99618ab
+  spec:
+    parentRefs:
+    - group: ""
+      kind: Service
+      name: worker
+      port: 8080
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: worker
+        port: 8080
+        weight: 1
+      matches:
+      - path:
+          type: PathPrefix
+          value: /
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-07T17:59:06Z"
+        message: Route was valid
+        observedGeneration: 9
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-07T17:59:06Z"
+        message: All references resolved
+        observedGeneration: 9
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: istio.io/agentgateway-waypoint-controller
+      parentRef:
+        group: ""
+        kind: Service
+        name: worker
+        port: 8080
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"HTTPRoute","metadata":{"annotations":{},"name":"worker-ingress","namespace":"lab"},"spec":{"hostnames":["worker.lab.internal"],"parentRefs":[{"name":"agentgateway-ingress","namespace":"agentgateway-system"}],"rules":[{"backendRefs":[{"name":"worker","port":8080}]}]}}
+    creationTimestamp: "2026-09-08T22:38:33Z"
+    generation: 7
+    name: worker-ingress
+    namespace: lab
+    resourceVersion: "258275"
+    uid: 78512103-1853-455e-b604-d77e9ca875c1
+  spec:
+    hostnames:
+    - worker.lab.internal
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-ingress
+      namespace: agentgateway-system
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: worker
+        port: 8080
+        weight: 1
+      matches:
+      - path:
+          type: PathPrefix
+          value: /
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-08T22:38:33Z"
+        message: ""
+        observedGeneration: 7
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-08T22:38:33Z"
+        message: ""
+        observedGeneration: 7
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: agentgateway.dev/agentgateway
+      parentRef:
+        group: gateway.networking.k8s.io
+        kind: Gateway
+        name: agentgateway-ingress
+        namespace: agentgateway-system
+kind: List
+metadata:
+  resourceVersion: ""

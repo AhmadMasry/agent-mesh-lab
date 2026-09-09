@@ -1,0 +1,25 @@
+== 2026-09-09 | the installed HTTPRoute CRD, read back from the cluster ==
+The entry's claim that the retry stanza exists at these pins rests on this file:
+the CRD the cluster actually serves, not on the manifest that installed it.
+
+$ kubectl get crd httproutes.gateway.networking.k8s.io -o jsonpath='{.metadata.annotations}'
+{"api-approved.kubernetes.io":"https://github.com/kubernetes-sigs/gateway-api/pull/4530","gateway.networking.k8s.io/bundle-version":"v1.6.2","gateway.networking.k8s.io/channel":"experimental"}
+
+$ kubectl explain httproute.spec.rules.retry --recursive
+GROUP:      gateway.networking.k8s.io
+KIND:       HTTPRoute
+VERSION:    v1
+
+FIELD: retry <Object>
+
+
+DESCRIPTION:
+    Retry defines the configuration for when to retry an HTTP request.
+    
+    Support: Extended
+    
+FIELDS:
+  attempts	<integer>
+  backoff	<string>
+  codes	<[]integer>
+

@@ -1,0 +1,12 @@
+# The waypoint route with no retry stanza: the baseline state of the `worker`
+# HTTPRoute in `lab`, which is attached to the worker Service and so is the route
+# the istiod-driven agentgateway waypoint serves. `make retry-off ROUTE=waypoint`
+# applies exactly this, which is why it removes the stanza rather than editing it
+# away: the object goes back to what step 2 declared.
+#
+# The file is read from the step-2 overlay rather than copied, so this cannot drift
+# from the route the cluster is actually running.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../../step-2-ambient-agw/worker-route.yaml

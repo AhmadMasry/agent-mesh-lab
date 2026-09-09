@@ -100,3 +100,19 @@ says nothing about it, so nothing here predicts the answer.
 - Neither document says whether a POST body is buffered for the retry. Task 2 counts
   arrivals at the receiver's ingress ledger and compares `body_sha256`, which answers it
   without needing the documentation to.
+
+### Added 2026-09-09 by Task 2 (sources here are cumulative)
+
+- The set of status codes an implementation has to accept as retriable, read from the
+  same pinned file this section already cites,
+  `https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.6.2/apis/v1/httproute_types.go`,
+  fetched again in the Task 2 session. On the `HTTPRouteRetryStatusCode` type, at line
+  459 of that 1892-line file: "Implementations MUST support the following status codes
+  as retriable:", followed at lines 461–464 by "* 500", "* 502", "* 503", "* 504". Two
+  sentences below it, at lines 466 and 469, the type adds that implementations MAY
+  support further discrete values in the 500–599 range and MAY support values in the
+  400–499 range, "which are often inadvisable to retry"; the type itself is validated
+  between 400 and 599 and is marked `<gateway:experimental>` at line 474. This is the
+  source for Task 2's choice of `codes: [503]` on the two receiver-facing routes and
+  `codes: [500, 503]` on the egress route: both values are inside the mandatory set, so
+  neither route depends on an optional part of the field.

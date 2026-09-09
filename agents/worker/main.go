@@ -38,6 +38,34 @@ func modelTimeout() time.Duration {
 	return 60 * time.Second
 }
 
+// modelRetries is how many times the model call is re-sent (MODEL_RETRIES,
+// default 0, which is no retry at all). It is the worker's only retry knob and
+// it exists for one measurement: the A.3 row that asks what a retry between the
+// agent and the model duplicates. Anything that is not a positive integer leaves
+// it off, so a typo in a run script cannot add a retry nobody asked for.
+func modelRetries() int {
+	if v, err := strconv.Atoi(os.Getenv("MODEL_RETRIES")); err == nil && v > 0 {
+		return v
+	}
+	return 0
+}
+
+// newModelHTTPClient builds the model client this process's environment asks
+// for: the lab's no-retry client unless MODEL_RETRIES asked for more, and then
+// the same client with its transport wrapped so the same bytes are re-sent.
+//
+// The mode is transport+503 rather than the transport-error-only default for the
+// reason A.2 recorded: the failures this lab injects between the agent and the
+// model reach the caller through an agentgateway waypoint, which answers 503 for
+// an upstream that went away, so a transport-error-only retry would never
+// re-send on this path.
+func newModelHTTPClient(timeout time.Duration) *http.Client {
+	if n := modelRetries(); n > 0 {
+		return httpclient.NewRetryingOn(timeout, n, httpclient.RetryOnTransportOr503)
+	}
+	return httpclient.New(timeout)
+}
+
 // newRootMux puts everything A2A (card and JSON-RPC) behind the ingress ledger
 // and leaves the readiness probe and the control endpoints in front of it, so
 // neither probe traffic nor arming a work item ever appears as a delivery. None
@@ -88,8 +116,10 @@ func main() {
 	// by the client Timeout (MODEL_TIMEOUT_S), which is also the response-header timeout.
 	// The transport is wrapped so the model call is a client span carrying the
 	// trace context onward; internal/httpclient's own settings are untouched by
-	// the wrap, and no retry is added by it.
-	modelHTTP := httpclient.New(modelTimeout())
+	// the wrap, and no retry is added by it. Whether there is a retry underneath
+	// is MODEL_RETRIES' decision alone, taken before the wrap, so the span covers
+	// every attempt the client makes, as the load client's does.
+	modelHTTP := newModelHTTPClient(modelTimeout())
 	modelHTTP.Transport = labotel.Transport(modelHTTP.Transport)
 	ledger := newLineWriter(os.Stdout)
 	executor := newLabExecutor(name, newModelClient(modelBase, modelName, modelKey, modelHTTP), ledger)
@@ -135,7 +165,7 @@ func main() {
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
-	log.Printf("worker %q listening on %s; card at %s; model %s (timeout %s)", name, listen, a2asrv.WellKnownAgentCardPath, modelBase, modelTimeout())
+	log.Printf("worker %q listening on %s; card at %s; model %s (timeout %s, MODEL_RETRIES=%d)", name, listen, a2asrv.WellKnownAgentCardPath, modelBase, modelTimeout(), modelRetries())
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}

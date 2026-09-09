@@ -1,0 +1,38 @@
+# Both ingress routes with the retry stanza, applied by
+# `make retry-on ROUTE=ingress` for one measured run and removed after it.
+#
+# Both routes carry it, not only the one a probe addresses: the ingress is one
+# proxy serving both receivers, and a run that patched one route would be
+# measuring a gateway configured differently for each of them.
+#
+# attempts 1, codes [503], backoff 100ms, as on the waypoint route: the failure
+# these runs inject at a receiver is answered as 503.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../off
+patches:
+  - target:
+      group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+      namespace: lab
+    patch: |
+      - op: add
+        path: /spec/rules/0/retry
+        value:
+          attempts: 1
+          codes: [503]
+          backoff: 100ms
+  - target:
+      group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+      namespace: lab
+    patch: |
+      - op: add
+        path: /spec/rules/0/retry
+        value:
+          attempts: 1
+          codes: [503]
+          backoff: 100ms

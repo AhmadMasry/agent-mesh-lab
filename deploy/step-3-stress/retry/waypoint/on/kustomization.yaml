@@ -1,0 +1,32 @@
+# The same route with the experimental HTTPRoute retry stanza, applied by
+# `make retry-on ROUTE=waypoint` for one measured run and removed after it.
+#
+# attempts 1, codes [503], backoff 100ms. The fields are the three
+# HTTPRouteRetry carries at Gateway API v1.6.2, where the stanza is
+# `<gateway:experimental>` and present only in the experimental CRD this lab
+# installs; 503 is the status the receiver's `http503-before-dispatch` injection
+# answers with, and it is one of the four codes the Gateway API says every
+# implementation must support as retriable. That sentence is quoted, with the file
+# and the lines it was read at, in
+# experiments/runs/2026-09-09-a3-pipeline/sources.md section 3.
+#
+# A JSON 6902 patch, not a strategic merge: `rules` is a list in a custom
+# resource with no merge key, so a strategic merge would replace the whole list
+# and take the backendRefs with it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../off
+patches:
+  - target:
+      group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker
+      namespace: lab
+    patch: |
+      - op: add
+        path: /spec/rules/0/retry
+        value:
+          attempts: 1
+          codes: [503]
+          backoff: 100ms

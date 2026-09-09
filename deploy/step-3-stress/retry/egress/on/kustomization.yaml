@@ -1,0 +1,26 @@
+# The egress route with the retry stanza, applied by
+# `make retry-on ROUTE=egress` for one measured run and removed after it.
+#
+# codes [500, 503] here, where the other two routes carry [503] alone. The
+# failure on this hop is injected at the model endpoint, whose `http500` mode
+# answers 500; 503 is kept alongside it so this route retries on the same status
+# the other two do and the three differ in one respect only. Both values are inside
+# the set every implementation must support as retriable, quoted with its source
+# lines in experiments/runs/2026-09-09-a3-pipeline/sources.md section 3.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../off
+patches:
+  - target:
+      group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: model-via-agw
+      namespace: agentgateway-egress
+    patch: |
+      - op: add
+        path: /spec/rules/0/retry
+        value:
+          attempts: 1
+          codes: [500, 503]
+          backoff: 100ms
