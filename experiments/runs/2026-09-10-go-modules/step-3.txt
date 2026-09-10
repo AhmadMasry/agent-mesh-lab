@@ -1,0 +1,78 @@
+== certificate check ==
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Leaf     Available     true           e28293330c0b5ed06868f992a83587d0     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           36ac4458012e9648f481540e846a923b     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           10a25afce69bd6b48f75e062a2586e48     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+kubectl kustomize deploy/step-3-stress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/10 21:12:16 Using base gcr.io/distroless/static-debian13:nonroot@sha256:1c2c046bc09ed40fad370b599a0b1ae7987f55b01e247cf27a7c27cd97e5bbc7 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+2026/09/10 21:12:16 Using base gcr.io/distroless/static-debian13:nonroot@sha256:1c2c046bc09ed40fad370b599a0b1ae7987f55b01e247cf27a7c27cd97e5bbc7 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+2026/09/10 21:12:16 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-10-go-modules/
+
+2026/09/10 21:12:16 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm for linux/arm64/v8
+2026/09/10 21:12:17 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-10-go-modules/
+
+2026/09/10 21:12:17 Building github.com/AhmadMasry/agent-mesh-lab/agents/worker for linux/arm64/v8
+2026/09/10 21:12:18 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:bf58044d0c311c405e7cf0fca9d0686ba3cb63f5b6c11f38f84e1656eddf718e
+2026/09/10 21:12:18 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:1c667be1352522b34884f2fbb5d0d24993876ae1eadc2436900585a7059abadd
+2026/09/10 21:12:33 Loaded kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:1c667be1352522b34884f2fbb5d0d24993876ae1eadc2436900585a7059abadd
+2026/09/10 21:12:33 Adding tag latest
+2026/09/10 21:12:33 Added tag latest
+2026/09/10 21:12:34 Loaded kind.local/worker-918a018b7a581926ead34dec2ba0fb83:bf58044d0c311c405e7cf0fca9d0686ba3cb63f5b6c11f38f84e1656eddf718e
+2026/09/10 21:12:34 Adding tag latest
+2026/09/10 21:12:34 Added tag latest
+namespace/agentgateway-egress unchanged
+namespace/lab unchanged
+namespace/telemetry unchanged
+serviceaccount/prometheus unchanged
+clusterrole.rbac.authorization.k8s.io/lab-prometheus unchanged
+clusterrolebinding.rbac.authorization.k8s.io/lab-prometheus unchanged
+configmap/otel-collector unchanged
+configmap/prometheus unchanged
+service/mockllm unchanged
+service/orchestrator unchanged
+service/worker unchanged
+service/jaeger unchanged
+service/otel-collector unchanged
+service/prometheus unchanged
+deployment.apps/mockllm configured
+deployment.apps/orchestrator unchanged
+deployment.apps/worker configured
+deployment.apps/jaeger unchanged
+deployment.apps/otel-collector unchanged
+deployment.apps/prometheus unchanged
+agentgatewaybackend.agentgateway.dev/mockllm unchanged
+agentgatewayparameters.agentgateway.dev/agw-egress-params unchanged
+agentgatewayparameters.agentgateway.dev/agentgateway-ingress-params unchanged
+agentgatewaypolicy.agentgateway.dev/tracing unchanged
+agentgatewaypolicy.agentgateway.dev/tracing unchanged
+gateway.gateway.networking.k8s.io/agw-egress unchanged
+gateway.gateway.networking.k8s.io/agentgateway-ingress unchanged
+gateway.gateway.networking.k8s.io/agentgateway-waypoint configured
+gateway.gateway.networking.k8s.io/agentgateway-waypoint-orch configured
+httproute.gateway.networking.k8s.io/model-via-agw configured
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+serviceentry.networking.istio.io/model-external unchanged
+kubectl -n telemetry rollout status deployment/otel-collector --timeout=180s
+deployment "otel-collector" successfully rolled out
+kubectl -n telemetry rollout status deployment/jaeger --timeout=180s
+deployment "jaeger" successfully rolled out
+kubectl -n telemetry rollout status deployment/prometheus --timeout=180s
+deployment "prometheus" successfully rolled out
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+
+trace backend query Service: jaeger.telemetry.svc.cluster.local:16686 (its own UI and API; nothing else is installed)
+read it from this host with: kubectl -n telemetry port-forward svc/jaeger 16686:16686  then open http://127.0.0.1:16686
