@@ -1,0 +1,59 @@
+Every overlay still applies on top of the previous step, and the only thing this
+commit changes in what they render is the securityContext and
+automountServiceAccountToken. Rendered on 2026-09-10 with
+`kubectl kustomize deploy/<overlay>` on the branch base 4ff9abc (extracted with
+`git archive`) and on the tree of this commit, and diffed.
+
+step-1-nomesh                renders OK,  178 ->  235 lines; diff: +57 -0
+step-2-ambient-agw           renders OK,  213 ->  270 lines; diff: +57 -0
+step-2b-agw-ingress-egress   renders OK,  355 ->  412 lines; diff: +57 -0
+step-2c-gate2                renders OK,  388 ->  445 lines; diff: +57 -0
+step-3-stress                renders OK,  857 ->  914 lines; diff: +57 -0
+
+Not one line is removed from any render. The 57 added lines, identical in all five
+overlays, are exactly the three blocks applied to the three Deployments in
+deploy/base (worker, mockllm, orchestrator):
+
+   6 type: RuntimeDefault
+   6 securityContext:
+   6 seccompProfile:
+   6 runAsUser: N
+   6 runAsNonRoot: true
+   6 runAsGroup: N
+   3 readOnlyRootFilesystem: true
+   3 fsGroup: N
+   3 drop:
+   3 capabilities:
+   3 automountServiceAccountToken: false
+   3 allowPrivilegeEscalation: false
+   3 - ALL
+
+  6 x securityContext                = 3 pod-level + 3 container-level
+  3 x fsGroup                        = the pod-level block, once per Deployment
+  3 x readOnlyRootFilesystem / allowPrivilegeEscalation / capabilities.drop:[ALL]
+                                     = the container-level block, once per Deployment
+  3 x automountServiceAccountToken   = once per Deployment
+
+Each template also sets `automountServiceAccountToken: false` at the pod spec level.
+No workload of ours talks to the Kubernetes API -- the agents serve A2A, the fixtures
+speak HTTP to each other and to the mock -- so the ServiceAccount token the kubelet
+mounts by default is a credential with no reader, and the three lab pods should carry
+no kube-api-access-* volume after the rollout. Checked there, not here.
+
+The three Job templates -- loadgen-job.yaml, loadgen-a2-job.yaml,
+replay-job.yaml -- carry the same three blocks and do not appear in any render:
+they are deliberately not listed in the base kustomization, because a Job in an
+overlay would run on every apply. Each experiment script substitutes its
+variables and pipes the template to `ko apply -f -`, so the blocks reach the
+cluster with the Job. Proved by running one: see the clean-check and the
+re-count in the findings entry.
+
+Nothing under deploy/step-2-ambient-agw, deploy/step-2b-agw-ingress-egress,
+deploy/step-2c-gate2 or deploy/step-3-stress was edited. The waypoints, the
+gateways, the collector, the trace backend and Prometheus are not our images and
+are left as they are.
+
+Pod specs elsewhere: `grep -rn 'kind: Job|kubectl run|kind: Pod' experiments/`
+matches nothing -- the Job templates all live in deploy/base. The curl pods the
+scripts create (baseline-curl, wire-version-curl, ledgers-curl, gate2-curl,
+a2-curl) are curlimages/curl:8.11.1, not our images, and are left alone.

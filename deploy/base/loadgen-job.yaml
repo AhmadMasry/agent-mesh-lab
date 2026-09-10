@@ -19,9 +19,45 @@ spec:
         lwi: "${LWI}"
     spec:
       restartPolicy: Never
+      # No workload of ours talks to the Kubernetes API -- the agents serve A2A, the
+      # fixtures speak HTTP to each other and to the mock -- so the ServiceAccount
+      # token the kubelet mounts by default is a credential with no reader. It is not
+      # mounted.
+      automountServiceAccountToken: false
+      # Read-only root filesystem and non-root for every container of ours, applied
+      # once here so every overlay inherits it. uid:gid 65532:65532 is one uid for
+      # the whole lab: it is the uid of the distroless static nonroot base .ko.yaml
+      # pins for the Go images (read from that image's config: User=65532), and
+      # agents/orchestrator/Dockerfile creates the same uid for the Python agent.
+      # No writable volume is declared. That is a measurement, not an assumption:
+      # agents/, fixtures/ and internal/ grep clean of file writes (os.Create,
+      # os.WriteFile, os.OpenFile, tempfile, open(..., "w")) -- every ledger line is
+      # JSON on stdout -- and the orchestrator image was started with
+      # `docker run --read-only` before this was applied
+      # (experiments/runs/2026-09-10-images-rebuilt/readonly-proofs.txt). If a
+      # container ever does need a path to write, the emptyDir goes at that one path
+      # with a comment naming the measured write.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: loadgen
           image: ko://github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           env:
             - name: TARGET_URL
               value: "${TARGET_URL}"
