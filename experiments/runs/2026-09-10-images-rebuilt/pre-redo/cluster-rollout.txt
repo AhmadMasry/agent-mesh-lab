@@ -1,0 +1,96 @@
+The one rollout of this branch, and the proofs, 2026-09-10.
+
+Order: make orchestrator-image (build + kind load, both nodes), then make step-3.
+step-3 does not build the Python image and does not restart the orchestrator --
+`make -n step-3` shows no docker build -- so the image was built and loaded
+first and the securityContext change in the pod template is what rolled it.
+
+== certificate check, the first thing step-3 ran ==
+== certificate check ==
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Leaf     Available     true           e28293330c0b5ed06868f992a83587d0     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           36ac4458012e9648f481540e846a923b     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           10a25afce69bd6b48f75e062a2586e48     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+
+== what the apply changed in namespace lab ==
+service/mockllm unchanged
+service/orchestrator unchanged
+service/worker unchanged
+deployment.apps/mockllm configured
+deployment.apps/orchestrator configured
+deployment.apps/worker configured
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+
+== every lab pod Running, one replica each ==
+$ kubectl -n lab get pods -l 'app in (worker,mockllm,orchestrator)' -o wide
+NAME                           READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+mockllm-cd4b4756c-cxbth        1/1     Running   0          45s   10.244.1.60   agent-mesh-lab-worker   <none>           <none>
+orchestrator-6d479c5fc-64rb5   1/1     Running   0          45s   10.244.1.61   agent-mesh-lab-worker   <none>           <none>
+worker-6544df7cf9-2blld        1/1     Running   0          45s   10.244.1.62   agent-mesh-lab-worker   <none>           <none>
+
+$ kubectl -n lab rollout status deploy/<each>
+deployment "worker" successfully rolled out
+deployment "mockllm" successfully rolled out
+deployment "orchestrator" successfully rolled out
+
+== the image-freshness guard ==
+$ kubectl -n lab get deploy worker mockllm -o custom-columns=NAME:.metadata.name,GOSRC:.metadata.annotations.lab\.agent-mesh/go-sources
+NAME      GOSRC
+worker    dc72c724b8308f76baa9f742aa5a7c7086d5d260
+mockllm   dc72c724b8308f76baa9f742aa5a7c7086d5d260
+$ git ls-files -s -- agents/worker fixtures/mockllm internal go.mod go.sum ':!**/*_test.go' | git hash-object --stdin
+dc72c724b8308f76baa9f742aa5a7c7086d5d260
+
+== the securityContext the API server holds, per pod ==
+mockllm-cd4b4756c-cxbth
+  pod:       {"fsGroup": 65532, "runAsGroup": 65532, "runAsNonRoot": true, "runAsUser": 65532, "seccompProfile": {"type": "RuntimeDefault"}}
+  container: {"allowPrivilegeEscalation": false, "capabilities": {"drop": ["ALL"]}, "readOnlyRootFilesystem": true, "runAsGroup": 65532, "runAsNonRoot": true, "runAsUser": 65532, "seccompProfile": {"type": "RuntimeDefault"}}
+  volumes:   ['kube-api-access-q85lv']
+  status:    ready=True restarts=0 started=True
+orchestrator-6d479c5fc-64rb5
+  pod:       {"fsGroup": 65532, "runAsGroup": 65532, "runAsNonRoot": true, "runAsUser": 65532, "seccompProfile": {"type": "RuntimeDefault"}}
+  container: {"allowPrivilegeEscalation": false, "capabilities": {"drop": ["ALL"]}, "readOnlyRootFilesystem": true, "runAsGroup": 65532, "runAsNonRoot": true, "runAsUser": 65532, "seccompProfile": {"type": "RuntimeDefault"}}
+  volumes:   ['kube-api-access-jxwnx']
+  status:    ready=True restarts=0 started=True
+worker-6544df7cf9-2blld
+  pod:       {"fsGroup": 65532, "runAsGroup": 65532, "runAsNonRoot": true, "runAsUser": 65532, "seccompProfile": {"type": "RuntimeDefault"}}
+  container: {"allowPrivilegeEscalation": false, "capabilities": {"drop": ["ALL"]}, "readOnlyRootFilesystem": true, "runAsGroup": 65532, "runAsNonRoot": true, "runAsUser": 65532, "seccompProfile": {"type": "RuntimeDefault"}}
+  volumes:   ['kube-api-access-jnzw6']
+  status:    ready=True restarts=0 started=True
+
+== the Go pods: the distroless images have no shell, so the proof is that the
+   process runs at all under runAsNonRoot: the kubelet refuses to start a
+   container whose image user resolves to uid 0 when runAsNonRoot is true, and
+   both are Running and ready with 0 restarts above. The declared uid is 65532
+   in the securityContext just read. ==
+
+== the orchestrator pod, which does have a shell ==
+pod: orchestrator-6d479c5fc-64rb5
+$ kubectl -n lab exec orchestrator-6d479c5fc-64rb5 -- id
+uid=65532(nonroot) gid=65532(nonroot) groups=65532(nonroot)
+$ kubectl -n lab exec orchestrator-6d479c5fc-64rb5 -- id -u
+65532
+$ kubectl -n lab exec orchestrator-6d479c5fc-64rb5 -- python -V
+Python 3.14.7
+$ kubectl -n lab exec orchestrator-6d479c5fc-64rb5 -- uname -m
+aarch64
+$ kubectl -n lab exec orchestrator-6d479c5fc-64rb5 -- sh -c 'touch /x'
+touch: cannot touch '/x': Read-only file system
+command terminated with exit code 1
+  exit=1
+$ kubectl -n lab exec orchestrator-6d479c5fc-64rb5 -- sh -c 'touch /app/x'
+touch: cannot touch '/app/x': Read-only file system
+command terminated with exit code 1
+  exit=1
+$ kubectl -n lab exec orchestrator-6d479c5fc-64rb5 -- sh -c 'touch /tmp/x'
+touch: cannot touch '/tmp/x': Read-only file system
+command terminated with exit code 1
+  exit=1
+$ kubectl -n lab exec orchestrator-6d479c5fc-64rb5 -- python -c 'import pytest'
+ModuleNotFoundError: No module named 'pytest'
+command terminated with exit code 1

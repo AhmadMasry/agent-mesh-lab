@@ -1,0 +1,41 @@
+The image's own CMD under --read-only --user 65532:65532, on this host, before
+any cluster rollout. The env is the one deploy/step-3-stress applies to the
+orchestrator (OTEL_SERVICE_NAME, OTEL_EXPORTER_OTLP_ENDPOINT/_PROTOCOL and the
+three exporter variables), with the endpoint pointed at a port nothing serves,
+there being no collector here. What is being tested is that the process starts
+and serves with no writable root filesystem.
+
+$ curl -o /dev/null -w '%{http_code}' http://127.0.0.1:18083/healthz
+200
+
+$ curl http://127.0.0.1:18083/.well-known/agent-card.json
+{"name":"orchestrator","description":"agent-mesh-lab agent: one model call per message","supportedInterfaces":[{"url":"http://127.0.0.1:8080","protocolBinding":"JSONRPC","protocolVersion":"1.0"}],"version":"0.0.0","capabilities":{"streaming":false},"defaultInputModes":["text/plain"],"defaultOutputModes":["text/plain"],"skills":[{"id":"answer","name":"answer","description":"returns the model's answer to the message text","tags":["lab"]}]}
+
+$ docker exec <c> id
+uid=65532(nonroot) gid=65532(nonroot) groups=65532(nonroot)
+
+$ docker exec <c> sh -c 'touch /tmp/x'
+touch: cannot touch '/tmp/x': Read-only file system
+exit=1
+
+$ docker exec <c> sh -c 'touch /app/orchestrator/x'
+touch: cannot touch '/app/orchestrator/x': Read-only file system
+exit=1
+
+container logs. No start-up diagnostic: what is here is the pre-dispatch ingress
+ledger, the two lines the agent-card request above produced, which is the instrument
+chain working in the new image as it did in the buildpack one:
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-10T16:44:30.561667Z","remote":"192.168.65.1:65177","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-10T16:44:30.561667Z","remote":"192.168.65.1:65177","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0,"status":200}
+--- end of logs ---
+
+Recorded alongside, from a run with the SDK's own defaults instead of this env:
+with OTEL_METRICS_EXPORTER and OTEL_LOGS_EXPORTER unset, both default to "otlp",
+and opentelemetry-instrument prints "Configuration of configurator failed" with a
+StopIteration out of opentelemetry/sdk/_configuration/__init__.py:130 -- the entry
+point named "otlp" for those two signals belongs to the opentelemetry-exporter-otlp
+meta package, and this project pins opentelemetry-exporter-otlp-proto-http only.
+The agent still served /healthz 200 in that state. It is a property of the pinned
+dependency set, not of this image: the same four packages were in the buildpack
+image, and deploy/step-3-stress has always set all three exporter variables
+explicitly, which is the configuration measured above and in the cluster.

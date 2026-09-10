@@ -1,0 +1,59 @@
+Image size, orchestrator:dev before and after this commit. Measured 2026-09-10 on
+this host (darwin/arm64, Docker 29.7.2, containerd image store).
+
+Three numbers are recorded because they measure three different things and two of
+them point in opposite directions. The commit body and the findings entry use the
+rootfs number as the size of the image, and name the other two.
+
+BEFORE: Cloud Native Buildpacks, builder
+  paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
+  The tag orchestrator:dev held such an image at the start of this session
+  (image-before.txt: .Size 217853747, amd64, User 1002:1000). The first
+  `docker build` of the new Dockerfile took the tag, so the comparison below was
+  taken against a rebuild of the same thing under a second tag,
+  orchestrator:packbefore, from the same builder digest, same path, in this
+  session. It came out at .Size 220741427 -- 2887680 bytes larger than the image
+  that held the tag, the two builds being minutes apart with the same lockfile,
+  which is the buildpack layer set not being byte-identical between runs.
+
+AFTER: agents/orchestrator/Dockerfile
+  docker build --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+
+1. Unpacked root filesystem -- the bytes the image actually puts on a node.
+   $ docker run --rm --entrypoint /bin/sh --user 0:0 <image> -c 'du -sk /'
+     pack   294316 KiB  (301.4 MB)
+     new    239728 KiB  (245.5 MB)
+   The new image's filesystem is 54588 KiB smaller, 81.5% of the former.
+   Where the new one's bytes are:
+     /app/.venv   87616 KiB   the runtime dependencies, no dev group
+     /usr/lib     61656 KiB   debian trixie-slim
+     /usr/local   40332 KiB   CPython 3.14.7 as the base image builds it
+
+2. Stored and transferred content -- what `docker image inspect --format
+   '{{.Size}}'` reports, and what `docker save | wc -c` writes:
+     pack   .Size 220741427   docker save 220754432 bytes
+     new    .Size  67131846   docker save  67151872 bytes
+   The new image is 30.4% of the former by this measure. The gap between this
+   ratio and the one above is compression, not content: the buildpack lifecycle
+   exports its layers uncompressed, BuildKit exports them gzipped, so the same
+   command is reporting uncompressed bytes for one image and compressed bytes
+   for the other. This number is a fair measure of pull and store cost and is
+   not a fair measure of image content.
+
+3. `docker image ls`
+     pack   221MB
+     new    325MB
+   Read as "the new image is larger", this is wrong, and it is the reason 1 was
+   measured. For a containerd-store image whose blobs are compressed, this column
+   counts the unpacked snapshot AND the compressed blobs (239.7 MiB + 64.0 MiB
+   = 325 MB); for the pack image, whose stored blobs are already the unpacked
+   bytes, it counts them once. A build with --provenance=false measured the same
+   325MB, so the attestation manifest is not the cause.
+
+Architecture, the other half of the change:
+     pack   amd64   on this arm64 host, run under emulation; the pinned builder
+                    publishes no arm64 image at any tag (versions.yaml,
+                    pack-builder; experiments/runs/2026-09-10-pack-multiarch/)
+     new    arm64   the host's, from --platform linux/$(go env GOARCH) over a
+                    base image whose index carries both linux/amd64 and
+                    linux/arm64

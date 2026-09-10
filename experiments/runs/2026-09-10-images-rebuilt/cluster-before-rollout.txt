@@ -1,0 +1,32 @@
+Cluster state before the final rollout of this branch. Read 2026-09-10.
+
+An earlier rollout of this branch already ran, before the author's second-round
+decisions arrived: make orchestrator-image then make step-3, with the certificate
+check passing and both Deployments stamped. Everything below is the state that
+rollout left, and it is the starting point for the final one, which is needed
+because the Go images must be rebuilt on the Debian 13 distroless base and the
+Python image on tag-resolved bases with root-owned files and the OS upgrade layer,
+and because automountServiceAccountToken: false was not in the manifests yet.
+
+$ kubectl -n lab get pods -o wide
+NAME                           READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+mockllm-cd4b4756c-cxbth        1/1     Running   0          16m   10.244.1.60   agent-mesh-lab-worker   <none>           <none>
+orchestrator-6d479c5fc-64rb5   1/1     Running   0          16m   10.244.1.61   agent-mesh-lab-worker   <none>           <none>
+worker-6544df7cf9-2blld        1/1     Running   0          16m   10.244.1.62   agent-mesh-lab-worker   <none>           <none>
+
+$ kubectl -n lab get pods -o jsonpath (volumes: the SA token is still mounted here)
+mockllm-cd4b4756c-cxbth  volumes=kube-api-access-q85lv  automount=
+orchestrator-6d479c5fc-64rb5  volumes=kube-api-access-jxwnx  automount=
+worker-6544df7cf9-2blld  volumes=kube-api-access-jnzw6  automount=
+
+$ kubectl -n lab get deploy -o custom-columns=NAME,GOSRC
+NAME      GOSRC
+worker    dc72c724b8308f76baa9f742aa5a7c7086d5d260
+mockllm   dc72c724b8308f76baa9f742aa5a7c7086d5d260
+
+$ git log --oneline -5
+3d1dae6 build(go): distroless static base on Debian 13
+2bbbff9 deploy(base): read-only root filesystem and non-root for every lab workload
+04611e4 build(orchestrator): multistage Dockerfile on python:3.14-slim with uv; Cloud Native Buildpacks removed
+1901745 build(go): toolchain pinned to the latest Go release
+4ff9abc docs(findings): trace per work item re-counted after the Operator removal

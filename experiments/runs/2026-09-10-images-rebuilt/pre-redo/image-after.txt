@@ -1,0 +1,62 @@
+orchestrator:dev AFTER this commit -- built by agents/orchestrator/Dockerfile
+  docker build --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+Read on 2026-09-10, immediately after that build.
+
+$ docker image inspect --format '{{.Size}}' orchestrator:dev
+67131846
+
+$ docker image inspect --format '{{.Architecture}}/{{.Os}}' orchestrator:dev
+arm64/linux
+
+$ docker image inspect --format '{{.Config.User}}' orchestrator:dev
+65532:65532
+
+$ docker image inspect --format '{{json .Config.Entrypoint}} {{json .Config.Cmd}}' orchestrator:dev
+null ["opentelemetry-instrument","python","-m","orchestrator.server"]
+
+$ docker image inspect --format '{{.Id}}' orchestrator:dev
+sha256:7dfd39eedc663576931cdaadbc8417a1f5436f1b15fe1c1058f15be550fd5b85
+
+Comparison with image-before.txt (the Cloud Native Buildpacks image). The size
+line is not a like-for-like quantity even though it is the same command on both
+images; image-size.txt measures the filesystem instead and records all three
+numbers with what each one means.
+  .Size         217853747 -> 67131846 bytes, but see image-size.txt: this command
+                reports uncompressed bytes for a lifecycle-exported image and
+                compressed bytes for a BuildKit-exported one
+  rootfs        294316 KiB -> 239728 KiB (81.5% of the former), measured with
+                `du -sk /` inside each image; this is the size that is comparable
+  architecture  amd64 -> arm64 (the host's, no longer emulated)
+  user          1002:1000 -> 65532:65532
+  entrypoint    ["/cnb/process/web"] -> none; the command is the image's own CMD
+
+$ docker history --no-trunc --format '{{.Size}}  {{.CreatedBy}}' orchestrator:dev
+0B  CMD ["opentelemetry-instrument" "python" "-m" "orchestrator.server"]
+0B  EXPOSE [8080/tcp]
+0B  USER 65532:65532
+0B  ENV PATH=/app/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+61.4kB  COPY --chown=65532:65532 orchestrator /app/orchestrator # buildkit
+89.7MB  COPY --chown=65532:65532 /app/.venv /app/.venv # buildkit
+8.19kB  WORKDIR /app
+41kB  RUN /bin/sh -c groupadd --gid 65532 nonroot     && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin nonroot # buildkit
+0B  CMD ["python3"]
+16.4kB  RUN /bin/sh -c set -eux;  for src in idle3 pip3 pydoc3 python3 python3-config; do   dst="$(echo "$src" | tr -d 3)";   [ -s "/usr/local/bin/$src" ];   [ ! -e "/usr/local/bin/$dst" ];   ln -svT "$src" "/usr/local/bin/$dst";  done # buildkit
+45.2MB  RUN /bin/sh -c set -eux;   savedAptMark="$(apt-mark showmanual)";  apt-get update;  apt-get install -y --no-install-recommends   dpkg-dev   g++   gcc   gnupg   libbluetooth-dev   libbz2-dev   libc6-dev   libdb-dev   libffi-dev   libgdbm-dev   liblzma-dev   libncursesw5-dev   libreadline-dev   libsqlite3-dev   libssl-dev   libzstd-dev   make   tk-dev   uuid-dev   wget   xz-utils   zlib1g-dev  ;   wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz";  echo "$PYTHON_SHA256 *python.tar.xz" | sha256sum -c -;  mkdir -p /usr/src/python;  tar --extract --directory /usr/src/python --strip-components=1 --file python.tar.xz;  rm python.tar.xz;   cd /usr/src/python;  gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)";  ./configure   --build="$gnuArch"   --enable-loadable-sqlite-extensions   --enable-optimizations   --enable-option-checking=fatal   --enable-shared   $(test "${gnuArch%%-*}" != 'riscv64' && echo '--with-lto')   --with-ensurepip  ;  nproc="$(nproc)";  EXTRA_CFLAGS="$(dpkg-buildflags --get CFLAGS)";  LDFLAGS="$(dpkg-buildflags --get LDFLAGS)";  LDFLAGS="${LDFLAGS:-} -Wl,--strip-all";  arch="$(dpkg --print-architecture)"; arch="${arch##*-}";  case "$arch" in   amd64|arm64)    EXTRA_CFLAGS="${EXTRA_CFLAGS:-} -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer";    ;;   i386)    ;;   *)    EXTRA_CFLAGS="${EXTRA_CFLAGS:-} -fno-omit-frame-pointer";    ;;  esac;  make -j "$nproc"   "EXTRA_CFLAGS=${EXTRA_CFLAGS:-}"   "LDFLAGS=${LDFLAGS:-}"  ;  rm python;  make -j "$nproc"   "EXTRA_CFLAGS=${EXTRA_CFLAGS:-}"   "LDFLAGS=${LDFLAGS:-} -Wl,-rpath='\$\$ORIGIN/../lib'"   python  ;  make install;   cd /;  rm -rf /usr/src/python;   find /usr/local -depth   \(    \( -type d -a \( -name test -o -name tests -o -name idle_test \) \)    -o \( -type f -a \( -name '*.pyc' -o -name '*.pyo' -o -name 'libpython*.a' \) \)   \) -exec rm -rf '{}' +  ;   ldconfig;   apt-mark auto '.*' > /dev/null;  apt-mark manual $savedAptMark;  find /usr/local -type f -executable -not \( -name '*tkinter*' \) -exec ldd '{}' ';'   | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }'   | sort -u   | xargs -rt dpkg-query --search   | awk 'sub(":$", "", $1) { print $1 }'   | sort -u   | xargs -r apt-mark manual  ;  apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false;  apt-get dist-clean;   export PYTHONDONTWRITEBYTECODE=1;  python3 --version;  pip3 --version # buildkit
+0B  ENV PYTHON_SHA256=3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81
+0B  ENV PYTHON_VERSION=3.14.7
+13.1MB  RUN /bin/sh -c set -eux;  apt-get update;  apt-get install -y --no-install-recommends   ca-certificates   netbase   tzdata  ;  apt-get dist-clean # buildkit
+0B  ENV PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+109MB  # debian.sh --arch 'arm64' out/ 'trixie' '@1787529600'
+
+Rebuilt once more at the end of the commit, through `make orchestrator-image`, so
+the recorded image is the one the committed tree produces (a comment in
+pyproject.toml had changed in between; that file reaches the builder as a bind
+mount and never reaches the final stage). Read again after that build:
+  .Size    67132071   (225 bytes from the reading above; layer metadata)
+  du -sk / 239728 KiB (identical)
+  Arch     arm64      User 65532:65532
+The same command also ran `kind load docker-image orchestrator:dev --name
+agent-mesh-lab`, which loaded it onto both nodes without complaint -- worth
+recording because the image is now a containerd-store OCI index rather than the
+single docker-format image pack produced. No pod was restarted: the rollout is
+one event, in the commit that follows.
