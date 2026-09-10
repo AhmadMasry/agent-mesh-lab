@@ -1,8 +1,10 @@
 orchestrator:dev AFTER this commit -- built by agents/orchestrator/Dockerfile
   docker build --pull --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
-Read on 2026-09-10, from the build this commit's tree produces: every base image
-by tag (--pull re-resolving both), the one-layer OS upgrade in the final stage,
-and root-owned application files.
+Re-taken on 2026-09-10 from the orchestrator:dev the Docker daemon holds, which is
+the build the final rollout of this run loaded. The first version of this file
+recorded sha256:052cba1245db..., an earlier build made inside the same branch and
+superseded before the run this directory documents; it is kept beside this one as
+image-after-superseded-052cba12.txt. Same commands, same order.
 
 $ docker image inspect --format '{{.Size}}' orchestrator:dev
 67132499
@@ -17,15 +19,45 @@ $ docker image inspect --format '{{json .Config.Entrypoint}} {{json .Config.Cmd}
 null ["opentelemetry-instrument","python","-m","orchestrator.server"]
 
 $ docker image inspect --format '{{.Id}}' orchestrator:dev
-sha256:052cba1245db947fafd4e17b819cf2f7cc0ea827240127345a947fc2255f6630
+sha256:9d30a65a02b73926d3f57e27476f26c4036f97952defec3949c29260210668f8
+
+$ docker image inspect --format '{{.Created}}' orchestrator:dev
+2026-09-10T17:04:28.355873886Z
+
+$ docker image inspect --format '{{len .RootFS.Layers}}' orchestrator:dev
+9
 
 $ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -V
 Python 3.14.7
 
-What the two floating tags resolved to at this build, from the --progress=plain log:
+Why this id is the one the cluster runs, stated as a method rather than asserted.
+The pod does not report it: `kubectl -n lab get pod -l app=orchestrator` gives
+imageID docker.io/library/import-2026-09-10@sha256:f811f97509ed74550152312a04d16de2c70fa658cc26f997a9c568deaabe16c4,
+which is the digest `kind load docker-image` computes over the archive it imports
+into the node's containerd store, not the daemon's image id, so the two cannot be
+compared directly. The match is made on two other records instead. (1) Creation
+time: the daemon's orchestrator:dev was created 2026-09-10T17:04:28Z and the pod
+orchestrator-775d8cf4fc-2rtmn started 2026-09-10T17:11:03Z, six and a half
+minutes later, and no orchestrator image has been built since -- the pod is still
+that same pod at restartCount 0. (2) The scan record: this run's own
+scan/scan-context.txt lists the orchestrator image it scanned as
+sha256:9d30a65a02b73926d3f57e27476f26c4036f97952defec3949c29260210668f8, taken
+from the daemon at 17:50Z, and the findings entry that cites that scan is the one
+this directory belongs to.
+
+What is NOT re-taken here. The first version of this file carried the two floating
+base tags' digests and the builder's uv version, read from that build's
+--progress=plain log:
   ghcr.io/astral-sh/uv:latest  -> sha256:73d2665b478d8fa2de1cf105c6841f8e9cb6b09e568fc7700440c09f8fcd7ac4
   python:3.14-slim             -> sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
   uv --version in the builder  -> uv 0.12.12 (aarch64-unknown-linux-musl)
+Those lines belong to a build log, and this image was not built in the session that
+re-took this file, so they are left where they were rather than restated here. What
+can be said from the image itself is that `docker history --no-trunc` over this one
+is identical to the history the superseded file recorded -- the same seventeen
+entries, same sizes, same CreatedBy strings, differing only in the run-lengths of
+spaces the two captures used -- which is consistent with the same bases without
+proving their digests.
 
 Comparison with image-before.txt (the Cloud Native Buildpacks image). The size
 line is not a like-for-like quantity even though it is the same command on both
@@ -43,20 +75,20 @@ numbers with what each one means.
   entrypoint    ["/cnb/process/web"] -> none; the command is the image's own CMD
 
 $ docker history --no-trunc --format '{{.Size}} {{.CreatedBy}}' orchestrator:dev
-0B  CMD ["opentelemetry-instrument" "python" "-m" "orchestrator.server"]
-0B  EXPOSE [8080/tcp]
-0B  USER 65532:65532
-0B  ENV PATH=/app/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
-61.4kB  COPY orchestrator /app/orchestrator # buildkit
-89.7MB  COPY /app/.venv /app/.venv # buildkit
-8.19kB  WORKDIR /app
-41kB  RUN /bin/sh -c groupadd --gid 65532 nonroot     && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin nonroot # buildkit
-20.5kB  RUN /bin/sh -c apt-get update     && apt-get -y upgrade --no-install-recommends     && apt-get clean     && rm -rf /var/lib/apt/lists/* # buildkit
-0B  CMD ["python3"]
-16.4kB  RUN /bin/sh -c set -eux;  for src in idle3 pip3 pydoc3 python3 python3-config; do   dst="$(echo "$src" | tr -d 3)";   [ -s "/usr/local/bin/$src" ];   [ ! -e "/usr/local/bin/$dst" ];   ln -svT "$src" "/usr/local/bin/$dst";  done # buildkit
-45.2MB  RUN /bin/sh -c set -eux;   savedAptMark="$(apt-mark showmanual)";  apt-get update;  apt-get install -y --no-install-recommends   dpkg-dev   g++   gcc   gnupg   libbluetooth-dev   libbz2-dev   libc6-dev   libdb-dev   libffi-dev   libgdbm-dev   liblzma-dev   libncursesw5-dev   libreadline-dev   libsqlite3-dev   libssl-dev   libzstd-dev   make   tk-dev   uuid-dev   wget   xz-utils   zlib1g-dev  ;   wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz";  echo "$PYTHON_SHA256 *python.tar.xz" | sha256sum -c -;  mkdir -p /usr/src/python;  tar --extract --directory /usr/src/python --strip-components=1 --file python.tar.xz;  rm python.tar.xz;   cd /usr/src/python;  gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)";  ./configure   --build="$gnuArch"   --enable-loadable-sqlite-extensions   --enable-optimizations   --enable-option-checking=fatal   --enable-shared   $(test "${gnuArch%%-*}" != 'riscv64' && echo '--with-lto')   --with-ensurepip  ;  nproc="$(nproc)";  EXTRA_CFLAGS="$(dpkg-buildflags --get CFLAGS)";  LDFLAGS="$(dpkg-buildflags --get LDFLAGS)";  LDFLAGS="${LDFLAGS:-} -Wl,--strip-all";  arch="$(dpkg --print-architecture)"; arch="${arch##*-}";  case "$arch" in   amd64|arm64)    EXTRA_CFLAGS="${EXTRA_CFLAGS:-} -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer";    ;;   i386)    ;;   *)    EXTRA_CFLAGS="${EXTRA_CFLAGS:-} -fno-omit-frame-pointer";    ;;  esac;  make -j "$nproc"   "EXTRA_CFLAGS=${EXTRA_CFLAGS:-}"   "LDFLAGS=${LDFLAGS:-}"  ;  rm python;  make -j "$nproc"   "EXTRA_CFLAGS=${EXTRA_CFLAGS:-}"   "LDFLAGS=${LDFLAGS:-} -Wl,-rpath='\$\$ORIGIN/../lib'"   python  ;  make install;   cd /;  rm -rf /usr/src/python;   find /usr/local -depth   \(    \( -type d -a \( -name test -o -name tests -o -name idle_test \) \)    -o \( -type f -a \( -name '*.pyc' -o -name '*.pyo' -o -name 'libpython*.a' \) \)   \) -exec rm -rf '{}' +  ;   ldconfig;   apt-mark auto '.*' > /dev/null;  apt-mark manual $savedAptMark;  find /usr/local -type f -executable -not \( -name '*tkinter*' \) -exec ldd '{}' ';'   | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }'   | sort -u   | xargs -rt dpkg-query --search   | awk 'sub(":$", "", $1) { print $1 }'   | sort -u   | xargs -r apt-mark manual  ;  apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false;  apt-get dist-clean;   export PYTHONDONTWRITEBYTECODE=1;  python3 --version;  pip3 --version # buildkit
-0B  ENV PYTHON_SHA256=3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81
-0B  ENV PYTHON_VERSION=3.14.7
-13.1MB  RUN /bin/sh -c set -eux;  apt-get update;  apt-get install -y --no-install-recommends   ca-certificates   netbase   tzdata  ;  apt-get dist-clean # buildkit
-0B  ENV PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-109MB  # debian.sh --arch 'arm64' out/ 'trixie' '@1787529600'
+0B CMD ["opentelemetry-instrument" "python" "-m" "orchestrator.server"]
+0B EXPOSE [8080/tcp]
+0B USER 65532:65532
+0B ENV PATH=/app/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+61.4kB COPY orchestrator /app/orchestrator # buildkit
+89.7MB COPY /app/.venv /app/.venv # buildkit
+8.19kB WORKDIR /app
+41kB RUN /bin/sh -c groupadd --gid 65532 nonroot     && useradd --uid 65532 --gid 65532 --no-create-home --shell /usr/sbin/nologin nonroot # buildkit
+20.5kB RUN /bin/sh -c apt-get update     && apt-get -y upgrade --no-install-recommends     && apt-get clean     && rm -rf /var/lib/apt/lists/* # buildkit
+0B CMD ["python3"]
+16.4kB RUN /bin/sh -c set -eux;  for src in idle3 pip3 pydoc3 python3 python3-config; do   dst="$(echo "$src" | tr -d 3)";   [ -s "/usr/local/bin/$src" ];   [ ! -e "/usr/local/bin/$dst" ];   ln -svT "$src" "/usr/local/bin/$dst";  done # buildkit
+45.2MB RUN /bin/sh -c set -eux;   savedAptMark="$(apt-mark showmanual)";  apt-get update;  apt-get install -y --no-install-recommends   dpkg-dev   g++   gcc   gnupg   libbluetooth-dev   libbz2-dev   libc6-dev   libdb-dev   libffi-dev   libgdbm-dev   liblzma-dev   libncursesw5-dev   libreadline-dev   libsqlite3-dev   libssl-dev   libzstd-dev   make   tk-dev   uuid-dev   wget   xz-utils   zlib1g-dev  ;   wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz";  echo "$PYTHON_SHA256 *python.tar.xz" | sha256sum -c -;  mkdir -p /usr/src/python;  tar --extract --directory /usr/src/python --strip-components=1 --file python.tar.xz;  rm python.tar.xz;   cd /usr/src/python;  gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)";  ./configure   --build="$gnuArch"   --enable-loadable-sqlite-extensions   --enable-optimizations   --enable-option-checking=fatal   --enable-shared   $(test "${gnuArch%%-*}" != 'riscv64' && echo '--with-lto')   --with-ensurepip  ;  nproc="$(nproc)";  EXTRA_CFLAGS="$(dpkg-buildflags --get CFLAGS)";  LDFLAGS="$(dpkg-buildflags --get LDFLAGS)";  LDFLAGS="${LDFLAGS:-} -Wl,--strip-all";  arch="$(dpkg --print-architecture)"; arch="${arch##*-}";  case "$arch" in   amd64|arm64)    EXTRA_CFLAGS="${EXTRA_CFLAGS:-} -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer";    ;;   i386)    ;;   *)    EXTRA_CFLAGS="${EXTRA_CFLAGS:-} -fno-omit-frame-pointer";    ;;  esac;  make -j "$nproc"   "EXTRA_CFLAGS=${EXTRA_CFLAGS:-}"   "LDFLAGS=${LDFLAGS:-}"  ;  rm python;  make -j "$nproc"   "EXTRA_CFLAGS=${EXTRA_CFLAGS:-}"   "LDFLAGS=${LDFLAGS:-} -Wl,-rpath='\$\$ORIGIN/../lib'"   python  ;  make install;   cd /;  rm -rf /usr/src/python;   find /usr/local -depth   \(    \( -type d -a \( -name test -o -name tests -o -name idle_test \) \)    -o \( -type f -a \( -name '*.pyc' -o -name '*.pyo' -o -name 'libpython*.a' \) \)   \) -exec rm -rf '{}' +  ;   ldconfig;   apt-mark auto '.*' > /dev/null;  apt-mark manual $savedAptMark;  find /usr/local -type f -executable -not \( -name '*tkinter*' \) -exec ldd '{}' ';'   | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }'   | sort -u   | xargs -rt dpkg-query --search   | awk 'sub(":$", "", $1) { print $1 }'   | sort -u   | xargs -r apt-mark manual  ;  apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false;  apt-get dist-clean;   export PYTHONDONTWRITEBYTECODE=1;  python3 --version;  pip3 --version # buildkit
+0B ENV PYTHON_SHA256=3b48dac8fb59f62eaa67ac83c1eb12bda1b7a08406dd286e252c11a66be27f81
+0B ENV PYTHON_VERSION=3.14.7
+13.1MB RUN /bin/sh -c set -eux;  apt-get update;  apt-get install -y --no-install-recommends   ca-certificates   netbase   tzdata  ;  apt-get dist-clean # buildkit
+0B ENV PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+109MB # debian.sh --arch 'arm64' out/ 'trixie' '@1787529600'
