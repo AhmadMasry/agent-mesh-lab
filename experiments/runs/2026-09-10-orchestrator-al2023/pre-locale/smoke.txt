@@ -1,0 +1,41 @@
+smoke.txt -- the finished orchestrator:dev started on this host, read-only and as uid
+65532, and asked once for its Agent Card. The env is the one deploy/base and
+deploy/step-3-stress apply, with the three OTEL exporters set to none: there is no
+collector on this host and this file is about the agent starting and serving, not
+about telemetry.
+Taken 2026-09-10T19:02:30Z. Image sha256:e7bd795defbf90fe750f585d799d105d67ce9864da6a7fc3638235a06f9c48c1.
+
+$ docker run -d --name al2023-smoke --read-only --user 65532:65532 -p 18085:8080 \
+    -e AGENT_NAME=orchestrator -e PORT=8080 -e PUBLIC_URL=http://127.0.0.1:8080 \
+    -e MODEL_BASE_URL=http://127.0.0.1:9/v1 -e MODEL_NAME=mock -e MODEL_API_KEY=unused \
+    -e MODEL_MAX_RETRIES=0 -e PLAN_MODEL_CALL=off \
+    -e OTEL_SERVICE_NAME=orchestrator -e OTEL_TRACES_EXPORTER=none \
+    -e OTEL_METRICS_EXPORTER=none -e OTEL_LOGS_EXPORTER=none orchestrator:dev
+2a2de506f7e2e928b21d7ea0054d937ba2891bc00eda995b5dc3b49fd8db030a
+
+Readiness wait on the host, written in python3 so nothing in this file is a retrying
+HTTP client: it polls /healthz once a second until the first 200 and then stops. The
+counted request below is made exactly once.
+  /healthz answered 200 on poll 1, 0.0 s after `docker run`
+
+$ GET http://127.0.0.1:18085/.well-known/agent-card.json   (one request)
+  HTTP 200
+  body: {"name":"orchestrator","description":"agent-mesh-lab agent: one model call per message","supportedInterfaces":[{"url":"http://127.0.0.1:8080","protocolBinding":"JSONRPC","protocolVersion":"1.0"}],"version":"0.0.0","capabilities":{"streaming":false},"defaultInputModes":["text/plain"],"defaultOutputModes":["text/plain"],"skills":[{"id":"answer","name":"answer","description":"returns the model's answer to the message text","tags":["lab"]}]}
+
+  card.name                                = 'orchestrator'
+  card.supportedInterfaces[0].protocolBinding = 'JSONRPC'
+  card.supportedInterfaces[0].protocolVersion = '1.0'
+  card.skills[0].id                        = 'answer'
+
+$ docker logs al2023-smoke
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-10T19:02:42.762019Z","remote":"192.168.65.1:18376","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-10T19:02:42.762019Z","remote":"192.168.65.1:18376","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0,"status":200}
+--- end of logs ---
+
+The two lines above with method "GET /.well-known/agent-card.json" are the
+pre-dispatch ingress ledger's arrival/response pair for the one counted request:
+the instrument chain works in the assembled image as it did in the python:3.14-slim
+one. /healthz is not in the ledger, which is why the readiness poll left no lines.
+
+$ docker rm -f al2023-smoke
+al2023-smoke

@@ -1,0 +1,119 @@
+cluster-rollout.txt -- the certificate check, the state before, the restart onto the
+rebuilt image (glibc's locale archive kept), and the pod proofs after.
+Written 2026-09-10T21:54:55Z.
+
+=== 1. certificate check, before any cluster step ===
+$ istioctl ztunnel-config certificates --node agent-mesh-lab-worker
+  Recorded in full in this directory's certificates.txt, under the header
+  == 2026-09-10T21:54:33Z | followups-4 locale amendment | certificate check before the rollout ==
+  The line the check is on:
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           10a25afce69bd6b48f75e062a2586e48     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+
+  -> VALID CERT true for spiffe://cluster.local/ns/lab/sa/default (Leaf, Available),
+     so ztunnel was NOT restarted.
+
+=== 2. the three lab Deployments before the restart ===
+$ kubectl -n lab get pods -l "app in (worker,mockllm,orchestrator)" -o custom-columns=...
+NAME                            START                  RESTARTS   IMAGEID
+mockllm-d6f98fccd-kztlz         2026-09-10T18:12:34Z   0          sha256:eb2dff7a5b35189bdc4c98da49e1bceaa161c2fd1c74838235c691045156d1ac
+orchestrator-74d6c86b9b-gcdzl   2026-09-10T19:07:34Z   0          docker.io/library/import-2026-09-10@sha256:55345570d9a8933308d73bc1cbabe512192718f2a1a866bda4c5835a3fcd7927
+worker-757989db4b-xd2pj         2026-09-10T18:12:34Z   0          sha256:f948bd2650c4768c7b00f617b7f56a4c1cb68e405366bbfb438e218c091591b9
+
+$ kubectl -n lab get deploy -o custom-columns="NAME:.metadata.name,IMAGE:.spec.template.spec.containers[0].image"
+NAME                         IMAGE
+agentgateway-waypoint        cr.agentgateway.dev/agentgateway:v1.5.0
+agentgateway-waypoint-orch   cr.agentgateway.dev/agentgateway:v1.5.0
+mockllm                      kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:1c667be1352522b34884f2fbb5d0d24993876ae1eadc2436900585a7059abadd
+orchestrator                 orchestrator:dev
+worker                       kind.local/worker-918a018b7a581926ead34dec2ba0fb83:bf58044d0c311c405e7cf0fca9d0686ba3cb63f5b6c11f38f84e1656eddf718e
+
+$ kubectl -n lab get deploy worker mockllm -o jsonpath (guard annotation, on the Deployment)
+worker  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+mockllm  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+
+  -> worker and mockllm are untouched by this amendment: no Go source changed, no step
+     target ran, no ko build. Their pod names, start times, image ids, restart counts
+     and guard annotation are recorded here so the after-side can be compared.
+
+=== 3. the rebuild and load, then restart the orchestrator only ===
+$ BUILDKIT_PROGRESS=plain make orchestrator-image      # the full log is build.txt
+  The build exported image manifest sha256:ad5d668c283f… and config sha256:6cd309dc1c67…
+  and `kind load docker-image orchestrator:dev --name agent-mesh-lab` pushed index
+  sha256:e67c133fb7d68997cb35f39679abbb17e96ca9272e69a9be993ef481fdd1e4a8 to both nodes:
+    Image: "orchestrator:dev" with ID "sha256:e67c133fb7d6…" not yet present on node "agent-mesh-lab-worker", loading...
+    Image: "orchestrator:dev" with ID "sha256:e67c133fb7d6…" not yet present on node "agent-mesh-lab-control-plane", loading...
+  No step target ran; no overlay was applied; the Go images were not rebuilt.
+
+$ kubectl -n lab rollout restart deployment/orchestrator
+deployment.apps/orchestrator restarted
+$ kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+deployment "orchestrator" successfully rolled out
+
+=== 4. pod proofs, all through `python -c`: the image has no shell ===
+$ kubectl -n lab exec deploy/orchestrator -- python -c "<proof program>"
+os.getuid(), os.getgid() = 65532 65532
+platform.machine()       = aarch64
+sys.version              = 3.14.7 (main, Aug 24 2026, 00:00:00) [GCC 11.5.0 20240719 (Red Hat 11.5.0-5)]
+sys.executable           = /app/.venv/bin/python -> /usr/bin/python3.14
+/etc/os-release NAME     = NAME="Amazon Linux"
+stat /app                   uid=0 gid=0 mode=0o755
+stat /app/.venv             uid=0 gid=0 mode=0o755
+stat /app/orchestrator      uid=0 gid=0 mode=0o755
+/x         refused: errno=30 EROFS
+/app/x     refused: errno=30 EROFS
+/tmp/x     refused: errno=30 EROFS
+/bin/sh        exists=False
+/bin/bash      exists=False
+/usr/bin/dnf   exists=False
+/usr/bin/rpm   exists=False
+/usr/bin/ls    exists=False
+/usr/bin/cat   exists=False
+/var/run/secrets/kubernetes.io exists = False
+--- the locale archive, in the pod ---
+/usr/lib/locale exists   = True
+/usr/lib/locale holds    = ['C.utf8']
+/usr/share/locale exists = False
+setlocale(LC_ALL, 'C.UTF-8'    ) ok     -> 'C.UTF-8'
+setlocale(LC_ALL, 'en_US.UTF-8') FAILED: unsupported locale setting
+setlocale(LC_ALL, ''           ) ok     -> 'LC_CTYPE=C.UTF-8;LC_NUMERIC=C;LC_TIME=C;LC_COLLATE=C;LC_MONETARY=C;LC_MESSAGES=C;LC_PAPER=C;LC_NAME=C;LC_ADDRESS=C;LC_TELEPHONE=C;LC_MEASUREMENT=C;LC_IDENTIFICATION=C'
+locale.getlocale()       = ('C', 'UTF-8')
+  exit=0
+
+=== 5. the pod as the API server holds it ===
+orchestrator pod: orchestrator-54967f646d-bk82p
+$ kubectl -n lab get pod orchestrator-54967f646d-bk82p -o jsonpath (securityContext, volumes, automount, restarts)
+pod.spec.securityContext = {"fsGroup":65532,"runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}
+container.securityContext = {"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}
+automountServiceAccountToken = false
+volumes = 
+volumeMounts = 
+image = orchestrator:dev
+imageID = docker.io/library/import-2026-09-10@sha256:02edd809bda2eb88183c92340ef283bc078c85ce532b40e0e86294b39e69c552
+restartCount = 0
+ready = true
+startTime = 2026-09-10T21:54:55Z
+
+  -> volumes and volumeMounts print empty: the pod carries no volume at all,
+     as before this rollout. The imageID is the digest `kind load` computed over the
+     archive it imported into the node's containerd store, not the image's own index;
+     that it moved from import-2026-09-10@sha256:55345570… is the evidence this pod
+     runs the image this amendment built.
+
+=== 6. worker and mockllm, unchanged by this amendment ===
+$ kubectl -n lab get pods -l "app in (worker,mockllm,orchestrator)" -o custom-columns=...
+NAME                            START                  RESTARTS   IMAGEID
+mockllm-d6f98fccd-kztlz         2026-09-10T18:12:34Z   0          sha256:eb2dff7a5b35189bdc4c98da49e1bceaa161c2fd1c74838235c691045156d1ac
+orchestrator-54967f646d-bk82p   2026-09-10T21:54:55Z   0          docker.io/library/import-2026-09-10@sha256:02edd809bda2eb88183c92340ef283bc078c85ce532b40e0e86294b39e69c552
+worker-757989db4b-xd2pj         2026-09-10T18:12:34Z   0          sha256:f948bd2650c4768c7b00f617b7f56a4c1cb68e405366bbfb438e218c091591b9
+
+$ kubectl -n lab get deploy worker mockllm -o jsonpath (guard annotation, after)
+worker  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+mockllm  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+
+$ git ls-files -s -- agents/worker fixtures/mockllm internal go.mod go.sum ":!**/*_test.go" | git hash-object --stdin
+fdcc8676569986ce1046b91b146223b5f41313f8
+  -> the hash both Deployments carry, so the image-freshness guard is satisfied at this
+     checkout: the Go images the cluster runs were built from these sources. The
+     annotation is only written by a step target, and none ran.

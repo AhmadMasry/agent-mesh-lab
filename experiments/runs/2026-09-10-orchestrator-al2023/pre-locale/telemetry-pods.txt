@@ -1,0 +1,42 @@
+telemetry-pods.txt -- the three telemetry pods, read to back the Method's clause
+"telemetry pins unchanged and the telemetry pods unrestarted". The prior Gate 3
+run recorded them in its own post-run-cluster.txt; this run's outputs recorded
+none, so the claim was not reproducible from the directory the entry cites. It is
+now.
+
+READ AFTER THE RUN, 2026-09-10T19:44:14Z, which is later than everything
+this run directory records. That is deliberate and is why the timestamps below are
+the evidence rather than the fact of the read: every one of them PREDATES this
+task, so nothing this task did could have produced them.
+
+$ kubectl -n telemetry get pods -o custom-columns="NAME:.metadata.name,PHASE:.status.phase,RESTARTS:.status.containerStatuses[0].restartCount,STARTED:.status.startTime"
+NAME                              PHASE     RESTARTS   STARTED
+jaeger-d997cf5b-td5zv             Running   1          2026-09-09T06:51:14Z
+otel-collector-5d798544f5-ffkgn   Running   1          2026-09-09T14:27:15Z
+prometheus-949757dd7-58bft        Running   1          2026-09-09T06:51:14Z
+
+$ kubectl -n telemetry get pods -o jsonpath (last termination and image)
+  jaeger-d997cf5b-td5zv
+    image          = jaegertracing/jaeger:2.20.0
+    lastTerminated = 2026-09-10T12:53:34Z  exit 255
+  otel-collector-5d798544f5-ffkgn
+    image          = otel/opentelemetry-collector-contrib:0.160.0
+    lastTerminated = 2026-09-10T12:53:34Z  exit 255
+  prometheus-949757dd7-58bft
+    image          = prom/prometheus:v3.14.0
+    lastTerminated = 2026-09-10T12:53:34Z  exit 255
+
+How to read it. The three pods have been up since 2026-09-09T06:51:14Z (jaeger,
+prometheus) and 2026-09-09T14:27:15Z (otel-collector), more than a day before this
+task's rollout at 2026-09-10T19:07Z. Each carries restartCount 1, and that restart
+is not this task's: all three last terminated at 2026-09-10T12:53:34Z with exit
+code 255, the same instant at which every long-lived pod in this cluster restarted
+-- the Docker Desktop restart of that morning, already recorded in the entry for
+the Go module move. That is six hours and thirteen minutes before this task's
+rollout, and this task ran no step target, applied no overlay and restarted only
+deployment/orchestrator in the lab namespace.
+
+The images are the pins the Method's telemetry clause names:
+  otel/opentelemetry-collector-contrib:0.160.0
+  jaegertracing/jaeger:2.20.0
+  prom/prometheus:v3.14.0

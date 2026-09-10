@@ -1,0 +1,37 @@
+telemetry-pods.txt -- the three telemetry pods, read to back the Method's clause
+"telemetry pins unchanged and the telemetry pods unrestarted", re-taken for the locale
+amendment's rollout.
+
+READ AFTER THE RUN, 2026-09-10T21:55:39Z. Every timestamp below PREDATES this
+amendment's rollout at 2026-09-10T21:54:55Z, which is why the timestamps rather than the
+fact of the read are the evidence.
+
+$ kubectl -n telemetry get pods -o custom-columns="NAME:.metadata.name,PHASE:.status.phase,RESTARTS:.status.containerStatuses[0].restartCount,STARTED:.status.startTime"
+NAME                              PHASE     RESTARTS   STARTED
+jaeger-d997cf5b-td5zv             Running   1          2026-09-09T06:51:14Z
+otel-collector-5d798544f5-ffkgn   Running   1          2026-09-09T14:27:15Z
+prometheus-949757dd7-58bft        Running   1          2026-09-09T06:51:14Z
+
+$ kubectl -n telemetry get pods -o jsonpath (last termination and image)
+  jaeger-d997cf5b-td5zv
+    image          = jaegertracing/jaeger:2.20.0
+    lastTerminated = 2026-09-10T12:53:34Z  exit 255
+  otel-collector-5d798544f5-ffkgn
+    image          = otel/opentelemetry-collector-contrib:0.160.0
+    lastTerminated = 2026-09-10T12:53:34Z  exit 255
+  prometheus-949757dd7-58bft
+    image          = prom/prometheus:v3.14.0
+    lastTerminated = 2026-09-10T12:53:34Z  exit 255
+
+How to read it. The three pods have been up since 2026-09-09, more than two days before
+this rollout. Each carries restartCount 1, and that restart is not this amendment's: all
+three last terminated at 2026-09-10T12:53:34Z with exit code 255, the same instant at
+which every long-lived pod in this cluster restarted -- the Docker Desktop restart of
+that morning, already recorded in the entry for the Go module move. That is nine hours
+before this rollout, and this amendment ran no step target, applied no overlay and
+restarted only deployment/orchestrator in the lab namespace.
+
+The images are the pins the Method's telemetry clause names:
+  jaegertracing/jaeger:2.20.0
+  otel/opentelemetry-collector-contrib:0.160.0
+  prom/prometheus:v3.14.0

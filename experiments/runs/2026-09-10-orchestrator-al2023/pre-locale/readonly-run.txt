@@ -1,0 +1,67 @@
+readonly-run.txt -- the finished orchestrator:dev exercised on this host with
+  docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c ...
+Every check is a python -c: this image has no shell, so there is nothing else to run.
+Taken 2026-09-10T19:01:35Z. Image sha256:e7bd795defbf90fe750f585d799d105d67ce9864da6a7fc3638235a06f9c48c1.
+
+=== 1. identity, interpreter, and the ownership of the application files ===
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c '<identity program>'
+os.getuid(), os.getgid() = 65532 65532
+sys.executable = /app/.venv/bin/python
+os.path.realpath(sys.executable) = /usr/bin/python3.14
+sys.version = 3.14.7 (main, Aug 24 2026, 00:00:00) [GCC 11.5.0 20240719 (Red Hat 11.5.0-5)]
+platform.machine() = aarch64
+platform.libc_ver() = ('glibc', '2.34')
+stat /app               uid=0 gid=0 mode=0o755
+stat /app/.venv         uid=0 gid=0 mode=0o755
+stat /app/orchestrator  uid=0 gid=0 mode=0o755
+/etc/os-release: NAME="Amazon Linux"
+  exit=0
+
+=== 2. the runtime imports the agent needs ===
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c '<import program>'
+import a2a                                                  ok
+import openai                                               ok
+import starlette                                            ok
+import opentelemetry.instrumentation.auto_instrumentation   ok
+  a2a-sdk              1.1.2
+  openai               3.9.0
+  starlette            1.6.0
+  opentelemetry-sdk    1.44.0
+import orchestrator.server                                  ok  (/app/orchestrator/server.py)
+  exit=0
+
+=== 3. the dev group is not in the image ===
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c 'import pytest'
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import pytest
+ModuleNotFoundError: No module named 'pytest'
+  exit=1
+
+=== 4. writes are refused, --read-only and root-owned application files ===
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c '<write program>'
+/x                     refused: errno=30 EROFS (Read-only file system)
+/app/x                 refused: errno=30 EROFS (Read-only file system)
+/tmp/x                 refused: errno=30 EROFS (Read-only file system)
+/app/orchestrator/x    refused: errno=30 EROFS (Read-only file system)
+  exit=0
+
+=== 5. what is not in the image, and what is ===
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c '<presence program>'
+/bin/sh              exists=False
+/bin/bash            exists=False
+/usr/bin/rpm         exists=False
+/usr/bin/microdnf    exists=False
+/usr/bin/dnf         exists=False
+/usr/bin/ls          exists=False
+/usr/bin/cat         exists=False
+/usr/bin/env         exists=False
+/bin/busybox         exists=False
+
+what /usr/bin does hold, 25 entries:
+  ca-legacy catchsegv egrep fgrep gencat getconf getent grep iconv ld.so ldd locale localedef p11-kit pldd pydoc3.14 python3.14 sed sotruss sprof trust tzselect update-ca-trust xmlwf zdump
+
+/var/lib/rpm kept (a scanner reads it): True ['.rpm.lock', 'rpmdb.sqlite', 'rpmdb.sqlite-shm', 'rpmdb.sqlite-wal']
+/etc/os-release kept: True
+/etc/pki/tls/certs present: True
+  exit=0

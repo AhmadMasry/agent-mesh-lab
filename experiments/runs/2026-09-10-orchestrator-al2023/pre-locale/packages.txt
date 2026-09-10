@@ -1,0 +1,70 @@
+packages.txt -- every package in the assembled runtime root of orchestrator:dev,
+read from the build log of 2026-09-10 (experiments/runs/2026-09-10-orchestrator-al2023/build.txt).
+The Dockerfile's rootfs stage ends with `rpm --root=/rootfs -qa | sort` and
+`docker build --progress=plain` keeps its output; no package list file is written
+into the image. Three packages are asked for by name -- python3.14, system-release,
+ca-certificates -- and the rest is what the dependency graph pulled.
+
+Count: 46 entries -- 45 packages plus one gpg-pubkey key entry, which rpm keeps in the same
+namespace and `rpm -qa` therefore lists.
+Release the root was pinned to: 2023.12.20260909 (system-release-2023.12.20260909-0.amzn2023).
+Interpreter: python3.14-3.14.7-1.amzn2023.0.1.aarch64.
+
+Absent, by name, having been removed with `rpm -e --nodeps` after the install:
+  bash, coreutils, coreutils-common
+Never installed (the base image has them; the assembled root was never asked for them):
+  dnf, rpm, microdnf
+
+Present and worth naming, so the record is not read as 'no binaries at all':
+  grep-3.8-1.amzn2023.0.4.aarch64 and sed-4.8-7.amzn2023.0.2.aarch64 arrived as
+  dependencies (crypto-policies requires them). They are two binaries, not a shell:
+  neither can start a process, and readonly-run.txt shows there is no /bin/sh for
+  anything to be interpreted by.
+
+--- rpm --root=/rootfs -qa | sort ---
+alternatives-1.15-2.amzn2023.0.2.aarch64
+amazon-linux-repo-cdn-2023.12.20260909-0.amzn2023.noarch
+basesystem-11-11.amzn2023.0.2.noarch
+bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64
+ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch
+crypto-policies-20260224-1.gitea0f072.amzn2023.0.6.noarch
+expat-2.6.3-1.amzn2023.0.6.aarch64
+filesystem-3.14-5.amzn2023.0.3.aarch64
+gdbm-libs-1.19-2.amzn2023.0.2.aarch64
+glibc-2.34-231.amzn2023.0.5.aarch64
+glibc-common-2.34-231.amzn2023.0.5.aarch64
+glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch64
+gmp-6.2.1-2.amzn2023.0.2.aarch64
+gpg-pubkey-d832c631-6515c85e
+grep-3.8-1.amzn2023.0.4.aarch64
+libacl-2.4.0-1.amzn2023.0.1.aarch64
+libattr-2.5.1-3.amzn2023.0.2.aarch64
+libcap-2.73-1.amzn2023.0.7.aarch64
+libffi-3.4.4-1.amzn2023.0.1.aarch64
+libgcc-14.2.1-7.amzn2023.0.2.aarch64
+libselinux-3.4-5.amzn2023.0.2.aarch64
+libsepol-3.4-3.amzn2023.0.3.aarch64
+libstdc++-14.2.1-7.amzn2023.0.2.aarch64
+libtasn1-4.19.0-1.amzn2023.0.6.aarch64
+libuuid-2.37.4-1.amzn2023.0.6.aarch64
+libzstd-1.5.5-1.amzn2023.0.1.aarch64
+mpdecimal-2.5.1-3.amzn2023.0.3.aarch64
+ncurses-base-6.6-1.amzn2023.0.1.noarch
+ncurses-libs-6.6-1.amzn2023.0.1.aarch64
+openssl-fips-provider-latest-3.5.7-2.amzn2023.0.2.aarch64
+openssl-libs-3.5.7-2.amzn2023.0.2.aarch64
+p11-kit-0.24.1-2.amzn2023.0.3.aarch64
+p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64
+pcre2-10.40-1.amzn2023.0.3.aarch64
+pcre2-syntax-10.40-1.amzn2023.0.3.noarch
+python3.14-3.14.7-1.amzn2023.0.1.aarch64
+python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64
+python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch
+readline-8.1-2.amzn2023.0.2.aarch64
+sed-4.8-7.amzn2023.0.2.aarch64
+setup-2.13.7-3.amzn2023.0.2.noarch
+sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64
+system-release-2023.12.20260909-0.amzn2023.noarch
+tzdata-2026c-1.amzn2023.0.1.noarch
+xz-libs-5.2.5-9.amzn2023.0.2.aarch64
+zlib-1.2.11-33.amzn2023.0.6.aarch64

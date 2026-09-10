@@ -1,0 +1,50 @@
+image-after.txt -- orchestrator:dev as built by this branch's agents/orchestrator/Dockerfile:
+the runtime root assembled from Amazon Linux 2023 packages and copied onto scratch.
+Same commands, same order, as image-before.txt, plus docker history.
+Taken 2026-09-10T19:00:52Z on <host>.
+
+Bases this build resolved (from build.txt, --progress=plain):
+  public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438
+  ghcr.io/astral-sh/uv:latest@sha256:73d2665b478d8fa2de1cf105c6841f8e9cb6b09e568fc7700440c09f8fcd7ac4  (builder printed: uv 0.12.12 (aarch64-unknown-linux-musl))
+  release pinned into the assembled root: 2023.12.20260909; interpreter python3.14-3.14.7-1.amzn2023.0.1
+  the in-stage `dnf ... upgrade` applied nothing: "Nothing to do."
+
+$ docker image inspect --format "{{.Id}}" orchestrator:dev
+sha256:e7bd795defbf90fe750f585d799d105d67ce9864da6a7fc3638235a06f9c48c1
+
+$ docker image inspect --format "{{.Created}}" orchestrator:dev
+2026-09-10T18:59:42.971632379Z
+
+$ docker image inspect --format "{{.Size}}" orchestrator:dev   # bytes, daemon-reported
+52685920
+
+$ docker image inspect --format "{{.Architecture}}/{{.Os}}" orchestrator:dev
+arm64/linux
+
+$ docker image inspect --format "{{.Config.User}}" orchestrator:dev
+65532:65532
+
+$ docker image inspect --format "{{json .Config.Entrypoint}} {{json .Config.Cmd}}" orchestrator:dev
+null ["opentelemetry-instrument","python","-m","orchestrator.server"]
+
+$ docker image inspect --format "{{json .Config.Env}}" orchestrator:dev
+["PATH=/app/.venv/bin:/usr/bin","PYTHONDONTWRITEBYTECODE=1","PYTHONUNBUFFERED=1"]
+
+$ docker image inspect --format "{{len .RootFS.Layers}}" orchestrator:dev   # layer count
+5
+
+$ CID=$(docker create orchestrator:dev) && docker export "$CID" | wc -c && docker rm "$CID"
+ 186213888
+(container removed)
+
+$ docker history --no-trunc orchestrator:dev
+IMAGE                                                                     CREATED              CREATED BY                                                                                              SIZE      COMMENT
+sha256:e7bd795defbf90fe750f585d799d105d67ce9864da6a7fc3638235a06f9c48c1   About a minute ago   CMD ["opentelemetry-instrument" "python" "-m" "orchestrator.server"]                                    0B        buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   EXPOSE [8080/tcp]                                                                                       0B        buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   USER 65532:65532                                                                                        0B        buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   WORKDIR /app                                                                                            4.1kB     buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   ENV PATH=/app/.venv/bin:/usr/bin PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1                           0B        buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   COPY orchestrator /app/orchestrator # buildkit                                                          61.4kB    buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   COPY /app/.venv /app/.venv # buildkit                                                                   89.7MB    buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   RUN /usr/bin/python3.14 -c import sys; assert sys.version_info[:2] == (3, 14), sys.version # buildkit   4.1kB     buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   COPY /rootfs / # buildkit                                                                               118MB     buildkit.dockerfile.v0

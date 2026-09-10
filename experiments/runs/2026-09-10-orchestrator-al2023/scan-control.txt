@@ -1,0 +1,61 @@
+scan-control.txt -- a control for the orchestrator's 0.
+
+The five-image scan counts 0 for orchestrator:dev where the same scanner counted
+170 for the python:3.14-slim image it replaced. A 0 is only a measurement if the
+scanner can see this distribution's packages at all, so the same scanner and the
+same database were pointed at the base image the runtime root is assembled from.
+That base is NOT one of ours and nothing about it is changed here; it is scanned
+only to show the instrument is not blind to amazonlinux 2023.
+Taken 2026-09-10T19:13:42Z.
+
+First, what the orchestrator's own report says about identity, from
+scan/orchestrator.json:
+  distro  = {"name": "amazonlinux", "version": "2023", "idLike": ["fedora"]}
+  matches = 0
+  imageID = sha256:9c0e339ec6b93d3dd8db9bed1d1fa7ee85d03f476b9e407611f9412ab68edd6c
+  imageSize = 176750886
+  -- the image identifies itself as amazonlinux 2023, which is what the kept
+     system-release (/etc/os-release) and RPM database are there for.
+  For contrast, scan/worker.json reads:
+  distro  = {"name": "debian", "version": "13", "idLike": []}  matches = 0
+
+$ kubescape scan image public.ecr.aws/amazonlinux/amazonlinux:2023 --format json --output <tmp>/al2023-base.json
+{"level":"info","ts":"2026-09-10T22:13:42+03:00","msg":"Scanning image public.ecr.aws/amazonlinux/amazonlinux:2023..."}
+{"level":"info","ts":"2026-09-10T22:13:43+03:00","msg":"Scanning 1 image with 1 worker..."}
+{"level":"info","ts":"2026-09-10T22:13:45+03:00","msg":"Done scanning","image":"public.ecr.aws/amazonlinux/amazonlinux:2023"}
+{"level":"info","ts":"2026-09-10T22:13:45+03:00","msg":"Successfully scanned image: public.ecr.aws/amazonlinux/amazonlinux:2023"}
+
+Vulnerability DB built: 2026-09-10
+No vulnerabilities were found!
+
+What now?
+─────────
+
+* Run with '--verbose'/'-v' flag for detailed vulnerabilities view
+* Install Kubescape in your cluster for continuous monitoring and a full vulnerability report: https://kubescape.io/docs/install-operator/
+
+{"level":"info","ts":"2026-09-10T22:13:45+03:00","msg":"Scan results saved","filename":"<scratchpad>/e5f3bf17-c782-4876-a810-5d16a87efca2/scratchpad/al2023-base.json"}
+
+$ kubescape scan image public.ecr.aws/amazonlinux/amazonlinux:2 --format json --output <tmp>/al2-base.json
+  (a second control: an older Amazon Linux, to see whether the 0 above is the
+   distribution being current or the scanner being quiet)
+  amazonlinux:2023   distro={"name": "amazonlinux", "version": "2023", "idLike": ["fedora"]} matches=0
+  amazonlinux:2      distro={"name": "amazonlinux", "version": "2", "idLike": ["centos", "redhat", "fedora"]} matches=0
+
+What this supports, and what it does not
+----------------------------------------
+Supports: the scanner reads this image's identity. scan/orchestrator.json carries
+  distro {"name":"amazonlinux","version":"2023"}, which it can only have got
+  from the /etc/os-release that system-release owns -- the file the Dockerfile
+  keeps on purpose. And the scanner is not broken on this date: the same version
+  4.0.14 with the same 2026-09-10 database counted 170 matches on the
+  python:3.14-slim image this one replaces, and 5 on the Go images before the
+  module move (experiments/runs/2026-09-10-images-rebuilt/scan/summary.csv).
+
+Does not support: a claim that all 45 packages of the assembled root were
+  enumerated and each found clean. A report with an empty `matches` array says
+  nothing about how many packages it walked, and neither control discriminates:
+  the AL2023 base and Amazon Linux 2 both answer 0 as well, so this database has
+  no open match for any Amazon Linux image reachable from here today. The counted
+  result is therefore exactly "0 matches against the 2026-09-10 database", and
+  nothing stronger is claimed from it.

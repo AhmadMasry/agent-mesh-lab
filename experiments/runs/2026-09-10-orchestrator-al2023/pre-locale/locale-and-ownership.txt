@@ -1,0 +1,128 @@
+locale-and-ownership.txt -- two measurements of the finished image, taken after the
+run and without rebuilding anything: what the pruned locale tree costs, and which
+packages still claim the trees the rootfs stage removes by path.
+Taken 2026-09-10T19:40:44Z. Image orchestrator:dev, image manifest
+sha256:6fccd1483a0c…, config sha256:9c0e339ec6b9… -- the build this run directory
+records; nothing was rebuilt or rolled out to produce this file.
+
+================================================================================
+1. LOCALE, both sides measured
+================================================================================
+
+The rootfs stage removes /usr/lib/locale, which is where AL2023's glibc keeps its
+locale archive. The consequence, and the same program run against the base image
+this one replaces so the difference is measured rather than argued.
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c "<locale program>"
+platform.libc_ver()          = ('glibc', '2.34')
+sys.version                  = 3.14.7 (main, Aug 24 2026, 00:00:00) [GCC 11.5.0 20240719 (Red Hat 11.5.0-5)]
+sys.flags.utf8_mode          = 1
+sys.getfilesystemencoding()  = utf-8
+sys.stdout.encoding          = utf-8
+locale.getlocale()           = (None, None)
+setlocale(LC_ALL, 'C.UTF-8'    ) FAILED: unsupported locale setting
+setlocale(LC_ALL, 'en_US.UTF-8') FAILED: unsupported locale setting
+setlocale(LC_ALL, ''           ) ok
+/usr/lib/locale exists       = False
+/usr/share/locale exists     = False
+non-ASCII round trip         = café — ✓
+
+The python:3.14-slim image this replaced is still in the local daemon, untagged,
+at cad9a2c87176 -- the sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+that versions.yaml records under python-base as observed_digest. The same program,
+run in it:
+
+$ docker run --rm cad9a2c87176 python -c "<the same program>"
+platform.libc_ver()          = ('glibc', '2.41')
+sys.version                  = 3.14.7 (main, Aug 31 2026, 23:42:40) [GCC 14.2.0]
+sys.flags.utf8_mode          = 1
+sys.getfilesystemencoding()  = utf-8
+sys.stdout.encoding          = utf-8
+locale.getlocale()           = ('C', 'UTF-8')
+setlocale(LC_ALL, 'C.UTF-8'    ) ok
+setlocale(LC_ALL, 'en_US.UTF-8') FAILED: unsupported locale setting
+setlocale(LC_ALL, ''           ) ok
+/usr/lib/locale exists       = True
+/usr/share/locale exists     = True
+non-ASCII round trip         = café — ✓
+
+Read together: same CPython minor and patch, 3.14.7 on both, a different glibc
+-- 2.34 here against 2.41 there -- and one behavioural difference,
+`setlocale(LC_ALL, "C.UTF-8")`, which succeeds there and raises "unsupported
+locale setting" here. Note what this does NOT establish: the replaced image
+carries /usr/lib/locale as well, so which of the archive or the C library itself
+supplies C.UTF-8 over there is not determined by this measurement and no claim
+about it is made. What IS measured is that the tree is present there and removed
+here by the rootfs stage, and that the setting resolves there and not here.
+`en_US.UTF-8` is absent from both, so that is not the difference either.
+
+What did not change: UTF-8 mode is on in both, filesystem and stdout encodings
+are utf-8 in both, non-ASCII round-trips in both, and `setlocale(LC_ALL, "")`
+succeeds in both.
+
+Nothing this lab counts reads a locale. The agent serves, its card answers 200
+(smoke.txt), the pod is Running and ready (cluster-rollout.txt), and the project's
+43 tests pass on 3.14.7 (tests.txt, on the host). And nothing under /app calls
+setlocale at all:
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c "<grep program>"
+.py files walked under /app  = 3107
+files mentioning setlocale   = 0
+
+That covers the agent's own sources and every installed dependency, as .py source.
+It does not cover the standard library under /usr/lib/python3.14, nor a C extension
+calling setlocale() below Python; neither was audited, and the statement made here
+is exactly the one measured.
+
+This is recorded so that a later locale-sensitive result is read against a known
+difference. It is not treated as something to fix: reinstating the archive would
+put a tree back that nothing in this image reads.
+
+================================================================================
+2. WHICH PACKAGES STILL CLAIM THE TREES THE rootfs STAGE REMOVES BY PATH
+================================================================================
+
+The Dockerfile header states that whole packages leave through `rpm -e` so that
+the RPM database and the filesystem make one statement. That holds for bash and
+coreutils. It does not hold for the content trees the same RUN prunes with
+`rm -rf`, and this is the measurement of exactly where it stops.
+
+Method: the 45 package names of the assembled root, taken from this directory's
+packages.txt (gpg-pubkey dropped, version-release stripped), fed to `rpm -ql`
+inside a throwaway container of the same base tag -- the assembled root has no
+rpm binary of its own, and the packages are the same ones. A package is listed
+against a prefix if any file it owns lies under it. No rebuild, no cluster.
+
+Result, one line per prefix the rootfs stage removes:
+
+  /usr/lib/locale     filesystem glibc-common
+  /usr/share/locale   filesystem glibc-common grep p11-kit sed
+  /usr/share/man      alternatives ca-certificates crypto-policies expat filesystem grep libcap p11-kit pcre2-syntax sed
+  /usr/share/doc      ca-certificates expat filesystem gmp grep libcap libffi libtasn1 ncurses-base p11-kit pcre2-syntax sed setup sqlite-libs tzdata zlib
+  /usr/share/info     filesystem grep readline sed
+  /etc/yum.repos.d    amazon-linux-repo-cdn system-release
+  /etc/dnf            amazon-linux-repo-cdn system-release
+  /var/lib/dnf        (none of the 45)
+  /var/cache          filesystem glibc
+  /var/log            filesystem setup
+
+Read plainly: every one of those prefixes except /var/lib/dnf is claimed by at
+least one package that is still installed and still listed by `rpm -qa` in the
+finished image, so for those trees the database says a file is present where the
+filesystem has none. /var/lib/dnf is claimed by `dnf-data`, which was never
+installed into this root, so removing it removed nothing any package claims.
+
+Three things bound what that costs. The packages involved cannot be erased: they
+are `filesystem`, `glibc-common`, `system-release`, `grep`, `sed`,
+`ca-certificates` and the like -- what the interpreter and the distribution
+identity are built on -- so what is removed is their content, not their entry.
+Second, no package VERSION is falsified, and a version is what a package scanner
+matches on, so the scan of this image counts what is really installed
+(scan/orchestrator.json identifies it as amazonlinux 2023 and counts 0 matches).
+Third, nothing inside the image can act on the difference: there is no rpm, no dnf
+and no microdnf binary here, and no shell to drive one.
+
+Much of the man/doc/info/locale content was never installed in the first place:
+the install carries `--setopt=tsflags=nodocs`. The `rm -rf` is there to take
+whatever nodocs does not, and this table is about which packages CLAIM those
+paths, not about how many bytes the removal actually took.

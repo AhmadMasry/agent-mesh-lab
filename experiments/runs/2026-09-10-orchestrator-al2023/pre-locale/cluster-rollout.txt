@@ -1,0 +1,226 @@
+cluster-rollout.txt -- the certificate check, the state before, the rebuild and
+restart, and the pod proofs after. Written 2026-09-10T19:05:53Z.
+
+=== 1. certificate check, before any cluster step ===
+$ istioctl ztunnel-config certificates --node agent-mesh-lab-worker
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Leaf     Available     true           e28293330c0b5ed06868f992a83587d0     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           36ac4458012e9648f481540e846a923b     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           10a25afce69bd6b48f75e062a2586e48     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+
+  -> VALID CERT true for spiffe://cluster.local/ns/lab/sa/default (Leaf, Available),
+     so ztunnel was NOT restarted.
+
+=== 2. the three lab Deployments before the rollout ===
+$ kubectl -n lab get pods -l "app in (worker,mockllm,orchestrator)" -o custom-columns="NAME:.metadata.name,START:.status.startTime,RESTARTS:.status.containerStatuses[0].restartCount,IMAGEID:.status.containerStatuses[0].imageID"
+NAME                            START                  RESTARTS   IMAGEID
+mockllm-d6f98fccd-kztlz         2026-09-10T18:12:34Z   0          sha256:eb2dff7a5b35189bdc4c98da49e1bceaa161c2fd1c74838235c691045156d1ac
+orchestrator-775d8cf4fc-2rtmn   2026-09-10T17:11:03Z   0          docker.io/library/import-2026-09-10@sha256:f811f97509ed74550152312a04d16de2c70fa658cc26f997a9c568deaabe16c4
+worker-757989db4b-xd2pj         2026-09-10T18:12:34Z   0          sha256:f948bd2650c4768c7b00f617b7f56a4c1cb68e405366bbfb438e218c091591b9
+
+$ kubectl -n lab get deploy -o custom-columns="NAME:.metadata.name,IMAGE:.spec.template.spec.containers[0].image"
+NAME                         IMAGE
+agentgateway-waypoint        cr.agentgateway.dev/agentgateway:v1.5.0
+agentgateway-waypoint-orch   cr.agentgateway.dev/agentgateway:v1.5.0
+mockllm                      kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:1c667be1352522b34884f2fbb5d0d24993876ae1eadc2436900585a7059abadd
+orchestrator                 orchestrator:dev
+worker                       kind.local/worker-918a018b7a581926ead34dec2ba0fb83:bf58044d0c311c405e7cf0fca9d0686ba3cb63f5b6c11f38f84e1656eddf718e
+
+$ kubectl -n lab get deploy worker mockllm -o jsonpath (image-freshness guard annotation)
+worker  pod-template annotations: {"kubectl.kubernetes.io/restartedAt":"2026-09-07T20:59:06+03:00"}
+mockllm  pod-template annotations: {"kubectl.kubernetes.io/restartedAt":"2026-09-07T20:59:06+03:00"}
+
+$ kubectl -n lab get deploy worker mockllm -o jsonpath (guard annotation, on the Deployment)
+worker  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+mockllm  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+
+  -> worker and mockllm are untouched by this task: no Go source changes, no step
+     target run, no ko build. Their pod names, start times, image ids, restart counts
+     and guard annotation are recorded here so the after-side can be compared.
+
+=== 3. rebuild and load, then restart the orchestrator only ===
+$ make orchestrator-image
+docker build --pull --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 12.12kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#2 ...
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:latest
+#3 DONE 2.1s
+
+#2 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#2 DONE 3.6s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 569B done
+#4 DONE 0.0s
+
+#5 [builder 1/9] FROM public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438
+#5 resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438 done
+#5 DONE 0.0s
+
+#6 FROM ghcr.io/astral-sh/uv:latest@sha256:73d2665b478d8fa2de1cf105c6841f8e9cb6b09e568fc7700440c09f8fcd7ac4
+#6 resolve ghcr.io/astral-sh/uv:latest@sha256:73d2665b478d8fa2de1cf105c6841f8e9cb6b09e568fc7700440c09f8fcd7ac4 done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 486B done
+#7 DONE 0.0s
+
+#8 [builder 5/9] RUN python3.14 -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.version'
+#8 CACHED
+
+#9 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale /rootfs/usr/lib/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#9 CACHED
+
+#10 [stage-2 4/5] COPY orchestrator /app/orchestrator
+#10 CACHED
+
+#11 [builder 8/9] COPY . /app
+#11 CACHED
+
+#12 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+#12 CACHED
+
+#13 [builder 6/9] WORKDIR /app
+#13 CACHED
+
+#14 [builder 7/9] RUN --mount=type=cache,target=/root/.cache/uv     --mount=type=bind,source=uv.lock,target=uv.lock     --mount=type=bind,source=pyproject.toml,target=pyproject.toml     uv sync --locked --no-install-project --no-dev
+#14 CACHED
+
+#15 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#15 CACHED
+
+#16 [stage-2 2/5] RUN ["/usr/bin/python3.14", "-c", "import sys; assert sys.version_info[:2] == (3, 14), sys.version"]
+#16 CACHED
+
+#17 [builder 9/9] RUN --mount=type=cache,target=/root/.cache/uv     uv sync --locked --no-dev --no-editable
+#17 CACHED
+
+#18 [stage-2 3/5] COPY --from=builder /app/.venv /app/.venv
+#18 CACHED
+
+#19 [stage-2 1/5] COPY --from=rootfs /rootfs /
+#19 CACHED
+
+#20 [builder 4/9] RUN uv --version
+#20 CACHED
+
+#21 [stage-2 5/5] WORKDIR /app
+#21 CACHED
+
+#22 exporting to image
+#22 exporting layers done
+#22 exporting manifest sha256:6fccd1483a0c4d5d3b722d2836cf8be5e02424bfb7b39d3d446cc885c2b4aabb done
+#22 exporting config sha256:9c0e339ec6b93d3dd8db9bed1d1fa7ee85d03f476b9e407611f9412ab68edd6c done
+#22 exporting attestation manifest sha256:54863147334f7a8753c8a209eb89f1faae702a87737ed4370325bdd4e3efeaba done
+#22 exporting manifest list sha256:4cc77cfbf26776ba55dcf1817c9b7451544d88d2cab61b476836ab7d76449afd done
+#22 naming to docker.io/library/orchestrator:dev done
+#22 unpacking to docker.io/library/orchestrator:dev done
+#22 DONE 0.0s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/fisoliuth44zmork9twkerwda
+kind load docker-image orchestrator:dev --name agent-mesh-lab
+Image: "orchestrator:dev" with ID "sha256:4cc77cfbf26776ba55dcf1817c9b7451544d88d2cab61b476836ab7d76449afd" not yet present on node "agent-mesh-lab-worker", loading...
+Image: "orchestrator:dev" with ID "sha256:4cc77cfbf26776ba55dcf1817c9b7451544d88d2cab61b476836ab7d76449afd" not yet present on node "agent-mesh-lab-control-plane", loading...
+
+  NOTE, recorded rather than smoothed over. `make orchestrator-image` re-ran
+  `docker build --pull` over a warm cache: every step answered CACHED, and the
+  build printed the SAME image manifest sha256:6fccd1483a0c... and the SAME config
+  sha256:9c0e339ec6b9... as the build recorded in image-after.txt. What differs is
+  the manifest LIST digest -- e7bd795defbf... then, 4cc77cfbf267... now -- because
+  BuildKit regenerated the attestation manifest beside the image
+  (77ce0ecd46bc... then, 5486314733... now), and the index digest is computed over
+  both. `docker image inspect .Id` reports the index, so it moved while the image
+  did not. The two bases resolved to the same digests as before
+  (a0646b8bd35a... and 73d2665b478d...). Read back:
+$ docker image inspect --format "{{.Id}}  {{.Size}}  {{.Architecture}}  {{.Config.User}}" orchestrator:dev
+sha256:4cc77cfbf26776ba55dcf1817c9b7451544d88d2cab61b476836ab7d76449afd  52685920  arm64  65532:65532
+$ docker image inspect --format "{{json .RootFS.Layers}}" orchestrator:dev
+["sha256:8b8ad563c6730da550af7d6594deddfeda5396a0b3c7f7d4ed94901d26bdd8d5","sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef","sha256:09cdb4a6c0f7986378238280e9b12e03f85c6df54ac597b2faa317151ab72395","sha256:f731fbea5c25ac6daf807bf0d93a85716f76e8e889f2afea4d755669bc01a79c","sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"]
+
+$ kubectl -n lab rollout restart deployment/orchestrator
+deployment.apps/orchestrator restarted
+$ kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+deployment "orchestrator" successfully rolled out
+
+=== 4. pod proofs, all through `python -c`: the image has no shell ===
+$ kubectl -n lab exec deploy/orchestrator -- python -c "<proof program>"
+os.getuid(), os.getgid() = 65532 65532
+platform.machine()       = aarch64
+sys.version              = 3.14.7 (main, Aug 24 2026, 00:00:00) [GCC 11.5.0 20240719 (Red Hat 11.5.0-5)]
+sys.executable           = /app/.venv/bin/python -> /usr/bin/python3.14
+/etc/os-release NAME     = NAME="Amazon Linux"
+stat /app               uid=0 gid=0 mode=0o755
+stat /app/.venv         uid=0 gid=0 mode=0o755
+stat /app/orchestrator  uid=0 gid=0 mode=0o755
+/x         refused: errno=30 EROFS
+/app/x     refused: errno=30 EROFS
+/tmp/x     refused: errno=30 EROFS
+/bin/sh        exists=False
+/bin/bash      exists=False
+/usr/bin/dnf   exists=False
+/usr/bin/rpm   exists=False
+/usr/bin/ls    exists=False
+/usr/bin/cat   exists=False
+/var/run/secrets/kubernetes.io exists = False
+  exit=0
+
+=== 5. the pod as the API server holds it ===
+orchestrator pod: orchestrator-74d6c86b9b-gcdzl
+$ kubectl -n lab get pod orchestrator-74d6c86b9b-gcdzl -o jsonpath (securityContext, volumes, automount, restarts)
+pod.spec.securityContext = {"fsGroup":65532,"runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}
+container.securityContext = {"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}
+automountServiceAccountToken = false
+volumes = 
+volumeMounts = 
+image = orchestrator:dev
+imageID = docker.io/library/import-2026-09-10@sha256:55345570d9a8933308d73bc1cbabe512192718f2a1a866bda4c5835a3fcd7927
+restartCount = 0
+ready = true
+startTime = 2026-09-10T19:07:34Z
+
+  -> volumes and volumeMounts print empty: the pod carries no volume at all,
+     as before this rollout.
+
+=== 6. worker and mockllm, unchanged by this task ===
+$ kubectl -n lab get pods -l "app in (worker,mockllm,orchestrator)" -o custom-columns="NAME:.metadata.name,START:.status.startTime,RESTARTS:.status.containerStatuses[0].restartCount,IMAGEID:.status.containerStatuses[0].imageID"
+NAME                            START                  RESTARTS   IMAGEID
+mockllm-d6f98fccd-kztlz         2026-09-10T18:12:34Z   0          sha256:eb2dff7a5b35189bdc4c98da49e1bceaa161c2fd1c74838235c691045156d1ac
+orchestrator-74d6c86b9b-gcdzl   2026-09-10T19:07:34Z   0          docker.io/library/import-2026-09-10@sha256:55345570d9a8933308d73bc1cbabe512192718f2a1a866bda4c5835a3fcd7927
+worker-757989db4b-xd2pj         2026-09-10T18:12:34Z   0          sha256:f948bd2650c4768c7b00f617b7f56a4c1cb68e405366bbfb438e218c091591b9
+
+$ kubectl -n lab get deploy worker mockllm -o jsonpath (guard annotation, after)
+worker  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+mockllm  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+
+  -> worker and mockllm: same pod names, same start times 2026-09-10T18:12:34Z,
+     same image ids, restartCount 0. Nothing in this task rebuilds or restarts
+     them; no step target ran and no Go source changed.
+
+  The before-side read of the guard annotation above asked for it on the pod
+  template rather than on the Deployment and printed empty; it is recorded here
+  as read after the rollout, and checked against the checkout instead of against
+  an earlier read:
+$ git ls-files -s -- agents/worker fixtures/mockllm internal go.mod go.sum ":!**/*_test.go" | git hash-object --stdin
+  fdcc8676569986ce1046b91b146223b5f41313f8
+  which is the value both Deployments carry, so the image-freshness guard is
+  satisfied at this checkout: the Go images the cluster runs were built from
+  these sources. The annotation is only written by a step target, and none ran.
+
+  The orchestrator pod's imageID moved from
+  docker.io/library/import-2026-09-10@sha256:f811f975...aabe16c4 to
+  docker.io/library/import-2026-09-10@sha256:5534557...fcd7927, the digest
+  `kind load docker-image` computes over the archive it imports into the node's
+  containerd store; that it moved is the evidence the pod is on the image this
+  branch built and not the one before it.
