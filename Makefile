@@ -6,14 +6,6 @@ KIND_CONFIG  := kind-config.yaml
 NAMESPACE    := lab
 
 ORCHESTRATOR_IMAGE := orchestrator:dev
-# Pinned by digest; matches the digest recorded in the wire-version findings entry
-# and confirmed against the local image with:
-#   docker image inspect paketobuildpacks/builder-jammy-base --format '{{index .RepoDigests 0}}'
-# This digest is tag 0.4.635 and is a single linux/amd64 manifest: the builder
-# publishes no manifest list and no arm64 image at any tag, so there is no
-# multi-arch digest to pin here and the image runs under emulation on an arm64
-# host. Read 2026-09-10; the record is versions.yaml key pack-builder.
-PACK_BUILDER := paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
 
 # GO_SOURCES_HASH: a content hash of the tracked Go sources the worker and mock
 # Deployments are built from (test files excluded: ko does not compile them, and a
@@ -51,21 +43,27 @@ cluster-eks:
 	@echo "cluster-eks: not used in Gate 1; kind is the environment until a proposal Sec.5 trigger fires" >&2
 	@exit 1
 
-# orchestrator-image: build the Python agent with Cloud Native Buildpacks from
-# agents/orchestrator (pyproject.toml + uv.lock + Procfile) and load it into kind.
+# orchestrator-image: build the Python agent from agents/orchestrator/Dockerfile
+# and load it into kind. Cloud Native Buildpacks were replaced by that Dockerfile
+# on 2026-09-10 by the author's decision. The pack builder was amd64-only, so the
+# image it produced ran under emulation on this arm64 host, and no digest could
+# change that (versions.yaml, pack-builder).
 #
-# PACK_CLEAR_CACHE=1 adds pack's --clear-cache, which is needed after a change to
-# the build environment in project.toml and nothing else. Measured on 2026-09-10:
-# the uv packager buildpack decides whether to re-run `uv sync` from the checksum
-# of uv.lock alone, optionally suffixed with a hash of BP_UV_INSTALL_GROUPS
-# (python-package-managers-run v0.6.3, pkg/packagers/uv/uv_runner.go ShouldRun).
-# No other build variable is part of that key, so adding UV_NO_DEFAULT_GROUPS to
-# project.toml left the cached uv-env layer in place and the image unchanged until
-# the cache was cleared once. A lockfile change re-syncs on its own; a build-env
-# change does not.
-PACK_CLEAR_CACHE_FLAG := $(if $(PACK_CLEAR_CACHE),--clear-cache,)
+# --platform follows the host the same way every ko call site in this file does,
+# so a build on an amd64 host does not silently produce an arm64 image. The build
+# context is agents/orchestrator, which is what the Dockerfile's paths are
+# relative to. There is no cache flag to pass any more: BuildKit keys the
+# dependency layer on the uv.lock and pyproject.toml it bind-mounts into the
+# sync, so a lockfile change re-syncs on its own and a change to the agent's
+# sources does not.
+#
+# --pull is what makes the author's decision of 2026-09-10 -- every base image of
+# ours referenced by tag rather than digest -- mean what it says: without it a
+# local copy of python:3.14-slim or ghcr.io/astral-sh/uv:latest would be reused
+# and the tag would stop floating. The digest each tag resolved to, and the uv
+# version the builder printed, go into the run record for that build.
 orchestrator-image:
-	pack build $(ORCHESTRATOR_IMAGE) --builder $(PACK_BUILDER) --path agents/orchestrator --pull-policy if-not-present $(PACK_CLEAR_CACHE_FLAG)
+	docker build --pull --platform linux/$(shell go env GOARCH) -t $(ORCHESTRATOR_IMAGE) -f agents/orchestrator/Dockerfile agents/orchestrator
 	kind load docker-image $(ORCHESTRATOR_IMAGE) --name $(CLUSTER_NAME)
 
 step-1: check-go-sources-clean orchestrator-image
@@ -82,7 +80,7 @@ step-1: check-go-sources-clean orchestrator-image
 # PATH; agentgateway v1.5.0 through the waypoint image annotation in the overlay).
 # A setup target, like step-1: it rotates all three Deployments, and the worker's
 # log is a ledger source, so do not re-run it against a baseline in progress.
-# The overlay pulls in step-1, whose orchestrator Deployment needs the buildpacks
+# The overlay pulls in step-1, whose orchestrator Deployment needs the Python
 # image; ko builds the Go images inline, so orchestrator-image is the only
 # prerequisite that makes step-2 runnable on a cluster that never ran step-1.
 GATEWAY_API_VERSION := v1.6.2
@@ -114,7 +112,7 @@ step-2: check-go-sources-clean orchestrator-image
 # Like step-1 and step-2 this is a setup target: it rotates the worker and the
 # orchestrator, whose logs are ledger sources, and `ko apply` can rotate the mock
 # as well, so do not run it against a baseline in progress. The overlay pulls in
-# step-2, whose orchestrator Deployment needs the buildpacks image, so
+# step-2, whose orchestrator Deployment needs the Python image, so
 # orchestrator-image is a prerequisite here for the same reason it is on step-2.
 AGENTGATEWAY_CHART_VERSION := v1.5.0
 step-2b: check-go-sources-clean orchestrator-image

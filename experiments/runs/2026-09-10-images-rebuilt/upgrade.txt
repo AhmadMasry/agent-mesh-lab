@@ -1,0 +1,72 @@
+The final stage's one-layer OS upgrade, and what it did on 2026-09-10.
+
+The layer, run before the nonroot user is created and before anything of ours is
+copied in:
+
+    RUN apt-get update \
+        && apt-get -y upgrade --no-install-recommends \
+        && apt-get clean \
+        && rm -rf /var/lib/apt/lists/*
+
+Read from a `docker build --pull --progress=plain` of agents/orchestrator/Dockerfile.
+The apt output, verbatim:
+
+    #14 [stage-1 2/6] RUN apt-get update     && apt-get -y upgrade --no-install-recommends     && apt-get clean     && rm -rf /var/lib/apt/lists/*
+    #14 ...
+    
+    #15 [builder 7/7] RUN --mount=type=cache,target=/root/.cache/uv     uv sync --locked --no-dev --no-editable
+    #15 0.066 Resolved 64 packages in 0.39ms
+    #15 0.114 Bytecode compiled 3099 files in 46ms
+    #15 DONE 0.1s
+    
+    #14 [stage-1 2/6] RUN apt-get update     && apt-get -y upgrade --no-install-recommends     && apt-get clean     && rm -rf /var/lib/apt/lists/*
+    #14 4.206 Hit:1 http://deb.debian.org/debian trixie InRelease
+    #14 4.260 Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+    #14 4.379 Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+    #14 4.453 Get:4 http://deb.debian.org/debian trixie/main arm64 Packages [9607 kB]
+    #14 5.044 Get:5 http://deb.debian.org/debian trixie-updates/main arm64 Packages [4424 B]
+    #14 5.107 Get:6 http://deb.debian.org/debian-security trixie-security/main arm64 Packages [257 kB]
+    #14 5.574 Fetched 9960 kB in 5s (1820 kB/s)
+    #14 5.574 Reading package lists...
+    #14 5.797 Reading package lists...
+    #14 6.013 Building dependency tree...
+    #14 6.064 Reading state information...
+    #14 6.083 Calculating upgrade...
+    #14 6.168 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+    #14 DONE 6.2s
+
+Packages upgraded: NONE. "0 upgraded, 0 newly installed, 0 to remove and 0 not
+upgraded" is the counted result, and it is the answer rather than a disappointment:
+the python:3.14-slim tag, resolved by --pull on this date, already carries the
+current patch level of Debian 13 trixie. Both the trixie-updates and the
+trixie-security indexes were fetched (47.3 kB and 43.4 kB of InRelease, 4424 B and
+257 kB of arm64 Packages), so the upgrade was calculated against security updates
+that were actually present, not skipped.
+
+The layer is kept even though it changed nothing today: the tag floats, and the day
+the base image lags a security update behind the archive is the day it applies one
+without the Dockerfile changing.
+
+Size delta of the layer: the layer's own size is what `docker history` reports for
+it below. `apt-get clean` and the `rm -rf /var/lib/apt/lists/*` run in the same
+RUN, so the ~10 MB of package indexes apt downloaded do not survive into the image;
+what is left is the small amount of apt state the update writes elsewhere.
+
+    20.5kB  RUN /bin/sh -c apt-get update     && apt-get -y upgrade --no-install-recommends     && apt-get clean     && rm -rf /var/lib/apt/lists/* # buildkit
+
+Image size either side of this fixup, both read with the same commands on the same
+host:
+
+    before (digest-pinned bases, --chown, no upgrade layer)   .Size 67132071   rootfs 239728 KiB
+    after  (tag bases, --pull, root-owned, upgrade layer)     .Size 67132499   rootfs 239488 KiB
+
+Observed at this build, the values the floating tags resolved to:
+
+    ghcr.io/astral-sh/uv:latest   -> sha256:73d2665b478d8fa2de1cf105c6841f8e9cb6b09e568fc7700440c09f8fcd7ac4
+    python:3.14-slim              -> sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+    uv --version in the builder   -> uv 0.12.12 (aarch64-unknown-linux-musl)
+    python -V in the final image  -> Python 3.14.7
+
+Both digests are the ones the previous, digest-pinned build used, so nothing about
+the image content changed by letting the tags float on this date; that is a fact of
+2026-09-10 and not a property of the arrangement.

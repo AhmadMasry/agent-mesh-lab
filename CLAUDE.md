@@ -61,7 +61,7 @@ agent-mesh-lab/
 ## Conventions
 
 - **Go:** one module at the repository root; each binary in its listed directory; images built with `ko`. Standard library HTTP with retries explicitly disabled where the transport would otherwise replay.
-- **Python:** one project under `agents/orchestrator/` with a committed lockfile; images built with Cloud Native Buildpacks.
+- **Python:** one project under `agents/orchestrator/` with a committed lockfile; images built from `agents/orchestrator/Dockerfile`.
 - **Identity fields** appear in every ledger line: `logical_work_item_id`, `messageId`, `taskId` (may be empty), plus JSON-RPC `id` and body hash on the ingress ledger.
 - **Run outputs** cited by a findings entry are committed under `experiments/runs/<date>-<item>/` as small CSV or JSONL. Large or ephemeral logs are ignored.
 - **Commits:** `type(scope): summary` — e.g. `feat(worker): pre-dispatch ingress ledger`. One checklist box per commit or PR; the findings entry ships in the same commit.

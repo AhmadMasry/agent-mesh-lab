@@ -1,0 +1,31 @@
+orchestrator:dev BEFORE this commit -- built by Cloud Native Buildpacks with
+paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
+Read on 2026-09-10, immediately before the first docker build of the new Dockerfile.
+
+$ docker image inspect --format '{{.Size}}' orchestrator:dev
+217853747
+
+$ docker image inspect --format '{{.Architecture}}/{{.Os}}' orchestrator:dev
+amd64/linux
+
+$ docker image inspect --format '{{.Config.User}}' orchestrator:dev
+1002:1000
+
+$ docker image inspect --format '{{json .Config.Entrypoint}} {{json .Config.Cmd}}' orchestrator:dev
+["/cnb/process/web"] null
+
+$ docker image inspect --format '{{.Id}}' orchestrator:dev
+sha256:89fab145c188b42bcd0aafbef225e90e3872795cf52a07125b27ffc095f1e289
+
+$ docker history --no-trunc --format '{{.Size}}  {{.CreatedBy}}' orchestrator:dev
+12.3kB  Buildpacks Process Types
+16.4kB  Buildpacks Launcher Config
+2.95MB  Buildpacks Application Launcher
+406kB  Application Layer
+963kB  Software Bill-of-Materials
+165MB  Layer: 'uv-env', Created by buildpack: paketo-buildpacks/python-package-managers-run@0.6.3
+5.21MB  Layer: 'helper', Created by buildpack: paketo-buildpacks/ca-certificates@3.12.7
+12.3kB  
+24.6kB  
+71.1MB  
+87.7MB  

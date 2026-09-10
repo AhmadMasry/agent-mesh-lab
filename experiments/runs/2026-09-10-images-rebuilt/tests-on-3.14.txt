@@ -1,0 +1,37 @@
+The orchestrator's own tests, run on the interpreter the image carries.
+agents/orchestrator/.python-version moved from 3.13.15 to 3.14.7, the version
+python:3.14-slim resolves to, so `uv run` builds the venv on 3.14.7.
+
+$ uv lock --check
+Using CPython 3.14.7 interpreter at: /opt/homebrew/opt/python@3.14/bin/python3.14
+Resolved 64 packages in 14ms
+  -> exit 0. The lockfile needed no re-resolution for 3.14: pyproject.toml
+     declares requires-python ">=3.10" and the lock is universal over that
+     range, so no pinned version moved and uv.lock is unchanged in this commit.
+     Nothing in the stop list -- a2a-sdk, openai, httpx, protobuf, any
+     opentelemetry pin -- had anything to move to.
+
+$ uv run python -V
+Using CPython 3.14.7 interpreter at: /opt/homebrew/opt/python@3.14/bin/python3.14
+Removed virtual environment at: .venv
+Creating virtual environment at: .venv
+Installed 56 packages in 85ms
+Python 3.14.7
+
+$ uv run pytest -q
+...........................................                              [100%]
+43 passed in 3.85s
+
+Run again after the last edit of this commit (a comment in pyproject.toml):
+  uv lock --check   -> Resolved 64 packages in 2ms, exit 0
+  uv run pytest -q  -> 43 passed in 2.01s
+
+The Go side, unchanged by this commit but run to show it:
+$ go build ./... && go vet ./... && go test ./... -count=1
+ok  github.com/AhmadMasry/agent-mesh-lab/agents/worker           0.998s
+ok  github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen        0.526s
+ok  github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm        2.907s
+ok  github.com/AhmadMasry/agent-mesh-lab/fixtures/replay         1.978s
+ok  github.com/AhmadMasry/agent-mesh-lab/internal/a2areq         1.302s
+ok  github.com/AhmadMasry/agent-mesh-lab/internal/httpclient     1.653s
+ok  github.com/AhmadMasry/agent-mesh-lab/internal/otel           2.372s

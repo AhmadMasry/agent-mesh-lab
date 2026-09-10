@@ -44,13 +44,13 @@ on the machine used for Gate 1 (each checked with its own version command;
 | Tool | Command | Observed |
 | --- | --- | --- |
 | ko | `ko version` | `0.19.1` |
-| pack | `pack version` | `0.40.9+git-8210eb1.build-6996` |
 | kind | `kind version` | `kind v0.33.0 go1.27.0 darwin/arm64` |
 | istioctl | `istioctl version --remote=false` | `client version: 1.31.0` |
 | kubectl | `kubectl version --client` | `Client Version: v1.37.0` |
 | jq | `jq --version` | `jq-1.8.2` |
 | docker | `docker --version` | `Docker version 29.7.2, build a7dcaa6` |
-| uv | `uv --version` | `uv 0.12.10 (Homebrew 2026-09-04 aarch64-apple-darwin)` |
+| docker buildx | `docker buildx version` | `github.com/docker/buildx v0.36.1-desktop.1 83d819cf8237b52ef45a2a9857eeb83a7b10977f` |
+| uv | `uv --version` | `uv 0.12.12 (Homebrew 2026-09-09 aarch64-apple-darwin)` |
 | go | `go version` | `go version go1.27.1 darwin/arm64` |
 
 `ko apply`/`ko build` are called with `--platform=linux/$(go env GOARCH)`
@@ -102,33 +102,60 @@ why the guard above does not cover them and does not need to.
 all, only a host `go build` of the replay fixture driven against a
 port-forward, which is if anything a stronger freshness guarantee than a
 rebuild-on-apply Job. **The Python agent is not built by `ko`** at all: it is
-built by Cloud Native Buildpacks under the fixed tag `orchestrator:dev` and
-loaded into kind, so changing anything under `agents/orchestrator/` needs
-`make orchestrator-image` followed by
+built from `agents/orchestrator/Dockerfile` under the fixed tag
+`orchestrator:dev` and loaded into kind, so changing anything under
+`agents/orchestrator/` needs `make orchestrator-image` followed by
 `kubectl -n lab rollout restart deployment/orchestrator`. A `kubectl set env`
 on that Deployment restarts the pod onto the image already loaded under that
 tag, which is the old one; a run that only sets an environment variable will
 measure the code that was there before. This was measured the hard way in
 Gate 2 A.2. That image is also where the agent's telemetry comes from: it
-carries the OpenTelemetry distro as a dependency and its Procfile starts the
+carries the OpenTelemetry distro as a dependency and its `CMD` starts the
 process under `opentelemetry-instrument`, so nothing has to be injected into
 the pod and `make step-3` installs no Operator to inject it.
-**The builder that image is built with publishes no arm64 image**: read on
-2026-09-10, `paketobuildpacks/builder-jammy-base` has no manifest list at any
-tag and all 697 of its tags are `linux/amd64`, so on an arm64 host the
-orchestrator image is built for amd64 and runs under emulation, and no digest
-could make it follow the host with this builder (`versions.yaml` key
-`pack-builder`; the candidates surveyed are in
-`experiments/runs/2026-09-10-pack-multiarch/builder-survey.txt`).
-The image carries the runtime dependencies only: `project.toml` sets
-`UV_NO_DEFAULT_GROUPS=1`, so the dev dependency group — pytest and
-pytest-asyncio — is left out of the `uv sync` the buildpack runs. **A change
-to that build environment does not on its own rebuild the image**: the uv
-packager buildpack keys its layer on the `uv.lock` checksum and no build
-variable, so run `make orchestrator-image PACK_CLEAR_CACHE=1` once after
-editing `project.toml`. A lockfile change re-syncs on its own. Measured on
-2026-09-10 in
-`experiments/runs/2026-09-10-orchestrator-image/image-contents.txt`.
+
+That Dockerfile replaced Cloud Native Buildpacks on 2026-09-10 by the author's
+decision. It is two stages on `python:3.14-slim`, following uv's own Docker
+guide: the uv binary is copied in from `ghcr.io/astral-sh/uv:latest`,
+dependencies are installed from the lockfile alone before the project is
+copied, and the final stage takes the virtual environment and the agent package
+and nothing else — no uv, no build tools, no `pip`. `--no-dev` keeps the dev
+dependency group — pytest and pytest-asyncio — out of the image, which is what
+`project.toml`'s `UV_NO_DEFAULT_GROUPS=1` used to do; unlike that build
+variable, it is part of what BuildKit keys the layer on, so there is no cache
+flag to remember.
+
+**Every base image of ours is referenced by tag, not by digest** — `python:3.14-slim`
+here, `ghcr.io/astral-sh/uv:latest` for the installer, and
+`gcr.io/distroless/static-debian13:nonroot` in `.ko.yaml` for the Go images. That
+is the author's decision of 2026-09-10, taken against uv's own advice to pin a
+digest: the lab wants the latest patched base and the latest uv at every build.
+What replaces the pin is a record rather than nothing. `make orchestrator-image`
+passes `docker build --pull` so both tags re-resolve at every build, the builder
+stage runs `uv --version` so the log states the version used, ko prints the base
+digest it resolved, and each run record under `experiments/runs/` keeps the
+digests, the uv version and the Python version that build produced.
+`versions.yaml` records the tag as the pin with that decision dated, beside the
+values observed. The final stage also upgrades the OS in one layer before the
+user is created (`apt-get update && apt-get -y upgrade --no-install-recommends`,
+cleaned in the same `RUN`), so a base image lagging a security update does not
+reach the cluster; on 2026-09-10 it found nothing to apply, `python:3.14-slim`
+already carrying Debian 13 trixie's current patch level.
+
+The image runs as uid:gid 65532:65532, the uid of the
+distroless base `.ko.yaml` uses for the Go images, so every workload of ours in
+the cluster runs as one uid, and it needs no writable root filesystem. Its
+application files are owned by **root** and only readable by that uid, so the
+process cannot rewrite its own code or its own dependencies. The
+change also moved the image off emulation: the pack builder published no arm64
+image at any tag, so on this arm64 host the image was built for amd64
+(`versions.yaml` key `pack-builder`; the candidates surveyed are in
+`experiments/runs/2026-09-10-pack-multiarch/builder-survey.txt`), and the new
+base image's index carries both `linux/amd64` and `linux/arm64`, so the build
+follows the host. Counted on 2026-09-10 in
+`experiments/runs/2026-09-10-images-rebuilt/`: the image's root filesystem went
+from 294316 KiB to 239488 KiB and its architecture from amd64 to arm64, and
+every package in the lockfile installs on 3.14 from a wheel, none from source.
 
 To bring up Gate 1's step-1 (no mesh) baseline and step-2 (Istio Ambient with
 the agentgateway waypoint) baseline:
@@ -308,8 +335,8 @@ provider only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, an `otelhttp` handler
 wrapper on each server, and an `otelhttp` transport wrapper on each outbound
 client. The Python agent has no OpenTelemetry code either: it carries the
 OpenTelemetry distro as a dependency and starts under `opentelemetry-instrument`,
-named in its Procfile, configured only by the environment the step-3 overlay
-sets. `make step-3` installs no Operator and the step-3 overlay holds no
+named in its image's `CMD`, configured only by the environment the step-3
+overlay sets. `make step-3` installs no Operator and the step-3 overlay holds no
 `Instrumentation` resource; that route was measured in four states, not kept,
 and removed from step 3 on 2026-09-10 and from the cluster the same day, and
 `findings.md` carries the counts. The ingress and the

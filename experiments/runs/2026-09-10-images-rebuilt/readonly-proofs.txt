@@ -1,0 +1,62 @@
+Read-only, non-root, root-owned-files proofs on orchestrator:dev, run on this
+host before any cluster rollout. Every command below runs the container with
+--read-only and --user 65532:65532, so the container starting at all is the first
+proof that the image needs no writable root filesystem.
+
+The ownership proof the author asked for: the application files are owned by root
+and only readable by the app user, so the process cannot modify its own code or
+its own dependencies even where the filesystem is writable.
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev sh -c id -u; ls -ld /app /app/.venv; touch /app/x; touch /x
+65532
+drwxr-xr-x 1 root root 4096 Sep 10 17:04 /app
+drwxr-xr-x 4 root root 4096 Sep 10 17:04 /app/.venv
+touch: cannot touch '/app/x': Read-only file system
+touch: cannot touch '/x': Read-only file system
+exit=1
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev sh -c ls -ld /app/orchestrator /app/.venv/bin /app/.venv/lib; ls -l /app/orchestrator/server.py
+drwxr-xr-x 2 root root 4096 Sep 10 17:04 /app/.venv/bin
+drwxr-xr-x 3 root root 4096 Sep 10 17:04 /app/.venv/lib
+drwxr-xr-x 2 root root 4096 Sep 10 13:53 /app/orchestrator
+-rw-r--r-- 1 root root 3095 Sep  9 06:28 /app/orchestrator/server.py
+exit=0
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev id
+uid=65532(nonroot) gid=65532(nonroot) groups=65532(nonroot)
+exit=0
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -V
+Python 3.14.7
+exit=0
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev uname -m
+aarch64
+exit=0
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev sh -c touch /tmp/x
+touch: cannot touch '/tmp/x': Read-only file system
+exit=1
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c import pytest
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import pytest
+ModuleNotFoundError: No module named 'pytest'
+exit=1
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c import a2a, openai, opentelemetry.instrumentation.starlette; print("a2a", a2a.__file__); print("openai", openai.__version__); print("otel-starlette ok")
+a2a /app/.venv/lib/python3.14/site-packages/a2a/__init__.py
+openai 3.9.0
+otel-starlette ok
+exit=0
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c import sys; print(sys.executable); print(sys.version)
+/app/.venv/bin/python
+3.14.7 (main, Aug 31 2026, 23:42:40) [GCC 14.2.0]
+exit=0
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c import orchestrator.server as s; print("orchestrator.server imported:", s.__file__)
+orchestrator.server imported: /app/orchestrator/server.py
+exit=0
+
