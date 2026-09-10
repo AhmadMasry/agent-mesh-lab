@@ -127,7 +127,10 @@ flag to remember.
 
 **Every base image of ours is referenced by tag, not by digest** — `python:3.14-slim`
 here, `ghcr.io/astral-sh/uv:latest` for the installer, and
-`gcr.io/distroless/static-debian13:nonroot` in `.ko.yaml` for the Go images. That
+`gcr.io/distroless/static-debian13:nonroot` in `.ko.yaml` for the four Go binaries
+(Debian 13 "trixie" being the current stable release, so both halves of the lab sit
+on one Debian; that base's config reads `User=65532`, the uid every Pod template
+declares). That
 is the author's decision of 2026-09-10, taken against uv's own advice to pin a
 digest: the lab wants the latest patched base and the latest uv at every build.
 What replaces the pin is a record rather than nothing. `make orchestrator-image`
