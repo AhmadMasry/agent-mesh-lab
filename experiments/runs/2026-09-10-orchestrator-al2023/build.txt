@@ -1,0 +1,191 @@
+build.txt -- the rebuild of agents/orchestrator/Dockerfile after glibc's locale archive was kept.
+Started 2026-09-10T21:45:55Z. Host: arm64 darwin, docker 29.7.2.
+$ BUILDKIT_PROGRESS=plain make orchestrator-image        # one invocation: docker build --pull, then kind load
+
+docker build --pull --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 16.20kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#2 DONE 1.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:latest
+#3 DONE 2.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 569B done
+#4 DONE 0.0s
+
+#5 [builder 1/9] FROM public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438
+#5 resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438 done
+#5 DONE 0.0s
+
+#6 FROM ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+#6 resolve ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6 done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 16.66kB done
+#7 DONE 0.0s
+
+#8 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#8 CACHED
+
+#9 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+#9 CACHED
+
+#10 [builder 6/9] WORKDIR /app
+#10 CACHED
+
+#11 [builder 4/9] RUN uv --version
+#11 CACHED
+
+#12 [builder 5/9] RUN python3.14 -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.version'
+#12 CACHED
+
+#13 [builder 7/9] RUN --mount=type=cache,target=/root/.cache/uv     --mount=type=bind,source=uv.lock,target=uv.lock     --mount=type=bind,source=pyproject.toml,target=pyproject.toml     uv sync --locked --no-install-project --no-dev
+#13 CACHED
+
+#14 [builder 8/9] COPY . /app
+#14 DONE 0.0s
+
+#15 [builder 9/9] RUN --mount=type=cache,target=/root/.cache/uv     uv sync --locked --no-dev --no-editable
+#15 0.067 Resolved 64 packages in 0.37ms
+#15 0.125 Bytecode compiled 3099 files in 56ms
+#15 DONE 0.1s
+
+#16 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#16 CACHED
+
+#17 [stage-2 1/5] COPY --from=rootfs /rootfs /
+#17 CACHED
+
+#18 [stage-2 2/5] RUN ["/usr/bin/python3.14", "-c", "import sys; assert sys.version_info[:2] == (3, 14), sys.version"]
+#18 CACHED
+
+#19 [stage-2 3/5] COPY --from=builder /app/.venv /app/.venv
+#19 CACHED
+
+#20 [stage-2 4/5] COPY orchestrator /app/orchestrator
+#20 CACHED
+
+#21 [stage-2 5/5] WORKDIR /app
+#21 CACHED
+
+#22 exporting to image
+#22 exporting layers done
+#22 exporting manifest sha256:ad5d668c283f1f4f95c1a6a2a496c89c0f4d1ce1a756e5228cb544423888b958 done
+#22 exporting config sha256:6cd309dc1c6701716b94e7ac14c7413606a86773d0fb6bd36c15e7c93696cba7 done
+#22 exporting attestation manifest sha256:04a145b3d392e6bbb4cd94351dede55b969eb8b925ddf7e7b740648d0b875a24 done
+#22 exporting manifest list sha256:548212cf881e5d5fa0d4b08121c09ce56d9d7ce17118f91c618e5d72a97c6916 done
+#22 naming to docker.io/library/orchestrator:dev done
+#22 unpacking to docker.io/library/orchestrator:dev done
+#22 DONE 0.0s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/bagnfgltz9w7b7zz0o86vc7tn
+kind load docker-image orchestrator:dev --name agent-mesh-lab
+Image: "orchestrator:dev" with ID "sha256:548212cf881e5d5fa0d4b08121c09ce56d9d7ce17118f91c618e5d72a97c6916" not yet present on node "agent-mesh-lab-worker", loading...
+Image: "orchestrator:dev" with ID "sha256:548212cf881e5d5fa0d4b08121c09ce56d9d7ce17118f91c618e5d72a97c6916" not yet present on node "agent-mesh-lab-control-plane", loading...
+exit=0
+
+================================================================================
+SECOND INVOCATION, after two comment corrections to the Dockerfile (the archive holds
+12 files, not 13, and the README's size figures were updated). No instruction changed;
+the Dockerfile is in the build context, so `COPY . /app` and the second `uv sync` re-ran.
+Started 2026-09-10T21:49:59Z.
+$ BUILDKIT_PROGRESS=plain make orchestrator-image
+
+docker build --pull --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 16.20kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#2 ...
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:latest
+#3 DONE 2.1s
+
+#2 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#2 DONE 3.5s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 569B done
+#4 DONE 0.0s
+
+#5 [builder 1/9] FROM public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438
+#5 resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438 done
+#5 DONE 0.0s
+
+#6 FROM ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+#6 resolve ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6 done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 16.66kB done
+#7 DONE 0.0s
+
+#8 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#8 CACHED
+
+#9 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+#9 CACHED
+
+#10 [builder 4/9] RUN uv --version
+#10 CACHED
+
+#11 [builder 5/9] RUN python3.14 -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.version'
+#11 CACHED
+
+#12 [builder 6/9] WORKDIR /app
+#12 CACHED
+
+#13 [builder 7/9] RUN --mount=type=cache,target=/root/.cache/uv     --mount=type=bind,source=uv.lock,target=uv.lock     --mount=type=bind,source=pyproject.toml,target=pyproject.toml     uv sync --locked --no-install-project --no-dev
+#13 CACHED
+
+#14 [builder 8/9] COPY . /app
+#14 DONE 0.0s
+
+#15 [builder 9/9] RUN --mount=type=cache,target=/root/.cache/uv     uv sync --locked --no-dev --no-editable
+#15 0.059 Resolved 64 packages in 0.37ms
+#15 0.105 Bytecode compiled 3099 files in 45ms
+#15 DONE 0.1s
+
+#16 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#16 CACHED
+
+#17 [stage-2 1/5] COPY --from=rootfs /rootfs /
+#17 CACHED
+
+#18 [stage-2 2/5] RUN ["/usr/bin/python3.14", "-c", "import sys; assert sys.version_info[:2] == (3, 14), sys.version"]
+#18 CACHED
+
+#19 [stage-2 3/5] COPY --from=builder /app/.venv /app/.venv
+#19 CACHED
+
+#20 [stage-2 4/5] COPY orchestrator /app/orchestrator
+#20 CACHED
+
+#21 [stage-2 5/5] WORKDIR /app
+#21 CACHED
+
+#22 exporting to image
+#22 exporting layers done
+#22 exporting manifest sha256:ad5d668c283f1f4f95c1a6a2a496c89c0f4d1ce1a756e5228cb544423888b958 done
+#22 exporting config sha256:6cd309dc1c6701716b94e7ac14c7413606a86773d0fb6bd36c15e7c93696cba7 done
+#22 exporting attestation manifest sha256:d70ef092050c3feae6ed292d65c45691e954c6a27680548131a0be82190ce819 done
+#22 exporting manifest list sha256:e67c133fb7d68997cb35f39679abbb17e96ca9272e69a9be993ef481fdd1e4a8 done
+#22 naming to docker.io/library/orchestrator:dev done
+#22 unpacking to docker.io/library/orchestrator:dev done
+#22 DONE 0.0s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/sp5ye3aidxkgmins4vfoc225t
+kind load docker-image orchestrator:dev --name agent-mesh-lab
+Image: "orchestrator:dev" with ID "sha256:e67c133fb7d68997cb35f39679abbb17e96ca9272e69a9be993ef481fdd1e4a8" not yet present on node "agent-mesh-lab-worker", loading...
+Image: "orchestrator:dev" with ID "sha256:e67c133fb7d68997cb35f39679abbb17e96ca9272e69a9be993ef481fdd1e4a8" not yet present on node "agent-mesh-lab-control-plane", loading...
+exit=0

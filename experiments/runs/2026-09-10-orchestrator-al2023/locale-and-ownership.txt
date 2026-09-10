@@ -1,0 +1,151 @@
+locale-and-ownership.txt -- two measurements of the finished image, re-taken after glibc's
+locale archive was kept: what the kept archive holds and costs, and which packages still
+claim the trees the rootfs stage removes by path.
+Taken 2026-09-10T21:54:20Z. Image orchestrator:dev, image manifest
+sha256:ad5d668c283f…, config sha256:6cd309dc1c67… -- the build this run directory records.
+The same two measurements taken while /usr/lib/locale was removed are in pre-locale/.
+
+================================================================================
+1. THE LOCALE ARCHIVE, KEPT
+================================================================================
+
+Author's decision of 2026-09-11 ("go ahead", after the cost was measured): the rootfs
+stage's second `rm -rf` no longer takes /rootfs/usr/lib/locale. /usr/share/locale -- the
+message catalogues -- is still removed.
+
+WHAT THE ARCHIVE HOLDS in this root, read out of the finished image (readonly-run.txt
+section 6 is the same read):
+
+  /usr/lib/locale holds        = ['C.utf8']
+  /usr/lib/locale content      = 12 files, 351817 bytes
+    C.utf8/LC_ADDRESS               127        C.utf8/LC_MONETARY              270
+    C.utf8/LC_COLLATE              1406        C.utf8/LC_NAME                   62
+    C.utf8/LC_CTYPE              346132        C.utf8/LC_NUMERIC                50
+    C.utf8/LC_IDENTIFICATION        258        C.utf8/LC_PAPER                  34
+    C.utf8/LC_MEASUREMENT            23        C.utf8/LC_TELEPHONE              47
+    C.utf8/LC_MESSAGES/SYS_LC_MESSAGES 48      C.utf8/LC_TIME                 3360
+
+One locale, and it is the C one. This root carries glibc-minimal-langpack and no language
+pack, so there is nothing else in the archive to keep.
+
+WHAT IT COSTS, measured on the exported root filesystem of the two builds:
+
+  removed (pre-locale/image-after.txt)   186213888 bytes
+  kept    (image-after.txt)              186577920 bytes
+  difference                               +364032 bytes, an increase of 0.20%
+
+`docker image inspect .Size`, the sum of the gzipped layers, moves 52685920 -> 52750200,
++64280 bytes. The 364032 on the export exceeds the 351817 of file content because tar
+rounds every member to a 512-byte block and adds a header per member and per directory.
+
+WHAT IT BUYS, the same program run in both images (A is this one, B the python:3.14-slim
+base it replaced, still in the local daemon untagged at cad9a2c87176, the observed_digest
+versions.yaml records under python-base). The "removed" column is the pushed measurement
+in pre-locale/locale-and-ownership.txt, not a re-run.
+
+                                    A. kept        removed        B. python:3.14-slim
+  platform.libc_ver()               glibc 2.34     glibc 2.34     glibc 2.41
+  sys.version                       3.14.7         3.14.7         3.14.7
+  setlocale(LC_ALL, "C.UTF-8")      ok -> C.UTF-8  FAILED         ok
+  setlocale(LC_ALL, "en_US.UTF-8")  FAILED         FAILED         FAILED
+  setlocale(LC_ALL, "")             ok             ok             ok
+  locale.getlocale()                ('C','UTF-8')  (None, None)   ('C','UTF-8')
+  sys.flags.utf8_mode               1              1              1
+  fs / stdout encoding              utf-8 / utf-8  utf-8 / utf-8  utf-8 / utf-8
+  non-ASCII round trip              ok             ok             ok
+  /usr/lib/locale present           True           False          True
+  /usr/share/locale present         False          False          True
+
+Read together: the one behavioural difference the pushed record measured between this
+image and the base it replaced -- `setlocale(LC_ALL, "C.UTF-8")` raising here and
+succeeding there -- is closed by keeping the archive, and `locale.getlocale()` now reads
+('C', 'UTF-8') on both. What still differs from python:3.14-slim is the glibc version and
+/usr/share/locale, which is message catalogues and not this setting. `en_US.UTF-8` fails
+in all three, so that was never the difference. What the pushed record said it did NOT
+establish is still not established and still not claimed: which of the archive or the C
+library supplies C.UTF-8 in the Debian image, which carries both.
+
+Nothing this lab counts reads a locale, and that is measured rather than assumed:
+
+  .py files walked under /app  = 3107
+  files mentioning setlocale   = 0
+
+That covers the agent's own sources and every installed dependency, as .py source. It does
+not cover the standard library under /usr/lib64/python3.14, nor a C extension calling
+setlocale() below Python; neither was audited, and the statement made here is exactly the
+one measured. So this change is not a fix for a counted failure -- the counts either side
+of it are identical (the entry) -- it is 364032 bytes spent so that a later
+locale-sensitive result is one less thing to have to rule out.
+
+================================================================================
+2. WHICH PACKAGES STILL CLAIM THE TREES THE rootfs STAGE REMOVES BY PATH
+================================================================================
+
+The Dockerfile header states that whole packages leave through `rpm -e` so that the RPM
+database and the filesystem make one statement. That holds for bash and coreutils. It does
+not hold for the content trees the same RUN prunes with `rm -rf`, and this is the
+measurement of exactly where it stops.
+
+METHOD, and it differs from the pushed one in a way that corrects it. The pushed file fed
+the 45 package names to `rpm -ql` inside a throwaway container of the base tag, which
+answers from THAT container's own database -- so a package the base image does not carry,
+python3.14 among them, silently returned nothing. Here the throwaway container of the same
+base tag reads the assembled root's OWN database instead: only /var/lib/rpm is copied out
+of the image (`docker create` + `docker cp`) and rpm is pointed at it with
+`rpm --root=<dir> -ql <pkg>`. The assembled root has no rpm binary of its own; this is the
+database it ships. 45 names, gpg-pubkey dropped. No rebuild, no cluster.
+
+Result, one line per prefix the rootfs stage removes, plus /usr/lib/locale which it no
+longer removes:
+
+  /usr/lib/locale    filesystem glibc-common
+  /usr/share/locale  filesystem glibc-common grep p11-kit sed
+  /usr/share/man     alternatives ca-certificates crypto-policies expat filesystem grep libcap p11-kit pcre2-syntax python3.14 sed
+  /usr/share/doc     ca-certificates expat filesystem gmp grep libcap libffi libtasn1 ncurses-base p11-kit pcre2-syntax python3.14 python3.14-libs sed setup sqlite-libs tzdata zlib
+  /usr/share/info    filesystem grep readline sed
+  /etc/yum.repos.d   amazon-linux-repo-cdn system-release
+  /etc/dnf           amazon-linux-repo-cdn system-release
+  /var/lib/dnf       (none of the 45)
+  /var/cache         filesystem glibc
+  /var/log           filesystem setup
+
+Two attributions the pushed table got wrong, corrected by reading the shipped database:
+`python3.14` claims paths under /usr/share/man and /usr/share/doc, and `python3.14-libs`
+under /usr/share/doc. Everything else agrees line for line, /var/lib/dnf included: it is
+claimed by none of the 45, `dnf-data` never having been installed into this root, so
+removing it removed nothing any package claims.
+
+/usr/lib/locale is the line that changed. It is claimed by `filesystem` (the directory)
+and by `glibc-common` (the directory, C.utf8, LC_MESSAGES and the 12 files) -- 15 paths
+between them -- and all 15 are now present. Counted over the whole root:
+
+  paths claimed by the 45 packages in the shipped database : 5546
+  of those, absent from the image                          :  261
+    /usr/share/locale  156     /etc/dnf            6     /var/cache        3
+    /usr/share/doc      56     /usr/share/info     5     /etc/yum.repos.d  2
+    /usr/share/man      28     (other)             5     /var/log          1
+  the same count while /usr/lib/locale was removed         :  276
+
+("other" is /etc/fstab, /etc/gai.conf, /etc/crypto-policies/state/CURRENT.pol and
+/usr/lib64/python3.14/email/architecture.rst -- three configuration files the install
+never wrote and one document `--setopt=tsflags=nodocs` left out. `basesystem` and
+`glibc-minimal-langpack` own no files at all, so rpm prints "(contains no files)" for
+them; that line is not a path and is not counted.)
+
+So keeping the archive takes the claimed-but-absent count from 276 to 261: the database
+and the filesystem agree about 15 more paths than they did, which is a smaller version of
+the same argument the header makes for `rpm -e` over `rm`. The remaining 261 are the
+trees above, and three things bound what they cost, unchanged by this amendment. The
+packages involved cannot be erased: they are `filesystem`, `glibc-common`,
+`system-release`, `grep`, `sed`, `ca-certificates`, `python3.14` and the like -- what the
+interpreter and the distribution identity are built on -- so what is removed is their
+content, not their entry. No package VERSION is falsified, and a version is what a package
+scanner matches on, so the scan of this image counts what is really installed
+(scan/orchestrator.json identifies it as amazonlinux 2023). And nothing inside the image
+can act on the difference: there is no rpm, no dnf and no microdnf binary here, and no
+shell to drive one.
+
+Much of the man/doc/info/locale content was never installed in the first place: the
+install carries `--setopt=tsflags=nodocs`. The `rm -rf` is there to take whatever nodocs
+does not, and the table above is about which packages CLAIM those paths, not about how
+many bytes the removal actually took.

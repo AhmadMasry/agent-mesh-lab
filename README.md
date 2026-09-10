@@ -116,50 +116,95 @@ process under `opentelemetry-instrument`, so nothing has to be injected into
 the pod and `make step-3` installs no Operator to inject it.
 
 That Dockerfile replaced Cloud Native Buildpacks on 2026-09-10 by the author's
-decision. It is two stages on `python:3.14-slim`, following uv's own Docker
-guide: the uv binary is copied in from `ghcr.io/astral-sh/uv:latest`,
-dependencies are installed from the lockfile alone before the project is
-copied, and the final stage takes the virtual environment and the agent package
-and nothing else — no uv, no build tools, no `pip`. `--no-dev` keeps the dev
-dependency group — pytest and pytest-asyncio — out of the image, which is what
-`project.toml`'s `UV_NO_DEFAULT_GROUPS=1` used to do; unlike that build
-variable, it is part of what BuildKit keys the layer on, so there is no cache
-flag to remember.
+decision, and was itself replaced the same day, by the same decision, with the
+one described here. It is three stages. A **builder** on
+`public.ecr.aws/amazonlinux/amazonlinux:2023` installs `python3.14`, copies the
+uv binary in from `ghcr.io/astral-sh/uv:latest`, and resolves `/app/.venv` from
+the lockfile per uv's own Docker guide (`UV_COMPILE_BYTECODE`, `UV_LINK_MODE=copy`,
+`UV_PYTHON_DOWNLOADS=0`, a `--no-install-project` dependency layer over
+bind-mounted `uv.lock` and `pyproject.toml`, then `--no-dev --no-editable`), with
+`UV_PYTHON=/usr/bin/python3.14` so the environment is built against the same
+interpreter file the image will run. A **rootfs** stage on the same base assembles
+the runtime root under `/rootfs` with `dnf --installroot`, which is the route the
+AL2023 user guide documents for this — "Using the `--installroot` option to `dnf`
+in this manner is how we create the other AL2023 images" — including the
+`--releasever=$(rpm -q system-release --qf '%{VERSION}')` idiom that pins the new
+root to the release of the base building it. The **final stage is `FROM scratch`**
+and holds that root, the virtual environment and the agent package, and nothing
+else. `--no-dev` keeps the dev dependency group — pytest and pytest-asyncio — out
+of it, which is what `project.toml`'s `UV_NO_DEFAULT_GROUPS=1` used to do.
 
-**Every base image of ours is referenced by tag, not by digest** — `python:3.14-slim`
-here, `ghcr.io/astral-sh/uv:latest` for the installer, and
-`gcr.io/distroless/static-debian13:nonroot` in `.ko.yaml` for the four Go binaries
-(Debian 13 "trixie" being the current stable release, so both halves of the lab sit
-on one Debian; that base's config reads `User=65532`, the uid every Pod template
-declares). That
-is the author's decision of 2026-09-10, taken against uv's own advice to pin a
-digest: the lab wants the latest patched base and the latest uv at every build.
-What replaces the pin is a record rather than nothing. `make orchestrator-image`
-passes `docker build --pull` so both tags re-resolve at every build, the builder
-stage runs `uv --version` so the log states the version used, ko prints the base
-digest it resolved, and each run record under `experiments/runs/` keeps the
-digests, the uv version and the Python version that build produced.
-`versions.yaml` records the tag as the pin with that decision dated, beside the
-values observed. The final stage also upgrades the OS in one layer before the
-user is created (`apt-get update && apt-get -y upgrade --no-install-recommends`,
-cleaned in the same `RUN`), so a base image lagging a security update does not
-reach the cluster; on 2026-09-10 it found nothing to apply, `python:3.14-slim`
-already carrying Debian 13 trixie's current patch level.
+**That image has no shell.** Three packages are asked for by name — `python3.14`,
+`system-release`, `ca-certificates` — `bash` and `coreutils` are removed from the
+assembled root with `rpm -e` afterwards, and `dnf`, `rpm` and `microdnf` are never
+installed into it at all; 45 packages and one `gpg-pubkey` entry remain, and
+`/usr/bin` holds 25 files. The practical consequence for anyone working on this
+lab: **`kubectl -n lab exec deploy/orchestrator` can only run `python`**, so every
+in-container proof in `experiments/runs/` is a `python -c …`, and on the host the
+same checks are `docker run --rm --read-only --user 65532:65532 orchestrator:dev
+python -c …`. `rpm -e` rather than `rm` is deliberate: deleting the files would
+leave the RPM database claiming a shell and a coreutils that are not there, and a
+scanner would go on matching those versions against advisories. For the same
+reason the RPM database and `system-release` **stay** — they are how a scanner
+identifies the distribution and enumerates what is installed, and without them an
+assembled root scans as an unidentifiable pile of files. The same stage prunes the
+documentation, man and message-catalogue trees but **keeps glibc's locale archive**
+at `/usr/lib/locale`, on the author's decision of 2026-09-11 taken after the cost
+was measured. In this root the archive holds one locale, `C.utf8`, 12 files and
+351817 bytes of content; keeping it costs **364032 bytes** on the exported root
+filesystem, 186213888 → 186577920, an increase of 0.20%; and what it buys is that
+`locale.setlocale(LC_ALL, "C.UTF-8")` returns `C.UTF-8` rather than raising
+`unsupported locale setting`, which is what it did while the tree was removed.
+`en_US.UTF-8` raises either way, the root carrying `glibc-minimal-langpack` and no
+language pack, and `/usr/share/locale` — the message catalogues — is still removed.
+Nothing counted here reads a locale in the first place: no `.py` file under `/app`,
+the agent's or a dependency's, so much as mentions `setlocale`. Both sides are
+measured in `experiments/runs/2026-09-10-orchestrator-al2023/locale-and-ownership.txt`
+— the removed side in that run's `pre-locale/` — which also records which packages
+still claim the trees that stage removes by path.
 
-The image runs as uid:gid 65532:65532, the uid of the
-distroless base `.ko.yaml` uses for the Go images, so every workload of ours in
-the cluster runs as one uid, and it needs no writable root filesystem. Its
-application files are owned by **root** and only readable by that uid, so the
-process cannot rewrite its own code or its own dependencies. The
-change also moved the image off emulation: the pack builder published no arm64
-image at any tag, so on this arm64 host the image was built for amd64
-(`versions.yaml` key `pack-builder`; the candidates surveyed are in
-`experiments/runs/2026-09-10-pack-multiarch/builder-survey.txt`), and the new
-base image's index carries both `linux/amd64` and `linux/arm64`, so the build
-follows the host. Counted on 2026-09-10 in
-`experiments/runs/2026-09-10-images-rebuilt/`: the image's root filesystem went
-from 294316 KiB to 239488 KiB and its architecture from amd64 to arm64, and
-every package in the lockfile installs on 3.14 from a wheel, none from source.
+**Every base image of ours is referenced by tag, not by digest** —
+`public.ecr.aws/amazonlinux/amazonlinux:2023` in both Amazon Linux stages,
+`ghcr.io/astral-sh/uv:latest` for the installer, and
+`gcr.io/distroless/static-debian13:nonroot` in `.ko.yaml` for the four Go
+binaries (that base's config reads `User=65532`, the uid every Pod template
+declares). That is the author's decision of 2026-09-10, taken against uv's own
+advice to pin a digest: the lab wants the latest patched base and the latest uv at
+every build, and AWS documents `:2023` as exactly that tag — "To get the latest
+version of the AL2023 container image, use the `:2023` tag". What replaces the pin
+is a record rather than nothing. `make orchestrator-image` passes
+`docker build --pull` so both tags re-resolve at every build, the builder stage
+runs `uv --version`, the rootfs stage prints the release it pinned itself to and
+the whole `rpm -qa` list into the build log (`--progress=plain` keeps it, and no
+package-list file is written into the image), ko prints the base digest it
+resolved, and each run record under `experiments/runs/` keeps the digests and
+versions that build produced. `versions.yaml` records the tags as the pins with
+that decision dated, beside the values observed. The rootfs stage also runs
+`dnf … upgrade` in the same `RUN` as the install, so a base image lagging a
+security update does not reach the cluster; on 2026-09-10 it applied nothing,
+"Nothing to do.", the `:2023` tag already being at release 2023.12.20260909.
+
+The image runs as uid:gid 65532:65532, the uid of the distroless base `.ko.yaml`
+uses for the Go images, so every workload of ours in the cluster runs as one uid,
+and it needs no writable root filesystem. Its application files are owned by
+**root** and only readable by that uid, so the process cannot rewrite its own code
+or its own dependencies. Counted in
+`experiments/runs/2026-09-10-orchestrator-al2023/`, the assembled root as it now
+ships against the `python:3.14-slim` image it replaced: exported root filesystem
+**220009472 → 186577920 bytes** (209.8 → 177.9 MiB, 84.8% of the former),
+`docker image inspect` `.Size` **67132499 → 52750200 bytes** (64.0 → 50.3 MiB, that
+field being the sum of the gzipped layers rather than the same quantity), layers
+9 → 5, architecture arm64 in both, interpreter **CPython 3.14.7** in both. The
+first count of the assembled root, taken on 2026-09-10 before the locale archive
+was kept, is that run's `pre-locale/` directory: 186213888 and 52685920 bytes.
+The earlier move off Cloud Native Buildpacks is the record before that, in
+`experiments/runs/2026-09-10-images-rebuilt/`: it took the root filesystem from
+294316 KiB to 239488 KiB and the architecture from emulated amd64 to arm64, the
+pack builder having published no arm64 image at any tag (`versions.yaml` key
+`pack-builder`; the candidates surveyed are in
+`experiments/runs/2026-09-10-pack-multiarch/builder-survey.txt`), and it counted
+every package in the lockfile as installing on 3.14 from a wheel, none from
+source.
 
 `make scan-images` runs the Kubescape CLI over the five images this lab builds —
 the Python agent and the four Go binaries — and writes, under

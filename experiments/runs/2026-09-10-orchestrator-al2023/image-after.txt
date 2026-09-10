@@ -1,0 +1,95 @@
+image-after.txt -- orchestrator:dev as rebuilt on 2026-09-11 with glibc's locale archive
+kept in the assembled root. Same commands, same order, as image-before.txt, plus docker history.
+Taken 2026-09-10T21:50:41Z on <host>.
+
+Bases this build resolved (from build.txt, --progress=plain):
+  public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438
+    -- the same index digest the pushed build resolved and versions.yaml records.
+  ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+    -- NOT the digest that built this environment. `--pull` re-resolved the floating tag and it
+    has moved since 2026-09-10 (sha256:73d2665b478d…), but every builder step that uses it
+    answered CACHED (build.txt #9, #11), so /app/.venv in this image is still the one uv 0.12.12
+    from sha256:73d2665b478d… resolved, as pre-locale/image-after.txt records. Recorded rather
+    than smoothed over: a digest that resolved is not necessarily a digest that built anything.
+  release pinned into the assembled root: 2023.12.20260909; interpreter python3.14-3.14.7-1.amzn2023.0.1
+  the rootfs stage answered CACHED at this build, so the in-stage `dnf … upgrade` did not re-run;
+    what it applied when it did run is "Nothing to do." (pre-locale/build.txt)
+
+$ docker image inspect --format "{{.Id}}" orchestrator:dev
+sha256:e67c133fb7d68997cb35f39679abbb17e96ca9272e69a9be993ef481fdd1e4a8
+
+$ docker image inspect --format "{{.Created}}" orchestrator:dev
+2026-09-10T21:30:11.763406585Z
+
+$ docker image inspect --format "{{.Size}}" orchestrator:dev   # bytes, daemon-reported
+52750200
+
+$ docker image inspect --format "{{.Architecture}}/{{.Os}}" orchestrator:dev
+arm64/linux
+
+$ docker image inspect --format "{{.Config.User}}" orchestrator:dev
+65532:65532
+
+$ docker image inspect --format "{{json .Config.Entrypoint}} {{json .Config.Cmd}}" orchestrator:dev
+null ["opentelemetry-instrument","python","-m","orchestrator.server"]
+
+$ docker image inspect --format "{{json .Config.Env}}" orchestrator:dev
+["PATH=/app/.venv/bin:/usr/bin","PYTHONDONTWRITEBYTECODE=1","PYTHONUNBUFFERED=1"]
+
+$ docker image inspect --format "{{len .RootFS.Layers}}" orchestrator:dev   # layer count
+5
+
+$ CID=$(docker create orchestrator:dev) && docker export "$CID" | wc -c && docker rm "$CID"
+ 186577920
+(container removed)
+
+$ docker image inspect --format "{{json .RootFS.Layers}}" orchestrator:dev
+["sha256:19385eda0ad1c3348c5548b875e1a86efb8b25802e1fedf51c22a6829b6635e2","sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef","sha256:4dcaac6fcffde2c5e20ae0eb6a7b22b868d001d0f04ef9d0648081efe50fef6e","sha256:3477398e541e6413289c30a679694342c79934da56e7df8edce15d98bcc952b0","sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"]
+
+$ docker history --no-trunc orchestrator:dev
+IMAGE                                                                     CREATED          CREATED BY                                                                                              SIZE      COMMENT
+sha256:e67c133fb7d68997cb35f39679abbb17e96ca9272e69a9be993ef481fdd1e4a8   20 minutes ago   CMD ["opentelemetry-instrument" "python" "-m" "orchestrator.server"]                                    0B        buildkit.dockerfile.v0
+<missing>                                                                 20 minutes ago   EXPOSE [8080/tcp]                                                                                       0B        buildkit.dockerfile.v0
+<missing>                                                                 20 minutes ago   USER 65532:65532                                                                                        0B        buildkit.dockerfile.v0
+<missing>                                                                 20 minutes ago   WORKDIR /app                                                                                            4.1kB     buildkit.dockerfile.v0
+<missing>                                                                 20 minutes ago   ENV PATH=/app/.venv/bin:/usr/bin PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1                           0B        buildkit.dockerfile.v0
+<missing>                                                                 20 minutes ago   COPY orchestrator /app/orchestrator # buildkit                                                          61.4kB    buildkit.dockerfile.v0
+<missing>                                                                 20 minutes ago   COPY /app/.venv /app/.venv # buildkit                                                                   89.7MB    buildkit.dockerfile.v0
+<missing>                                                                 20 minutes ago   RUN /usr/bin/python3.14 -c import sys; assert sys.version_info[:2] == (3, 14), sys.version # buildkit   4.1kB     buildkit.dockerfile.v0
+<missing>                                                                 20 minutes ago   COPY /rootfs / # buildkit                                                                               118MB     buildkit.dockerfile.v0
+
+WHAT .Id, .Created AND THE THREE DIGESTS MEAN HERE, recorded rather than left to be
+reconciled later (the pushed record carries the same note for the same reason):
+
+  image manifest   sha256:ad5d668c283f1f4f95c1a6a2a496c89c0f4d1ce1a756e5228cb544423888b958
+  image config     sha256:6cd309dc1c6701716b94e7ac14c7413606a86773d0fb6bd36c15e7c93696cba7
+  manifest list    sha256:e67c133fb7d68997cb35f39679abbb17e96ca9272e69a9be993ef481fdd1e4a8  <- what .Id reports
+
+`docker image inspect .Id` reports the manifest LIST, which covers the image manifest and
+the attestation manifest beside it. This locale change was built three times on this host:
+once to measure it, once through `make orchestrator-image` for the record and the
+`kind load`, and once more after two comment corrections to the Dockerfile. All three
+exported the SAME image manifest ad5d668c… and the SAME config 6cd309dc…; what moved each
+time is the regenerated attestation manifest and therefore the index over both:
+
+  measuring build           index sha256:3c8c1d7e3a9b…   attestation sha256:2caaa230a446…
+  make orchestrator-image   index sha256:548212cf881e…   attestation sha256:04a145b3d392…
+  make orchestrator-image   index sha256:e67c133fb7d6…   attestation sha256:d70ef092050c…  <- loaded into kind
+
+So the image is one image, three indexes. `.Created` reads 2026-09-10T21:30:11Z, earlier
+than any of the three, because the config itself came from the build cache: the identical
+instructions had been run on this host when the change was measured, and a cache hit
+reuses the config, timestamp included. The evidence that the cluster runs THIS image is
+the import digest `kind load` computed (cluster-rollout.txt), not this timestamp.
+
+Layers, against the pushed pre-locale build (pre-locale/image-after.txt):
+  1 /rootfs        sha256:8b8ad563c673…  ->  sha256:19385eda0ad1…   moved: /usr/lib/locale is now in it
+  2 assertion RUN  sha256:5f70bf18a086…  ->  sha256:5f70bf18a086…   unchanged (empty layer)
+  3 /app/.venv     sha256:09cdb4a6c0f7…  ->  sha256:4dcaac6fcffd…   moved: re-synced, same 64 locked packages
+  4 orchestrator   sha256:f731fbea5c25…  ->  sha256:3477398e541e…   moved: re-copied, same sources
+  5 WORKDIR        sha256:5f70bf18a086…  ->  sha256:5f70bf18a086…   unchanged (empty layer)
+Layers 3 and 4 moved because the build context changed -- the Dockerfile is in it, and this
+amendment edits the Dockerfile -- so `COPY . /app` and the second `uv sync` re-ran and
+re-exported. Their CONTENT is the same 64 locked packages and the same agent sources; the
+counted evidence for that is readonly-run.txt (the four import versions), tests.txt (43
+passed on the same lockfile) and smoke.txt (the card answered, protocolVersion 1.0).

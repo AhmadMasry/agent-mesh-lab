@@ -1,0 +1,42 @@
+smoke.txt -- the rebuilt orchestrator:dev (glibc's locale archive kept) started on this
+host, read-only and as uid 65532, and asked once for its Agent Card. The env is the one
+deploy/base and deploy/step-3-stress apply, with the three OTEL exporters set to none:
+there is no collector on this host and this file is about the agent starting and serving,
+not about telemetry.
+Taken 2026-09-10T21:51:18Z. Image manifest sha256:ad5d668c283f…, config sha256:6cd309dc1c67…
+
+$ docker run -d --name al2023-smoke --read-only --user 65532:65532 -p 18085:8080 \
+    -e AGENT_NAME=orchestrator -e PORT=8080 -e PUBLIC_URL=http://127.0.0.1:8080 \
+    -e MODEL_BASE_URL=http://127.0.0.1:9/v1 -e MODEL_NAME=mock -e MODEL_API_KEY=unused \
+    -e MODEL_MAX_RETRIES=0 -e PLAN_MODEL_CALL=off \
+    -e OTEL_SERVICE_NAME=orchestrator -e OTEL_TRACES_EXPORTER=none \
+    -e OTEL_METRICS_EXPORTER=none -e OTEL_LOGS_EXPORTER=none orchestrator:dev
+275ce49e4b6e457bb7d21473b25b55312f07d3a54cfadf465aeb07ea43c4a2c9
+
+Readiness wait on the host, written in python3 so nothing in this file is a retrying
+HTTP client: it polls /healthz once a second until the first 200 and then stops. The
+counted request below is made exactly once.
+  /healthz answered 200 on poll 2, 1.0 s after `docker run`
+
+$ GET http://127.0.0.1:18085/.well-known/agent-card.json   (one request)
+  HTTP 200
+  body: {"name":"orchestrator","description":"agent-mesh-lab agent: one model call per message","supportedInterfaces":[{"url":"http://127.0.0.1:8080","protocolBinding":"JSONRPC","protocolVersion":"1.0"}],"version":"0.0.0","capabilities":{"streaming":false},"defaultInputModes":["text/plain"],"defaultOutputModes":["text/plain"],"skills":[{"id":"answer","name":"answer","description":"returns the model's answer to the message text","tags":["lab"]}]}
+
+  card.name                                = 'orchestrator'
+  card.supportedInterfaces[0].protocolBinding = 'JSONRPC'
+  card.supportedInterfaces[0].protocolVersion = '1.0'
+  card.skills[0].id                        = 'answer'
+
+$ docker logs al2023-smoke
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-10T21:51:20.151574Z","remote":"192.168.65.1:35655","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-10T21:51:20.151574Z","remote":"192.168.65.1:35655","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0,"status":200}
+--- end of logs ---
+
+The two lines above with method "GET /.well-known/agent-card.json" are the
+pre-dispatch ingress ledger's arrival/response pair for the one counted request:
+the instrument chain works with the locale archive in the root exactly as it did
+without it. /healthz is not in the ledger, which is why the readiness poll left no
+lines.
+
+$ docker rm -f al2023-smoke
+al2023-smoke

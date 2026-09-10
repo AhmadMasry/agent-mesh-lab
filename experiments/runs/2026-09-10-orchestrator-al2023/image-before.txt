@@ -1,0 +1,29 @@
+image-before.txt -- the orchestrator:dev image as the Docker daemon holds it immediately
+before the Amazon Linux 2023 build of this branch replaces the tag. Two stages on
+python:3.14-slim, built by the previous agents/orchestrator/Dockerfile.
+Taken 2026-09-10T18:55:03Z on <host>.
+
+$ docker image inspect --format "{{.Id}}" orchestrator:dev
+sha256:9d30a65a02b73926d3f57e27476f26c4036f97952defec3949c29260210668f8
+
+$ docker image inspect --format "{{.Created}}" orchestrator:dev
+2026-09-10T17:04:28.355873886Z
+
+$ docker image inspect --format "{{.Size}}" orchestrator:dev   # bytes, daemon-reported
+67132499
+
+$ docker image inspect --format "{{.Architecture}}/{{.Os}}" orchestrator:dev
+arm64/linux
+
+$ docker image inspect --format "{{.Config.User}}" orchestrator:dev
+65532:65532
+
+$ docker image inspect --format "{{json .Config.Entrypoint}} {{json .Config.Cmd}}" orchestrator:dev
+null ["opentelemetry-instrument","python","-m","orchestrator.server"]
+
+$ docker image inspect --format "{{len .RootFS.Layers}}" orchestrator:dev   # layer count
+9
+
+$ CID=$(docker create orchestrator:dev) && docker export "$CID" | wc -c && docker rm "$CID"
+ 220009472
+(container removed)
