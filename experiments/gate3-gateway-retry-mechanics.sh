@@ -267,6 +267,25 @@ reset_all_quiet() {
 trap cleanup EXIT
 
 printf '%s run %s: route=%s reps=%s\n' "$(date -u +%FT%TZ)" "$RUN_ID" "$ROUTE" "$REPS" | tee -a "$CONTROL_FILE"
+
+# Arming an injector addresses a Service, and a Service load-balances: with more
+# than one replica the arming lands on one pod while the request that should fire
+# it can reach another, and `make ledgers` reads one pod's log either way. Both
+# counts would be wrong and neither would say so, so the replica count is asserted
+# and recorded here, before anything is armed.
+assert_single_replica() { # $1 = deployment name
+	local deploy="$1" spec ready
+	spec=$(kubectl -n "$NAMESPACE" get "deployment/${deploy}" -o jsonpath='{.spec.replicas}' 2>/dev/null || true)
+	ready=$(kubectl -n "$NAMESPACE" get "deployment/${deploy}" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)
+	printf '%s deployment/%s replicas: spec=%s ready=%s\n' \
+		"$(date -u +%FT%TZ)" "$deploy" "${spec:-<none>}" "${ready:-0}" | tee -a "$CONTROL_FILE"
+	if [ "$spec" != "1" ] || [ "${ready:-0}" != "1" ]; then
+		echo "gate3-retry: deployment/${deploy} is not at exactly one ready replica (spec=${spec:-<none>} ready=${ready:-0}); scale it to 1 before an injector is armed through its Service" >&2
+		exit 1
+	fi
+}
+assert_single_replica worker
+assert_single_replica mockllm
 reset_all
 
 # --- the stanza ---------------------------------------------------------------

@@ -197,6 +197,27 @@ ok2xx() { case "$1" in 2??) return 0 ;; *) return 1 ;; esac; }
 # A.1 measures a duplicate delivery to a receiver that is failing nothing, so the
 # receiver's injector is disarmed before the run and the reply is recorded.
 RESET_FILE="${RUN_DIR}/control-reset.txt"
+
+# A control endpoint is addressed through a Service, and a Service load-balances:
+# with more than one replica a reset lands on one pod while the request can reach
+# another, and `make ledgers` reads one pod's log either way. Both counts would be
+# wrong and neither would say so, so the replica count is asserted and recorded
+# here, before any control endpoint is called. This run arms nothing; the check is
+# the same one the arming runs make, for the same reason.
+assert_single_replica() { # $1 = deployment name
+	local deploy="$1" spec ready
+	spec=$(kubectl -n "$NAMESPACE" get "deployment/${deploy}" -o jsonpath='{.spec.replicas}' 2>/dev/null || true)
+	ready=$(kubectl -n "$NAMESPACE" get "deployment/${deploy}" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)
+	printf '%s deployment/%s replicas: spec=%s ready=%s\n' \
+		"$(date -u +%FT%TZ)" "$deploy" "${spec:-<none>}" "${ready:-0}" | tee -a "$RESET_FILE"
+	if [ "$spec" != "1" ] || [ "${ready:-0}" != "1" ]; then
+		echo "gate2-a1: deployment/${deploy} is not at exactly one ready replica (spec=${spec:-<none>} ready=${ready:-0}); scale it to 1 before a control endpoint is called through its Service" >&2
+		exit 1
+	fi
+}
+assert_single_replica "$SOURCE"
+assert_single_replica mockllm
+
 echo "== disarming the receiver under test =="
 reset_code=$(post "${RECEIVER_URL}/control/reset")
 printf '%s POST %s/control/reset -> %s (receiver %s; nothing armed for this run)\n' \
@@ -342,6 +363,20 @@ for via in $VIAS; do
 	for i in $(seq 1 "$REPS"); do
 		one_rep "$via" "$i"
 	done
+done
+
+# Both injectors are disarmed after the run as well as before, so a run that ends
+# here leaves nothing armed for the next one to be surprised by. A reset that does
+# not answer 2xx fails the script rather than being noted: the next run would
+# otherwise start against a cluster this one cannot vouch for.
+echo "== disarming the receiver and the mock after the run =="
+for url in "${RECEIVER_URL}/control/reset" "${MOCK_URL}/control/reset"; do
+	code=$(post "$url")
+	printf '%s POST %s -> %s (post-run)\n' "$(date -u +%FT%TZ)" "$url" "$code" | tee -a "$RESET_FILE"
+	ok2xx "$code" || {
+		echo "gate2-a1: post-run ${url} returned ${code}; the cluster may still be armed" >&2
+		exit 1
+	}
 done
 
 echo "== summary =="

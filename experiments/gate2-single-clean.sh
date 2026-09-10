@@ -93,6 +93,13 @@ ORCH_LWI="g2c-${RUN_ID}-orchestrator"
 run_one worker "$WORKER_URL" "$WORKER_LWI"
 run_one orchestrator "$ORCH_URL" "$ORCH_LWI"
 
+# The injectors are disarmed after the run as well as before it, so a run that ends
+# here leaves nothing armed for the next one to be surprised by. reset_all exits
+# non-zero on any reply that is not 2xx, which is the loud failure this needs: the
+# next run would otherwise start against a cluster this one cannot vouch for.
+echo "== after the run =="
+reset_all
+
 {
 	echo "receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result"
 	counts worker "$WORKER_LWI"

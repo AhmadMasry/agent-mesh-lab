@@ -705,6 +705,26 @@ trap 'echo "gate3-matrix: SIGTERM; stopping and restoring" >&2; exit 143' TERM
 
 printf '%s run %s: RUN=%s RECEIVER=%s SUB=%s REPS=%s knobs: %s\n' \
 	"$(date -u +%FT%TZ)" "$RUN_ID" "$RUN" "$RECEIVER" "${SUB:-none}" "$REPS" "$KNOB_LABEL" | tee -a "$CONTROL_FILE"
+
+# Arming an injector addresses a Service, and a Service load-balances: with more
+# than one replica the arming lands on one pod while the request that should fire
+# it can reach another, and `make ledgers` reads one pod's log either way. Both
+# counts would be wrong and neither would say so, so the replica count is asserted
+# and recorded here, before anything is armed.
+assert_single_replica() { # $1 = deployment name
+	local deploy="$1" spec ready
+	spec=$(kubectl -n "$NAMESPACE" get "deployment/${deploy}" -o jsonpath='{.spec.replicas}' 2>/dev/null || true)
+	ready=$(kubectl -n "$NAMESPACE" get "deployment/${deploy}" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)
+	printf '%s deployment/%s replicas: spec=%s ready=%s\n' \
+		"$(date -u +%FT%TZ)" "$deploy" "${spec:-<none>}" "${ready:-0}" | tee -a "$CONTROL_FILE"
+	if [ "$spec" != "1" ] || [ "${ready:-0}" != "1" ]; then
+		echo "gate3-matrix: deployment/${deploy} is not at exactly one ready replica (spec=${spec:-<none>} ready=${ready:-0}); scale it to 1 before an injector is armed through its Service" >&2
+		exit 1
+	fi
+}
+assert_single_replica "$RECEIVER_SOURCE"
+assert_single_replica mockllm
+
 reset_all pre-run
 
 # --- the receiver's environment for this row ----------------------------------
