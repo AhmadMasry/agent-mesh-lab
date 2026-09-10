@@ -30,7 +30,7 @@ check-go-sources-clean:
 		exit 1; \
 	fi
 
-.PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers matrix replay replay-waypoint replay-ingress export-trace retry-on retry-off test orchestrator-image
+.PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers matrix replay replay-waypoint replay-ingress export-trace retry-on retry-off test orchestrator-image scan-images
 
 cluster-kind:
 	@if kind get clusters 2>/dev/null | grep -qx "$(CLUSTER_NAME)"; then \
@@ -65,6 +65,42 @@ cluster-eks:
 orchestrator-image:
 	docker build --pull --platform linux/$(shell go env GOARCH) -t $(ORCHESTRATOR_IMAGE) -f agents/orchestrator/Dockerfile agents/orchestrator
 	kind load docker-image $(ORCHESTRATOR_IMAGE) --name $(CLUSTER_NAME)
+
+# scan-images: run the Kubescape CLI over the five images this lab builds and write
+# the counts into a run directory. Host-side only: nothing is installed in the
+# cluster, no Kubescape Operator, no node agent. Added on 2026-09-10 by the author's
+# decision, recorded in docs/proposal-notes.md; the CLI version and the URL it came
+# from are in versions.yaml under `kubescape`.
+#
+# Kubescape reads images straight out of the local Docker daemon, so the kind node's
+# containerd store is not consulted: the four Go images are rebuilt here with
+# `ko build` into ko.local, from the same sources and the same .ko.yaml base that
+# `make step-3` uses, and the Python image is the orchestrator:dev the same
+# `make orchestrator-image` produced. The scan record names the digest of every
+# image scanned beside the imageID each lab pod is running, so a reader can see for
+# themselves whether the two agree.
+#
+# What it writes into SCAN_OUT: Kubescape's JSON and text report per image, one
+# <image>-findings.csv per image derived from that JSON by
+# experiments/lib/kubescape-findings.jq (the per-finding record the findings entry
+# reads its no-fix counts from), a summary.csv of counts by severity, and a
+# scan-context.txt naming the scanner version, the vulnerability-database date, the
+# command, and every digest scanned beside the image each lab pod is running.
+#
+# The target does not fail on findings. Counting what is there is the point; fixing
+# any of it is the author's decision and was not taken in the task that added this.
+# SCAN_OUT is dated and named for the scan itself, not for any one experiment
+# item: a scan on a later date must not write into a run directory named for an
+# item that did not run. The 2026-09-10 scan the findings entry cites was written
+# into experiments/runs/2026-09-10-images-rebuilt/scan/, beside the run whose
+# images it scanned, and stays there; pass SCAN_OUT= to put a scan anywhere else.
+SCAN_OUT ?= experiments/runs/$(shell date +%F)-image-scan
+scan-images:
+	@command -v kubescape >/dev/null || { echo "kubescape is not on PATH; see versions.yaml key kubescape for the documented install" >&2; exit 1; }
+	@command -v jq >/dev/null || { echo "jq is not on PATH; the per-finding CSVs are derived with experiments/lib/kubescape-findings.jq" >&2; exit 1; }
+	@mkdir -p "$(SCAN_OUT)"
+	KO_DOCKER_REPO=ko.local ko build ./agents/worker ./fixtures/mockllm ./fixtures/loadgen ./fixtures/replay --platform=linux/$(shell go env GOARCH) > "$(SCAN_OUT)/ko-build.txt" 2>&1
+	@experiments/scan-images.sh "$(SCAN_OUT)"
 
 step-1: check-go-sources-clean orchestrator-image
 	kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -

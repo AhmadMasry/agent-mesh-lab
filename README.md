@@ -51,6 +51,7 @@ on the machine used for Gate 1 (each checked with its own version command;
 | docker | `docker --version` | `Docker version 29.7.2, build a7dcaa6` |
 | docker buildx | `docker buildx version` | `github.com/docker/buildx v0.36.1-desktop.1 83d819cf8237b52ef45a2a9857eeb83a7b10977f` |
 | uv | `uv --version` | `uv 0.12.12 (Homebrew 2026-09-09 aarch64-apple-darwin)` |
+| kubescape | `kubescape version` | `4.0.14` |
 | go | `go version` | `go version go1.27.1 darwin/arm64` |
 
 `ko apply`/`ko build` are called with `--platform=linux/$(go env GOARCH)`
@@ -159,6 +160,24 @@ follows the host. Counted on 2026-09-10 in
 `experiments/runs/2026-09-10-images-rebuilt/`: the image's root filesystem went
 from 294316 KiB to 239488 KiB and its architecture from amd64 to arm64, and
 every package in the lockfile installs on 3.14 from a wheel, none from source.
+
+`make scan-images` runs the Kubescape CLI over the five images this lab builds —
+the Python agent and the four Go binaries — and writes, under
+`experiments/runs/<date>-image-scan/` by default (`SCAN_OUT=` to put it
+elsewhere), one JSON and one text report per image, one `<image>-findings.csv`
+per image derived from that JSON by `experiments/lib/kubescape-findings.jq`
+(`id,severity,package,version,fixed_in,type`, where an empty `fixed_in` means no
+fix is available), a `summary.csv` of counts by severity, and a
+`scan-context.txt` naming the scanner version, its vulnerability-database date,
+the command, and the digest of every image scanned against the image each lab
+pod is running. The 2026-09-10 scan the findings entry cites was written beside
+the run whose images it scanned, in
+`experiments/runs/2026-09-10-images-rebuilt/scan/`. It is a **host-side CLI
+only**: nothing is installed in the cluster — no Operator, no node agent — so the
+cluster's component list is unchanged. It exits 0 whatever it finds, and **nothing
+in this repository is fixed in response to a scan**: counting what is there on a
+given date is the job, and a fix is the author's decision. The scanner was added
+on 2026-09-10 by that decision, recorded in `docs/proposal-notes.md`.
 
 To bring up Gate 1's step-1 (no mesh) baseline and step-2 (Istio Ambient with
 the agentgateway waypoint) baseline:

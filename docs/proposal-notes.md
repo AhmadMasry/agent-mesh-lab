@@ -82,3 +82,36 @@ be read beside them. The proposal text is unchanged.
 The entry is `## Gate 3 / both receivers / egress-route retry — Does an egress gateway retry duplicate a model
 call, and what does the mock see?` in `findings.md`, with its runs under
 `experiments/runs/2026-09-10-a3-egress-go/` and `experiments/runs/2026-09-10-a3-egress-py/`.
+
+## 2026-09-10 — a host-side image vulnerability scanner (Kubescape), added by the author
+
+`CLAUDE.md` rule 6 fixes the scope: a Python agent, a Go agent, a controllable model endpoint, a replay
+harness, a load client, Istio Ambient, agentgateway, and an OpenTelemetry pipeline with a trace backend and
+Prometheus — and names chaos tooling, dashboards and "any other project" as things not to add. A vulnerability
+scanner is not on the list. The author widened the scope on 2026-09-10 to include one, and this note records
+that decision and its boundary rather than the tool arriving unannounced.
+
+What was added: the **Kubescape CLI on the host**, run by `make scan-images` over the five images this lab
+builds (the Python agent, and the four Go binaries — worker, mockllm, loadgen, replay). Kubescape is a CNCF
+incubating project, read from https://www.cncf.io/projects/ on the day of the decision; Trivy and Grype, the
+obvious alternatives, are not CNCF projects, and that is why this one was chosen.
+
+The boundary, which is what keeps rule 6 meaningful: **nothing is installed in the cluster.** No Kubescape
+Operator, no node agent, no host scanner, no CRD, no namespace. The cluster's component list is exactly what
+it was. `make scan-images` reads images out of the local Docker daemon on the machine that builds them, writes
+JSON per image and a `summary.csv` of counts by severity, and exits 0 whatever it finds.
+
+Why the author judged it in scope for the lab's purpose: this repository's claim is that its findings are
+counted and traced at named versions, and the images those findings ran on are part of what is named. A count
+of what a scanner sees in each image on a given date, with the scanner version and its vulnerability-database
+date beside it, is the same kind of artefact as a pinned version — it says what was there, not that anything
+is safe.
+
+What was deliberately NOT done: nothing is fixed in response to a scan. No base image was moved, no dependency
+re-pinned, no `apt` package held back because a scan named it. A fix is the author's decision, taken separately
+if at all, and a scan that changes the images would make the counts in `findings.md` describe images that no
+longer exist. The first scan's counts are the entry
+`## Gate 3 / n/a / image vulnerability scan — What does Kubescape count in each of our images on this date?`,
+with its outputs under `experiments/runs/2026-09-10-images-rebuilt/scan/`.
+
+The proposal text is unchanged.
