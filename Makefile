@@ -53,8 +53,19 @@ cluster-eks:
 
 # orchestrator-image: build the Python agent with Cloud Native Buildpacks from
 # agents/orchestrator (pyproject.toml + uv.lock + Procfile) and load it into kind.
+#
+# PACK_CLEAR_CACHE=1 adds pack's --clear-cache, which is needed after a change to
+# the build environment in project.toml and nothing else. Measured on 2026-09-10:
+# the uv packager buildpack decides whether to re-run `uv sync` from the checksum
+# of uv.lock alone, optionally suffixed with a hash of BP_UV_INSTALL_GROUPS
+# (python-package-managers-run v0.6.3, pkg/packagers/uv/uv_runner.go ShouldRun).
+# No other build variable is part of that key, so adding UV_NO_DEFAULT_GROUPS to
+# project.toml left the cached uv-env layer in place and the image unchanged until
+# the cache was cleared once. A lockfile change re-syncs on its own; a build-env
+# change does not.
+PACK_CLEAR_CACHE_FLAG := $(if $(PACK_CLEAR_CACHE),--clear-cache,)
 orchestrator-image:
-	pack build $(ORCHESTRATOR_IMAGE) --builder $(PACK_BUILDER) --path agents/orchestrator --pull-policy if-not-present
+	pack build $(ORCHESTRATOR_IMAGE) --builder $(PACK_BUILDER) --path agents/orchestrator --pull-policy if-not-present $(PACK_CLEAR_CACHE_FLAG)
 	kind load docker-image $(ORCHESTRATOR_IMAGE) --name $(CLUSTER_NAME)
 
 step-1: check-go-sources-clean orchestrator-image

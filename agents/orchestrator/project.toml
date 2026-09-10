@@ -14,3 +14,36 @@ exclude = [
   ".pytest_cache",
   "tests",
 ]
+
+# Build-time environment, the table the project-descriptor spec names for it
+# (schema 0.2, `[[io.buildpacks.build.env]]`; the spec is linked above).
+#
+# UV_NO_DEFAULT_GROUPS keeps the dev dependency group out of the built image. The
+# group holds pytest and pytest-asyncio, which the tests use and the running agent
+# does not, and without this the image carries both: `uv sync` selects the default
+# groups, and `dev` is one.
+#
+# The Paketo buildpack that runs the sync documents no knob for this — its
+# BP_UV_INSTALL_GROUPS only adds `--group=<name>` arguments, and there is no
+# subtracting one — but the tool it drives does. python-package-managers-run
+# v0.6.3's pkg/packagers/uv/uv_runner.go builds the command as `uv sync` and runs it
+# with `append(os.Environ(), env...)`, so uv's own settings reach the sync, and
+# python-package-managers-install v0.25.0's buildpack.toml pins uv 0.12.6/0.12.7.
+# uv documents the variable at that version as "Equivalent to the
+# --no-default-groups command-line argument. If set, uv will not select the default
+# dependency groups defined in tool.uv.default-groups":
+#   https://docs.astral.sh/uv/reference/environment/
+#   https://raw.githubusercontent.com/astral-sh/uv/0.12.7/crates/uv-static/src/env_vars.rs
+# That it takes effect through this buildpack is measured, not assumed:
+# experiments/runs/2026-09-10-orchestrator-image/image-contents.txt records
+# `import pytest` inside the running container before this line and after it.
+#
+# One thing that measurement also found: the buildpack decides whether to re-run
+# `uv sync` from the checksum of uv.lock alone (ShouldRun in the same file, plus a
+# hash of BP_UV_INSTALL_GROUPS when that is set), so no build variable here is part
+# of the layer's cache key. Changing this table alone leaves the cached uv-env layer
+# in place and the image unchanged. Use `make orchestrator-image PACK_CLEAR_CACHE=1`
+# once after changing it; a lockfile change re-syncs on its own.
+[[io.buildpacks.build.env]]
+name = "UV_NO_DEFAULT_GROUPS"
+value = "1"

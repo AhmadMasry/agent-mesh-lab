@@ -1,0 +1,51 @@
+== orchestrator image: the dev dependency group, before and after ==
+2026-09-10. One rebuild carries two changes: UV_NO_DEFAULT_GROUPS=1 in
+agents/orchestrator/project.toml, and the ledger.py mid-body-disconnect fix.
+
+-- BEFORE (image built without UV_NO_DEFAULT_GROUPS) --
+2026-09-10T13:25:11Z
+pod and image:
+POD                             PHASE     IMAGE              IMAGEID
+orchestrator-5bc6ccd97b-5rz2t   Running   orchestrator:dev   sha256:43baecac1af2660470fca193af39c1e60726b4b511a79d5a9cc71e84f00c70f1
+
+$ kubectl -n lab exec deploy/orchestrator -- /cnb/lifecycle/launcher python -c 'import pytest; print(pytest.__version__); print(pytest.__file__)'
+9.1.1
+/layers/paketo-buildpacks_python-package-managers-run/uv-env/venv/lib/python3.13/site-packages/pytest/__init__.py
+
+buildpacks that built the image before:
+  paketo-buildpacks/ca-certificates 3.12.7
+  paketo-buildpacks/python-package-managers-install 0.25.0
+  paketo-buildpacks/python-package-managers-run 0.6.3
+  paketo-buildpacks/python-start 0.17.16
+  paketo-buildpacks/procfile 5.13.7
+
+-- AFTER (UV_NO_DEFAULT_GROUPS=1 in project.toml; one cleared-cache build, then the Makefile target) --
+2026-09-10T13:31:25Z
+pod and image:
+POD                             PHASE     IMAGE              IMAGEID
+orchestrator-6658ccdd88-xs8jh   Running   orchestrator:dev   sha256:9293df0f5aa357d0f9a39530e0f26f1e3a4196ff59eca5fa97b3f93ebbdf2210
+
+$ kubectl -n lab exec deploy/orchestrator -- /cnb/lifecycle/launcher python -c 'import pytest'
+  File "<string>", line 1, in <module>
+    import pytest
+ModuleNotFoundError: No module named 'pytest'
+command terminated with exit code 1
+
+$ kubectl -n lab exec deploy/orchestrator -- /cnb/lifecycle/launcher python -c 'import a2a, openai, opentelemetry.instrumentation.starlette; print("runtime dependencies still present")'
+runtime dependencies still present
+
+-- why one cleared-cache build was needed --
+The first 'make orchestrator-image' after the project.toml change logged
+  [builder]   Reusing cached layer /layers/paketo-buildpacks_python-package-managers-run/uv-env
+and the image was unchanged. ShouldRun in python-package-managers-run v0.6.3
+pkg/packagers/uv/uv_runner.go keys the layer on the uv.lock checksum, suffixed with a
+hash of BP_UV_INSTALL_GROUPS when that is set, and on nothing else; no build variable
+is part of the key. After 'pack build --clear-cache' the log read
+  [builder]     Running 'uv sync'
+and the layer was rebuilt without the dev group. The Makefile now carries
+PACK_CLEAR_CACHE=1 for that case.
+
+-- local test suite, unchanged --
+$ cd agents/orchestrator && uv run pytest -q
+...........................................                              [100%]
+43 passed in 1.88s

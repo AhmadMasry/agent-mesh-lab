@@ -120,6 +120,15 @@ orchestrator image is built for amd64 and runs under emulation, and no digest
 could make it follow the host with this builder (`versions.yaml` key
 `pack-builder`; the candidates surveyed are in
 `experiments/runs/2026-09-10-pack-multiarch/builder-survey.txt`).
+The image carries the runtime dependencies only: `project.toml` sets
+`UV_NO_DEFAULT_GROUPS=1`, so the dev dependency group — pytest and
+pytest-asyncio — is left out of the `uv sync` the buildpack runs. **A change
+to that build environment does not on its own rebuild the image**: the uv
+packager buildpack keys its layer on the `uv.lock` checksum and no build
+variable, so run `make orchestrator-image PACK_CLEAR_CACHE=1` once after
+editing `project.toml`. A lockfile change re-syncs on its own. Measured on
+2026-09-10 in
+`experiments/runs/2026-09-10-orchestrator-image/image-contents.txt`.
 
 To bring up Gate 1's step-1 (no mesh) baseline and step-2 (Istio Ambient with
 the agentgateway waypoint) baseline:
