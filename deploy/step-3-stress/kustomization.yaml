@@ -8,10 +8,6 @@
 #   jaeger.yaml            the trace backend, all-in-one with in-memory storage
 #   prometheus.yaml        Prometheus and the scrape jobs for istiod, ztunnel, the
 #                          agentgateway proxies and the collector
-#   instrumentation.yaml   the Instrumentation resource the Operator would read if any pod
-#                          asked for Python injection. None does: the Python agent starts
-#                          under its own opentelemetry-instrument launcher, and this
-#                          resource is kept as the record of a route that was measured
 #   agentgateway-tracing.yaml
 #                          OTLP export for the ingress and the egress waypoint, the two
 #                          proxies agentgateway's own control plane drives
@@ -26,10 +22,10 @@
 #                          the collector endpoint and service name the Go binaries'
 #                          internal/otel reads; without the endpoint they emit nothing
 #
-# The OpenTelemetry Operator itself is installed by `make step-3` from its Helm chart,
-# the way `make step-2b` installs agentgateway's control plane: it is a controller,
-# not an application manifest, and its CRDs have to exist before this overlay's
-# Instrumentation resource can be applied.
+# No OpenTelemetry Operator is installed and this overlay holds no Instrumentation
+# resource. The Operator's Python injection route was measured in four states at
+# Gate 3 Task 1 and removed on 2026-09-10 by the author's decision; the counts stay
+# in findings.md and the pins stay in versions.yaml, marked as not used.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -38,7 +34,6 @@ resources:
   - otel-collector.yaml
   - jaeger.yaml
   - prometheus.yaml
-  - instrumentation.yaml
   - agentgateway-tracing.yaml
 patches:
   - path: orchestrator-instrumentation.yaml

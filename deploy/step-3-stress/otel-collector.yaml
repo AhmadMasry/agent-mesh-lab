@@ -3,10 +3,9 @@
 # attribute names, and three exporters (the trace backend, a Prometheus endpoint, and
 # a log of what arrived).
 #
-# A plain Deployment, not an OpenTelemetryCollector custom resource. The Operator is
-# installed at step 3 for one job only, injecting the Python auto-instrumentation, and
-# a Deployment keeps the number of moving parts between a span and the backend small
-# enough to read in one file.
+# A plain Deployment, not an OpenTelemetryCollector custom resource: no OpenTelemetry
+# Operator is installed, and a Deployment keeps the number of moving parts between a
+# span and the backend small enough to read in one file.
 #
 # Versions and every fact quoted below are pinned in versions.yaml under
 # opentelemetry-collector, with the URLs they were read from.
@@ -69,7 +68,7 @@ data:
       # reads one name, so the two spellings are joined here rather than in either
       # agent.
       #
-      #   Python (the Operator's auto-instrumentation, Task 1): the ASGI
+      #   Python (the distro's Starlette/ASGI instrumentation, Task 1): the ASGI
       #   instrumentation captures the headers named in
       #   OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST as
       #   http.request.header.<lowercased name with - replaced by _>, and the value is

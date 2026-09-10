@@ -109,7 +109,10 @@ loaded into kind, so changing anything under `agents/orchestrator/` needs
 on that Deployment restarts the pod onto the image already loaded under that
 tag, which is the old one; a run that only sets an environment variable will
 measure the code that was there before. This was measured the hard way in
-Gate 2 A.2.
+Gate 2 A.2. That image is also where the agent's telemetry comes from: it
+carries the OpenTelemetry distro as a dependency and its Procfile starts the
+process under `opentelemetry-instrument`, so nothing has to be injected into
+the pod and `make step-3` installs no Operator to inject it.
 
 To bring up Gate 1's step-1 (no mesh) baseline and step-2 (Istio Ambient with
 the agentgateway waypoint) baseline:
@@ -241,13 +244,14 @@ by running the scripts above.
 
 Step 3 adds the pipeline the Gate 3 traces travel through. It applies on top of
 step 2c and adds only new objects: a `telemetry` namespace holding an
-OpenTelemetry Collector, a Jaeger v2 trace backend and Prometheus, plus one
-`Instrumentation` resource in `lab`, kept as the record of the Operator
-injection route that was measured and not kept (the Python agent starts under
-the distro launcher instead; see below).
-The Operator itself is installed from its Helm chart by the target, the way
-step 2b installs agentgateway's control plane, with the chart version pinned in
-the Makefile as `OTEL_OPERATOR_CHART_VERSION`.
+OpenTelemetry Collector, a Jaeger v2 trace backend and Prometheus.
+No OpenTelemetry Operator is installed: the Python agent starts under the
+OpenTelemetry distro's `opentelemetry-instrument` launcher, installed in its own
+image (see below), and the Operator's injection route was measured in four states
+at Gate 3 Task 1 and removed on 2026-09-10 by the author's decision. The counts
+that route produced stay in `findings.md`, and the `opentelemetry-operator` and
+`otel-python-autoinstrumentation` keys stay in `versions.yaml` marked as not used,
+as the record those entries cite.
 
 ```
 make step-3
@@ -289,9 +293,9 @@ wrapper on each server, and an `otelhttp` transport wrapper on each outbound
 client. The Python agent has no OpenTelemetry code either: it carries the
 OpenTelemetry distro as a dependency and starts under `opentelemetry-instrument`,
 named in its Procfile, configured only by the environment the step-3 overlay
-sets. The OpenTelemetry Operator is installed and its `Instrumentation` resource
-exists, but nothing is annotated for injection; that route was measured in four
-states and not kept, and `findings.md` carries the counts. The ingress and the
+sets. `make step-3` installs no Operator and the step-3 overlay holds no
+`Instrumentation` resource; that route was measured in four states, not kept,
+and removed from step 3 on 2026-09-10, and `findings.md` carries the counts. The ingress and the
 egress proxies export because one `AgentgatewayPolicy` each says so; the
 istiod-driven waypoints export nothing, and appear in a trace only as a parent
 span id that no exported span carries. Because an A2A request keeps the work item

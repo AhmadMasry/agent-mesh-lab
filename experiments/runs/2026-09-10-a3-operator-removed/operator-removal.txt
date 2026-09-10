@@ -1,0 +1,72 @@
+== 2026-09-10 operator removal: cluster state before ==
+2026-09-10T12:59:37Z
+-- certificate check --
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Leaf     Available     true           e28293330c0b5ed06868f992a83587d0     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           36ac4458012e9648f481540e846a923b     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           10a25afce69bd6b48f75e062a2586e48     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default (Leaf, not after 2026-09-11T12:54:01Z); ztunnel NOT restarted
+
+-- all pods before (Docker Desktop was restarted ~12:53Z on 2026-09-10) --
+NAMESPACE                       NAME                                                   READY   STATUS    RESTARTS        AGE
+agentgateway-egress             agw-egress-674bb755bc-9gd66                            1/1     Running   1 (6m12s ago)   41h
+agentgateway-system             agentgateway-864d45549-tbr2j                           1/1     Running   2 (5m55s ago)   41h
+agentgateway-system             agentgateway-ingress-6848b5848f-4d5j4                  1/1     Running   1 (6m12s ago)   41h
+istio-system                    istio-cni-node-5g86s                                   1/1     Running   1 (6m12s ago)   2d19h
+istio-system                    istio-cni-node-jcmzx                                   1/1     Running   1 (6m12s ago)   2d19h
+istio-system                    istiod-6fff49774b-vxzsh                                1/1     Running   1 (6m12s ago)   2d19h
+istio-system                    ztunnel-t2682                                          1/1     Running   1 (6m12s ago)   41h
+istio-system                    ztunnel-wxxnd                                          1/1     Running   1 (6m12s ago)   41h
+kube-system                     coredns-559f6c778d-gdw5w                               1/1     Running   1 (6m12s ago)   2d19h
+kube-system                     coredns-559f6c778d-m8hls                               1/1     Running   1 (6m12s ago)   2d19h
+kube-system                     etcd-agent-mesh-lab-control-plane                      1/1     Running   0               5m58s
+kube-system                     kindnet-45p7l                                          1/1     Running   1 (6m12s ago)   2d19h
+kube-system                     kindnet-nrkhx                                          1/1     Running   1 (6m12s ago)   2d19h
+kube-system                     kube-apiserver-agent-mesh-lab-control-plane            1/1     Running   0               5m58s
+kube-system                     kube-controller-manager-agent-mesh-lab-control-plane   1/1     Running   1 (6m12s ago)   2d19h
+kube-system                     kube-proxy-45pt4                                       1/1     Running   1 (6m12s ago)   2d19h
+kube-system                     kube-proxy-cfwft                                       1/1     Running   1 (6m12s ago)   2d19h
+kube-system                     kube-scheduler-agent-mesh-lab-control-plane            1/1     Running   1 (6m12s ago)   2d19h
+lab                             agentgateway-waypoint-6dd7855fcd-t7dtd                 1/1     Running   1 (6m12s ago)   2d19h
+lab                             agentgateway-waypoint-orch-59fb497555-tt25r            1/1     Running   1 (6m12s ago)   38h
+lab                             mockllm-5998f4bbfd-6wc6j                               1/1     Running   1 (6m12s ago)   17h
+lab                             orchestrator-5bc6ccd97b-5rz2t                          1/1     Running   1 (6m12s ago)   13h
+lab                             worker-7b4d5566bd-5d4hc                                1/1     Running   1 (6m12s ago)   14h
+local-path-storage              local-path-provisioner-75f7fc7dc5-pd8pb                1/1     Running   1 (6m12s ago)   2d19h
+opentelemetry-operator-system   opentelemetry-operator-6c54c8ddfb-l9n58                1/1     Running   1 (6m12s ago)   30h
+telemetry                       jaeger-d997cf5b-td5zv                                  1/1     Running   1 (6m12s ago)   30h
+telemetry                       otel-collector-5d798544f5-ffkgn                        1/1     Running   1 (6m12s ago)   22h
+telemetry                       prometheus-949757dd7-58bft                             1/1     Running   1 (6m12s ago)   30h
+
+-- Instrumentation resources in lab, before --
+NAME         AGE   ENDPOINT                                                 SAMPLER   SAMPLER ARG
+lab-python   30h   http://otel-collector.telemetry.svc.cluster.local:4318             
+
+-- CRDs matching opentelemetry.io, before --
+customresourcedefinition.apiextensions.k8s.io/instrumentations.opentelemetry.io
+customresourcedefinition.apiextensions.k8s.io/opampbridges.opentelemetry.io
+customresourcedefinition.apiextensions.k8s.io/opentelemetrycollectors.opentelemetry.io
+customresourcedefinition.apiextensions.k8s.io/targetallocators.opentelemetry.io
+
+-- helm releases, before --
+NAME                  	NAMESPACE                    	REVISION	UPDATED                              	STATUS  	CHART                         	APP VERSION
+agentgateway          	agentgateway-system          	1       	2026-09-08 22:50:09.255942 +0300 EEST	deployed	agentgateway-v1.5.0           	v1.5.0     
+agentgateway-crds     	agentgateway-system          	1       	2026-09-08 22:50:05.982795 +0300 EEST	deployed	agentgateway-crds-v1.5.0      	v1.5.0     
+opentelemetry-operator	opentelemetry-operator-system	3       	2026-09-09 22:37:03.593658 +0300 EEST	deployed	opentelemetry-operator-0.122.0	0.158.0    
+
+-- webhook configurations mentioning opentelemetry, before --
+mutatingwebhookconfiguration.admissionregistration.k8s.io/opentelemetry-operator-mutation
+validatingwebhookconfiguration.admissionregistration.k8s.io/opentelemetry-operator-validation
+
+== removal: not performed in this session ==
+2026-09-10: the three destructive commands the author ordered
+  helm uninstall opentelemetry-operator -n opentelemetry-operator-system
+  kubectl delete crd instrumentations.opentelemetry.io opampbridges.opentelemetry.io opentelemetrycollectors.opentelemetry.io targetallocators.opentelemetry.io
+  kubectl delete namespace opentelemetry-operator-system
+were refused by this environment's permission classifier and were escalated to a human.
+Everything above is the read-back taken before them, so the "before" picture survives.
+The live removal and the counted re-check of the trace-per-work-item shape land in a
+later commit; nothing in findings.md is written from this file.
