@@ -1,0 +1,23 @@
+== pre-run reads, 2026-09-10 ==
+2026-09-10T13:54:20Z
+The one-repetition dry run the global constraints require for a Python change.
+The image under test is the one rebuilt for UV_NO_DEFAULT_GROUPS and the
+IngressMiddleware mid-body-disconnect fix; before this run it had served zero
+ledgered requests (review I2).
+
+-- certificate check --
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           10a25afce69bd6b48f75e062a2586e48     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+
+-- replicas, read by hand: gate2-single-clean.sh asserts nothing (review M4, deferred) --
+NAME                         SPEC   READY
+agentgateway-waypoint        1      1
+agentgateway-waypoint-orch   1      1
+mockllm                      1      1
+orchestrator                 1      1
+worker                       1      1
+
+-- orchestrator pod and image under test --
+POD                             PHASE     IMAGEID
+orchestrator-6658ccdd88-xs8jh   Running   sha256:9293df0f5aa357d0f9a39530e0f26f1e3a4196ff59eca5fa97b3f93ebbdf2210

@@ -1,0 +1,21 @@
+== what this run proves about the changed IngressMiddleware ==
+2026-09-10T13:55:47Z
+
+1. No line in this run carries a truncated field. Both receivers served a complete
+   body, so the new flag stayed off, which is what a clean delivery must look like.
+   $ grep -rl truncated .
+   (no match)
+
+2. The orchestrator arrival line's shape is unchanged, key for key and in order,
+   against a committed Gate 3 Python line read from
+   experiments/runs/2026-09-09-a3-trace-per-work-item/a3t-163111-r1-orchestrator/ingress.jsonl :
+
+   committed Gate 3:
+     ["ledger","phase","ts_arrival","remote","method","id","messageId","taskId","logical_work_item_id","a2a_version","content_type","body_sha256","body_len","source"]
+   clean check:
+     ["ledger","phase","ts_arrival","remote","method","id","messageId","taskId","logical_work_item_id","a2a_version","content_type","body_sha256","body_len","source"]
+
+3. Counts, from summary.csv:
+     receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+     worker,g2c-165428-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+     orchestrator,g2c-165428-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED

@@ -129,3 +129,89 @@ def test_streaming_response_survives_replayed_receive():
     lines = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
     assert [l["phase"] for l in lines] == ["arrival", "response"]
     assert lines[1]["status"] == 200
+
+
+# A client that goes away mid-body is not a small request. An ASGI server answers
+# receive() with http.disconnect instead of the rest of the body, and the middleware
+# reads the body before the SDK does, so what it does with that message decides what
+# both the ledger and the SDK see. These two drive the middleware directly, because a
+# TestClient cannot cut a connection in the middle of a body.
+def _scripted(incoming):
+    """A receive that hands back `incoming` in order, a send that records, and a scope.
+
+    Once `incoming` runs out the receive reports a disconnect, which is what an ASGI
+    server does after the client is gone."""
+    got, sent = [], []
+
+    async def receive():
+        return incoming.pop(0) if incoming else {"type": "http.disconnect"}
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {
+        "type": "http", "method": "POST", "path": "/",
+        "headers": [(b"content-type", b"application/json")], "client": ("10.0.0.1", 1234),
+    }
+    return got, sent, receive, send, scope
+
+
+def test_receive_replay_passes_a_mid_body_disconnect_through():
+    out = io.StringIO()
+    first_half = GO_BODY[:40]
+    got, sent, receive, send, scope = _scripted([
+        {"type": "http.request", "body": first_half, "more_body": True},
+        {"type": "http.disconnect"},
+    ])
+
+    async def app(scope, receive, send):
+        got.append(await receive())
+        got.append(await receive())
+        got.append(await receive())  # after the disconnect, the disconnect again
+
+    asyncio.run(IngressMiddleware(app, out=out)(scope, receive, send))
+
+    # The application is handed the bytes that arrived, marked unfinished, and then
+    # the disconnect: never a truncated body presented as a complete one.
+    assert got[0] == {"type": "http.request", "body": first_half, "more_body": True}
+    assert got[1] == {"type": "http.disconnect"}
+    assert got[2] == {"type": "http.disconnect"}
+
+    # The delivery is still counted, and the line says the bytes are partial.
+    lines = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+    assert [l["phase"] for l in lines] == ["arrival", "response"]
+    assert lines[0]["truncated"] is True and lines[1]["truncated"] is True
+    assert lines[0]["body_len"] == len(first_half)
+    assert lines[0]["body_sha256"] == hashlib.sha256(first_half).hexdigest()
+    # The truncated JSON does not parse, so no identity is claimed from it.
+    assert lines[0]["method"] == "" and lines[0]["messageId"] == ""
+    assert sent == []
+    # Nothing was sent, so no http.response.start named a status: the response line
+    # carries 0. Pinned here so a counter reading these lines sees a shape that was
+    # asserted rather than one that happened.
+    assert lines[1]["status"] == 0
+
+
+def test_receive_replay_hands_a_complete_body_over_whole():
+    out = io.StringIO()
+    got, sent, receive, send, scope = _scripted([
+        {"type": "http.request", "body": GO_BODY[:40], "more_body": True},
+        {"type": "http.request", "body": GO_BODY[40:], "more_body": False},
+    ])
+
+    async def app(scope, receive, send):
+        got.append(await receive())
+        await send({"type": "http.response.start", "status": 201, "headers": []})
+        await send({"type": "http.response.body", "body": b"created"})
+
+    asyncio.run(IngressMiddleware(app, out=out)(scope, receive, send))
+
+    # Two chunks in, one complete body out; unchanged by the disconnect handling.
+    assert got == [{"type": "http.request", "body": GO_BODY, "more_body": False}]
+    lines = [json.loads(l) for l in out.getvalue().splitlines() if l.strip()]
+    assert [l["phase"] for l in lines] == ["arrival", "response"]
+    assert "truncated" not in lines[0] and "truncated" not in lines[1]
+    assert lines[0]["body_len"] == len(GO_BODY)
+    assert lines[0]["body_sha256"] == hashlib.sha256(GO_BODY).hexdigest()
+    assert lines[0]["messageId"] == "01a06f19-cf55-7daf-af2b-a251c81a0375"
+    assert lines[1]["status"] == 201

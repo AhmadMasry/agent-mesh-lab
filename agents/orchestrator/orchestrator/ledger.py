@@ -51,8 +51,14 @@ def _id_text(raw: Any) -> str:
     return str(raw)
 
 
-def parse_ingress(*, method: str, path: str, headers: dict[str, str], remote: str, body: bytes) -> dict[str, Any]:
-    """Build one ingress line. Tolerant: a body that does not parse still yields a line."""
+def parse_ingress(*, method: str, path: str, headers: dict[str, str], remote: str, body: bytes,
+                  truncated: bool = False) -> dict[str, Any]:
+    """Build one ingress line. Tolerant: a body that does not parse still yields a line.
+
+    truncated says the client went away before the body was complete, so body,
+    body_len and body_sha256 describe the bytes that arrived rather than the
+    bytes that were sent. The field is written only when it is true, the way
+    contextId and injection are, so a complete delivery's line is unchanged."""
     line: dict[str, Any] = {
         "ledger": "ingress",
         "phase": "arrival",
@@ -68,6 +74,8 @@ def parse_ingress(*, method: str, path: str, headers: dict[str, str], remote: st
         "body_sha256": hashlib.sha256(body).hexdigest(),
         "body_len": len(body),
     }
+    if truncated:
+        line["truncated"] = True
     env: Any = None
     if body:
         try:
@@ -109,6 +117,14 @@ class IngressMiddleware:
             await self.app(scope, receive, send)
             return
         chunks: list[bytes] = []
+        # Set when the client went away before the body was complete: an ASGI
+        # server answers receive() with http.disconnect instead of the rest of
+        # the body. What arrived is still a counted delivery, but it is not the
+        # request the client meant to send, so the message that ended it is kept
+        # rather than discarded, and both the ledger line and the application are
+        # told. Treating it as end-of-body would hand a truncated body to the
+        # application as a whole one and record its hash as if it were complete.
+        disconnect: dict[str, Any] | None = None
         while True:
             message = await receive()
             if message["type"] == "http.request":
@@ -116,12 +132,13 @@ class IngressMiddleware:
                 if not message.get("more_body", False):
                     break
             else:
+                disconnect = message
                 break
         body = b"".join(chunks)
         headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
         client = scope.get("client") or ("", 0)
         line = parse_ingress(method=scope.get("method", ""), path=scope.get("path", ""), headers=headers,
-                             remote=f"{client[0]}:{client[1]}", body=body)
+                             remote=f"{client[0]}:{client[1]}", body=body, truncated=disconnect is not None)
         self.writer.write(line)
 
         # The arrival is on the ledger before this point, so an injected failure
@@ -151,9 +168,19 @@ class IngressMiddleware:
             # after that is the real ASGI conversation: a streaming response
             # awaits receive() to watch for a client disconnect, and answering
             # that with a synthetic disconnect would cut the stream short.
+            #
+            # A body cut short is replayed as what it is. The bytes that arrived
+            # go over with more_body True, so the application knows the body is
+            # unfinished, and the message that ended the read follows, so the
+            # application sees the disconnect it would have seen without this
+            # middleware in the way. Every later call reports the disconnect
+            # again, the way an ASGI server does once the client is gone, rather
+            # than reaching for a receive that has nothing left to give.
             if not replayed["done"]:
                 replayed["done"] = True
-                return {"type": "http.request", "body": body, "more_body": False}
+                return {"type": "http.request", "body": body, "more_body": disconnect is not None}
+            if disconnect is not None:
+                return disconnect
             return await receive()
 
         async def send_capture(message):
@@ -164,6 +191,13 @@ class IngressMiddleware:
         try:
             await self.app(scope, receive_replay, send_capture)
         finally:
+            # status is 0 when no http.response.start was sent, which is what a
+            # truncated delivery's response line carries: the application raised on
+            # the disconnect before it could answer. It is 0 for any application
+            # exception raised that early, so it means "no status was sent" rather
+            # than "the client went away"; truncated on the same line is what says
+            # which. Counted alongside truncated: true in
+            # test_receive_replay_passes_a_mid_body_disconnect_through.
             response = dict(line)
             response["phase"] = "response"
             response["status"] = status["code"]
