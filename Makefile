@@ -380,7 +380,10 @@ retry-off:
 #                 The worker is addressed as worker.lab.internal (its step-2c
 #                 route); the orchestrator needs no Host, being the catch-all
 #                 route. With OUT, the two client lines are written to
-#                 <OUT>/client.jsonl, which is where `make ledgers OUT=<dir>`
+#                 <OUT>/client.jsonl, each labelled source=host the way the
+#                 ledgers target labels the lines it reads from a pod log, so
+#                 no client line in a run directory is without the field. That
+#                 is where `make ledgers OUT=<dir>`
 #                 then finds them (there is no Job to read logs from). Readiness
 #                 is probed by one GET / through the gateway, which the catch-all
 #                 receiver records as an ingress line carrying no work item; the
@@ -461,7 +464,16 @@ replay-ingress:
 	out=$$(TARGET_URL=http://127.0.0.1:$(REPLAY_INGRESS_PORT) LWI=$(LWI) MODE=$(MODE) HOST=$(REPLAY_INGRESS_HOST) TEXT=hello GAP_MS=$(REPLAY_GAP_MS) \
 		"$$tmpdir/replay") || rc=$$?; \
 	printf '%s\n' "$$out"; \
-	if [ -n "$(OUT)" ]; then mkdir -p "$(OUT)"; printf '%s\n' "$$out" > "$(OUT)/client.jsonl"; fi; \
+	if [ -n "$(OUT)" ]; then \
+		mkdir -p "$(OUT)"; \
+		labelled=$$(printf '%s\n' "$$out" | jq -R -c 'fromjson? | . + {source: "host"}') || \
+			{ echo "replay: jq could not label the client lines with source=host" >&2; exit 1; }; \
+		if [ "$$(printf '%s\n' "$$out" | grep -c .)" != "$$(printf '%s\n' "$$labelled" | grep -c .)" ]; then \
+			echo "replay: the harness printed a line that is not JSON; it would be dropped by the labelling, so nothing was written to $(OUT)/client.jsonl" >&2; \
+			exit 1; \
+		fi; \
+		printf '%s\n' "$$labelled" > "$(OUT)/client.jsonl"; \
+	fi; \
 	exit $$rc
 
 # matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress>] [REPS=20]

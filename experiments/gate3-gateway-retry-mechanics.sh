@@ -599,6 +599,11 @@ line = {
     "taskId": "",
     "state": "",
     "error": "",
+    # `make ledgers` labels every line it collects from a pod log with its source
+    # (loadgen, replay, worker, orchestrator, mockllm). This line is written on this
+    # host, where there is no pod log to collect, so it carries the same field with
+    # the value "host"; no line in a run directory is then without one.
+    "source": "host",
 }
 try:
     resp = json.load(open(resp_path))
