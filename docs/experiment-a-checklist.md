@@ -53,7 +53,7 @@ Prerequisite: A.1 and A.2 results exist, so every matrix row can be interpreted.
 - [x] R3 (model-client retry only) — both receivers
 - [x] R4 (composed) — both receivers
 - [x] Each row classified: safe / inefficient / potentially dangerous, with the one-line reason.
-- [ ] Traces attached to each row attributing every second delivery to a layer. Where a trace could not attribute it, say so; the ledgers still count.
+- [x] Traces attached to each row attributing every second delivery to a layer. Where a trace could not attribute it, say so; the ledgers still count.
 
 ## Recording rules
 
