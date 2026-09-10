@@ -113,6 +113,13 @@ Gate 2 A.2. That image is also where the agent's telemetry comes from: it
 carries the OpenTelemetry distro as a dependency and its Procfile starts the
 process under `opentelemetry-instrument`, so nothing has to be injected into
 the pod and `make step-3` installs no Operator to inject it.
+**The builder that image is built with publishes no arm64 image**: read on
+2026-09-10, `paketobuildpacks/builder-jammy-base` has no manifest list at any
+tag and all 697 of its tags are `linux/amd64`, so on an arm64 host the
+orchestrator image is built for amd64 and runs under emulation, and no digest
+could make it follow the host with this builder (`versions.yaml` key
+`pack-builder`; the candidates surveyed are in
+`experiments/runs/2026-09-10-pack-multiarch/builder-survey.txt`).
 
 To bring up Gate 1's step-1 (no mesh) baseline and step-2 (Istio Ambient with
 the agentgateway waypoint) baseline:

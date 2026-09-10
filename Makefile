@@ -9,6 +9,10 @@ ORCHESTRATOR_IMAGE := orchestrator:dev
 # Pinned by digest; matches the digest recorded in the wire-version findings entry
 # and confirmed against the local image with:
 #   docker image inspect paketobuildpacks/builder-jammy-base --format '{{index .RepoDigests 0}}'
+# This digest is tag 0.4.635 and is a single linux/amd64 manifest: the builder
+# publishes no manifest list and no arm64 image at any tag, so there is no
+# multi-arch digest to pin here and the image runs under emulation on an arm64
+# host. Read 2026-09-10; the record is versions.yaml key pack-builder.
 PACK_BUILDER := paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf
 
 # GO_SOURCES_HASH: a content hash of the tracked Go sources the worker and mock

@@ -1,0 +1,82 @@
+Builder survey — read only, 2026-09-10
+=======================================
+
+A read of published image metadata, not a run: no image was pulled for use, no build was
+made, and nothing on the cluster was touched. Recorded so the author can decide whether to
+change builders; changing the builder is not part of this task.
+
+Commands: `docker buildx imagetools inspect <ref>`, `docker manifest inspect --verbose
+<ref>`, and the Docker Hub repository endpoint
+`https://hub.docker.com/v2/repositories/paketobuildpacks/<repo>/`.
+
+
+1. The pinned builder — paketobuildpacks/builder-jammy-base
+-----------------------------------------------------------
+Pinned in the Makefile as PACK_BUILDER
+  sha256:029a4f6bf32aec6fe05fd576cbf2ba3e793761690ce2b0aff6f95940bf78cabf   = tag 0.4.635, pushed 2026-09-04
+
+  media type : application/vnd.docker.distribution.manifest.v2+json   (a single manifest, not an index)
+  platforms  : linux/amd64 only
+  latest     : tag 0.4.637, sha256:0949f2a98c854be19fef11ed8773931a999f0f1af9e36f5803ae0fda3dab51d4,
+               pushed 2026-09-09, also a single amd64 manifest
+
+Asked at the registry with `Accept: application/vnd.oci.image.index.v1+json,
+application/vnd.docker.distribution.manifest.list.v2+json` plus both manifest types, the
+tags `latest`, `0.4.637` and `0.4.635` each answer HTTP 200 with
+`content-type: application/vnd.docker.distribution.manifest.v2+json` and no `manifests`
+array. No index exists to pin.
+
+All 697 tags of the repository, read over 7 pages of the Docker Hub tags API on
+2026-09-10: the only platform that appears is ('linux', 'amd64', None), on 697 tag images.
+No arm64, no arm/v7, no index, anywhere in the repository.
+
+
+2. The two candidates named in the instruction do not exist
+------------------------------------------------------------
+  https://hub.docker.com/v2/repositories/paketobuildpacks/builder-noble-base/   -> HTTP 404
+  https://hub.docker.com/v2/repositories/paketobuildpacks/builder-noble-full/   -> HTTP 404
+
+A Docker Hub search of the paketobuildpacks namespace returns exactly one noble builder,
+`builder-noble-java-tiny`, and no noble base or full builder.
+
+
+3. paketobuildpacks/builder-noble-java-tiny:latest — MULTI-ARCH, but Java only
+------------------------------------------------------------------------------
+  media type : application/vnd.oci.image.index.v1+json
+  index      : sha256:24cb0c7b8b47d28dfc4541decb37bd5e30d0c05aa744aa289a0cef8e2a1a36d8
+  platforms  : linux/amd64  sha256:fc6a01959dc479fef5aa68506d221157bff7e6f1dc328989e94cc65c4be14d6f
+               linux/arm64  sha256:04d6ed0b1c071828274b5139391ba0e679cf82c3c1d471da8d37b7d546bc1309
+
+The only paketobuildpacks builder read here that publishes an index with arm64. Its name
+says java-tiny; whether it carries the Python and uv buildpacks this project needs was not
+checked, because a tiny Java builder is not a candidate for a Python agent on its face.
+
+
+4. paketobuildpacks/builder-ubi8-base:latest — single platform
+---------------------------------------------------------------
+  media type : application/vnd.docker.distribution.manifest.v2+json
+  digest     : sha256:49fbcc3c629b442ca152531687f64293900bb738ac7aa6ae2c3aeb1804f5bef4
+  platform   : linux/amd64
+
+Same shape as the pinned jammy builder: one manifest, amd64, no index.
+
+
+5. heroku/builder:24 — MULTI-ARCH
+-----------------------------------
+  media type : application/vnd.docker.distribution.manifest.list.v2+json
+  list       : sha256:a1ed128e5ad996479093c52a878bf3af397cd541d0d14dae2afc2baf89aca880
+  platforms  : linux/amd64  sha256:50ff321c2f7a6c057eb01c287e0e649fbee618bdce2bb5b6d5752a18d566ea52
+               linux/arm64  sha256:b0ba9e7bff3222432418b2ca1e6796880060923907a8f2e4054a9dac43e68f75
+
+A manifest list carrying both platforms. Whether its buildpack set builds this project the
+way the Paketo one does — pyproject.toml plus uv.lock plus a Procfile, and the launcher the
+Procfile names — was not tested here.
+
+
+What this says
+--------------
+Under the pinned builder there is no digest that could make the orchestrator image follow
+an arm64 host, because the builder publishes no arm64 image at any tag. The image is built
+for amd64 and runs under emulation on this host. Two builders read here do publish arm64
+indexes, `paketobuildpacks/builder-noble-java-tiny` and `heroku/builder:24`; neither was
+tested against this project, and choosing one is the author's decision.
