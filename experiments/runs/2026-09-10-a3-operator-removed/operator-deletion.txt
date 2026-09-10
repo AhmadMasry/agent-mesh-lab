@@ -1,0 +1,52 @@
+== Operator deletion, run by the controller on the author's direct approval ==
+2026-09-10T16:16:44Z
+-- before --
+NAME                  	NAMESPACE                    	REVISION	UPDATED                              	STATUS  	CHART                         	APP VERSION
+agentgateway          	agentgateway-system          	1       	2026-09-08 22:50:09.255942 +0300 EEST	deployed	agentgateway-v1.5.0           	v1.5.0     
+agentgateway-crds     	agentgateway-system          	1       	2026-09-08 22:50:05.982795 +0300 EEST	deployed	agentgateway-crds-v1.5.0      	v1.5.0     
+opentelemetry-operator	opentelemetry-operator-system	3       	2026-09-09 22:37:03.593658 +0300 EEST	deployed	opentelemetry-operator-0.122.0	0.158.0    
+customresourcedefinition.apiextensions.k8s.io/instrumentations.opentelemetry.io
+customresourcedefinition.apiextensions.k8s.io/opampbridges.opentelemetry.io
+customresourcedefinition.apiextensions.k8s.io/opentelemetrycollectors.opentelemetry.io
+customresourcedefinition.apiextensions.k8s.io/targetallocators.opentelemetry.io
+namespace/opentelemetry-operator-system
+NAME         AGE   ENDPOINT                                                 SAMPLER   SAMPLER ARG
+lab-python   33h   http://otel-collector.telemetry.svc.cluster.local:4318             
+-- helm uninstall --
+release "opentelemetry-operator" uninstalled
+-- crds --
+2026-09-10T16:16:53Z
+Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "instrumentations.opentelemetry.io" not found
+Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "opampbridges.opentelemetry.io" not found
+Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "opentelemetrycollectors.opentelemetry.io" not found
+Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "targetallocators.opentelemetry.io" not found
+-- namespace --
+namespace "opentelemetry-operator-system" deleted
+2026-09-10T16:16:58Z
+-- after --
+2026-09-10T16:17:11Z
+webhooks (expect nothing):
+(end webhooks, grep exit 1)
+crds (expect nothing):
+(end crds, grep exit 1)
+namespace:
+Error from server (NotFound): namespaces "opentelemetry-operator-system" not found
+instrumentation api:
+Error from server (NotFound): Unable to list "opentelemetry.io/v1alpha1, Resource=instrumentations": the server could not find the requested resource (get instrumentations.opentelemetry.io)
+helm:
+NAME             	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART                   	APP VERSION
+agentgateway     	agentgateway-system	1       	2026-09-08 22:50:09.255942 +0300 EEST	deployed	agentgateway-v1.5.0     	v1.5.0     
+agentgateway-crds	agentgateway-system	1       	2026-09-08 22:50:05.982795 +0300 EEST	deployed	agentgateway-crds-v1.5.0	v1.5.0     
+telemetry pods:
+POD                               PHASE     STARTED                RESTARTS
+jaeger-d997cf5b-td5zv             Running   2026-09-09T06:51:14Z   1
+otel-collector-5d798544f5-ffkgn   Running   2026-09-09T14:27:15Z   1
+prometheus-949757dd7-58bft        Running   2026-09-09T06:51:14Z   1
+lab pods:
+agentgateway-waypoint-6dd7855fcd-t7dtd 1/1 Running
+agentgateway-waypoint-orch-59fb497555-tt25r 1/1 Running
+loadgen-g2c-165428-orchestrator-gtnp7 0/1 Completed
+loadgen-g2c-165428-worker-cm6xf 0/1 Completed
+mockllm-5998f4bbfd-6wc6j 1/1 Running
+orchestrator-6658ccdd88-xs8jh 1/1 Running
+worker-7b4d5566bd-5d4hc 1/1 Running

@@ -70,3 +70,15 @@ were refused by this environment's permission classifier and were escalated to a
 Everything above is the read-back taken before them, so the "before" picture survives.
 The live removal and the counted re-check of the trace-per-work-item shape land in a
 later commit; nothing in findings.md is written from this file.
+
+== removal: performed 2026-09-10T16:16Z by the author's approval, see operator-deletion.txt ==
+The three commands above were run by the controller between 16:16:44Z and 16:17:11Z after
+the author approved them. `helm uninstall` removed the release and took all four
+opentelemetry.io CRDs with it, the chart owning them, so the explicit `kubectl delete crd`
+for the four answered NotFound and the lab-python Instrumentation went with the API rather
+than being deleted on its own. The namespace was deleted explicitly. After: no
+opentelemetry mutating or validating webhook configuration, no opentelemetry.io CRD, the
+namespace NotFound, and `helm list -A` showing only the two agentgateway releases. The
+three telemetry pods were untouched, same names and start times as the read-back above.
+The transcript is operator-deletion.txt in this directory; the section above it stands as
+what was true before, and is not rewritten.

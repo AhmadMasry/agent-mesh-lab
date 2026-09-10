@@ -1,0 +1,20 @@
+== cluster read during the run, 2026-09-10 ==
+2026-09-10T16:22:02Z
+The Operator was deleted at 16:16Z (operator-deletion.txt); this run started 16:19:07Z.
+Read after the run, to show the state the repetitions were measured against:
+
+-- opentelemetry.io CRDs (expect none) --
+(none)
+-- opentelemetry webhook configurations (expect none) --
+(none)
+-- namespace opentelemetry-operator-system (expect NotFound) --
+Error from server (NotFound): namespaces "opentelemetry-operator-system" not found
+-- helm releases --
+NAME             	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART                   	APP VERSION
+agentgateway     	agentgateway-system	1       	2026-09-08 22:50:09.255942 +0300 EEST	deployed	agentgateway-v1.5.0     	v1.5.0     
+agentgateway-crds	agentgateway-system	1       	2026-09-08 22:50:05.982795 +0300 EEST	deployed	agentgateway-crds-v1.5.0	v1.5.0     
+-- telemetry pods (expect the same three, untouched) --
+POD                               READY   RESTARTS   START
+jaeger-d997cf5b-td5zv             true    1          2026-09-09T06:51:14Z
+otel-collector-5d798544f5-ffkgn   true    1          2026-09-09T14:27:15Z
+prometheus-949757dd7-58bft        true    1          2026-09-09T06:51:14Z

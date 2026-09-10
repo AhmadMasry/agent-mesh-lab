@@ -311,7 +311,8 @@ OpenTelemetry distro as a dependency and starts under `opentelemetry-instrument`
 named in its Procfile, configured only by the environment the step-3 overlay
 sets. `make step-3` installs no Operator and the step-3 overlay holds no
 `Instrumentation` resource; that route was measured in four states, not kept,
-and removed from step 3 on 2026-09-10, and `findings.md` carries the counts. The ingress and the
+and removed from step 3 on 2026-09-10 and from the cluster the same day, and
+`findings.md` carries the counts. The ingress and the
 egress proxies export because one `AgentgatewayPolicy` each says so; the
 istiod-driven waypoints export nothing, and appear in a trace only as a parent
 span id that no exported span carries. Because an A2A request keeps the work item
