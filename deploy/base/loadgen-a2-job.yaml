@@ -47,8 +47,10 @@ spec:
               value: "hello"
             # Tracing. The load client emits spans only when it is told where to
             # send them, so these two are what start a work item's trace at the
-            # client; a run of an earlier gate's script without them is unchanged
-            # in every other respect.
+            # client. The endpoint is set unconditionally: on a cluster without the
+            # telemetry namespace (steps 1, 2, 2b, 2c) the client's exporter has
+            # nowhere to flush and its exit waits on the provider shutdown for up to
+            # 30 s (fixtures/loadgen/main.go); the ledgers and counts are unaffected.
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector.telemetry.svc.cluster.local:4318"
             - name: OTEL_SERVICE_NAME

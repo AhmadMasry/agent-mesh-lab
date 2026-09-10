@@ -84,7 +84,11 @@ even on an unchanged checkout. This is metadata, not a binding to the image
 itself, so it has one accepted gap: `kubectl rollout undo`, `kubectl set
 image`, or a hand-run `ko apply` all change the running binary without
 touching the annotation, and the guard would then pass a Deployment whose
-sources have not changed but whose image has. That trade is deliberate:
+sources have not changed but whose image has. A second gap of the same
+family: the stamp hashes the index (`git ls-files -s`) while `ko` builds the
+working tree, so the five step targets refuse to run while the hashed Go
+paths carry uncommitted changes (`check-go-sources-clean`), the same refusal
+the harness applies before a row. That trade is deliberate:
 ReplicaSet pruning (the flaw the previous version of this guard had) was
 automatic and silent, where each of these is a deliberate operator action,
 and only a step target ever changes either Deployment's image in this lab.
@@ -238,7 +242,9 @@ by running the scripts above.
 Step 3 adds the pipeline the Gate 3 traces travel through. It applies on top of
 step 2c and adds only new objects: a `telemetry` namespace holding an
 OpenTelemetry Collector, a Jaeger v2 trace backend and Prometheus, plus one
-`Instrumentation` resource in `lab` for the OpenTelemetry Operator to read later.
+`Instrumentation` resource in `lab`, kept as the record of the Operator
+injection route that was measured and not kept (the Python agent starts under
+the distro launcher instead; see below).
 The Operator itself is installed from its Helm chart by the target, the way
 step 2b installs agentgateway's control plane, with the chart version pinned in
 the Makefile as `OTEL_OPERATOR_CHART_VERSION`.

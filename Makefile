@@ -21,6 +21,18 @@ PACK_BUILDER := paketobuildpacks/builder-jammy-base@sha256:029a4f6bf32aec6fe05fd
 # image was built from this source" without rebuilding anything itself; see
 # experiments/gate3-matrix.sh's image_fresh_or_die().
 GO_SOURCES_HASH := $(shell git ls-files -s -- agents/worker fixtures/mockllm internal go.mod go.sum ':!**/*_test.go' | git hash-object --stdin)
+# The stamp hashes the index while ko builds the working tree, so a step target
+# refuses to run while the hashed Go paths carry uncommitted changes; the
+# harness applies the same refusal before a row (experiments/gate3-matrix.sh).
+GO_SOURCES_DIRTY := $(shell git status --porcelain -- agents/worker fixtures/mockllm internal go.mod go.sum ':!**/*_test.go')
+
+.PHONY: check-go-sources-clean
+check-go-sources-clean:
+	@if [ -n "$(GO_SOURCES_DIRTY)" ]; then \
+		echo "uncommitted changes under the Go paths the image stamp hashes; commit or stash them before a step target runs ko apply:" >&2; \
+		printf '%s\n' "$(GO_SOURCES_DIRTY)" >&2; \
+		exit 1; \
+	fi
 
 .PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers matrix replay replay-waypoint replay-ingress export-trace retry-on retry-off test orchestrator-image
 
@@ -41,7 +53,7 @@ orchestrator-image:
 	pack build $(ORCHESTRATOR_IMAGE) --builder $(PACK_BUILDER) --path agents/orchestrator --pull-policy if-not-present
 	kind load docker-image $(ORCHESTRATOR_IMAGE) --name $(CLUSTER_NAME)
 
-step-1: orchestrator-image
+step-1: check-go-sources-clean orchestrator-image
 	kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
 	# The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
 	kubectl -n $(NAMESPACE) rollout restart deployment/orchestrator
@@ -59,7 +71,7 @@ step-1: orchestrator-image
 # image; ko builds the Go images inline, so orchestrator-image is the only
 # prerequisite that makes step-2 runnable on a cluster that never ran step-1.
 GATEWAY_API_VERSION := v1.6.2
-step-2: orchestrator-image
+step-2: check-go-sources-clean orchestrator-image
 	# Applied unconditionally: a present CRD does not tell us the channel it came
 	# from, and the experimental channel is what carries HTTPRoute.Retry.
 	kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/experimental-install.yaml
@@ -90,7 +102,7 @@ step-2: orchestrator-image
 # step-2, whose orchestrator Deployment needs the buildpacks image, so
 # orchestrator-image is a prerequisite here for the same reason it is on step-2.
 AGENTGATEWAY_CHART_VERSION := v1.5.0
-step-2b: orchestrator-image
+step-2b: check-go-sources-clean orchestrator-image
 	helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
 		--create-namespace --namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION)
 	helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
@@ -121,7 +133,7 @@ step-2b: orchestrator-image
 # other setup target stay out of a measurement in progress. Unlike step-1, step-2 and
 # step-2b this does not depend on orchestrator-image: the Python image is
 # already in the cluster and this overlay does not change its Deployment.
-step-2c:
+step-2c: check-go-sources-clean
 	kubectl kustomize deploy/step-2c-gate2 | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
 	# Programmed says istiod accepted the Gateway and provisioned for it; the
 	# rollout wait after it says the proxy pod is ready to carry traffic.
@@ -163,7 +175,7 @@ step-2c:
 OTEL_OPERATOR_CHART_VERSION := 0.122.0
 OTEL_OPERATOR_NS            := opentelemetry-operator-system
 TELEMETRY_NS                := telemetry
-step-3:
+step-3: check-go-sources-clean
 	@set -e; \
 	echo "== certificate check =="; \
 	certs=$$(istioctl ztunnel-config certificates --node $(CLUSTER_NAME)-worker); \
@@ -556,9 +568,10 @@ test:
 		exit 1; \
 	fi
 	@# The layer derivation the matrix harness labels every second delivery with,
-	@# run against committed fixtures. Four are real repetitions copied from
-	@# experiments/runs/ (Task 2's three gateway retry probes and one Task 3
-	@# baseline work item); the rest are synthetic, because a derivation with a
+	@# run against committed fixtures. Six are real repetitions copied from
+	@# experiments/runs/ (Task 2's three gateway retry probes, one Task 3 baseline
+	@# work item per receiver, and one Task 4 R1 py/http work item); the rest are
+	@# synthetic, because a derivation with a
 	@# label no test can reach is a derivation nobody has read. The expected
 	@# labels are in experiments/fixtures/derive-layer/expected.txt.
 	@fail=0; \
