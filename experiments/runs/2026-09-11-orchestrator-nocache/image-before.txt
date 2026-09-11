@@ -1,0 +1,33 @@
+image-before.txt -- the orchestrator:dev image as the Docker daemon holds it immediately
+before the --no-cache build of branch followups-5 replaces the tag. Built by
+agents/orchestrator/Dockerfile at main 8d915b9 with `docker build --pull` over a warm cache;
+its record is experiments/runs/2026-09-10-orchestrator-al2023/image-after.txt.
+Taken 2026-09-11T13:09:28Z on <host>.
+
+$ docker image inspect --format "{{.Id}}" orchestrator:dev
+sha256:e67c133fb7d68997cb35f39679abbb17e96ca9272e69a9be993ef481fdd1e4a8
+
+$ docker image inspect --format "{{.Created}}" orchestrator:dev
+2026-09-10T21:30:11.763406585Z
+
+$ docker image inspect --format "{{.Size}}" orchestrator:dev
+52750200
+
+$ docker image inspect --format "{{.Architecture}}/{{.Os}}" orchestrator:dev
+arm64/linux
+
+$ docker image inspect --format "{{.Config.User}}" orchestrator:dev
+65532:65532
+
+$ docker image inspect --format "{{json .Config.Entrypoint}} {{json .Config.Cmd}}" orchestrator:dev
+null ["opentelemetry-instrument","python","-m","orchestrator.server"]
+
+$ docker image inspect --format "{{len .RootFS.Layers}}" orchestrator:dev
+5
+
+$ docker image inspect --format "{{json .RootFS.Layers}}" orchestrator:dev
+["sha256:19385eda0ad1c3348c5548b875e1a86efb8b25802e1fedf51c22a6829b6635e2","sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef","sha256:4dcaac6fcffde2c5e20ae0eb6a7b22b868d001d0f04ef9d0648081efe50fef6e","sha256:3477398e541e6413289c30a679694342c79934da56e7df8edce15d98bcc952b0","sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"]
+
+$ CID=$(docker create orchestrator:dev) && docker export "$CID" | wc -c && docker rm "$CID"
+ 186577920
+(container removed)

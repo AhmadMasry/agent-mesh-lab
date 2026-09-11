@@ -1,0 +1,36 @@
+smoke.txt -- the orchestrator:dev of build.txt started on this host, read-only and as uid 65532,
+and asked once for its Agent Card. The env is the one deploy/base applies, with the three OTEL
+exporters set to none: no collector on this host, and this file is about the agent starting and
+serving, not about telemetry.
+Taken 2026-09-11T13:29:07Z. Image index sha256:d746a0d4279f771d4505706e0914d05af701e6023ad1c144180f6a26070e1937.
+
+$ docker run -d --name nocache-smoke --read-only --user 65532:65532 -p 18085:8080 \
+    -e AGENT_NAME=orchestrator -e PORT=8080 -e PUBLIC_URL=http://127.0.0.1:8080 \
+    -e MODEL_BASE_URL=http://127.0.0.1:9/v1 -e MODEL_NAME=mock -e MODEL_API_KEY=unused \
+    -e MODEL_MAX_RETRIES=0 -e PLAN_MODEL_CALL=off \
+    -e OTEL_SERVICE_NAME=orchestrator -e OTEL_TRACES_EXPORTER=none \
+    -e OTEL_METRICS_EXPORTER=none -e OTEL_LOGS_EXPORTER=none orchestrator:dev
+452a1df74f3152ff410f1d7d94c70f1e9774eecee0850fda06f7c35b5506479e
+
+Readiness wait on the host, in python3 so nothing here is a retrying HTTP client: it polls
+/healthz once a second until the first 200 and then stops. The counted request is made once.
+  /healthz answered 200 on poll 2, 1.0 s after the first poll
+
+$ GET http://127.0.0.1:18085/.well-known/agent-card.json   (one request)
+  HTTP 200
+  body: {"name":"orchestrator","description":"agent-mesh-lab agent: one model call per message","supportedInterfaces":[{"url":"http://127.0.0.1:8080","protocolBinding":"JSONRPC","protocolVersion":"1.0"}],"version":"0.0.0","capabilities":{"streaming":false},"defaultInputModes":["text/plain"],"defaultOutputModes":["text/plain"],"skills":[{"id":"answer","name":"answer","description":"returns the model's answer to the message text","tags":["lab"]}]}
+
+  card.name                                   = 'orchestrator'
+  card.supportedInterfaces[0].protocolBinding = 'JSONRPC'
+  card.supportedInterfaces[0].protocolVersion = '1.0'
+  card.skills[0].id                           = 'answer'
+
+$ docker logs nocache-smoke
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-11T13:29:08.533280Z","remote":"192.168.65.1:33082","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-11T13:29:08.533280Z","remote":"192.168.65.1:33082","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0,"status":200}
+--- end of logs ---
+
+ingress ledger lines in the log: 2
+
+$ docker rm -f nocache-smoke
+nocache-smoke

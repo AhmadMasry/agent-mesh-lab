@@ -94,11 +94,19 @@
 # latest version of the AL2023 container image, use the `:2023` tag"
 # (https://docs.aws.amazon.com/linux/al2023/ug/base-container.html, read 2026-09-10) --
 # so the lab takes the current AL2023 release at every build. What replaces a digest pin
-# is a record: the Makefile passes `docker build --pull` so both tags re-resolve, the
-# builder prints `uv --version`, the rootfs stage prints the release it pinned itself to
-# and the whole package list, and each run record under experiments/runs/ keeps the
-# digests and versions that build actually produced. versions.yaml holds the tags as the
-# pins, with the decision dated and the observed values beside them.
+# is a record: the Makefile passes `docker build --pull --no-cache` -- `--pull` so both
+# tags re-resolve, `--no-cache` so the dnf RUNs re-run against the repositories -- the builder
+# prints `uv --version`, the rootfs stage prints the release it pinned itself to and the
+# whole package list, and each run record under experiments/runs/ keeps the digests and
+# versions that build actually produced. versions.yaml holds the tags as the pins, with
+# the decision dated and the observed values beside them.
+#
+# `--no-cache` is for the dnf RUNs, not for uv (2026-09-11, measured in
+# experiments/runs/2026-09-11-orchestrator-nocache/cache-measurement.txt). The resolved uv
+# digest is part of the `COPY --from` step's cache key, so a moved uv tag is a cache miss
+# with `--pull` alone. A RUN's cache key holds no repository state, so while the base
+# digest stands still the rootfs stage's `dnf ... install ... upgrade` is a cache hit and
+# a package update published between base-image digests does not reach a cached build.
 #
 # The tag lives in exactly one place, this ARG, so the two Amazon Linux stages cannot
 # drift apart. Dockerfile.reference wrote it out literally in both `FROM` lines; this is
@@ -106,7 +114,7 @@
 # message and in report.md rather than left to be discovered. Being an ARG, it is
 # overridable with `--build-arg`, which would move the base without changing a tracked
 # file; nothing does. `make orchestrator-image` passes no `--build-arg`
-# (`docker build --pull --platform linux/$(go env GOARCH) -t orchestrator:dev -f ...`),
+# (`docker build --pull --no-cache --platform linux/$(go env GOARCH) -t orchestrator:dev -f ...`),
 # so in every build this repository performs it is a constant, and the build log records
 # the digest that actually resolved either way.
 ARG AL2023_BASE=public.ecr.aws/amazonlinux/amazonlinux:2023
@@ -142,8 +150,10 @@ RUN python3.14 -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.versi
 
 WORKDIR /app
 
-# Dependencies first, from the lockfile alone, so a change to the agent's own sources
-# does not re-resolve or re-download anything. --locked asserts the lockfile is current
+# Dependencies first, from the lockfile alone, so that in a build that uses the layer
+# cache a change to the agent's own sources does not re-resolve or re-download anything.
+# `make orchestrator-image` builds without the layer cache (see the header), so there
+# this layer re-runs at every build. --locked asserts the lockfile is current
 # and fails rather than rewriting it. --no-dev leaves out the `dev` group (pytest,
 # pytest-asyncio), which the tests use and the agent does not. uv.lock and pyproject.toml
 # are bind-mounted rather than copied, so neither becomes a layer of this stage.

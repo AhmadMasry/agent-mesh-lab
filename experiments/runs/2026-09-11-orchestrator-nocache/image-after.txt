@@ -1,0 +1,66 @@
+image-after.txt -- orchestrator:dev as built by the `make orchestrator-image` in build.txt: the first
+build without the layer cache. Same commands, same order, as image-before.txt, plus the venv's
+pyvenv.cfg and docker history.
+Taken 2026-09-11T13:28:32Z on <host>.
+
+Bases this build resolved (build.txt, --progress=plain):
+  #5 resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438 done
+  #6 resolve ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6 done
+Digests this build exported (build.txt #22):
+  #22 exporting manifest sha256:629305a5c3813d266b4ca5398ce17536b1260ceeda9591246f9f3fac0151d12a done
+  #22 exporting config sha256:48eb22bd59febec63c8fa0b3a463abb69842bffa3e34ad618e6a84f1d08abd79 done
+  #22 exporting attestation manifest sha256:8c22aed1ed0e60bd0b158f1d1ae9dfcadae167cb99ee23c9af145b4a4afa6c4f done
+  #22 exporting manifest list sha256:d746a0d4279f771d4505706e0914d05af701e6023ad1c144180f6a26070e1937 done
+
+$ docker image inspect --format "{{.Id}}" orchestrator:dev
+sha256:d746a0d4279f771d4505706e0914d05af701e6023ad1c144180f6a26070e1937
+
+$ docker image inspect --format "{{.Created}}" orchestrator:dev
+2026-09-11T13:27:07.682029334Z
+
+$ docker image inspect --format "{{.Size}}" orchestrator:dev
+52746694
+
+$ docker image inspect --format "{{.Architecture}}/{{.Os}}" orchestrator:dev
+arm64/linux
+
+$ docker image inspect --format "{{.Config.User}}" orchestrator:dev
+65532:65532
+
+$ docker image inspect --format "{{json .Config.Entrypoint}} {{json .Config.Cmd}}" orchestrator:dev
+null ["opentelemetry-instrument","python","-m","orchestrator.server"]
+
+$ docker image inspect --format "{{json .Config.Env}}" orchestrator:dev
+["PATH=/app/.venv/bin:/usr/bin","PYTHONDONTWRITEBYTECODE=1","PYTHONUNBUFFERED=1"]
+
+$ docker image inspect --format "{{len .RootFS.Layers}}" orchestrator:dev
+5
+
+$ CID=$(docker create orchestrator:dev) && docker export "$CID" | wc -c && docker rm "$CID"
+ 186577920
+(container removed)
+
+$ docker image inspect --format "{{json .RootFS.Layers}}" orchestrator:dev
+["sha256:578f3b839abb2a75b9f53d3a1ef177764165d8c72cfab82d88b5cf34274921b0","sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef","sha256:86b8db5299e59e2f9ddd39bcd22b9884837fb5dc24e88103d9350c1616a1ca28","sha256:5a31b935c2f7dddd850f7701d1e5e972e0890cb277b7280ea88b4d4d583a980e","sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"]
+
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c "print(open('/app/.venv/pyvenv.cfg').read())"
+home = /usr/bin
+implementation = CPython
+uv = 0.12.13
+version_info = 3.14.7
+include-system-site-packages = false
+prompt = orchestrator
+
+  exit=0
+
+$ docker history --no-trunc orchestrator:dev
+IMAGE                                                                     CREATED              CREATED BY                                                                                              SIZE      COMMENT
+sha256:d746a0d4279f771d4505706e0914d05af701e6023ad1c144180f6a26070e1937   About a minute ago   CMD ["opentelemetry-instrument" "python" "-m" "orchestrator.server"]                                    0B        buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   EXPOSE [8080/tcp]                                                                                       0B        buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   USER 65532:65532                                                                                        0B        buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   WORKDIR /app                                                                                            4.1kB     buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   ENV PATH=/app/.venv/bin:/usr/bin PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1                           0B        buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   COPY orchestrator /app/orchestrator # buildkit                                                          61.4kB    buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   COPY /app/.venv /app/.venv # buildkit                                                                   89.7MB    buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   RUN /usr/bin/python3.14 -c import sys; assert sys.version_info[:2] == (3, 14), sys.version # buildkit   4.1kB     buildkit.dockerfile.v0
+<missing>                                                                 About a minute ago   COPY /rootfs / # buildkit                                                                               118MB     buildkit.dockerfile.v0

@@ -173,7 +173,19 @@ advice to pin a digest: the lab wants the latest patched base and the latest uv 
 every build, and AWS documents `:2023` as exactly that tag — "To get the latest
 version of the AL2023 container image, use the `:2023` tag". What replaces the pin
 is a record rather than nothing. `make orchestrator-image` passes
-`docker build --pull` so both tags re-resolve at every build, the builder stage
+`docker build --pull --no-cache`. `--pull` re-resolves both tags at every build,
+and a moved uv tag reaches the image on that alone: the resolved digest is part
+of the `COPY --from` step's cache key, so a new digest is a cache miss on that
+step. `--no-cache` (the author's decision of 2026-09-11) is for the two `dnf`
+RUNs, whose cache key is their parent layer and command text and holds no
+repository state: over a warm cache, a package update published between
+base-image digests reached the image only on a cache miss
+(`experiments/runs/2026-09-11-orchestrator-nocache/cache-measurement.txt`).
+Building without the layer cache costs time: the first such
+`make orchestrator-image` took **37 s** on this host, 35 s of `docker build` and
+2 s of `kind load` onto both nodes, where the cached build that
+`experiments/runs/2026-09-10-orchestrator-al2023/build.txt` records took 2.4 s
+by Docker's build history (record `bagnfgltz9w7b7zz0o86vc7tn`). The builder stage
 runs `uv --version`, the rootfs stage prints the release it pinned itself to and
 the whole `rpm -qa` list into the build log (`--progress=plain` keeps it, and no
 package-list file is written into the image), ko prints the base digest it
@@ -181,8 +193,11 @@ resolved, and each run record under `experiments/runs/` keeps the digests and
 versions that build produced. `versions.yaml` records the tags as the pins with
 that decision dated, beside the values observed. The rootfs stage also runs
 `dnf … upgrade` in the same `RUN` as the install, so a base image lagging a
-security update does not reach the cluster; on 2026-09-10 it applied nothing,
-"Nothing to do.", the `:2023` tag already being at release 2023.12.20260909.
+security update does not reach the cluster, and without the layer cache that
+`RUN` executes at every build; on 2026-09-10 it applied nothing, "Nothing to do.",
+the `:2023` tag already being at release 2023.12.20260909, and on 2026-09-11, at
+the first build without the layer cache, it printed "Nothing to do." again, the
+base still at that release.
 
 The image runs as uid:gid 65532:65532, the uid of the distroless base `.ko.yaml`
 uses for the Go images, so every workload of ours in the cluster runs as one uid,

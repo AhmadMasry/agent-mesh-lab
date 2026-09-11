@@ -1,0 +1,19 @@
+tests.txt -- the project's own test suite on this host. The image has no pytest (readonly-run.txt
+section 3): the dev group is excluded by `uv sync --no-dev`, so the suite runs here, against the
+same lockfile the builder stage resolved.
+Taken 2026-09-11T13:29:11Z in agents/orchestrator/.
+
+$ uv --version
+uv 0.12.12 (Homebrew 2026-09-09 aarch64-apple-darwin)
+  (the builder stage of build.txt ran uv 0.12.13; this host runs the Homebrew uv above)
+
+$ uv run python -V
+Python 3.14.7
+
+$ uv run pytest -q
+...........................................                              [100%]
+43 passed in 2.15s
+  exit=0
+
+$ git status --porcelain -- uv.lock pyproject.toml
+(empty: neither moved)

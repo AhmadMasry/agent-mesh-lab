@@ -1,0 +1,103 @@
+cache-measurement.txt -- why `make orchestrator-image` builds without the layer cache, and what the
+cache does and does not do to the two floating inputs. Re-taken on 2026-09-11 in branch followups-5
+on the tree at main 8d915b9, before any file of the branch changed the build.
+Host: arm64 darwin, docker 29.7.2, buildx v0.36.1-desktop.1.
+
+THE CONTROLLER'S FINDING, AS BRIEFED, AND WHAT IT BECAME
+Briefed: `docker build --pull` re-resolves ghcr.io/astral-sh/uv:latest to the registry's current
+digest (b485bd65..., uv 0.12.13) but serves the COPY --from step and everything after it from the
+layer cache, so the image keeps uv 0.12.12; with --no-cache the builder prints uv 0.12.13; the rootfs
+stage's dnf RUN is likewise served from cache until the Amazon Linux base digest moves.
+Found: the uv half does not hold. The resolved digest is part of the COPY --from step's cache key; the
+CACHED lines a --pull build shows are hits on a layer that was itself built from b485bd65..., which
+holds uv 0.12.13 (facts 2 and 3 below), and the image main ships was built by uv 0.12.13
+(experiments/runs/2026-09-10-orchestrator-al2023/uv-correction.txt, corrected in commit 25adf5f).
+The dnf half holds: a RUN's cache key is its parent layer and its command text, with no repository
+state in it (fact 4). That is the reason for --no-cache, by the author's ruling of 2026-09-11.
+
+FACT 1 -- what the uv tag points at
+$ docker buildx imagetools inspect ghcr.io/astral-sh/uv:latest      # read 2026-09-11T13:08:28Z
+  Name:      ghcr.io/astral-sh/uv:latest
+  MediaType: application/vnd.oci.image.index.v1+json
+  Digest:    sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+    linux/amd64  ghcr.io/astral-sh/uv:latest@sha256:27508d63700ae72281272e11ce1cec19ffacef96dd59dee05e29593e1f874f01
+    linux/arm64  ghcr.io/astral-sh/uv:latest@sha256:c0ef5dd60d46c4ce3435ad0d86fb0898a905b7c3da95421f64a9e8841bdf8f74
+$ curl -sS https://api.github.com/repos/astral-sh/uv/releases/latest | jq "{tag_name, published_at}"
+  {"tag_name": "0.12.13", "published_at": "2026-09-10T19:27:24Z"}
+
+FACT 2 -- --pull with the layer cache: the tag resolves to b485bd65..., the COPY step answers CACHED
+$ docker build --pull --progress=plain --platform linux/arm64 --target builder \
+    -t orchestrator-cachetest:pull -f agents/orchestrator/Dockerfile agents/orchestrator
+  start 2026-09-11T13:09:33Z
+  #6 FROM ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+  #6 resolve ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6 done
+  #8 [builder 4/9] RUN uv --version
+  #8 CACHED
+  #10 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+  #10 CACHED
+  docker build --pull --progress=plain --platform linux/$(go env GOARCH)   -t    0.09s user 0.07s system 7% cpu 2.246 total
+  exit=0 end 2026-09-11T13:09:35Z
+  Every one of the builder's nine steps answered CACHED; `RUN uv --version` being CACHED, no version
+  line is printed, so this build alone says nothing about which uv the cached layer holds.
+
+FACT 3 -- the same --pull build again, looked inside: the cached layer holds uv 0.12.13
+$ docker build --pull --progress=plain --platform linux/arm64 --target builder \
+    -t orchestrator-cachetest:pull2 -f <8d915b9's agents/orchestrator/Dockerfile> agents/orchestrator
+  start 2026-09-11T13:14:04Z
+  #5 resolve ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6 done
+  #11 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+  #11 CACHED
+  docker build --pull --progress=plain --platform linux/$(go env GOARCH)   -t    0.09s user 0.07s system 4% cpu 3.425 total
+  exit=0 end 2026-09-11T13:14:08Z
+$ docker run --rm orchestrator-cachetest:pull2 sh -c 'uv --version; cat /app/.venv/pyvenv.cfg; sha256sum /bin/uv'
+  uv 0.12.13 (aarch64-unknown-linux-musl)
+  home = /usr/bin
+  implementation = CPython
+  uv = 0.12.13
+  version_info = 3.14.7
+  include-system-site-packages = false
+  prompt = orchestrator
+  d0646a411410f7421ccb400280e3b2cbc6b87b12f4ed68614f0a34720954f0fe  /bin/uv
+  The layer these CACHED lines hit was made by the build of 2026-09-10T21:29:41Z, which resolved the
+  same digest and ran the COPY step on a miss (uv-correction.txt, sections 1 and 4). So "resolve
+  b485bd65... + CACHED" is what a --pull build shows after the new digest has been built once.
+
+FACT 3b -- --pull --no-cache: the same resolution, every step runs
+$ docker build --pull --no-cache --progress=plain --platform linux/arm64 --target builder \
+    -t orchestrator-cachetest:nocache -f agents/orchestrator/Dockerfile agents/orchestrator
+  start 2026-09-11T13:10:12Z
+  #6 FROM ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+  #6 resolve ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6 done
+  #6 CACHED
+  #9 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+  #9 DONE 0.0s
+  #10 [builder 4/9] RUN uv --version
+  #10 0.071 uv 0.12.13 (aarch64-unknown-linux-musl)
+  #13 0.108 Resolved 64 packages in 0.60ms
+  #13 2.797 Prepared 51 packages in 2.68s
+  #13 2.929 Installed 51 packages in 131ms
+  docker build --pull --no-cache --progress=plain --platform  --target builder   0.10s user 0.08s system 0% cpu 24.756 total
+  exit=0 end 2026-09-11T13:10:37Z
+  (`#6 CACHED` is the uv image's own content already being in the local store, not a build step.)
+  The same uv as fact 3: --no-cache changes nothing about which uv reaches the image.
+
+FACT 4 -- the dnf RUN is a cache hit while the base digest stands still
+Not re-run by the builder-target builds above, which stop before the rootfs stage. The committed record:
+experiments/runs/2026-09-10-orchestrator-al2023/build.txt, build started 2026-09-10T21:45:55Z, `docker
+build --pull`, base resolved to the same digest as the build that last ran the stage (21:29:41Z):
+  #5 resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438 done
+  #16 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" ... upgrade ...   (command shortened here)
+  #16 CACHED
+  The cache key of that RUN is its parent layer (the base, by digest) and its command text. Nothing
+  in it moves when the AL2023 repositories publish a package, so a cached build keeps whatever the
+  RUN installed the last time it ran. Not measured: an instance of a package update missed that way;
+  the last time the RUN ran before this branch (2026-09-10T21:29:41Z) `dnf upgrade` printed "Nothing
+  to do." What this branch's --no-cache build installed and upgraded is in build.txt beside this file.
+
+CLEANUP
+$ docker rmi orchestrator-cachetest:pull orchestrator-cachetest:nocache orchestrator-cachetest:pull2
+  Deleted: sha256:3558cd18b602b540a6b6a45bb892729f5cba633206f156c3ba2d95c03cb92817   (pull, Created 2026-09-11T13:03:33Z)
+  Deleted: sha256:b4a0240c03d394e77c2817a4b81c45a81e0488b7ac95aeb57aa09f1dc47e7c16   (nocache)
+  Deleted: sha256:6d1d1afc7394ac07d78977ec454dd4f60302ee74ca792e1e76221cd055d9b9b5   (pull2)
+$ docker image ls orchestrator-cachetest
+  (empty)

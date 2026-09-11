@@ -52,18 +52,30 @@ cluster-eks:
 # --platform follows the host the same way every ko call site in this file does,
 # so a build on an amd64 host does not silently produce an arm64 image. The build
 # context is agents/orchestrator, which is what the Dockerfile's paths are
-# relative to. There is no cache flag to pass any more: BuildKit keys the
-# dependency layer on the uv.lock and pyproject.toml it bind-mounts into the
-# sync, so a lockfile change re-syncs on its own and a change to the agent's
-# sources does not.
+# relative to. The Dockerfile's lockfile-only dependency sync saves work only in a
+# build that uses the layer cache, and this one does not, for the reason below.
 #
 # --pull is what makes the author's decision of 2026-09-10 -- every base image of
 # ours referenced by tag rather than digest -- mean what it says: without it a
 # local copy of python:3.14-slim or ghcr.io/astral-sh/uv:latest would be reused
 # and the tag would stop floating. The digest each tag resolved to, and the uv
 # version the builder printed, go into the run record for that build.
+#
+# --no-cache (author's decision, 2026-09-11) is for the two dnf RUNs, the rootfs
+# stage's `dnf ... install ... upgrade` above all. A RUN's cache key is its parent
+# layer and its command text and holds no repository state, so while the Amazon
+# Linux base digest stands still a cached build answers CACHED on it and a package
+# update published to the AL2023 repositories between base-image digests does not
+# reach the image (`#16 CACHED` on the same base digest in
+# experiments/runs/2026-09-10-orchestrator-al2023/build.txt). uv:latest does not
+# need it: --pull re-resolves the COPY --from reference and the resolved digest is
+# part of that step's cache key, so a moved tag is a cache miss on its own (the
+# build of 2026-09-10T21:29Z resolved the new digest and took uv 0.12.13 on a miss;
+# uv-correction.txt in that run directory). The cost is build time, stated in the
+# README. The measurement is
+# experiments/runs/2026-09-11-orchestrator-nocache/cache-measurement.txt.
 orchestrator-image:
-	docker build --pull --platform linux/$(shell go env GOARCH) -t $(ORCHESTRATOR_IMAGE) -f agents/orchestrator/Dockerfile agents/orchestrator
+	docker build --pull --no-cache --platform linux/$(shell go env GOARCH) -t $(ORCHESTRATOR_IMAGE) -f agents/orchestrator/Dockerfile agents/orchestrator
 	kind load docker-image $(ORCHESTRATOR_IMAGE) --name $(CLUSTER_NAME)
 
 # scan-images: run the Kubescape CLI over the five images this lab builds and write
