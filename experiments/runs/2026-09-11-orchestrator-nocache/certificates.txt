@@ -1,0 +1,43 @@
+== 2026-09-11T13:24:07Z | followups-5 | certificate check before the build, the kind load and the rollout ==
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Leaf     Available     false          e28293330c0b5ed06868f992a83587d0     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     false          36ac4458012e9648f481540e846a923b     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     false          10a25afce69bd6b48f75e062a2586e48     2026-09-11T12:54:01Z     2026-09-10T12:52:01Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+
+== 2026-09-11T13:25:22Z | followups-5 | the check above read VALID CERT false for spiffe://cluster.local/ns/lab/sa/default (Leaf, NOT AFTER 2026-09-11T12:54:01Z); restarting ztunnel as global-constraints.md prescribes ==
+$ kubectl -n istio-system get ds ztunnel -o custom-columns=NAME:.metadata.name,DESIRED:.status.desiredNumberScheduled,READY:.status.numberReady
+NAME      DESIRED   READY
+ztunnel   2         2
+$ kubectl -n istio-system rollout restart ds/ztunnel
+daemonset.apps/ztunnel restarted
+$ kubectl -n istio-system rollout status ds/ztunnel --timeout=180s
+Waiting for daemon set "ztunnel" rollout to finish: 0 out of 2 new pods have been updated...
+Waiting for daemon set "ztunnel" rollout to finish: 1 out of 2 new pods have been updated...
+daemon set "ztunnel" successfully rolled out
+$ kubectl -n istio-system get pods -l app=ztunnel -o custom-columns=NAME:...,NODE:...,START:...,READY:...
+NAME            NODE                           START                  READY
+ztunnel-94vd7   agent-mesh-lab-control-plane   2026-09-11T13:25:22Z   true
+ztunnel-wxxnd   agent-mesh-lab-worker          2026-09-08T19:21:15Z   false
+ztunnel-zx24x   agent-mesh-lab-worker          2026-09-11T13:25:23Z   true
+
+== 2026-09-11T13:25:54Z | followups-5 | certificate check after the ztunnel restart ==
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Leaf     Available     true           bb823595c21f1128614b42a45a695bd      2026-09-12T13:25:23Z     2026-09-11T13:23:23Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           b2da19eae8eb41c5683dc6782b034e34     2026-09-12T13:25:23Z     2026-09-11T13:23:23Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           1ef9fe70061678c2144b816f11560c32     2026-09-12T13:25:23Z     2026-09-11T13:23:23Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+
+== 2026-09-11T13:34:16Z | RUN_ID=163416 | REPS=2 | RECEIVERS=worker orchestrator ==
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Leaf     Available     true           bb823595c21f1128614b42a45a695bd      2026-09-12T13:25:23Z     2026-09-11T13:23:23Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           b2da19eae8eb41c5683dc6782b034e34     2026-09-12T13:25:23Z     2026-09-11T13:23:23Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           1ef9fe70061678c2144b816f11560c32     2026-09-12T13:25:23Z     2026-09-11T13:23:23Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+

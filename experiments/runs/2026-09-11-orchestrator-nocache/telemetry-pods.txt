@@ -1,0 +1,16 @@
+telemetry-pods.txt -- the three telemetry pods, read to back the Method's clause "telemetry pins
+unchanged and the telemetry pods unrestarted by this task".
+
+READ AFTER THE RUNS, 2026-09-11T13:38:48Z. This task's only cluster changes were the ztunnel restart
+at 2026-09-11T13:25:22Z (certificates.txt) and the orchestrator restart at 13:32:51Z (cluster-rollout.txt);
+every start and last-termination timestamp below predates both, which is why the timestamps rather than the
+fact of the read are the evidence.
+
+$ kubectl -n telemetry get pods -o custom-columns="NAME,PHASE,RESTARTS,STARTED,LASTTERM,EXIT,IMAGE"
+NAME                              PHASE     RESTARTS   STARTED                LASTTERM               EXIT   IMAGE
+jaeger-d997cf5b-td5zv             Running   1          2026-09-09T06:51:14Z   2026-09-10T12:53:34Z   255    jaegertracing/jaeger:2.20.0
+otel-collector-5d798544f5-ffkgn   Running   1          2026-09-09T14:27:15Z   2026-09-10T12:53:34Z   255    otel/opentelemetry-collector-contrib:0.160.0
+prometheus-949757dd7-58bft        Running   1          2026-09-09T06:51:14Z   2026-09-10T12:53:34Z   255    prom/prometheus:v3.14.0
+
+restartCount 1 apiece is the Docker Desktop restart of 2026-09-10T12:53:34Z (exit 255), already recorded in
+the entry for the Go module move; nothing in this task touched the telemetry namespace.

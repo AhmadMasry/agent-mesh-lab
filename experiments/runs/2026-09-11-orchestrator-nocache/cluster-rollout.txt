@@ -1,0 +1,119 @@
+cluster-rollout.txt -- the certificate check, the state before, the restart onto the image of
+build.txt (loaded by that same make invocation), and the pod proofs after. No step target ran;
+no overlay was applied; the Go images were not rebuilt for the cluster.
+Written 2026-09-11T13:32:51Z.
+
+=== 1. certificate check, before any cluster step ===
+In full in certificates.txt. The first check (2026-09-11T13:24:07Z) read VALID CERT false for
+spiffe://cluster.local/ns/lab/sa/default (Leaf, NOT AFTER 2026-09-11T12:54:01Z), so ztunnel was restarted
+as global-constraints.md prescribes (`kubectl -n istio-system rollout restart ds/ztunnel`, rolled out
+2026-09-11T13:25:22Z); the check after it (13:25:54Z) reads:
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           1ef9fe70061678c2144b816f11560c32     2026-09-12T13:25:23Z     2026-09-11T13:23:23Z
+Both were taken before `make orchestrator-image` (build.txt started after them), whose kind load is the
+first cluster step of this branch.
+
+=== 2. the lab Deployments before the restart ===
+before-state taken 2026-09-11T13:25:58Z
+$ kubectl -n lab get pods -l "app in (worker,mockllm,orchestrator)" -o custom-columns=NAME,START,RESTARTS,IMAGEID
+NAME                            START                  RESTARTS   IMAGEID
+mockllm-d6f98fccd-kztlz         2026-09-10T18:12:34Z   0          sha256:eb2dff7a5b35189bdc4c98da49e1bceaa161c2fd1c74838235c691045156d1ac
+orchestrator-54967f646d-bk82p   2026-09-10T21:54:55Z   0          docker.io/library/import-2026-09-10@sha256:02edd809bda2eb88183c92340ef283bc078c85ce532b40e0e86294b39e69c552
+worker-757989db4b-xd2pj         2026-09-10T18:12:34Z   0          sha256:f948bd2650c4768c7b00f617b7f56a4c1cb68e405366bbfb438e218c091591b9
+
+$ kubectl -n lab get deploy -o custom-columns=NAME,IMAGE
+NAME                         IMAGE
+agentgateway-waypoint        cr.agentgateway.dev/agentgateway:v1.5.0
+agentgateway-waypoint-orch   cr.agentgateway.dev/agentgateway:v1.5.0
+mockllm                      kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:1c667be1352522b34884f2fbb5d0d24993876ae1eadc2436900585a7059abadd
+orchestrator                 orchestrator:dev
+worker                       kind.local/worker-918a018b7a581926ead34dec2ba0fb83:bf58044d0c311c405e7cf0fca9d0686ba3cb63f5b6c11f38f84e1656eddf718e
+
+$ kubectl -n lab get deploy worker mockllm (guard annotation)
+worker  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+mockllm  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+
+$ kubectl -n lab get deploy orchestrator -o jsonpath (securityContext, volumes, automountServiceAccountToken)
+pod securityContext: {"fsGroup":65532,"runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}
+container securityContext: {"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}
+volumes: 
+volumeMounts: 
+automountServiceAccountToken: false
+
+=== 3. the image loaded, then the orchestrator restarted, and only it ===
+build.txt: kind load pushed orchestrator:dev index sha256:d746a0d4279f771d4505706e0914d05af701e6023ad1c144180f6a26070e1937 to both nodes.
+$ kubectl -n lab rollout restart deployment/orchestrator
+deployment.apps/orchestrator restarted
+$ kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+deployment "orchestrator" successfully rolled out
+  rollout finished 2026-09-11T13:32:54Z
+
+=== 4. after ===
+$ kubectl -n lab get pods -l "app in (worker,mockllm,orchestrator)" -o custom-columns=NAME,START,RESTARTS,READY,IMAGEID
+NAME                            START                  RESTARTS   READY   IMAGEID
+mockllm-d6f98fccd-kztlz         2026-09-10T18:12:34Z   0          true    sha256:eb2dff7a5b35189bdc4c98da49e1bceaa161c2fd1c74838235c691045156d1ac
+orchestrator-7cdfdb558c-262wl   2026-09-11T13:32:51Z   0          true    docker.io/library/import-2026-09-11@sha256:270c30ea791d54e3fb6fb3e6671a82571d74750654b1912255cb0e12379bf7e3
+worker-757989db4b-xd2pj         2026-09-10T18:12:34Z   0          true    sha256:f948bd2650c4768c7b00f617b7f56a4c1cb68e405366bbfb438e218c091591b9
+
+$ kubectl -n lab get deploy worker mockllm (guard annotation)
+worker  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+mockllm  lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+
+$ kubectl -n lab get pod -l app=orchestrator -o jsonpath (securityContext, volumes, automountServiceAccountToken)
+pod orchestrator-7cdfdb558c-262wl
+pod securityContext: {"fsGroup":65532,"runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}
+container securityContext: {"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true,"runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}
+volumes: 
+volumeMounts: 
+automountServiceAccountToken: false
+
+=== 5. in-pod proofs: every one a python -c, the image having no shell ===
+$ kubectl -n lab exec deploy/orchestrator -- python -c "$PROG"   # PROG:
+    | import os, sys, platform
+    | print("uid/gid =", os.getuid(), os.getgid())
+    | print("platform.machine() =", platform.machine())
+    | print("sys.version =", sys.version)
+    | for p in ("/app", "/app/.venv", "/app/orchestrator"):
+    |     st = os.stat(p); print(f"stat {p:<20} uid={st.st_uid} gid={st.st_gid} mode={oct(st.st_mode & 0o777)}")
+    | print("/app/.venv/pyvenv.cfg:", [l.strip() for l in open("/app/.venv/pyvenv.cfg") if l.startswith("uv ")][0])
+uid/gid = 65532 65532
+platform.machine() = aarch64
+sys.version = 3.14.7 (main, Aug 24 2026, 00:00:00) [GCC 11.5.0 20240719 (Red Hat 11.5.0-5)]
+stat /app                 uid=0 gid=0 mode=0o755
+stat /app/.venv           uid=0 gid=0 mode=0o755
+stat /app/orchestrator    uid=0 gid=0 mode=0o755
+/app/.venv/pyvenv.cfg: uv = 0.12.13
+  exit=0
+
+$ kubectl -n lab exec deploy/orchestrator -- python -c "$PROG"   # PROG:
+    | import errno
+    | for p in ("/x", "/app/x", "/tmp/x"):
+    |     try:
+    |         open(p, "w").write("x"); print(f"{p:<10} WRITTEN")
+    |     except OSError as e:
+    |         print(f"{p:<10} refused: errno={e.errno} {errno.errorcode[e.errno]}")
+/x         refused: errno=30 EROFS
+/app/x     refused: errno=30 EROFS
+/tmp/x     refused: errno=30 EROFS
+  exit=0
+
+$ kubectl -n lab exec deploy/orchestrator -- python -c "$PROG"   # PROG:
+    | import os
+    | for p in ("/bin/sh", "/bin/bash", "/var/run/secrets/kubernetes.io"):
+    |     print(f"{p:<32} exists={os.path.exists(p)}")
+/bin/sh                          exists=False
+/bin/bash                        exists=False
+/var/run/secrets/kubernetes.io   exists=False
+  exit=0
+
+$ kubectl -n lab exec deploy/orchestrator -- python -c "$PROG"   # PROG:
+    | import locale, os
+    | print("setlocale(LC_ALL, \"C.UTF-8\") ->", repr(locale.setlocale(locale.LC_ALL, "C.UTF-8")))
+    | print("/usr/lib/locale holds =", sorted(os.listdir("/usr/lib/locale")))
+    | print("/usr/share/locale exists =", os.path.exists("/usr/share/locale"))
+setlocale(LC_ALL, "C.UTF-8") -> 'C.UTF-8'
+/usr/lib/locale holds = ['C.utf8']
+/usr/share/locale exists = False
+  exit=0
+

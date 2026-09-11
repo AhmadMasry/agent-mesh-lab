@@ -10,7 +10,8 @@ layer cache, so the image keeps uv 0.12.12; with --no-cache the builder prints u
 stage's dnf RUN is likewise served from cache until the Amazon Linux base digest moves.
 Found: the uv half does not hold. The resolved digest is part of the COPY --from step's cache key; the
 CACHED lines a --pull build shows are hits on a layer that was itself built from b485bd65..., which
-holds uv 0.12.13 (facts 2 and 3 below), and the image main ships was built by uv 0.12.13
+holds uv 0.12.13 (facts 2 and 3 below; fact 3 quotes the build log that shows the cache key), and the
+image main ships was built by uv 0.12.13
 (experiments/runs/2026-09-10-orchestrator-al2023/uv-correction.txt, corrected in commit 25adf5f).
 The dnf half holds: a RUN's cache key is its parent layer and its command text, with no repository
 state in it (fact 4). That is the reason for --no-cache, by the author's ruling of 2026-09-11.
@@ -40,7 +41,7 @@ $ docker build --pull --progress=plain --platform linux/arm64 --target builder \
   Every one of the builder's nine steps answered CACHED; `RUN uv --version` being CACHED, no version
   line is printed, so this build alone says nothing about which uv the cached layer holds.
 
-FACT 3 -- the same --pull build again, looked inside: the cached layer holds uv 0.12.13
+FACT 3 -- a second --pull build, run to look inside: the cached layer holds uv 0.12.13
 $ docker build --pull --progress=plain --platform linux/arm64 --target builder \
     -t orchestrator-cachetest:pull2 -f <8d915b9's agents/orchestrator/Dockerfile> agents/orchestrator
   start 2026-09-11T13:14:04Z
@@ -58,9 +59,24 @@ $ docker run --rm orchestrator-cachetest:pull2 sh -c 'uv --version; cat /app/.ve
   include-system-site-packages = false
   prompt = orchestrator
   d0646a411410f7421ccb400280e3b2cbc6b87b12f4ed68614f0a34720954f0fe  /bin/uv
-  The layer these CACHED lines hit was made by the build of 2026-09-10T21:29:41Z, which resolved the
-  same digest and ran the COPY step on a miss (uv-correction.txt, sections 1 and 4). So "resolve
-  b485bd65... + CACHED" is what a --pull build shows after the new digest has been built once.
+  The layers these CACHED lines hit hold uv 0.12.13 built from b485bd65... on a cache miss, and they
+  are not the 2026-09-10 ones. Fact 2's build (build-history record 58j8etkpuebi4u4u7smglgklr) exported
+  image manifest 2fc0f8b07898..., the manifest of the controller's cache-free build of 2026-09-11T13:03:08Z
+  (record 1oriyeol3rzmgleguodbs9kid), so that build made the layers fact 2 hit; its throwaway image's
+  Created time, 2026-09-11T13:03:33Z (CLEANUP below), says the same. This second build (record
+  stb0aggd837j8a3v8mluasv2k) came after fact 3b's cache-free build of 13:10:12Z as well and exported a
+  manifest of its own, 6118160b61788..., so the record says only that its COPY hit a layer one of those two
+  cache-free builds made; both ran the COPY from b485bd65... and printed uv 0.12.13.
+  The first such miss was the build of 2026-09-10T21:29:41Z (record 5f1fz4i7ta6fu3vdlfbvivzx6;
+  uv-correction.txt, sections 1 and 4), and its log is what shows the cache key:
+    #8 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+    #8 CACHED
+    #9 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+    #9 DONE 0.1s
+    #10 0.061 uv 0.12.13 (aarch64-unknown-linux-musl)
+  The COPY step's parent was a cache hit, so what made the COPY a miss is the one input that had changed,
+  the resolved uv digest: the digest is part of that step's cache key. So "resolve b485bd65... + CACHED"
+  is what a --pull build shows after the new digest has been built once.
 
 FACT 3b -- --pull --no-cache: the same resolution, every step runs
 $ docker build --pull --no-cache --progress=plain --platform linux/arm64 --target builder \
