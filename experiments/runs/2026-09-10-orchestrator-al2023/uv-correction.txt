@@ -1,0 +1,140 @@
+uv-correction.txt -- which uv built /app/.venv in the orchestrator:dev this run directory records
+(the image main ships and the orchestrator pod runs), established on 2026-09-11 in branch followups-5.
+Until then this directory's image-after.txt, the findings entry citing it and versions.yaml said the
+environment was built by uv 0.12.12 from sha256:73d2665b...; it was built by uv 0.12.13 from
+sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6. Three readings and BuildKit's cache
+records, each quoted.
+
+Why the earlier text read 0.12.12: it inferred the version from CACHED beside a resolved digest, and a
+CACHED line does not say which layer it hit. uv writes `uv = <version>` into the venv's pyvenv.cfg when
+it creates the venv, so the image carries the answer itself; readings 2 and 3 are that file.
+
+=== 1. the build that made this image's layers ===
+$ docker buildx history inspect 5f1fz4i7ta6fu3vdlfbvivzx6
+Name:		agents/orchestrator
+Context:	agents/orchestrator
+Dockerfile:	<scratchpad>/66f42ee1-1bf2-41c5-bd3b-903a5ab44c39/scratchpad/al2023/Dockerfile.locale
+VCS Repository:	git@github.com:AhmadMasry/agent-mesh-lab.git
+VCS Revision:	6e694d77377274a3484572f6c0a664046681fbb7
+Platforms:	linux/arm64
+
+Started:	2026-09-11 00:29:41
+Duration:	32.6s
+Build Steps:	22/22 (9% cached)
+
+Image Resolve Mode:	local
+
+Materials:
+URI										DIGEST
+pkg:docker/ghcr.io/astral-sh/uv@latest?platform=linux%2Farm64			sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+pkg:docker/public.ecr.aws/amazonlinux/amazonlinux@2023?platform=linux%2Farm64	sha256:a0646b8bd35abf5ca3ab94d8cdb5691b9024e19c357531eeefd0ac4762836438
+
+Attachments:
+DIGEST									PLATFORM	TYPE
+sha256:bcb87d13c761773827cc35cb537b1a70c6dab95cedf21c734ef78dcb6ed0513f			application/vnd.oci.image.index.v1+json
+sha256:5b8db4dcc37aaf368186741d4c520ecef5cdc138267b11e0e09cf7fb675fef37			https://slsa.dev/provenance/v1
+sha256:ad5d668c283f1f4f95c1a6a2a496c89c0f4d1ce1a756e5228cb544423888b958	linux/arm64	application/vnd.oci.image.manifest.v1+json
+
+  (Started is host local time, UTC+03:00: 2026-09-10T21:29:41Z. "Image Resolve Mode: local" -- this
+  build was not run with --pull; it resolved uv:latest to b485bd65... all the same, and BuildKit's own
+  record of that pull is in section 4.)
+
+$ docker buildx history logs 5f1fz4i7ta6fu3vdlfbvivzx6      # the lines that bear on uv and on dnf
+  #7 resolve ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6 done
+  #7 DONE 1.8s
+  #9 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+  #9 DONE 0.1s
+  #10 [builder 4/9] RUN uv --version
+  #10 0.061 uv 0.12.13 (aarch64-unknown-linux-musl)
+  #10 DONE 0.1s
+  #13 0.111 Using CPython 3.14.7 interpreter at: /usr/bin/python3.14
+  #13 0.111 Creating virtual environment at: .venv
+  #13 0.115 Resolved 64 packages in 0.65ms
+  #13 0.251 Installed 51 packages in 134ms
+  #16 22.79 Nothing to do.
+  #22 exporting manifest sha256:ad5d668c283f1f4f95c1a6a2a496c89c0f4d1ce1a756e5228cb544423888b958 done
+  #22 exporting config sha256:6cd309dc1c6701716b94e7ac14c7413606a86773d0fb6bd36c15e7c93696cba7 done
+  #22 naming to docker.io/library/orchestrator:al2023-locale done
+
+This build's image manifest and config, ad5d668c... and 6cd309dc..., are the ones image-after.txt
+records for orchestrator:dev. build.txt in this directory (build-history record bagnfgltz9w7b7zz0o86vc7tn,
+started 2026-09-10T21:45:55Z, the committed Dockerfile through `make orchestrator-image`) resolved the same
+uv digest, answered CACHED on #9 and #11 and exported the same manifest ad5d668c... and config 6cd309dc...:
+its CACHED lines are hits on the layers above, not on a 0.12.12 layer. The Dockerfile path named in the
+inspect output is the followups-4 session's measuring copy.
+
+=== 2. the image in the daemon ===
+taken 2026-09-11T13:19:15Z
+$ docker image inspect --format "{{.Id}} {{.Created}}" orchestrator:dev
+sha256:e67c133fb7d68997cb35f39679abbb17e96ca9272e69a9be993ef481fdd1e4a8 2026-09-10T21:30:11.763406585Z
+$ docker run --rm --read-only --user 65532:65532 orchestrator:dev python -c "print(open('/app/.venv/pyvenv.cfg').read())"
+home = /usr/bin
+implementation = CPython
+uv = 0.12.13
+version_info = 3.14.7
+include-system-site-packages = false
+prompt = orchestrator
+
+  exit=0
+
+=== 3. the pod ===
+taken 2026-09-11T13:19:15Z
+$ kubectl -n lab get pod -l app=orchestrator -o custom-columns=NAME:...,START:...,RESTARTS:...,IMAGEID:...
+NAME                            START                  RESTARTS   IMAGEID
+orchestrator-54967f646d-bk82p   2026-09-10T21:54:55Z   0          docker.io/library/import-2026-09-10@sha256:02edd809bda2eb88183c92340ef283bc078c85ce532b40e0e86294b39e69c552
+$ kubectl -n lab exec deploy/orchestrator -- python -c "print(open('/app/.venv/pyvenv.cfg').read())"
+home = /usr/bin
+implementation = CPython
+uv = 0.12.13
+version_info = 3.14.7
+include-system-site-packages = false
+prompt = orchestrator
+
+  exit=0
+
+=== 4. BuildKit's cache records for the uv image and the uv COPY step ===
+$ docker buildx du --verbose      # records whose description names astral-sh/uv; read 2026-09-11T13:21:45Z
+ID:           ufos2bn1nz332u15bnocmkd0h
+Created at:   2026-09-10 21:29:47.756252671 +0000 UTC
+Size:         8.288kB
+Description:  pulled from ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+ID:           7l9hdaq2ccufzaq01vkb8elpq
+Created at:   2026-09-10 16:37:16.64692063 +0000 UTC
+Size:         8.29kB
+Description:  pulled from ghcr.io/astral-sh/uv:0.12.12@sha256:73d2665b478d8fa2de1cf105c6841f8e9cb6b09e568fc7700440c09f8fcd7ac4
+ID:           ndef4xul0pfckaxpeb1b108if
+Created at:   2026-09-10 16:37:23.771691675 +0000 UTC
+Size:         46.89MB
+Description:  [builder 2/6] COPY --from=ghcr.io/astral-sh/uv:0.12.12@sha256:73d2665b478d8fa2de1cf105c6841f8e9cb6b09e568fc7700440c09f8fcd7ac4 /uv /uvx /bin/
+ID:           t8tlslv6pplmihna58a97oapi
+Created at:   2026-09-10 18:25:09.369277419 +0000 UTC
+Size:         46.89MB
+Description:  [builder 3/8] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ID:           3e4s2hhqhzp9jbl1degw4vtm5
+Created at:   2026-09-11 13:03:27.869708386 +0000 UTC
+Size:         68.5MB
+Description:  [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ID:           p585t50ldkz5kdcx64v2d7416
+Created at:   2026-09-10 21:29:49.607051922 +0000 UTC
+Size:         68.5MB
+Description:  [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ID:           tfzgoaysd7e8s72t4ji5n2txg
+Created at:   2026-09-11 13:10:31.572266638 +0000 UTC
+Size:         68.5MB
+Description:  [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+ID:           2nq79a3p6cix2hggpwby3xze7
+Created at:   2026-09-10 16:37:16.636235838 +0000 UTC
+Size:         68.69MB
+Description:  pulled from ghcr.io/astral-sh/uv:0.12.12@sha256:73d2665b478d8fa2de1cf105c6841f8e9cb6b09e568fc7700440c09f8fcd7ac4
+ID:           5x3mg4n0xlds9fw0i1oxschk6
+Created at:   2026-09-10 21:29:47.746247129 +0000 UTC
+Size:         68.74MB
+Description:  pulled from ghcr.io/astral-sh/uv:latest@sha256:b485bd65cc2cf1c9a93b3554012c9c3778cf7b1b5fd3d3096ce9e1226c97e1e6
+
+Read against section 1: the two "pulled from ghcr.io/astral-sh/uv:latest@sha256:b485bd65..." records and the
+68.5MB "[builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest" record p585t50l... all date from 2026-09-10
+21:29:47-49 UTC, the build above. The two 46.89MB COPY records, 16:37 and 18:25 UTC that day, predate the
+0.12.13 release (published 2026-09-10T19:27:24Z per https://api.github.com/repos/astral-sh/uv/releases/latest,
+read 2026-09-11), and the 16:37 one names 0.12.12@sha256:73d2665b... outright. The other two 68.5MB COPY records
+were made on 2026-09-11 by cache-free builds of the builder stage: 13:03:27 UTC the controller's measurement,
+13:10:31 UTC the one in branch followups-5 that printed uv 0.12.13 again.
