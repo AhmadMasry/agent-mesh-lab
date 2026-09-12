@@ -115,3 +115,109 @@ longer exist. The first scan's counts are the entry
 with its outputs under `experiments/runs/2026-09-10-images-rebuilt/scan/`.
 
 The proposal text is unchanged.
+
+## 2026-09-12 — Mesh-wide STRICT mTLS refused the model leg: the question asked, and the shape decided
+
+Follow-ups 7 applied the STRICT `PeerAuthentication` the Istio documents prescribe for mesh level
+(`security.istio.io/v1`, name `default`, in the root namespace `istio-system`, `spec.mtls.mode:
+STRICT`; `deploy/step-2-ambient-agw/peer-authentication.yaml` cites the sentence behind every
+field). It did what the documents say — a plaintext request from a pod outside the mesh went from
+HTTP 200 to a connection reset — and it also refused one hop of the lab's own path, so the counted
+in-mesh flow failed. The policy was reverted in the same session and the clean check verified to
+pass again. Both attempts are counted in `findings.md` under
+`## Gate 3 / both receivers / mTLS enforced — …`, with outputs under
+`experiments/runs/2026-09-12-mtls-enforced/` (`attempt-1/` and `attempt-2/`).
+
+The hop that refused, named by both sides:
+
+- `agw-egress -> mockllm.lab.svc.cluster.local:8080`. The egress waypoint's own access log reads
+  `http.status=503 error="upstream call failed: SendRequest: connection error: Connection reset by
+  peer (os error 104)" reason=UpstreamFailure`; mockllm's receiving ztunnel reads
+  `error="connection closed due to policy rejection: explicitly denied by:
+  istio-system/istio_converted_static_strict"`.
+
+Why it is structural rather than a policy mistake. The namespace `agentgateway-egress` is
+deliberately not ambient-enrolled — that is agentgateway's documented ambient egress shape, and the
+model is reached as a `MESH_EXTERNAL` `ServiceEntry` (`model.lab.internal`) bound to the
+`agw-egress` waypoint. The egress proxy therefore carries an Istio identity on the way *in*
+(`worker -> agw-egress` reports `mutual_tls`, and the egress access log records
+`src.identity=spiffe://cluster.local/ns/lab/sa/default`) but dials its upstream in plaintext on the
+way *out*. `mockllm` was an ambient-captured pod in `lab`, so under mesh-wide STRICT its ztunnel
+refused that inbound connection. The pre-apply metrics reading had already shown this leg as
+`connection_security_policy="unknown"` at `reporter="destination"` while every other hop of both
+flows read `mutual_tls`; the apply turned that reading into a counted refusal.
+
+A second, smaller consequence was counted: Prometheus (in the unenrolled `telemetry` namespace)
+lost its scrape of the agentgateway ingress pod's `:15020`, 9/9 targets to 8/9, for the same
+reason — a plaintext request into a captured pod. It came back on the revert.
+
+### The question that was put to the author
+
+Deciding it in the implementer's session would have meant either tuning the policy past what the
+documents describe or wiring a known-refusing manifest into the step-2 overlay, so it was put up
+as four options:
+
+1. **Leave the mesh at PERMISSIVE** and keep the measurement as the finding — enforcement is
+   documented as refusing the lab's own model leg at this shape, and the entry says so. No manifest
+   ships.
+2. **Enrol `agentgateway-egress` in ambient** so the egress proxy's upstream leg is HBONE too, then
+   re-apply and re-count. This changes the mesh shape the earlier gates measured, and agentgateway's
+   own egress documentation is what led to leaving that namespace out, so it needs checking against
+   those documents first.
+3. **Scope the policy to the namespaces whose hops all report `mutual_tls`** (that is, not `lab`,
+   because `lab` holds `mockllm`). This is a narrower policy than the documents' mesh-level example
+   and would leave the agents themselves unenforced, which is the opposite of the point.
+4. **Ship the manifest unwired** — the file and its citations committed under
+   `deploy/step-2-ambient-agw/` but not referenced by the kustomization, so the counted finding has
+   its artefact and no overlay applies a policy that refuses the lab's own traffic.
+
+### The decision taken, and by whom
+
+**The author, 2026-09-12: none of the four — the mock model leaves the mesh.** The question had been
+framed as what to do about the *policy*; the author reframed it as what the *mock* is. It stands in
+for an external model provider, so the egress-to-model leg is this lab's external plaintext leg by
+design, and a captured mock was the thing that did not belong. The mock therefore carries the
+documented per-pod opt-out `istio.io/dataplane-mode: none` in `deploy/base/mockllm.yaml`, the
+mesh-wide policy ships wired into the step-2 overlay with its text unchanged, and the whole path
+counts again under STRICT. This also keeps the mesh boundary honest — what is in the mesh is
+mutually authenticated, and what leaves for the model is visibly outside it — and it matches the
+standing decision that the mock is the instrument for experiments while a real model sits outside
+the cluster for the demo.
+
+**The controller, 2026-09-12, two additions to that shape.** First, one port-level exception for the
+agentgateway ingress pod's scrape port, `deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metrics.yaml`,
+`portLevelMtls: {15020: {mode: PERMISSIVE}}` on a selector-scoped policy — otherwise Prometheus,
+which runs outside the mesh, keeps losing that target. Second, **the `telemetry` namespace stays
+outside the mesh**, reversing the author's initial choice to enrol it: an in-mesh collector would
+enforce mTLS on inbound OTLP and so refuse the spans of every emitter that is not ztunnel-captured
+— the mock once opted out, the egress proxy and both istiod-driven waypoints, all of which export
+in plaintext to `otel-collector:4317/4318` — and the trace would lose exactly the hops Gate 3's
+preceding two tasks worked to light up. The same "reject any plaintext traffic" mechanism the
+plaintext probe measures would have been turned against our own telemetry. Enforcement and
+observability genuinely pull against each other at that boundary, and this lab resolves it in
+favour of not losing hops, with the trade recorded rather than hidden.
+
+### What the second measurement counted under that shape
+
+Clean check `1/1/1/1/1` and `TASK_STATE_COMPLETED` for both receivers with `invocations=1`; the
+`REPS=1` trace run at 66 and 12 spans, 2 trace ids each, 0 dangling parents and no dark hop — the
+figures the preceding two entries established, so enforcement cost no span; `mockllm`'s span
+survives the opt-out because its export goes to the collector outside the mesh; Prometheus 9/9
+across both readings including the target the first attempt lost; and exactly two ztunnel refusals
+under the policy, both the plaintext probe's.
+
+One documentation gap is worth keeping beside this. `portLevelMtls` is documented on the
+`PeerAuthentication` reference and requires a selector, but the ambient Layer 4 page — the page that
+says peer authentication modes "are supported by ztunnel" — never mentions a port-level mode, and no
+current Istio page states whether ztunnel honours one. The measurement answers it at this version:
+with the exception the target stayed up across both readings and ztunnel logged no refusal on that
+port, where without it the target went down inside 15 s and ztunnel logged eight refusals, one per
+15 s scrape, spanning 105 s.
+Recorded as measured, not as documented support, in `versions.yaml` under `istio-peerauth-portlevel`,
+and it is the part of this configuration most likely to break if either project moves. Because the
+gap is a project documentation gap with a reproduction already in hand, rule 11 applies and a draft
+issue text is written at `docs/upstream/istio-ambient-portlevelmtls-reach-undocumented.md` — not
+filed, and no link until a human files it.
+
+Nothing was tuned to get past a refusal: the mesh-wide policy's text is identical in both attempts,
+and no retry was added anywhere. The proposal text is unchanged.
