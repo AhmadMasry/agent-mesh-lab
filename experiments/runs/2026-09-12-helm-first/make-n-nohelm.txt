@@ -1,6 +1,10 @@
-# make -n step-2 step-3, with helm removed from PATH
-# PATH restricted to /tmp/cl9/nohelm-bin plus /usr/bin:/bin:/usr/sbin:/sbin (helm's directory /opt/homebrew/bin excluded)
+# make -n step-2 step-2b step-3, with helm removed from PATH
+# Re-rendered at fix round 1 (2026-09-12); see the note in make-n-helm.txt.
+# PATH restricted to /tmp/cl9/nohelm-bin plus /usr/bin:/bin:/usr/sbin:/sbin.
 # $ command -v helm -> (not found)
+# NOTE step-2b: with $(HELM) empty its guard stops the target, because agentgateway
+# documents no non-Helm install for its control plane. That is why the fallback route
+# is recorded as not reproducible end to end.
 
 if [ -n "" ]; then \
 		echo "uncommitted changes under the Go paths the image stamp hashes; commit or stash them before a step target runs ko apply:" >&2; \
@@ -27,7 +31,11 @@ istioctl version --remote=false | grep -q 1.31.0 || { echo "istioctl on PATH is 
 # configuration the IstioOperator file carries and the agentgateway pilot flag
 # step-2 used to pass with --set. That file's header quotes Istio on why this route
 # is now first, and records that `istioctl manifest translate` produced its
-# meshConfig block.
+# meshConfig block. ztunnel takes a values file of its own, for the certificate
+# lifetime it asks for and for the ambient profile; the page passes ztunnel nothing,
+# but without the profile the Helm route ran a different ztunnel image and env from
+# the istioctl route, and the reason neither key can live in istio-values.yaml is in
+# ztunnel-values.yaml's header.
 #
 # Previous route, taken when helm is absent: `istioctl install -f` with the
 # IstioOperator file, which is what this target ran until 2026-09-12 and which
@@ -47,7 +55,7 @@ set -e; \
 		helm upgrade -i istio-cni cni --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
 			-n istio-system --set profile=ambient --wait; \
 		helm upgrade -i ztunnel ztunnel --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
-			-n istio-system --wait; \
+			-n istio-system -f deploy/step-2-ambient-agw/ztunnel-values.yaml --wait; \
 	else \
 		istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y; \
 	fi
@@ -58,6 +66,38 @@ kubectl -n lab rollout restart deployment/mockllm deployment/worker deployment/o
 kubectl -n lab rollout status deployment/agentgateway-waypoint --timeout=180s
 kubectl -n lab rollout status deployment/mockllm --timeout=120s
 kubectl -n lab rollout status deployment/worker --timeout=120s
+kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+# One route only, and the target says so rather than failing obscurely. The
+# agentgateway documentation installs its control plane by Helm from two OCI charts
+# and documents no other way, so there is nothing for the HELM guard to fall back
+# to here; a rebuild on a host without helm stops at this target, which is a fact
+# about the project's install surface and is recorded as one in findings.md.
+if [ -z "" ]; then \
+		echo "step-2b: helm is not on PATH, and the agentgateway control plane has no other documented install: the project's Istio ambient ingress and egress pages install charts agentgateway-crds and agentgateway from oci://cr.agentgateway.dev/charts (versions.yaml, agentgateway-controlplane). Install helm and re-run; nothing was applied." >&2; \
+		exit 1; \
+	fi
+echo "step-2b: agentgateway control plane via Helm (), charts pinned to v1.5.0"
+helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
+		--create-namespace --namespace agentgateway-system --version v1.5.0
+# -f opts the controller pod out of ambient. The namespace label below is for the
+# ingress proxy; the controller is not on the traffic path and two plaintext clients
+# must reach it, so it leaves the mesh the way the mock model does. Measured on the
+# 2026-09-12 rebuild: without it, ztunnel refuses Prometheus's scrape of 9092 under
+# mesh-wide STRICT and the egress waypoint's XDS dial is reset, so the egress never
+# becomes ready. The file carries the readings and the documents.
+helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
+		--namespace agentgateway-system --version v1.5.0 \
+		-f deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml --wait
+# The ingress page labels the proxy namespace ambient so the hop from the
+# gateway pod to the backend pod is HBONE like every other hop in the mesh.
+kubectl label ns agentgateway-system istio.io/dataplane-mode=ambient --overwrite
+kubectl kustomize deploy/step-2b-agw-ingress-egress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+kubectl -n agentgateway-system wait --for=condition=Programmed gateway/agentgateway-ingress --timeout=180s
+kubectl -n agentgateway-egress wait --for=condition=Programmed gateway/agw-egress --timeout=180s
+# ko rebuilds the Go images, so the mock can rotate on this apply too.
+kubectl -n lab rollout status deployment/mockllm --timeout=120s
+kubectl -n lab rollout status deployment/worker --timeout=180s
 kubectl -n lab rollout status deployment/orchestrator --timeout=180s
 kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
 set -e; \

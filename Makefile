@@ -34,7 +34,7 @@ check-go-sources-clean:
 # first check if helm exists, if not fall back to other ways". Every step target that
 # installs a component tests this variable: non-empty means the Helm recipe runs,
 # empty means the recipe that target used before this date runs. Each such target's
-# comment names both routes, and `make -n step-2 step-3` run twice, once with helm on
+# comment names both routes, and `make -n step-2 step-2b step-3` run twice, once with helm on
 # PATH and once without, is committed in
 # experiments/runs/2026-09-12-helm-first/make-n-{helm,nohelm}.txt.
 #

@@ -67,7 +67,7 @@ chart is installed by Helm when `helm` is on PATH, and by the route that target
 used before that date when it is not. The Makefile holds one guard,
 `HELM := $(shell command -v helm 2>/dev/null)`, and each step target that
 installs a component branches on it; both routes are named in that target's
-comment, and `make -n step-2 step-3` run once with helm on PATH and once without
+comment, and `make -n step-2 step-2b step-3` run once with helm on PATH and once without
 is committed as
 `experiments/runs/2026-09-12-helm-first/make-n-{helm,nohelm}.txt`.
 
