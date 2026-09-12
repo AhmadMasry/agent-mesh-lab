@@ -75,7 +75,7 @@ is committed as
 | --- | --- | --- |
 | Gateway API CRDs | none — the project publishes no chart | `kubectl apply --server-side -f <release>/experimental-install.yaml`, on both routes |
 | Istio (base, istiod, cni, ztunnel) | four charts at `1.31.0` from `https://blob.istio.io/istio-release/charts`; istiod takes `deploy/step-2-ambient-agw/istio-values.yaml`, ztunnel `ztunnel-values.yaml` | `istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y` |
-| agentgateway control plane | two OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts` | none — the project documents no other install, and `make step-2b` says so and stops |
+| agentgateway control plane | two OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts`, with `deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml` | none — the project documents no other install, and `make step-2b` says so and stops |
 | Collector | chart `opentelemetry-collector` `0.173.1` with `deploy/step-3-stress/otel-collector-values.yaml` | `deploy/step-3-stress-nohelm/otel-collector.yaml` |
 | Trace backend | chart `jaeger` `4.13.1` with `deploy/step-3-stress/jaeger-values.yaml` | `deploy/step-3-stress-nohelm/jaeger.yaml` |
 | Prometheus | chart `prometheus` `29.28.1` with `deploy/step-3-stress/prometheus-values.yaml` | `deploy/step-3-stress-nohelm/prometheus.yaml` |
@@ -105,6 +105,19 @@ its 2160h default and is left alone. Both are set on both routes —
 were checked to put the variables in their containers, not only in the values ConfigMap.
 `versions.yaml` key `istio-workload-cert-ttl` carries the quotes. The separate
 non-renewal quirk this lab has recorded is not addressed by this.
+
+The agentgateway **controller** pod leaves the mesh. `make step-2b` labels the whole
+`agentgateway-system` namespace ambient for the ingress *proxy*'s sake, which also
+captured the controller — and two plaintext clients must reach it: the egress waypoint's
+XDS on 9978, and Prometheus's scrape of 9092. On the from-scratch rebuild of 2026-09-12
+ztunnel refused the scrape under mesh-wide STRICT, naming the policy, and the egress
+waypoint's XDS dial was reset, so it never became ready; opting the controller out cured
+both. The older cluster had masked it because that XDS stream predated the policy and
+ztunnel enforces per connection. The remedy is the per-pod opt-out `istio.io/dataplane-mode: none`, through
+the chart's `podLabels` — the same treatment the mock model gets, and the lab's posture
+for anything off the traffic path that must be reachable in plaintext, rather than
+poking port holes in the mesh-wide policy. The proxy pods are unaffected. `versions.yaml`
+key `agentgateway-controlplane-ambient-optout`.
 
 Istio's configuration moved with the components. What Istio deprecated is its
 in-cluster operator, not `istioctl install -f <IstioOperator>`: its announcement
@@ -365,7 +378,7 @@ document sentence behind each of its fields, and from step 2 on a plaintext
 request from a pod outside the mesh is refused: measured at HTTP 200 before the
 policy and `Recv failure: Connection reset by peer` under it, for both agents.
 
-Two other files make that hold for the lab's own traffic, and both are
+Three other files make that hold for the lab's own traffic, and all three are
 deliberate rather than incidental. The mock model **opts out of ambient**
 (`istio.io/dataplane-mode: none` in `deploy/base/mockllm.yaml`): it stands in for
 an external provider, so the egress waypoint's call to it is this lab's external
@@ -375,7 +388,20 @@ exception (`deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metric
 `portLevelMtls: {15020: PERMISSIVE}`), because Prometheus runs outside the mesh
 and its scrape is plaintext into a captured pod; without it that scrape target
 went down. Whether ztunnel honours a port-level mode is not stated by any current
-Istio page — it is measured here, and the file says so.
+Istio page — it is measured here, and the file says so. And the agentgateway
+**control plane opts out of ambient** too
+(`deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml`, the chart's
+`podLabels`): it is infrastructure, not the traffic path — it serves XDS over its
+own TLS, its two clients (the egress proxy, outside the mesh by agentgateway's
+documented egress shape, and Prometheus) speak plaintext to it, and it carries no
+agentgateway traffic. The ingress *proxy* in the same namespace stays captured
+and keeps its 15020 exception. This one was found late, on a from-scratch rebuild
+on 2026-09-12: ztunnel refused Prometheus's scrape of the controller under STRICT,
+naming the policy, and the egress proxy's XDS dial was reset, so it never became
+ready. The earlier cluster had hidden it, because the egress proxy's XDS stream
+there had been opened before the policy — on 2026-09-12 itself, after the
+controller's last restart — and ztunnel enforces per connection; so a rebuild from
+a deleted cluster is the test for any change to who is captured.
 
 The `telemetry` namespace stays **out** of the mesh on purpose. An in-mesh
 collector would enforce mTLS on inbound OTLP and so refuse the spans of every

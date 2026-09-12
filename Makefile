@@ -252,8 +252,15 @@ step-2b: check-go-sources-clean orchestrator-image
 	@echo "step-2b: agentgateway control plane via Helm ($(HELM)), charts pinned to $(AGENTGATEWAY_CHART_VERSION)"
 	helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
 		--create-namespace --namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION)
+	# -f opts the controller pod out of ambient. The namespace label below is for the
+	# ingress proxy; the controller is not on the traffic path and two plaintext clients
+	# must reach it, so it leaves the mesh the way the mock model does. Measured on the
+	# 2026-09-12 rebuild: without it, ztunnel refuses Prometheus's scrape of 9092 under
+	# mesh-wide STRICT and the egress waypoint's XDS dial is reset, so the egress never
+	# becomes ready. The file carries the readings and the documents.
 	helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
-		--namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION) --wait
+		--namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION) \
+		-f deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml --wait
 	# The ingress page labels the proxy namespace ambient so the hop from the
 	# gateway pod to the backend pod is HBONE like every other hop in the mesh.
 	kubectl label ns agentgateway-system istio.io/dataplane-mode=ambient --overwrite
