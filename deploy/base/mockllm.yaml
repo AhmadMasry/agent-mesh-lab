@@ -15,6 +15,27 @@ spec:
     metadata:
       labels:
         app: mockllm
+        # The mock stands in for an external model provider, so it is deliberately kept
+        # out of the ambient data plane: the egress waypoint's call to it is this lab's
+        # external plaintext leg by design, and under a STRICT PeerAuthentication a
+        # captured mock would refuse it (measured on 2026-09-12; the counts are in
+        # findings.md under `## Gate 3 / both receivers / mTLS enforced`, first attempt).
+        #
+        # The per-pod opt-out is documented on
+        # https://istio.io/latest/docs/ambient/usage/add-workloads/ (read 2026-09-12),
+        # which gives the selection logic as: ambient "mode is used for a pod if -- The
+        # namespace or pod has the label istio.io/dataplane-mode=ambient -- The pod does
+        # not have the opt-out label istio.io/dataplane-mode=none". Its label reference
+        # lists `istio.io/dataplane-mode` as Beta on "Namespace or Pod (latter has
+        # precedence)", "Valid values: ambient or none" -- so a pod label overrides the
+        # namespace label that `deploy/step-2-ambient-agw/namespace-ambient.yaml` puts on
+        # `lab`. The same page notes that mixing modes pod-by-pod inside one namespace
+        # "is not recommended" for the general case; it is used here for the one workload
+        # that represents something outside the mesh.
+        #
+        # It sits in base rather than in an overlay because it is inert at step 1 (no
+        # mesh is installed) and because no overlay edits an earlier one in place.
+        istio.io/dataplane-mode: none
     spec:
       # No workload of ours talks to the Kubernetes API -- the agents serve A2A, the
       # fixtures speak HTTP to each other and to the mock -- so the ServiceAccount

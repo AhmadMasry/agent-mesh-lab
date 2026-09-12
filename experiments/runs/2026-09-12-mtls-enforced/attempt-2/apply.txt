@@ -1,0 +1,151 @@
+== Follow-ups 7 / attempt 2: the shape the author and controller ruled on 2026-09-12 ==
+The mock model opts out of ambient (it stands in for an external provider); the telemetry
+namespace stays out (an in-mesh collector would refuse plaintext OTLP from the emitters that
+are not captured -- the mock once opted out, the egress proxy and both waypoints); one
+port-level PERMISSIVE exception for the ingress pod's scrape port; then mesh-wide STRICT.
+
+== 2026-09-12T16:14:12Z | certificate check before the first cluster step ==
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Leaf     Available     true           c19b719b5c0b4ff2fb1da1d0d0d645d3     2026-09-13T14:24:11Z     2026-09-12T14:22:11Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           ac7d5b746d8f2201d26f178e97478b2f     2026-09-13T14:24:11Z     2026-09-12T14:22:11Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           fb5ef4c12c38b81d27376ff8dd9a8a96     2026-09-13T14:24:11Z     2026-09-12T14:22:11Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+
+== 2026-09-12T16:14:12Z | state before this attempt ==
+No resources found
+POD                       AGE                    DATAPLANE
+mockllm-d6f98fccd-kztlz   2026-09-10T18:12:34Z   <none>
+NAMESPACE           POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+lab                 mockllm-d6f98fccd-kztlz                              10.244.1.82                   agent-mesh-lab-worker        None     HBONE
+
+== 2026-09-12T16:14:21Z | step 1: the mock opts out of ambient ==
+Applied as a targeted patch of the pod-template label, NOT as kubectl apply -k / -f of base:
+deploy/base/mockllm.yaml carries image: ko://..., which only the step target's
+kustomize | ko apply resolves (the lesson recorded in the Makefile and README on 2026-09-12).
+The patch touches one label and nothing else; the image is untouched.
+$ kubectl -n lab patch deploy/mockllm --type=merge -p '{"spec":{"template":{"metadata":{"labels":{"istio.io/dataplane-mode":"none"}}}}}'
+deployment.apps/mockllm patched
+Waiting for deployment "mockllm" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "mockllm" rollout to finish: 1 old replicas are pending termination...
+deployment "mockllm" successfully rolled out
+
+-- the new pod, its label, and its image (unchanged: the kind.local reference, not ko://):
+POD                        PHASE     DATAPLANE   IMAGE
+mockllm-7d6f6bbb77-htdw7   Running   none        kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:1c667be1352522b34884f2fbb5d0d24993876ae1eadc2436900585a7059abadd
+
+-- ztunnel's view: the mock is no longer captured (PROTOCOL=TCP, was HBONE):
+NAMESPACE           POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+lab                 agentgateway-waypoint-6658bc8f98-wpl2p               10.244.1.143                  agent-mesh-lab-worker        None     TCP
+lab                 agentgateway-waypoint-orch-5685545ccf-flf8s          10.244.1.144                  agent-mesh-lab-worker        None     TCP
+lab                 mockllm-7d6f6bbb77-htdw7                             10.244.1.162                  agent-mesh-lab-worker        None     TCP
+lab                 model-external                                       mockllm.lab.svc.cluster.local                              None     TCP
+lab                 orchestrator-7cdfdb558c-262wl                        10.244.1.106                  agent-mesh-lab-worker        None     HBONE
+lab                 worker-757989db4b-xd2pj                              10.244.1.83                   agent-mesh-lab-worker        None     HBONE
+
+== 2026-09-12T16:14:46Z | step 2: the port-level exception for the ingress pod's scrape port ==
+$ kubectl apply -f deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metrics.yaml
+peerauthentication.security.istio.io/agentgateway-ingress-metrics created
+{"mtls":{"mode":"STRICT"},"portLevelMtls":{"15020":{"mode":"PERMISSIVE"}},"selector":{"matchLabels":{"gateway.networking.k8s.io/gateway-name":"agentgateway-ingress"}}}
+
+== 2026-09-12T16:15:06Z | phase (a): plaintext probe BEFORE mesh-wide STRICT ==
+200 for both receivers, from telemetry/mtls-probe. Baseline metrics: 9/9 targets, 93 series.
+
+== 2026-09-12T16:15:06Z | step 3: mesh-wide STRICT ==
+$ kubectl apply -f deploy/step-2-ambient-agw/peer-authentication.yaml
+peerauthentication.security.istio.io/default created
+NAMESPACE             NAME                           MODE     AGE
+agentgateway-system   agentgateway-ingress-metrics   STRICT   20s
+istio-system          default                        STRICT   0s
+
+-- nothing restarted by the policies (only the mock rolled, for its label):
+NAMESPACE             NAME                                                   READY   STATUS      RESTARTS       AGE     IP             NODE                           NOMINATED NODE   READINESS GATES
+agentgateway-egress   agw-egress-674bb755bc-9gd66                            1/1     Running     1 (2d3h ago)   3d20h   10.244.1.45    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-864d45549-tbr2j                           1/1     Running     3 (98m ago)    3d20h   10.244.1.36    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-ingress-6848b5848f-4d5j4                  1/1     Running     1 (2d3h ago)   3d20h   10.244.1.48    agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-6658bc8f98-wpl2p                 1/1     Running     0              74m     10.244.1.143   agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-orch-5685545ccf-flf8s            1/1     Running     0              74m     10.244.1.144   agent-mesh-lab-worker          <none>           <none>
+lab                   mockllm-7d6f6bbb77-htdw7                               1/1     Running     0              44s     10.244.1.162   agent-mesh-lab-worker          <none>           <none>
+lab                   orchestrator-7cdfdb558c-262wl                          1/1     Running     0              26h     10.244.1.106   agent-mesh-lab-worker          <none>           <none>
+lab                   worker-757989db4b-xd2pj                                1/1     Running     0              46h     10.244.1.83    agent-mesh-lab-worker          <none>           <none>
+telemetry             jaeger-d997cf5b-td5zv                                  1/1     Running     1 (2d3h ago)   3d9h    10.244.1.41    agent-mesh-lab-worker          <none>           <none>
+telemetry             mtls-probe                                             1/1     Running     0              10s     10.244.1.163   agent-mesh-lab-worker          <none>           <none>
+telemetry             otel-collector-75f76bf47b-7772p                        1/1     Running     0              66m     10.244.1.151   agent-mesh-lab-worker          <none>           <none>
+telemetry             prometheus-64cd688b5b-9q52s                            1/1     Running     0              66m     10.244.1.150   agent-mesh-lab-worker          <none>           <none>
+
+== 2026-09-12T16:19:19Z | the measurement under the new shape ==
+(b) plaintext probe UNDER mesh-wide STRICT: curl exit 56, no status,
+    "Recv failure: Connection reset by peer" for BOTH receivers. Refused as documented.
+
+(c) clean check, RUN_ITEM=2026-09-12-mtls-enforced/attempt-2/clean-check:
+    worker,g2c-191523-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+    orchestrator,g2c-191523-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+    invocations=1 on both -- the model leg works with the mock outside the mesh.
+
+(d) REPS=1 trace run, attempt-2/trace/:
+    orchestrator,a3t-191619-r1-orchestrator,2 trace ids,66 spans,hops_without_span=none
+      agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2
+    worker,a3t-191619-r1-worker,2 trace ids,12 spans,hops_without_span=none
+      agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3
+    dangling parents: 0 and 0, recomputed from spans.csv per work item.
+    mockllm=1 is still there: its OTLP export goes to the collector in telemetry, which is
+    not in the mesh, so opting the mock out of ambient did not cost its span.
+
+(e) the egress leg, from agw-egress's own access log -- the model call reaching the
+    now-non-mesh mock, carrying the caller's mesh identity on the way in:
+      endpoint=mockllm.lab.svc.cluster.local:8080 src.identity=spiffe://cluster.local/ns/lab/sa/default http.status=200 duration=202ms
+      endpoint=mockllm.lab.svc.cluster.local:8080 src.identity=spiffe://cluster.local/ns/lab/sa/default http.status=200 duration=202ms
+      endpoint=mockllm.lab.svc.cluster.local:8080 src.identity=spiffe://cluster.local/ns/lab/sa/default http.status=200 duration=202ms
+      endpoint=mockllm.lab.svc.cluster.local:8080 src.identity=spiffe://cluster.local/ns/lab/sa/default http.status=200 duration=201ms
+      endpoint=mockllm.lab.svc.cluster.local:8080 src.identity=spiffe://cluster.local/ns/lab/sa/default http.status=200 duration=201ms
+      endpoint=mockllm.lab.svc.cluster.local:8080 src.identity=spiffe://cluster.local/ns/lab/sa/default http.status=200 duration=200ms
+
+    Prometheus: 9/9 targets up in both readings, INCLUDING the ingress proxy's
+    http://10.244.1.48:15020/metrics -- the target that went down in attempt 1.
+
+    ztunnel refusals under this policy, the whole set:
+      mtls-probe -> worker-757989db4b-xd2pj (10.244.1.83:8080)
+      mtls-probe -> orchestrator-7cdfdb558c-262wl (10.244.1.106:8080)
+    Only the probe's two. No egress leg, no scrape.
+
+== 2026-09-12T16:20:00Z | final state, the cluster as this task leaves it ==
+Both policies stay applied -- this is the intended end state, not a reverted probe.
+NAMESPACE             NAME                           MODE     AGE
+agentgateway-system   agentgateway-ingress-metrics   STRICT   5m14s
+istio-system          default                        STRICT   4m54s
+
+Error from server (NotFound): pods "mtls-probe" not found
+
+NAMESPACE             NAME                                                   READY   STATUS      RESTARTS       AGE     IP             NODE                           NOMINATED NODE   READINESS GATES
+agentgateway-egress   agw-egress-674bb755bc-9gd66                            1/1     Running     1 (2d3h ago)   3d20h   10.244.1.45    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-864d45549-tbr2j                           1/1     Running     3 (103m ago)   3d20h   10.244.1.36    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-ingress-6848b5848f-4d5j4                  1/1     Running     1 (2d3h ago)   3d20h   10.244.1.48    agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-6658bc8f98-wpl2p                 1/1     Running     0              79m     10.244.1.143   agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-orch-5685545ccf-flf8s            1/1     Running     0              79m     10.244.1.144   agent-mesh-lab-worker          <none>           <none>
+lab                   mockllm-7d6f6bbb77-htdw7                               1/1     Running     0              5m38s   10.244.1.162   agent-mesh-lab-worker          <none>           <none>
+lab                   orchestrator-7cdfdb558c-262wl                          1/1     Running     0              26h     10.244.1.106   agent-mesh-lab-worker          <none>           <none>
+lab                   worker-757989db4b-xd2pj                                1/1     Running     0              46h     10.244.1.83    agent-mesh-lab-worker          <none>           <none>
+telemetry             jaeger-d997cf5b-td5zv                                  1/1     Running     1 (2d3h ago)   3d9h    10.244.1.41    agent-mesh-lab-worker          <none>           <none>
+telemetry             otel-collector-75f76bf47b-7772p                        1/1     Running     0              71m     10.244.1.151   agent-mesh-lab-worker          <none>           <none>
+telemetry             prometheus-64cd688b5b-9q52s                            1/1     Running     0              71m     10.244.1.150   agent-mesh-lab-worker          <none>           <none>
+
+NAMESPACE           POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+agentgateway-egress agw-egress-674bb755bc-9gd66                          10.244.1.45                   agent-mesh-lab-worker        None     TCP
+agentgateway-system agentgateway-864d45549-tbr2j                         10.244.1.36                   agent-mesh-lab-worker        None     HBONE
+agentgateway-system agentgateway-ingress-6848b5848f-4d5j4                10.244.1.48                   agent-mesh-lab-worker        None     HBONE
+lab                 agentgateway-waypoint-6658bc8f98-wpl2p               10.244.1.143                  agent-mesh-lab-worker        None     TCP
+lab                 agentgateway-waypoint-orch-5685545ccf-flf8s          10.244.1.144                  agent-mesh-lab-worker        None     TCP
+lab                 mockllm-7d6f6bbb77-htdw7                             10.244.1.162                  agent-mesh-lab-worker        None     TCP
+lab                 model-external                                       mockllm.lab.svc.cluster.local                              None     TCP
+lab                 orchestrator-7cdfdb558c-262wl                        10.244.1.106                  agent-mesh-lab-worker        None     HBONE
+lab                 worker-757989db4b-xd2pj                              10.244.1.83                   agent-mesh-lab-worker        None     HBONE
+
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           fb5ef4c12c38b81d27376ff8dd9a8a96     2026-09-13T14:24:11Z     2026-09-12T14:22:11Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+
+The only cluster mutations of this attempt: the mockllm pod-template label patch (one
+rollout, image untouched), the two kubectl apply calls, the probe pod's creation and
+deletion, and the loadgen Jobs of the clean check and the trace run. No image rebuilt, no
+step target run, no injector armed, no retry knob touched, nothing else restarted.

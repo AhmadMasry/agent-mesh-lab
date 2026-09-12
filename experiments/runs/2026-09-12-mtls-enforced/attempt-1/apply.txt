@@ -1,0 +1,280 @@
+== Follow-ups 7 / mTLS enforced: cluster actions and state, in order ==
+== 2026-09-12T15:48:48Z | state read back before anything was applied ==
+-- certificate check (the standing precondition for any mesh run):
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Leaf     Available     true           c19b719b5c0b4ff2fb1da1d0d0d645d3     2026-09-13T14:24:11Z     2026-09-12T14:22:11Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway             Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           ac7d5b746d8f2201d26f178e97478b2f     2026-09-13T14:24:11Z     2026-09-12T14:22:11Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           fb5ef4c12c38b81d27376ff8dd9a8a96     2026-09-13T14:24:11Z     2026-09-12T14:22:11Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+
+-- ambient enrolment, all namespaces:
+NAME                  STATUS   AGE     LABELS
+agentgateway-egress   Active   3d19h   kubernetes.io/metadata.name=agentgateway-egress
+agentgateway-system   Active   3d19h   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=agentgateway-system,name=agentgateway-system
+default               Active   4d22h   kubernetes.io/metadata.name=default
+istio-system          Active   4d21h   kubernetes.io/metadata.name=istio-system
+kube-node-lease       Active   4d22h   kubernetes.io/metadata.name=kube-node-lease
+kube-public           Active   4d22h   kubernetes.io/metadata.name=kube-public
+kube-system           Active   4d22h   kubernetes.io/metadata.name=kube-system
+lab                   Active   4d22h   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=lab
+local-path-storage    Active   4d22h   kubernetes.io/metadata.name=local-path-storage
+telemetry             Active   3d8h    kubernetes.io/metadata.name=telemetry
+
+-- PeerAuthentication before this task (the mesh is at the documented ambient default, PERMISSIVE):
+No resources found
+
+-- AuthorizationPolicy before this task (none; the mesh-wide default action is ALLOW):
+No resources found
+
+-- the root namespace this mesh uses, from its own ConfigMap:
+19:rootNamespace: istio-system
+28:trustDomain: cluster.local
+
+-- workloads as ztunnel sees them:
+NAMESPACE           POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+agentgateway-egress agw-egress-674bb755bc-9gd66                          10.244.1.45                   agent-mesh-lab-worker        None     TCP
+agentgateway-system agentgateway-864d45549-tbr2j                         10.244.1.36                   agent-mesh-lab-worker        None     HBONE
+agentgateway-system agentgateway-ingress-6848b5848f-4d5j4                10.244.1.48                   agent-mesh-lab-worker        None     HBONE
+default             kubernetes                                           172.18.0.3                                                 None     TCP
+istio-system        istio-cni-node-5g86s                                 10.244.1.11                   agent-mesh-lab-worker        None     TCP
+istio-system        istio-cni-node-jcmzx                                 10.244.0.6                    agent-mesh-lab-control-plane None     TCP
+istio-system        istiod-6fff49774b-vxzsh                              10.244.1.39                   agent-mesh-lab-worker        None     TCP
+istio-system        ztunnel-4f8pk                                        10.244.0.17                   agent-mesh-lab-control-plane None     TCP
+istio-system        ztunnel-mkk8f                                        10.244.1.115                  agent-mesh-lab-worker        None     TCP
+kube-system         coredns-559f6c778d-gdw5w                             10.244.0.15                   agent-mesh-lab-control-plane None     TCP
+kube-system         coredns-559f6c778d-m8hls                             10.244.0.13                   agent-mesh-lab-control-plane None     TCP
+kube-system         etcd-agent-mesh-lab-control-plane                    172.18.0.3                    agent-mesh-lab-control-plane None     TCP
+kube-system         kindnet-45p7l                                        172.18.0.3                    agent-mesh-lab-control-plane None     TCP
+kube-system         kindnet-nrkhx                                        172.18.0.2                    agent-mesh-lab-worker        None     TCP
+kube-system         kube-apiserver-agent-mesh-lab-control-plane          172.18.0.3                    agent-mesh-lab-control-plane None     TCP
+kube-system         kube-controller-manager-agent-mesh-lab-control-plane 172.18.0.3                    agent-mesh-lab-control-plane None     TCP
+kube-system         kube-proxy-45pt4                                     172.18.0.3                    agent-mesh-lab-control-plane None     TCP
+kube-system         kube-proxy-cfwft                                     172.18.0.2                    agent-mesh-lab-worker        None     TCP
+kube-system         kube-scheduler-agent-mesh-lab-control-plane          172.18.0.3                    agent-mesh-lab-control-plane None     TCP
+lab                 agentgateway-waypoint-6658bc8f98-wpl2p               10.244.1.143                  agent-mesh-lab-worker        None     TCP
+lab                 agentgateway-waypoint-orch-5685545ccf-flf8s          10.244.1.144                  agent-mesh-lab-worker        None     TCP
+lab                 mockllm-d6f98fccd-kztlz                              10.244.1.82                   agent-mesh-lab-worker        None     HBONE
+lab                 model-external                                       mockllm.lab.svc.cluster.local                              None     TCP
+lab                 orchestrator-7cdfdb558c-262wl                        10.244.1.106                  agent-mesh-lab-worker        None     HBONE
+lab                 worker-757989db4b-xd2pj                              10.244.1.83                   agent-mesh-lab-worker        None     HBONE
+local-path-storage  local-path-provisioner-75f7fc7dc5-pd8pb              10.244.0.12                   agent-mesh-lab-control-plane None     TCP
+telemetry           jaeger-d997cf5b-td5zv                                10.244.1.41                   agent-mesh-lab-worker        None     TCP
+telemetry           otel-collector-75f76bf47b-7772p                      10.244.1.151                  agent-mesh-lab-worker        None     TCP
+telemetry           prometheus-64cd688b5b-9q52s                          10.244.1.150                  agent-mesh-lab-worker        None     TCP
+
+-- gateways:
+NAMESPACE             NAME                         CLASS                         ADDRESS         PROGRAMMED   AGE
+agentgateway-egress   agw-egress                   agentgateway                  10.96.208.219   True         3d19h
+agentgateway-system   agentgateway-ingress         agentgateway                  10.96.176.170   True         3d19h
+lab                   agentgateway-waypoint        istio-agentgateway-waypoint   10.96.24.209    True         4d21h
+lab                   agentgateway-waypoint-orch   istio-agentgateway-waypoint   10.96.36.80     True         3d16h
+
+-- pods in the three namespaces on the path:
+NAME                                          READY   STATUS      RESTARTS   AGE    IP             NODE                    NOMINATED NODE   READINESS GATES
+agentgateway-waypoint-6658bc8f98-wpl2p        1/1     Running     0          47m    10.244.1.143   agent-mesh-lab-worker   <none>           <none>
+agentgateway-waypoint-orch-5685545ccf-flf8s   1/1     Running     0          47m    10.244.1.144   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-005637-r1-orchestrator-bwtsz      0/1     Completed   0          41h    10.244.1.102   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-005637-r1-worker-f7rsr            0/1     Completed   0          41h    10.244.1.101   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-005637-r2-orchestrator-v576w      0/1     Completed   0          41h    10.244.1.104   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-005637-r2-worker-q75rq            0/1     Completed   0          41h    10.244.1.103   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-163416-r1-orchestrator-pl5bb      0/1     Completed   0          26h    10.244.1.112   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-163416-r1-worker-jp28s            0/1     Completed   0          26h    10.244.1.111   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-163416-r2-orchestrator-h6cq5      0/1     Completed   0          26h    10.244.1.114   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-163416-r2-worker-hjlhf            0/1     Completed   0          26h    10.244.1.113   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-174917-r1-orchestrator-d4r78      0/1     Completed   0          58m    10.244.1.120   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-174917-r1-worker-gncfh            0/1     Completed   0          59m    10.244.1.119   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-174917-r2-orchestrator-jpvxb      0/1     Completed   0          57m    10.244.1.122   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-174917-r2-worker-w7xsc            0/1     Completed   0          58m    10.244.1.121   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-175239-r1-orchestrator-49wmk      0/1     Completed   0          55m    10.244.1.127   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-175239-r1-worker-xk52v            0/1     Completed   0          55m    10.244.1.126   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-175437-r1-orchestrator-65xx6      0/1     Completed   0          53m    10.244.1.132   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-175437-r1-worker-wgkl7            0/1     Completed   0          53m    10.244.1.131   agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-175631-r1-orchestrator-z56t2      0/1     Completed   0          51m    10.244.1.135   agent-mesh-lab-worker   <none>           <none>
+NAMESPACE             NAME                                                   READY   STATUS      RESTARTS       AGE     IP             NODE                           NOMINATED NODE   READINESS GATES
+agentgateway-egress   agw-egress-674bb755bc-9gd66                            1/1     Running     1 (2d2h ago)   3d19h   10.244.1.45    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-864d45549-tbr2j                           1/1     Running     3 (72m ago)    3d19h   10.244.1.36    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-ingress-6848b5848f-4d5j4                  1/1     Running     1 (2d2h ago)   3d19h   10.244.1.48    agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-6658bc8f98-wpl2p                 1/1     Running     0              47m     10.244.1.143   agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-orch-5685545ccf-flf8s            1/1     Running     0              47m     10.244.1.144   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-005637-r1-orchestrator-bwtsz               0/1     Completed   0              41h     10.244.1.102   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-005637-r1-worker-f7rsr                     0/1     Completed   0              41h     10.244.1.101   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-005637-r2-orchestrator-v576w               0/1     Completed   0              41h     10.244.1.104   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-005637-r2-worker-q75rq                     0/1     Completed   0              41h     10.244.1.103   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-163416-r1-orchestrator-pl5bb               0/1     Completed   0              26h     10.244.1.112   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-163416-r1-worker-jp28s                     0/1     Completed   0              26h     10.244.1.111   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-163416-r2-orchestrator-h6cq5               0/1     Completed   0              26h     10.244.1.114   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-163416-r2-worker-hjlhf                     0/1     Completed   0              26h     10.244.1.113   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-174917-r1-orchestrator-d4r78               0/1     Completed   0              58m     10.244.1.120   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-174917-r1-worker-gncfh                     0/1     Completed   0              59m     10.244.1.119   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-174917-r2-orchestrator-jpvxb               0/1     Completed   0              57m     10.244.1.122   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-174917-r2-worker-w7xsc                     0/1     Completed   0              58m     10.244.1.121   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175239-r1-orchestrator-49wmk               0/1     Completed   0              55m     10.244.1.127   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175239-r1-worker-xk52v                     0/1     Completed   0              55m     10.244.1.126   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175437-r1-orchestrator-65xx6               0/1     Completed   0              53m     10.244.1.132   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175437-r1-worker-wgkl7                     0/1     Completed   0              53m     10.244.1.131   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175631-r1-orchestrator-z56t2               0/1     Completed   0              51m     10.244.1.135   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175631-r1-worker-5btht                     0/1     Completed   0              51m     10.244.1.134   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175631-r2-orchestrator-j2wxq               0/1     Completed   0              50m     10.244.1.137   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175631-r2-worker-kwjtc                     0/1     Completed   0              51m     10.244.1.136   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175958-r1-orchestrator-hq2h7               0/1     Completed   0              48m     10.244.1.142   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-175958-r1-worker-hnbsw                     0/1     Completed   0              48m     10.244.1.141   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-180250-r1-orchestrator-8f695               0/1     Completed   0              45m     10.244.1.147   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-180250-r1-worker-xjdsv                     0/1     Completed   0              45m     10.244.1.146   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-180908-r1-orchestrator-s5bb2               0/1     Completed   0              38m     10.244.1.154   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-180908-r1-worker-stb4t                     0/1     Completed   0              39m     10.244.1.153   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-191907-r1-orchestrator-hj9bz               0/1     Completed   0              47h     10.244.1.57    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-191907-r1-worker-h885s                     0/1     Completed   0              47h     10.244.1.56    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-191907-r2-orchestrator-hhskw               0/1     Completed   0              47h     10.244.1.59    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-191907-r2-worker-p7f9n                     0/1     Completed   0              47h     10.244.1.58    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-195558-r1-orchestrator-674ll               0/1     Completed   0              46h     10.244.1.68    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-195558-r1-worker-dhbvs                     0/1     Completed   0              46h     10.244.1.67    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-195558-r2-orchestrator-jzc4v               0/1     Completed   0              46h     10.244.1.70    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-195558-r2-worker-hgk82                     0/1     Completed   0              46h     10.244.1.69    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-201300-r1-orchestrator-jm6mb               0/1     Completed   0              46h     10.244.1.79    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-201300-r1-worker-ttk76                     0/1     Completed   0              46h     10.244.1.78    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-201300-r2-orchestrator-vmhjx               0/1     Completed   0              46h     10.244.1.81    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-201300-r2-worker-lkcl5                     0/1     Completed   0              46h     10.244.1.80    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-220936-r1-orchestrator-mqb8b               0/1     Completed   0              44h     10.244.1.93    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-220936-r1-worker-mhfxz                     0/1     Completed   0              44h     10.244.1.92    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-220936-r2-orchestrator-s72f2               0/1     Completed   0              44h     10.244.1.95    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-a3t-220936-r2-worker-7n66q                     0/1     Completed   0              44h     10.244.1.94    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-005546-orchestrator-hsctc                  0/1     Completed   0              41h     10.244.1.99    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-005546-worker-9w45f                        0/1     Completed   0              41h     10.244.1.98    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-163312-orchestrator-m2knh                  0/1     Completed   0              26h     10.244.1.109   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-163312-worker-zn2bc                        0/1     Completed   0              26h     10.244.1.108   agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-165428-orchestrator-gtnp7                  0/1     Completed   0              2d1h    10.244.1.53    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-165428-worker-cm6xf                        0/1     Completed   0              2d1h    10.244.1.52    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-195508-orchestrator-6pt79                  0/1     Completed   0              46h     10.244.1.65    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-195508-worker-2fncs                        0/1     Completed   0              46h     10.244.1.64    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-201208-orchestrator-7nssd                  0/1     Completed   0              46h     10.244.1.76    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-201208-worker-69ms4                        0/1     Completed   0              46h     10.244.1.75    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-211308-orchestrator-fhmzb                  0/1     Completed   0              45h     10.244.1.86    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-211308-worker-zwgqt                        0/1     Completed   0              45h     10.244.1.85    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-220841-orchestrator-db5lp                  0/1     Completed   0              44h     10.244.1.90    agent-mesh-lab-worker          <none>           <none>
+lab                   loadgen-g2c-220841-worker-cl2nm                        0/1     Completed   0              44h     10.244.1.89    agent-mesh-lab-worker          <none>           <none>
+lab                   mockllm-d6f98fccd-kztlz                                1/1     Running     0              45h     10.244.1.82    agent-mesh-lab-worker          <none>           <none>
+lab                   orchestrator-7cdfdb558c-262wl                          1/1     Running     0              26h     10.244.1.106   agent-mesh-lab-worker          <none>           <none>
+lab                   worker-757989db4b-xd2pj                                1/1     Running     0              45h     10.244.1.83    agent-mesh-lab-worker          <none>           <none>
+telemetry             jaeger-d997cf5b-td5zv                                  1/1     Running     1 (2d2h ago)   3d8h    10.244.1.41    agent-mesh-lab-worker          <none>           <none>
+telemetry             otel-collector-75f76bf47b-7772p                        1/1     Running     0              40m     10.244.1.151   agent-mesh-lab-worker          <none>           <none>
+telemetry             prometheus-64cd688b5b-9q52s                            1/1     Running     0              40m     10.244.1.150   agent-mesh-lab-worker          <none>           <none>
+
+== 2026-09-12T15:52:12Z | phase (a): the plaintext probe BEFORE the policy ==
+Both receivers answered 200 from telemetry/mtls-probe, a pod in a namespace with no
+istio.io/dataplane-mode label. Recorded in plaintext-probe-before.txt and plaintext-probe.csv.
+
+== 2026-09-12T15:52:12Z | the baseline metrics reading, and what it predicts ==
+9/9 Prometheus targets up; 77 istio_tcp_connections_opened_total series. Read BEFORE applying
+anything, so the prediction below is on the record ahead of the measurement, not after it.
+
+Two hops already report connection_security_policy="unknown" at reporter="destination" --
+that is, the receiving ztunnel saw an inbound connection that was not an mTLS tunnel:
+  agw-egress -> mockllm.lab.svc.cluster.local              destination  unknown
+  agw-egress -> agentgateway.agentgateway-system.svc...    destination  unknown
+Both start at the egress waypoint, whose namespace agentgateway-egress is deliberately not
+ambient-enrolled (istioctl ztunnel-config workloads reports it PROTOCOL=TCP), and both end at
+a pod that IS captured (mockllm and the agentgateway control plane, both PROTOCOL=HBONE).
+Every other hop on both flows reports mutual_tls.
+
+So a mesh-wide STRICT policy is expected to refuse those two legs -- "Enabling STRICT mode
+means that pods will only accept mTLS-encrypted traffic" -- which would break the worker's
+model call and the egress waypoint's XDS connection. Two Prometheus scrapes into captured
+pods (agentgateway-ingress:15020 and agentgateway:9092, both plaintext from the unenrolled
+telemetry namespace) are expected to be refused for the same reason. This is measured rather
+than assumed: the policy the documents prescribe is applied as written, the outcome counted,
+and if the in-mesh or ingress flow fails the policy is reverted per the task's stop rule.
+
+== 2026-09-12T15:52:50Z | applying the policy ==
+$ kubectl apply -f deploy/step-2-ambient-agw/peer-authentication.yaml
+peerauthentication.security.istio.io/default created
+
+-- the policy as the cluster has it:
+NAMESPACE      NAME      MODE     AGE
+istio-system   default   STRICT   10s
+{"mtls":{"mode":"STRICT"}}
+-- nothing restarted (compare the ages and restart counts with the pre-apply listing above):
+NAMESPACE             NAME                                                   READY   STATUS      RESTARTS       AGE     IP             NODE                           NOMINATED NODE   READINESS GATES
+agentgateway-egress   agw-egress-674bb755bc-9gd66                            1/1     Running     1 (2d2h ago)   3d20h   10.244.1.45    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-864d45549-tbr2j                           1/1     Running     3 (76m ago)    3d20h   10.244.1.36    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-ingress-6848b5848f-4d5j4                  1/1     Running     1 (2d2h ago)   3d20h   10.244.1.48    agent-mesh-lab-worker          <none>           <none>
+istio-system          istio-cni-node-5g86s                                   1/1     Running     1 (2d2h ago)   4d21h   10.244.1.11    agent-mesh-lab-worker          <none>           <none>
+istio-system          istio-cni-node-jcmzx                                   1/1     Running     1 (2d2h ago)   4d21h   10.244.0.6     agent-mesh-lab-control-plane   <none>           <none>
+istio-system          istiod-6fff49774b-vxzsh                                1/1     Running     1 (2d2h ago)   4d21h   10.244.1.39    agent-mesh-lab-worker          <none>           <none>
+istio-system          ztunnel-4f8pk                                          1/1     Running     0              88m     10.244.0.17    agent-mesh-lab-control-plane   <none>           <none>
+istio-system          ztunnel-mkk8f                                          1/1     Running     0              88m     10.244.1.115   agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-6658bc8f98-wpl2p                 1/1     Running     0              52m     10.244.1.143   agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-orch-5685545ccf-flf8s            1/1     Running     0              52m     10.244.1.144   agent-mesh-lab-worker          <none>           <none>
+lab                   mockllm-d6f98fccd-kztlz                                1/1     Running     0              45h     10.244.1.82    agent-mesh-lab-worker          <none>           <none>
+lab                   orchestrator-7cdfdb558c-262wl                          1/1     Running     0              26h     10.244.1.106   agent-mesh-lab-worker          <none>           <none>
+lab                   worker-757989db4b-xd2pj                                1/1     Running     0              45h     10.244.1.83    agent-mesh-lab-worker          <none>           <none>
+telemetry             jaeger-d997cf5b-td5zv                                  1/1     Running     1 (2d2h ago)   3d9h    10.244.1.41    agent-mesh-lab-worker          <none>           <none>
+telemetry             mtls-probe                                             1/1     Running     0              2m55s   10.244.1.155   agent-mesh-lab-worker          <none>           <none>
+telemetry             otel-collector-75f76bf47b-7772p                        1/1     Running     0              44m     10.244.1.151   agent-mesh-lab-worker          <none>           <none>
+telemetry             prometheus-64cd688b5b-9q52s                            1/1     Running     0              44m     10.244.1.150   agent-mesh-lab-worker          <none>           <none>
+
+
+== 2026-09-12T15:55:40Z | phase (c) FAILED under STRICT -- the task's stop rule fires ==
+gate2-single-clean.sh with RUN_ITEM=2026-09-12-mtls-enforced/clean-check counted, for both receivers:
+  deliveries=1 received=1 executes=1 tasks_created=1 invocations=0 client_result=task/TASK_STATE_FAILED
+The worker's execution ledger gives the error verbatim: "model call: status 503".
+
+The refused hop, named by two independent records:
+  agw-egress's own access log:  endpoint=mockllm.lab.svc.cluster.local:8080
+    src.identity=spiffe://cluster.local/ns/lab/sa/default http.status=503
+    error="upstream call failed: SendRequest: connection error: Connection reset by peer (os error 104)"
+    reason=UpstreamFailure
+  mockllm's receiving ztunnel:  src.workload="agw-egress-674bb755bc-9gd66" src.namespace="agentgateway-egress"
+    dst.addr=10.244.1.82:8080 dst.service="mockllm.lab.svc.cluster.local" direction="inbound"
+    error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+So the worker -> egress leg was fine (it arrived carrying the lab identity); the leg that refused
+is egress -> mockllm, the one the baseline reading had already shown as destination/unknown.
+
+Reverting, as the task's stop rule requires. No tuning of the policy is attempted.
+$ kubectl delete -f deploy/step-2-ambient-agw/peer-authentication.yaml
+peerauthentication.security.istio.io "default" deleted from istio-system namespace
+No resources found
+
+== 2026-09-12T16:00:54Z | the revert verified ==
+gate2-single-clean.sh with RUN_ITEM=2026-09-12-mtls-enforced/clean-check-after-revert:
+  worker,g2c-185545-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+  orchestrator,g2c-185545-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+The model invocation ledger has one line per work item again, outcome ok, caller worker,
+latency 200.997 ms -- so the egress leg reaches the mock as before.
+[capture note, added in the review fix round: the two lines below are as the shell wrote them.
+ The phase name was written between backticks inside a double-quoted echo, so the shell tried to
+ run it as a command, printed the error, and substituted the empty result -- which is why the
+ next line reads "phase :" with nothing after it. The word that belongs there is "reverted".
+ Nothing about the run is affected; the record is left as captured rather than edited, and the
+ claim it makes is evidenced by plaintext-probe.csv, whose rows read
+ reverted,worker,...,0,200 and reverted,orchestrator,...,0,200.]
+(eval):1: command not found: reverted
+The plaintext probe was run a third time, phase : 200 for both receivers, which
+closes the chain -- the refusal was this policy and nothing else changed.
+Prometheus is back to 9/9 targets.
+
+-- final state, the cluster as this task leaves it:
+No resources found
+Error from server (NotFound): pods "mtls-probe" not found
+NAMESPACE             NAME                                                   READY   STATUS      RESTARTS       AGE     IP             NODE                           NOMINATED NODE   READINESS GATES
+agentgateway-egress   agw-egress-674bb755bc-9gd66                            1/1     Running     1 (2d3h ago)   3d20h   10.244.1.45    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-864d45549-tbr2j                           1/1     Running     3 (84m ago)    3d20h   10.244.1.36    agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-ingress-6848b5848f-4d5j4                  1/1     Running     1 (2d3h ago)   3d20h   10.244.1.48    agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-6658bc8f98-wpl2p                 1/1     Running     0              59m     10.244.1.143   agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-orch-5685545ccf-flf8s            1/1     Running     0              59m     10.244.1.144   agent-mesh-lab-worker          <none>           <none>
+lab                   mockllm-d6f98fccd-kztlz                                1/1     Running     0              45h     10.244.1.82    agent-mesh-lab-worker          <none>           <none>
+lab                   orchestrator-7cdfdb558c-262wl                          1/1     Running     0              26h     10.244.1.106   agent-mesh-lab-worker          <none>           <none>
+lab                   worker-757989db4b-xd2pj                                1/1     Running     0              45h     10.244.1.83    agent-mesh-lab-worker          <none>           <none>
+telemetry             jaeger-d997cf5b-td5zv                                  1/1     Running     1 (2d3h ago)   3d9h    10.244.1.41    agent-mesh-lab-worker          <none>           <none>
+telemetry             otel-collector-75f76bf47b-7772p                        1/1     Running     0              52m     10.244.1.151   agent-mesh-lab-worker          <none>           <none>
+telemetry             prometheus-64cd688b5b-9q52s                            1/1     Running     0              52m     10.244.1.150   agent-mesh-lab-worker          <none>           <none>
+
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           fb5ef4c12c38b81d27376ff8dd9a8a96     2026-09-13T14:24:11Z     2026-09-12T14:22:11Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           b99451fb3e6579f7b9d15c1a66dd15d6     2036-09-04T17:57:10Z     2026-09-07T17:57:10Z
+
+Nothing was restarted, no image was rebuilt, no step target was run, no injector was armed,
+no retry knob was touched, and the probe pod was removed. The only cluster mutations this
+task made were the kubectl apply and the kubectl delete of the one PeerAuthentication, the
+probe pod's creation and deletion, and the loadgen Jobs of the two clean checks.

@@ -4,12 +4,18 @@
 # two agents exactly as step 2 left it. Applies on top of step 2; nothing is edited in
 # place. The decision this overlay implements is dated 2026-09-08 in
 # docs/proposal-notes.md.
+#
+# peer-authentication-ingress-metrics.yaml is here rather than with the mesh-wide STRICT
+# policy of step 2 because it selects the ingress pod this overlay creates: Prometheus runs
+# outside the mesh, so its scrape of that pod's metrics port is plaintext into a captured
+# pod and STRICT refused it (measured 2026-09-12). One workload, one port, one mode.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../step-2-ambient-agw
   - ingress.yaml
   - egress.yaml
+  - peer-authentication-ingress-metrics.yaml
 patches:
   - path: worker-model-url.yaml
     target:

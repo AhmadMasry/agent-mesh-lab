@@ -1,0 +1,15 @@
+flow,hop,reporter,security_policy,connections_at_first_reading,connections_added_under_strict,connections_added_after,note
+worker,loadgen -> worker Service (via the worker's waypoint),source,mutual_tls,9,1,1,
+worker,loadgen -> agentgateway-waypoint (the waypoint's own inbound),destination,not-reported,none,none,none,no series in any reading: ztunnel does not see this hop
+worker,agentgateway-waypoint -> worker,destination,mutual_tls,6,1,1,
+worker,worker -> agw-egress (the model ServiceEntry host),source,mutual_tls,5,1,1,
+worker,worker -> agw-egress (the egress waypoint's own inbound),destination,not-reported,none,none,none,no series in any reading: ztunnel does not see this hop
+worker,agw-egress -> mockllm,destination,unknown,7,2,1,
+orchestrator,"loadgen -> orchestrator Service, card fetch (via the orchestrator's waypoint)",source,mutual_tls,9,1,1,
+orchestrator,agentgateway-waypoint-orch -> orchestrator,destination,mutual_tls,6,1,1,
+orchestrator,"loadgen -> agentgateway-ingress, SendMessage (source side)",source,mutual_tls,9,1,1,
+orchestrator,"loadgen -> agentgateway-ingress, SendMessage (destination side)",destination,mutual_tls,9,1,1,
+orchestrator,agentgateway-ingress -> orchestrator,destination,mutual_tls,7,1,1,
+orchestrator,"orchestrator -> worker Service, the forward (via the worker's waypoint)",source,mutual_tls,9,1,1,
+probe,"telemetry/mtls-probe -> worker, plaintext from outside the mesh",destination,unknown,1,1,1,
+probe,"telemetry/mtls-probe -> orchestrator, plaintext from outside the mesh",destination,unknown,1,1,1,

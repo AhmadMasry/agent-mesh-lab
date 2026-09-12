@@ -4,12 +4,23 @@
 # (they are not application manifests); this overlay only enrols the namespace,
 # creates the waypoint, attaches the worker Service to it, and adds a retry-free
 # HTTPRoute for later experiments to extend.
+#
+# peer-authentication.yaml takes the mesh from the documented ambient default of
+# PERMISSIVE to STRICT, mesh-wide, from this step on. Two other files make that hold
+# for this lab's own traffic, and neither belongs to this overlay: the mock model opts
+# out of ambient in deploy/base/mockllm.yaml, because it stands in for an external
+# provider and the egress waypoint's call to it is the external plaintext leg; and the
+# agentgateway ingress pod's scrape port gets one port-level exception in
+# deploy/step-2b-agw-ingress-egress/, because Prometheus is not in the mesh. All three
+# were measured together on 2026-09-12; the counts are the findings entry
+# `## Gate 3 / both receivers / mTLS enforced`.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../step-1-nomesh
   - waypoint.yaml
   - worker-route.yaml
+  - peer-authentication.yaml
 patches:
   - path: namespace-ambient.yaml
     target:

@@ -1,0 +1,18 @@
+== ztunnel refusals and probe connections, attempt 2 ==
+Captured with:  kubectl -n istio-system logs ztunnel-mkk8f --since=15m \
+                  | grep -E "istio_converted_static_strict|mtls-probe"
+Captured at:    2026-09-12T16:18:0xZ; the --since=15m window therefore begins about 16:03Z.
+Window covered: 16:03Z to the capture. That includes the policy's arrival (the RBAC update line
+                at 16:14:46Z), the probe before it at 16:14:56Z and under it at 16:15:13Z.
+Note on scope:  the last line here is 16:15:13Z, while the clean check ran 16:15:23-16:16:08Z and
+                the trace run at 16:16:19Z. Those runs fall inside the captured window but
+                produced NO line matching this grep -- which is the point being recorded: under
+                this policy the only refusals were the probe's two, and the runs' own traffic was
+                neither refused nor probe traffic. The runs' success is evidenced by their
+                ledgers (clean-check/, trace/) and by the 9/9 scrape targets in metrics.txt, not
+                by this file.
+
+2026-09-12T16:14:46.254150Z	info	xds:xds{id=4}	handling RBAC update istio_converted_static_strict	
+2026-09-12T16:14:56.693603Z	info	access	connection complete	src.addr=10.244.1.163:40616 src.workload="mtls-probe" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.106:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-7cdfdb558c-262wl" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=611 bytes_recv=130 duration="0ms"
+2026-09-12T16:15:13.011900Z	error	access	connection complete	src.addr=10.244.1.163:41224 src.workload="mtls-probe" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.83:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="worker-757989db4b-xd2pj" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+2026-09-12T16:15:13.070009Z	error	access	connection complete	src.addr=10.244.1.163:59320 src.workload="mtls-probe" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.106:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-7cdfdb558c-262wl" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"

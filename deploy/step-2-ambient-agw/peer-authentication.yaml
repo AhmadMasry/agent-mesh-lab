@@ -1,0 +1,97 @@
+# The mesh-wide PeerAuthentication that takes this mesh from PERMISSIVE to STRICT.
+#
+# APPLIED AND WIRED IN: this file is in this overlay's kustomization and the object is live in
+# the cluster from step 2 on. It is the shape the lab runs, not a probe that was withdrawn.
+#
+# Two other files make it hold for the lab's own traffic, and neither is in this overlay:
+#   deploy/base/mockllm.yaml carries the per-pod ambient opt-out `istio.io/dataplane-mode: none`.
+#     The mock stands in for an external model provider, so the egress waypoint's call to it is
+#     this lab's external plaintext leg by design.
+#   deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metrics.yaml gives the
+#     agentgateway ingress pod's scrape port one port-level PERMISSIVE exception, because
+#     Prometheus runs outside the mesh.
+# The `telemetry` namespace is deliberately NOT enrolled in ambient: an in-mesh collector would
+# enforce mTLS on inbound OTLP and so refuse the spans of every emitter that is not
+# ztunnel-captured -- the mock, the egress proxy and both istiod-driven waypoints, all of which
+# export in plaintext to otel-collector:4317/4318 -- and the trace would lose exactly the hops
+# Gate 3 lit up.
+#
+# How that shape was arrived at, in two counted attempts on 2026-09-12
+# (experiments/runs/2026-09-12-mtls-enforced/, and the entry
+# `## Gate 3 / both receivers / mTLS enforced` in findings.md):
+#   attempt 1, this policy alone: plaintext refused as documented (HTTP 200 from outside the mesh
+#     became `Recv failure: Connection reset by peer`), but the lab's own model leg was refused
+#     with it at `agw-egress -> mockllm` -- invocations=0 and TASK_STATE_FAILED on both receivers
+#     -- and the Prometheus scrape of the ingress pod's :15020 was refused too; reverted.
+#   attempt 2, with the mock declared external and the port exception added: plaintext still
+#     refused, clean check 1/1/1/1/1 and TASK_STATE_COMPLETED on both receivers, the trace run at
+#     66 and 12 spans with no dangling parent and no dark hop, Prometheus 9/9, and the only
+#     ztunnel refusals under the policy the plaintext probe's own two. Kept.
+#
+# The policy text below is byte-identical in both attempts: it was never tuned to get past a
+# refusal. What changed between them is what the mesh contains, not what the policy says. The
+# decision to declare the mock external, and who took it, is the dated note in
+# docs/proposal-notes.md.
+#
+# Why it is needed at all. Enrolling a namespace in ambient mode encrypts what the
+# mesh carries but does not refuse what bypasses the mesh: "Having HBONE configured
+# on your workload doesn't mean your workload will reject any plaintext traffic. If
+# you want your workload to reject plaintext traffic, create a `PeerAuthentication`
+# policy with mTLS mode set to `STRICT` for your workload." Before this file the
+# mesh was at the documented ambient default -- "The default policy for ambient mode
+# is `PERMISSIVE`, which allows pods to accept both mTLS-encrypted traffic (from
+# within the mesh) and plain text traffic (from without)" -- and `kubectl get
+# peerauthentication -A` found no resources.
+#
+# One object, not three. The ambient L4 page states the scope rule directly: policies
+# "are scoped by the namespace in which the policy object resides, and an optional
+# `selector` in the `spec`. If the policy is in the Istio root namespace (traditionally
+# `istio-system`), then it will target all namespaces. If it is in any other namespace,
+# it will target only that namespace." So a root-namespace object reaches the enrolled
+# namespaces (`lab`, `agentgateway-system`) and no per-namespace copy is written. The
+# reference agrees for the mesh level: "For mesh level, put the policy in
+# root-namespace according to your Istio installation."
+#
+# Fields, each from the reference:
+#   apiVersion/kind  "apiVersion: security.istio.io/v1 / kind: PeerAuthentication", the
+#                    version the reference's own examples use.
+#   metadata.name    `default`, the name the reference's namespace-wide and mesh-wide
+#                    examples use.
+#   metadata.namespace
+#                    `istio-system`. Read from the cluster rather than assumed: the mesh
+#                    ConfigMap reads `rootNamespace: istio-system`, and the mesh options
+#                    reference defines rootNamespace as "The namespace to treat as the
+#                    administrative root namespace for Istio configuration."
+#   spec.mtls.mode   `STRICT` -- "Connection is an mTLS tunnel (TLS with client cert
+#                    must be presented)." In ambient the reference adds why this mode is
+#                    the point: "STRICT mode is useful to ensure that connections that
+#                    bypass the mesh are not possible."
+#
+# No selector, deliberately. The reference: "Note: PeerAuthentication policies with
+# workload selectors are ignored when deployed in the root namespace." No
+# portLevelMtls either: "These only apply when a workload selector is specified."
+# No DISABLE anywhere: "As ztunnel and HBONE implies the use of mTLS, it is not
+# possible to use the `DISABLE` mode in a policy. Such policies will be ignored."
+#
+# What STRICT does not reach, and why nothing here tries to make it:
+#   - kubelet health probes keep working without an exemption. Ambient carries them
+#     outside the enforced path by address: "by default ambient uses the link-local
+#     addresses `169.254.7.127` (IPv4) and `fd16:9254:7127:1337:ffff:ffff:ffff:ffff`
+#     (IPv6) to identify and correctly allow kubelet health probe packets"
+#     (https://istio.io/latest/docs/ambient/usage/networkpolicy/, read 2026-09-12).
+#   - `agentgateway-egress` is not ambient-enrolled and the model host it fronts is
+#     outside the mesh, so that leg has no receiving ztunnel to enforce at. Left as is.
+#   - The waypoints and the agentgateway ingress terminate HBONE themselves and carry
+#     their own identity: "Waypoint proxies do not impersonate the identity of the
+#     source workload. Once you have introduced a waypoint to the traffic path, the
+#     destination ztunnel will see traffic with the `waypoint's` identity, not the
+#     source identity." What each hop reports under this policy is counted, not
+#     assumed; the figures are in findings.md.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: istio-system
+spec:
+  mtls:
+    mode: STRICT

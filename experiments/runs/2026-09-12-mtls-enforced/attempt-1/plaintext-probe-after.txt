@@ -1,0 +1,44 @@
+== 2026-09-12T15:53:07Z | phase=after ==
+-- the prober's namespace is not ambient-enrolled:
+NAME        STATUS   AGE    LABELS
+telemetry   Active   3d9h   kubernetes.io/metadata.name=telemetry
+-- the policy, as the cluster has it at this moment:
+apiVersion: v1
+items:
+- apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"PeerAuthentication","metadata":{"annotations":{},"name":"default","namespace":"istio-system"},"spec":{"mtls":{"mode":"STRICT"}}}
+    creationTimestamp: "2026-09-12T15:52:50Z"
+    generation: 1
+    name: default
+    namespace: istio-system
+    resourceVersion: "701543"
+    uid: 17b94d71-f912-4eda-b05a-ba0463103a8d
+  spec:
+    mtls:
+      mode: STRICT
+kind: List
+metadata:
+  resourceVersion: ""
+-- the prober is not in the mesh, as ztunnel sees it (no row for telemetry/mtls-probe is the expected reading):
+NAMESPACE           POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+lab                 agentgateway-waypoint-6658bc8f98-wpl2p               10.244.1.143                  agent-mesh-lab-worker        None     TCP
+lab                 agentgateway-waypoint-orch-5685545ccf-flf8s          10.244.1.144                  agent-mesh-lab-worker        None     TCP
+lab                 mockllm-d6f98fccd-kztlz                              10.244.1.82                   agent-mesh-lab-worker        None     HBONE
+lab                 model-external                                       mockllm.lab.svc.cluster.local                              None     TCP
+lab                 orchestrator-7cdfdb558c-262wl                        10.244.1.106                  agent-mesh-lab-worker        None     HBONE
+lab                 worker-757989db4b-xd2pj                              10.244.1.83                   agent-mesh-lab-worker        None     HBONE
+telemetry           jaeger-d997cf5b-td5zv                                10.244.1.41                   agent-mesh-lab-worker        None     TCP
+telemetry           mtls-probe                                           10.244.1.155                  agent-mesh-lab-worker        None     TCP
+telemetry           otel-collector-75f76bf47b-7772p                      10.244.1.151                  agent-mesh-lab-worker        None     TCP
+telemetry           prometheus-64cd688b5b-9q52s                          10.244.1.150                  agent-mesh-lab-worker        None     TCP
+-- worker http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json
+   curl exit=56 http_code=000
+   stderr: curl: (56) Recv failure: Connection reset by peer command terminated with exit code 56
+-- orchestrator http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json
+   curl exit=56 http_code=000
+   stderr: curl: (56) Recv failure: Connection reset by peer command terminated with exit code 56
+

@@ -1,0 +1,38 @@
+== The anonymous inbound series into worker, and what it is ==
+
+Recomputing the istio_tcp_connections_opened_total deltas between readings A and B of
+metrics.txt for destination_service=worker.lab.svc.cluster.local, reporter=destination,
+leaves one series unaccounted for by name:
+
+  source_workload="agentgateway-waypoint"  mutual_tls   A=8 B=9   (+1, the flows' own hop)
+  source_workload="mtls-probe"             unknown      A=3 B=4   (+1)
+  source_workload="unknown"                unknown          B=1   (+1, appears only in B)
+
+The probe made TWO requests to the worker between the two readings -- the "before" phase's 200
+and the "after" phase's refusal -- but the mtls-probe series gained only one. The other is the
+anonymous series. It is not unexplained: ztunnel's own access log names it by omission.
+
+Timeline, from this directory's files and from ztunnel's log (read-only; no cluster change):
+
+  16:14:55Z         probe.sh phase=before starts; the prober pod was created moments earlier
+                    (plaintext-probe-before.txt). The script requests worker first, orchestrator
+                    second.
+  16:14:56.634799Z  ztunnel: connection complete src.addr=10.244.1.163:42520
+                    dst.addr=10.244.1.83:8080 dst.service="worker.lab.svc.cluster.local"
+                    -- with NO src.workload field at all. 10.244.1.163 is the prober's pod IP.
+  16:14:56.693603Z  ztunnel: the next connection, to the orchestrator, 59 ms later, DOES carry
+                    src.workload="mtls-probe" (ztunnel-refusals.txt).
+  16:14:56Z         reading A is taken, one second after the probe and inside the 15 s scrape
+                    interval, so neither "before" connection had been scraped yet: both land in B.
+  16:15:13Z         both "after" connections carry src.workload="mtls-probe"
+                    (ztunnel-refusals.txt).
+
+So the anonymous series is the prober's FIRST connection, made about a second after its pod became
+ready and before ztunnel had resolved that pod's workload identity; the connection 59 ms later was
+already resolved. It is the probe's own plaintext request counted without a name, not an
+unidentified client: same source IP, same destination, same instant, and it carries the label
+unknown for the same reason the access log line carries no src.workload.
+
+It touches no hop of the two flows -- it is one of the two probe legs, which read unknown by
+construction -- which is why hops.csv, whose rows are the named hops, does not carry it. Recorded
+here so the A-to-B delta reconciles line by line.

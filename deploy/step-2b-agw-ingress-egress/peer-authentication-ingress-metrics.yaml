@@ -1,0 +1,74 @@
+# One port-level exception to the mesh-wide STRICT PeerAuthentication, for the port
+# Prometheus scrapes on the agentgateway ingress pod.
+#
+# Sources, all read 2026-09-12:
+#   the reference  https://istio.io/latest/docs/reference/config/security/peer_authentication/
+#   ambient L4     https://istio.io/latest/docs/ambient/usage/l4-policy/
+#
+# Why it exists. Prometheus runs in `telemetry`, which is deliberately not ambient-enrolled,
+# so its scrape is a plaintext request into a captured pod -- the same shape as the plaintext
+# probe. Under the mesh-wide STRICT policy in deploy/step-2-ambient-agw/ the receiving ztunnel
+# refused it, measured on 2026-09-12: the `agentgateway-proxies` target on
+# http://10.244.1.48:15020/metrics went down with `read: connection reset by peer`, Prometheus
+# dropped to 8/9 targets, and ztunnel logged eight refusals -- one per 15 s scrape, spanning
+# 105 s from 15:53:03Z to 15:54:48Z -- naming
+# `istio-system/istio_converted_static_strict`. The counts are in
+# experiments/runs/2026-09-12-mtls-enforced/attempt-1/.
+#
+# Fields, from the reference:
+#   apiVersion/kind  "apiVersion: security.istio.io/v1 / kind: PeerAuthentication".
+#   metadata.namespace
+#                    `agentgateway-system`, where the ingress pod runs. A policy outside the
+#                    root namespace reaches only its own namespace -- "If it is in any other
+#                    namespace, it will target only that namespace" (ambient L4) -- which is
+#                    the containment wanted here.
+#   spec.selector    required for what follows: "Port specific mutual TLS settings. These only
+#                    apply when a workload selector is specified." The label is the Gateway-derived
+#                    `gateway.networking.k8s.io/gateway-name: agentgateway-ingress`, read off the
+#                    running pod rather than assumed, and chosen over `pod-template-hash` (changes
+#                    on every rollout) and over `app.kubernetes.io/name` (same value here, but not
+#                    tied to the Gateway this policy is about).
+#   spec.mtls.mode   `STRICT` at the workload level, so this object does not widen anything: the
+#                    pod keeps the mesh-wide posture and only the one port below differs.
+#   spec.portLevelMtls
+#                    `15020: PERMISSIVE`. The port is the workload's, not a Service port --
+#                    "The port refers to the port of the workload, not the port of the
+#                    Kubernetes service" -- and 15020 was read from the pod, whose only
+#                    container port is named `metrics` at 15020. PERMISSIVE is "Connection can
+#                    be either plaintext or mTLS tunnel", so an in-mesh scraper would still be
+#                    mutually authenticated; DISABLE is not used and could not be: "As ztunnel
+#                    and HBONE implies the use of mTLS, it is not possible to use the `DISABLE`
+#                    mode in a policy. Such policies will be ignored."
+#
+# WHAT IS A PROBE HERE, AND WHAT IS DOCUMENTED. The fields above are all documented, and the
+# ambient L4 page says peer authentication as such is honoured by ztunnel -- "Istio's peer
+# authentication policies, which configure mutual TLS (mTLS) modes, are supported by ztunnel."
+# But that page never mentions `portLevelMtls`, and no current Istio page states whether
+# ztunnel honours a port-level mode or ignores it. The reference's ambient paragraph restricts
+# exactly one mode, DISABLE, and says nothing about port-level settings. So the effect of this
+# object under ztunnel is measured, not documented: it is kept only because the scrape target
+# came back up with it in place, and that count is the evidence. The one explicit Istio
+# sentence found on mode variety in ambient is from a retired alpha-era page
+# (istio.io/v1.21/docs/ops/ambient/usage/ztunnel/, which no longer exists in current docs):
+# "the PeerAuthentication resource is not supported by all components (i.e. waypoint proxies)
+# in Istio ambient mode. Hence it is recommended to only use the STRICT mTLS mode currently."
+# Recorded because it is the nearest thing to a statement, not relied on: it is two years of
+# releases old, it concerns waypoints rather than ztunnel, and this lab is at 1.31.0.
+#
+# This is the narrowest exception that answers the measurement: one workload, one port, one
+# mode, in the namespace that holds the pod. It does not touch the agents, the mock, the
+# waypoints, the egress or any application port.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: agentgateway-ingress-metrics
+  namespace: agentgateway-system
+spec:
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: agentgateway-ingress
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    15020:
+      mode: PERMISSIVE

@@ -302,6 +302,39 @@ measured; they are recorded in `deploy/step-2c-gate2/kustomization.yaml`, in a
 dated note in `docs/proposal-notes.md`, and as a draft issue in
 `docs/upstream/`.
 
+mTLS is enforced, not merely available. `deploy/step-2-ambient-agw/peer-authentication.yaml`
+is a mesh-wide STRICT `PeerAuthentication` in the root namespace, with the
+document sentence behind each of its fields, and from step 2 on a plaintext
+request from a pod outside the mesh is refused: measured at HTTP 200 before the
+policy and `Recv failure: Connection reset by peer` under it, for both agents.
+
+Two other files make that hold for the lab's own traffic, and both are
+deliberate rather than incidental. The mock model **opts out of ambient**
+(`istio.io/dataplane-mode: none` in `deploy/base/mockllm.yaml`): it stands in for
+an external provider, so the egress waypoint's call to it is this lab's external
+plaintext leg, and a captured mock refused that call when STRICT was first
+applied. The agentgateway ingress pod's metrics port gets one port-level
+exception (`deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metrics.yaml`,
+`portLevelMtls: {15020: PERMISSIVE}`), because Prometheus runs outside the mesh
+and its scrape is plaintext into a captured pod; without it that scrape target
+went down. Whether ztunnel honours a port-level mode is not stated by any current
+Istio page — it is measured here, and the file says so.
+
+The `telemetry` namespace stays **out** of the mesh on purpose. An in-mesh
+collector would enforce mTLS on inbound OTLP and so refuse the spans of every
+emitter that is not ztunnel-captured — the mock, the egress proxy and both
+waypoints — and the trace would lose exactly the hops step 3 works to light up.
+
+The counts, both attempts, and the per-hop connection security from ztunnel's
+`istio_tcp_connections_opened_total` are the findings entry
+`## Gate 3 / both receivers / mTLS enforced`, with outputs under
+`experiments/runs/2026-09-12-mtls-enforced/`: every ztunnel-captured hop of both
+flows reads `mutual_tls`, the two agentgateway-terminated legs have no ztunnel
+series at all because each proxy terminates HBONE under its own identity, and
+under the shipped shape the model leg has no receiving ztunnel to report. Traces
+are unchanged at 66 and 12 spans with no dangling parent and no dark hop, so
+enforcement cost no observability.
+
 `experiments/gate2-a1.sh` runs one A.1 box end to end: for one mode and one
 receiver it sends the duplicate `REPS` times over each path and writes one row
 per repetition.
