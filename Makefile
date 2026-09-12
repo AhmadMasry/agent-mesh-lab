@@ -187,7 +187,11 @@ step-2: check-go-sources-clean orchestrator-image
 	# configuration the IstioOperator file carries and the agentgateway pilot flag
 	# step-2 used to pass with --set. That file's header quotes Istio on why this route
 	# is now first, and records that `istioctl manifest translate` produced its
-	# meshConfig block.
+	# meshConfig block. ztunnel takes a values file of its own, for the certificate
+	# lifetime it asks for and for the ambient profile; the page passes ztunnel nothing,
+	# but without the profile the Helm route ran a different ztunnel image and env from
+	# the istioctl route, and the reason neither key can live in istio-values.yaml is in
+	# ztunnel-values.yaml's header.
 	#
 	# Previous route, taken when helm is absent: `istioctl install -f` with the
 	# IstioOperator file, which is what this target ran until 2026-09-12 and which
@@ -207,7 +211,7 @@ step-2: check-go-sources-clean orchestrator-image
 		helm upgrade -i istio-cni cni --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
 			-n istio-system --set profile=ambient --wait; \
 		helm upgrade -i ztunnel ztunnel --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
-			-n istio-system --wait; \
+			-n istio-system -f deploy/step-2-ambient-agw/ztunnel-values.yaml --wait; \
 	else \
 		istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y; \
 	fi

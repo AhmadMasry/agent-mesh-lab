@@ -1,0 +1,83 @@
+# ztunnel's Helm values, for the Helm route of `make step-2`. Two settings: the ambient
+# profile, and the lifetime ztunnel asks for in its certificate signing request.
+#
+# Why a second values file rather than a section of istio-values.yaml. The ztunnel
+# chart at 1.31.0 ships no `zzy_descope_legacy.yaml`, so it has no `.ztunnel` prefix
+# to copy onto its root the way the istiod chart copies `.pilot`; its key is the
+# top-level `env`, which its values.yaml documents as "A `key: value` mapping of
+# environment variables to add to the pod"
+# (https://raw.githubusercontent.com/istio/istio/1.31.0/manifests/charts/ztunnel/values.yaml,
+# fetched 2026-09-12). A shared file would therefore have to carry a top-level `env`,
+# which the istiod chart also reads, and would put SECRET_TTL into istiod's container as
+# well. One file per chart.
+#
+# ---------------------------------------------------------------------------------------
+# profile: ambient -- so ztunnel runs the same image, with the same environment, on both
+# routes. Added 2026-09-12 after a review found the Helm route had silently changed it.
+#
+# The ambient Helm install page passes `--set profile=ambient` to istiod and cni and
+# nothing to ztunnel, and this lab first followed it literally. That changed two things
+# against the `istioctl install --set profile=ambient` route the lab had counted every
+# earlier Gate 3 result on, and neither is visible to a comparison of object names:
+#
+#   image   the istioctl route runs docker.io/istio/ztunnel:1.31.0-distroless; the Helm
+#           route without a profile ran docker.io/istio/ztunnel:1.31.0.
+#   env     the istioctl route's ztunnel carries ISTIO_META_ENABLE_HBONE; the Helm route
+#           without a profile did not.
+#
+# Both come from the profile. The chart takes the key: its templates/zzz_profile.yaml at
+# 1.31.0 resolves `coalesce ($.Values).profile ($.Values.global).profile` to
+# `files/profile-<name>.yaml`, and its files/profile-ambient.yaml sets `global.variant:
+# distroless` and `meshConfig.defaultConfig.proxyMetadata.ISTIO_META_ENABLE_HBONE: "true"`.
+# Its values.yaml documents the variant as "Options are \"debug\" or \"distroless\". Unset
+# will use the default for the given version." `profile: ambient` is used rather than
+# `variant: distroless` because it is the key that gives istiod and cni their distroless
+# images too, so all three Istio charts on this route take the same profile, and because
+# `variant` alone would restore the image but not the env.
+#
+# Measured by rendering before it was applied, with and without the profile: the whole
+# ztunnel rendering differs in exactly two places, the image tag and the one added env
+# entry; and against `istioctl manifest generate` the ztunnel DaemonSet's image and its
+# list of env names are then identical. Every image on the two routes is compared in
+# experiments/runs/2026-09-12-helm-first/istio-two-routes-images.txt. Recorded under
+# versions.yaml key istio-ztunnel-chart-profile.
+profile: ambient
+
+# ---------------------------------------------------------------------------------------
+# SECRET_TTL -- seven days, by the author's addition of 2026-09-12. **This is the setting
+# that lengthens the leaves**, not istiod's DEFAULT_WORKLOAD_CERT_TTL, and the reason is in
+# ztunnel's own code at the pinned release, because Istio publishes no ztunnel command
+# reference at all: /docs/reference/commands/ lists install-cni, istioctl, pilot-agent
+# and pilot-discovery, and /docs/reference/commands/ztunnel/ answers 404. The same
+# situation, and the same remedy, as this lab's ztunnel metrics ports, which
+# versions.yaml already reads out of ztunnel's source at release-1.31.
+#
+# From https://raw.githubusercontent.com/istio/ztunnel/release-1.31/src/config.rs:
+#
+#   59   const SECRET_TTL: &str = "SECRET_TTL";
+#   104  const DEFAULT_TTL: Duration = Duration::from_secs(60 * 60 * 24); // 24 hours
+#        /// TTL for CSR requests
+#        pub secret_ttl: Duration,
+#   868  secret_ttl: parse_duration_default(SECRET_TTL, DEFAULT_TTL)?,
+#
+# and from src/identity/caclient.rs at the same tag, the CSR is built with
+# `validity_duration: self.secret_ttl`. So ztunnel asks for a lifetime, and asks for
+# 24 hours unless SECRET_TTL says otherwise -- which is why the leaves on this cluster
+# read 24h before this file existed, and why setting only the istiod variable would
+# have left them there.
+#
+# How the value is read, from the same file:
+#
+#   410  duration_str::parse(&ds).map_err(|e| Error::EnvVar(env.to_string(), ds, e.to_string()))
+#
+# so a value ztunnel cannot parse is a configuration error, not a silent default. That
+# `168h` is accepted is measured rather than claimed from the crate: ztunnel started with
+# SECRET_TTL=168h and issued leaves valid 168h forward from issuance
+# (experiments/runs/2026-09-12-helm-first/certificates-168h.txt).
+#
+# istiod still has to permit it: MAX_WORKLOAD_CERT_TTL defaults to 2160h0m0s, which is
+# above seven days, so nothing is set for it. Recorded under versions.yaml key
+# istio-workload-cert-ttl. The non-renewal quirk this lab has recorded separately is
+# not investigated here.
+env:
+  SECRET_TTL: "168h"

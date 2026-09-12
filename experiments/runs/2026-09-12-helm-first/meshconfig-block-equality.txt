@@ -28,3 +28,22 @@
    sha256 = 2079bfbe090ebb60e49a83d172077ceecf4da1b6e37e5968fd8d7600cf11ce88
 
 ## result: EQUAL
+
+# ---------------------------------------------------------------------------
+# The seven-day certificate settings, added 2026-09-12. Compared by value rather
+# than as a block, because the two routes spell the same setting at different
+# paths by the charts' and the IstioOperator API's own design.
+
+   DEFAULT_WORKLOAD_CERT_TTL (istiod)   EQUAL
+      helm route     istio-values.yaml   pilot.env              = 168h
+      fallback route istio-meshconfig.yaml  spec.values.pilot.env = 168h
+   SECRET_TTL (ztunnel)                 EQUAL
+      helm route     ztunnel-values.yaml env                    = 168h
+      fallback route istio-meshconfig.yaml  spec.values.ztunnel.env = 168h
+
+# MAX_WORKLOAD_CERT_TTL is set on neither route: its documented default, 2160h0m0s,
+# already permits seven days. Checked by looking for it as a SETTING rather than as a
+# word -- both files mention it in a comment, which a naive string search counts:
+   deploy/step-2-ambient-agw/istio-values.yaml          not set (default 2160h0m0s stands)
+   deploy/step-2-ambient-agw/ztunnel-values.yaml        not set (default 2160h0m0s stands)
+   deploy/step-2-ambient-agw/istio-meshconfig.yaml      not set (default 2160h0m0s stands)

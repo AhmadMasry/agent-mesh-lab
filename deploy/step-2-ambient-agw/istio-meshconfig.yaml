@@ -70,6 +70,27 @@
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
 spec:
+  # The seven-day workload certificate lifetime, so the two routes agree. These are
+  # the same two settings the Helm route carries in istio-values.yaml
+  # (pilot.env.DEFAULT_WORKLOAD_CERT_TTL) and ztunnel-values.yaml (env.SECRET_TTL);
+  # each of those files has the reasoning and the documents, and neither is repeated
+  # here. Verified on this route by rendering: `istioctl manifest generate --set
+  # profile=ambient -f <this file>` puts DEFAULT_WORKLOAD_CERT_TTL in the istiod
+  # Deployment's container env and SECRET_TTL in the ztunnel DaemonSet's, which is the
+  # check that these values reach containers rather than only the values ConfigMap.
+  #
+  # The short version of why both are needed: ztunnel asks for a lifetime in its CSR,
+  # so istiod's DEFAULT_WORKLOAD_CERT_TTL -- "Applied when the client sets a
+  # non-positive TTL in the CSR" -- does not govern ztunnel's leaves; SECRET_TTL is
+  # what does. MAX_WORKLOAD_CERT_TTL stays at its 2160h default, which permits seven
+  # days.
+  values:
+    pilot:
+      env:
+        DEFAULT_WORKLOAD_CERT_TTL: "168h"
+    ztunnel:
+      env:
+        SECRET_TTL: "168h"
   meshConfig:
     enableTracing: true
     extensionProviders:

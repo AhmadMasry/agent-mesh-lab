@@ -1,0 +1,25 @@
+# The fallback route's rendering of the seven-day certificate settings, committed so the
+# claim 'both routes were rendered to confirm the values reach containers' has its
+# fallback half on disk (the Helm half is section 3 of istio-two-routes-images.txt).
+# Rendered 2026-09-12 on this host; no cluster involved.
+#
+# $ istioctl version --remote=false
+#   client version: 1.31.0
+#
+# $ istioctl manifest generate --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml | grep -n 'DEFAULT_WORKLOAD_CERT_TTL\|SECRET_TTL\|MAX_WORKLOAD_CERT_TTL'
+   23002:          "DEFAULT_WORKLOAD_CERT_TTL": "168h",
+   23064:        "DEFAULT_WORKLOAD_CERT_TTL": "168h",
+   23253:          "DEFAULT_WORKLOAD_CERT_TTL": "168h",
+   23314:          "SECRET_TTL": "168h"
+   23353:          "DEFAULT_WORKLOAD_CERT_TTL": "168h",
+   23360:          "SECRET_TTL": "168h"
+   23795:        - name: SECRET_TTL
+   23950:        - name: DEFAULT_WORKLOAD_CERT_TTL
+#
+# The raw grep matches the values ConfigMap's JSON dumps as well as the containers, so
+# the containers are read out separately, per document, below. MAX_WORKLOAD_CERT_TTL
+# appears nowhere: it is not set on this route and its 2160h0m0s default stands.
+
+## the two variables in the CONTAINERS, parsed per document
+   DaemonSet/ztunnel container istio-proxy: SECRET_TTL=168h
+   Deployment/istiod container discovery: DEFAULT_WORKLOAD_CERT_TTL=168h

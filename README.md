@@ -74,7 +74,7 @@ is committed as
 | Component | Helm route | Route when `helm` is absent |
 | --- | --- | --- |
 | Gateway API CRDs | none — the project publishes no chart | `kubectl apply --server-side -f <release>/experimental-install.yaml`, on both routes |
-| Istio (base, istiod, cni, ztunnel) | four charts at `1.31.0` from `https://blob.istio.io/istio-release/charts`; istiod takes `deploy/step-2-ambient-agw/istio-values.yaml` | `istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y` |
+| Istio (base, istiod, cni, ztunnel) | four charts at `1.31.0` from `https://blob.istio.io/istio-release/charts`; istiod takes `deploy/step-2-ambient-agw/istio-values.yaml`, ztunnel `ztunnel-values.yaml` | `istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y` |
 | agentgateway control plane | two OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts` | none — the project documents no other install, and `make step-2b` says so and stops |
 | Collector | chart `opentelemetry-collector` `0.173.1` with `deploy/step-3-stress/otel-collector-values.yaml` | `deploy/step-3-stress-nohelm/otel-collector.yaml` |
 | Trace backend | chart `jaeger` `4.13.1` with `deploy/step-3-stress/jaeger-values.yaml` | `deploy/step-3-stress-nohelm/jaeger.yaml` |
@@ -91,6 +91,20 @@ Jaeger chart's OAuth2 sidecar, its Ingress and HTTPRoute, its NetworkPolicy
 (`esIndexCleaner`, `esRollover`, `esLookback`) and the Spark job. The scope rule this serves is
 CLAUDE.md's rule 6: the component list is fixed, and a chart default is not a
 reason to widen it.
+
+Workload certificates are issued for **seven days**, by the author's decision of
+2026-09-12, and it takes two settings rather than one. istiod's
+`DEFAULT_WORKLOAD_CERT_TTL` is "Applied when the client sets a non-positive TTL in the
+CSR" — and ztunnel *does* set a positive TTL in its CSR, so that variable never governs
+a ztunnel leaf. What lengthens the leaves is ztunnel's own `SECRET_TTL`, which defaults
+to 24 hours in ztunnel's source; `MAX_WORKLOAD_CERT_TTL` already permits seven days at
+its 2160h default and is left alone. Both are set on both routes —
+`pilot.env.DEFAULT_WORKLOAD_CERT_TTL` in `istio-values.yaml` and `env.SECRET_TTL` in
+`ztunnel-values.yaml` on the Helm route, `spec.values.pilot.env` and
+`spec.values.ztunnel.env` in the IstioOperator file on the other — and both renderings
+were checked to put the variables in their containers, not only in the values ConfigMap.
+`versions.yaml` key `istio-workload-cert-ttl` carries the quotes. The separate
+non-renewal quirk this lab has recorded is not addressed by this.
 
 Istio's configuration moved with the components. What Istio deprecated is its
 in-cluster operator, not `istioctl install -f <IstioOperator>`: its announcement

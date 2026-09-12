@@ -1,0 +1,50 @@
+# The two step-2 Istio routes compared: object names, EVERY workload image, the four
+# settings the lab sets, and the ztunnel container's env names. Rendered on this host.
+# Taken 2026-09-12 after a review found that a name-only comparison had hidden an image
+# difference (ztunnel 1.31.0 on the Helm route, 1.31.0-distroless on the istioctl route).
+#
+# Fallback route: istioctl manifest generate --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml
+# Helm route: helm template of base; istiod -f deploy/step-2-ambient-agw/istio-values.yaml;
+#   cni --set profile=ambient; ztunnel -f deploy/step-2-ambient-agw/ztunnel-values.yaml
+#   (which now carries profile: ambient) -- all at chart 1.31.0 from
+#   https://blob.istio.io/istio-release/charts, exactly as make step-2 calls them.
+# Images are read from each workload's containers and initContainers, parsed per
+# document; `image:` text inside the injection-template ConfigMaps is not a workload
+# image and is not compared.
+
+## 1. object names
+   istioctl route 44, helm route 45
+   only helm:     ValidatingWebhookConfiguration istiod-default-validator
+
+## 2. every workload image
+   DaemonSet  istio-cni-node   containers      install-cni      istioctl=docker.io/istio/install-cni:1.31.0-distroless  helm=docker.io/istio/install-cni:1.31.0-distroless  EQUAL
+   DaemonSet  ztunnel          containers      istio-proxy      istioctl=docker.io/istio/ztunnel:1.31.0-distroless      helm=docker.io/istio/ztunnel:1.31.0-distroless      EQUAL
+   Deployment istiod           containers      discovery        istioctl=docker.io/istio/pilot:1.31.0-distroless        helm=docker.io/istio/pilot:1.31.0-distroless        EQUAL
+   => all workload images equal: True
+
+## 3. the four settings the lab sets, read out of each rendering
+   istiod env PILOT_ENABLE_AGENTGATEWAY                       istioctl=true   helm=true   EQUAL
+   istiod env DEFAULT_WORKLOAD_CERT_TTL                       istioctl=168h   helm=168h   EQUAL
+   ztunnel env SECRET_TTL                                     istioctl=168h   helm=168h   EQUAL
+   mesh config: enableTracing true + otel-tracing provider    istioctl=True   helm=True   EQUAL
+
+## 4. the ztunnel container's env names
+   istioctl: CA_ADDRESS, INPOD_ENABLED, INSTANCE_IP, ISTIO_META_CLUSTER_ID, ISTIO_META_ENABLE_HBONE, NODE_NAME, POD_NAME, POD_NAMESPACE, RUST_BACKTRACE, RUST_LOG, SECRET_TTL, SERVICE_ACCOUNT, TERMINATION_GRACE_PERIOD_SECONDS, XDS_ADDRESS, ZTUNNEL_CPU_LIMIT, ZTUNNEL_RESOURCE_CPU_REQUEST
+   helm:     CA_ADDRESS, INPOD_ENABLED, INSTANCE_IP, ISTIO_META_CLUSTER_ID, ISTIO_META_ENABLE_HBONE, NODE_NAME, POD_NAME, POD_NAMESPACE, RUST_BACKTRACE, RUST_LOG, SECRET_TTL, SERVICE_ACCOUNT, TERMINATION_GRACE_PERIOD_SECONDS, XDS_ADDRESS, ZTUNNEL_CPU_LIMIT, ZTUNNEL_RESOURCE_CPU_REQUEST
+   => IDENTICAL
+
+## 5. what the ztunnel profile changes, and only that
+# The ztunnel chart rendered twice, SECRET_TTL=168h in both, without and with
+# profile: ambient. The full diff of the two renderings, unabridged:
+#   $ diff <(helm template ztunnel … --set env.SECRET_TTL=168h) \
+#          <(helm template ztunnel … -f deploy/step-2-ambient-agw/ztunnel-values.yaml)
+   74c74
+   <         image: "docker.io/istio/ztunnel:1.31.0"
+   ---
+   >         image: "docker.io/istio/ztunnel:1.31.0-distroless"
+   141a142,143
+   >         - name: ISTIO_META_ENABLE_HBONE
+   >           value: "true"
+# Two differences: the image gains the distroless variant, and the container gains
+# ISTIO_META_ENABLE_HBONE. Without the profile, the Helm route lacked both against the
+# istioctl route (sections 2 and 4 above are with it).

@@ -69,6 +69,27 @@ profile: ambient
 pilot:
   env:
     PILOT_ENABLE_AGENTGATEWAY: "true"
+    # Seven days, by the author's addition of 2026-09-12. Istio's istiod reference
+    # (https://istio.io/latest/docs/reference/commands/pilot-discovery/, read
+    # 2026-09-12) gives this variable as a Time Duration defaulting to 24h0m0s:
+    #
+    #   "The default TTL of issued workload certificates. Applied when the client sets
+    #    a non-positive TTL in the CSR."
+    #
+    # **That second sentence means this setting is not what lengthens this cluster's
+    # ztunnel leaves**, and the record has to say so rather than let the proof be
+    # credited to the wrong knob. ztunnel sets a positive TTL in its CSR, so the
+    # istiod default never applies to it; what lengthens the leaves is ztunnel's own
+    # SECRET_TTL, in deploy/step-2-ambient-agw/ztunnel-values.yaml, and what permits
+    # the longer request is MAX_WORKLOAD_CERT_TTL, which the same reference gives as
+    # "The max TTL of issued workload certificates" with a default of 2160h0m0s -- 90
+    # days, comfortably above seven, so it stays at its default as the addition says.
+    #
+    # It is set anyway, and deliberately: it is the value any client that asks for
+    # nothing would receive, so leaving it at 24h would mean the mesh issued two
+    # different lifetimes depending on who asked. Recorded under versions.yaml key
+    # istio-workload-cert-ttl.
+    DEFAULT_WORKLOAD_CERT_TTL: "168h"
 
 # Byte-equal to spec.meshConfig in deploy/step-2-ambient-agw/istio-meshconfig.yaml.
 # Every field's source is quoted in that file's header and is not repeated here.
