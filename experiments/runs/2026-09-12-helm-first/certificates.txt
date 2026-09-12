@@ -1,0 +1,20 @@
+# Certificate check, taken after the Helm-route step-2 and before any further cluster step.
+# The command the experiment scripts and the step-3 recipe use.
+# $ date -u
+Sat Sep 12 17:54:53 UTC 2026
+# $ istioctl ztunnel-config certificates --node agent-mesh-lab-worker
+CERTIFICATE NAME                             TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/lab/sa/default     Leaf     Available     true           f9f297b1613592ceee3dc763a23618fd     2026-09-13T17:54:34Z     2026-09-12T17:52:34Z
+spiffe://cluster.local/ns/lab/sa/default     Root     Available     true           8a11b9ae6a8150b4780be9481f3b07f5     2036-09-09T17:53:50Z     2026-09-12T17:53:50Z
+
+# the reading the scripts assert on (VALID CERT for spiffe://cluster.local/ns/lab/sa/default, Leaf):
+  spiffe://cluster.local/ns/lab/sa/default     Leaf     Available     true           f9f297b1613592ceee3dc763a23618fd     2026-09-13T17:54:34Z     2026-09-12T17:52:34Z
+# VALID CERT = true
+# result: VALID CERT true; ztunnel NOT restarted
+
+# the four Istio Helm releases this cluster is running:
+NAME      	NAMESPACE   	REVISION	UPDATED                              	STATUS  	CHART         	APP VERSION
+istio-base	istio-system	1       	2026-09-12 20:53:42.297606 +0300 EEST	deployed	base-1.31.0   	1.31.0     
+istio-cni 	istio-system	1       	2026-09-12 20:53:55.066383 +0300 EEST	deployed	cni-1.31.0    	1.31.0     
+istiod    	istio-system	1       	2026-09-12 20:53:44.589005 +0300 EEST	deployed	istiod-1.31.0 	1.31.0     
+ztunnel   	istio-system	1       	2026-09-12 20:54:05.363042 +0300 EEST	deployed	ztunnel-1.31.0	1.31.0     

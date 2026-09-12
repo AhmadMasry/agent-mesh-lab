@@ -1,0 +1,61 @@
+# The first Helm-route step-3 failed on Prometheus. Recorded in full, with the cause.
+# 2026-09-12T18:03:07Z
+
+## what make step-3 printed
+Release "prometheus" does not exist. Installing it now.
+Error: resource Deployment/telemetry/prometheus not ready. status: InProgress, message: Available: 0/1
+context deadline exceeded
+
+## the pod
+NAME                              READY   STATUS             RESTARTS      AGE
+jaeger-656f58f4c7-6wnpt           1/1     Running            0             5m53s
+otel-collector-7c6665959f-tbd2j   1/1     Running            0             6m3s
+prometheus-566c455884-8qkpd       0/1     CrashLoopBackOff   6 (11s ago)   5m44s
+
+## the container's own error, which names the fault exactly
+time=2026-09-12T18:02:56.261Z level=ERROR source=main.go:751 msg="Error loading config (--config.file=/etc/config/prometheus.yml)" file=/etc/config/prometheus.yml err="parsing YAML file /etc/config/prometheus.yml: yaml: unmarshal errors:\n  line 77: field global already set in type config.plain"
+
+## the rendered prometheus.yml, with the two global keys marked
+   1 >> global:
+   2      evaluation_interval: 15s
+   3      scrape_interval: 15s
+   4      scrape_timeout: 10s
+   5    scrape_configs:
+   6    - job_name: istiod
+   7      kubernetes_sd_configs:
+   8      - namespaces:
+  70        source_labels:
+  71        - __meta_kubernetes_namespace
+  72        target_label: namespace
+  73    - job_name: otel-collector
+  74      static_configs:
+  75      - targets:
+  76        - otel-collector.telemetry.svc.cluster.local:8889
+  77 >> global:
+  78      evaluation_interval: 15s
+  79      scrape_interval: 15s
+  80    rule_files: []
+
+## cause
+A defect in deploy/step-3-stress/prometheus-values.yaml as first written, not a
+property of the chart. The chart's ConfigMap template emits `global:` from
+`.Values.server.global`, and then, after the scrape_configs, dumps whatever keys are
+LEFT in `serverFiles."prometheus.yml"` with `toYaml`. It unsets only `scrape_configs`
+(`{{- $_ := unset $value "scrape_configs"}}`). So a `global` left under serverFiles is
+written a SECOND time, and Prometheus refuses the file:
+
+  parsing YAML file /etc/config/prometheus.yml: yaml: unmarshal errors:
+    line 77: field global already set in type config.plain
+
+The earlier render check read the head of the rendered prometheus.yml, saw the correct
+`global` from server.global, and did not read the tail where the duplicate sits. That
+is what the check missed; the chart behaved as its template reads.
+
+Fix: `global` removed from `serverFiles."prometheus.yml"`; it lives only under
+`server.global`. `rule_files: []` stays there and is correct -- an empty list is valid
+Prometheus configuration and is what the manifest's file has by omission.
+
+This is recorded rather than quietly corrected because the corollary is a chart fact
+worth having in the tree: for this chart, `server.global` is the only place the global
+block may be given, and `serverFiles."prometheus.yml".global` is additively wrong
+rather than ignored.

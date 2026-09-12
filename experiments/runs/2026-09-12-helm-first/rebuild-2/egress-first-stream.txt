@@ -1,0 +1,42 @@
+# The egress waypoint on rebuild #2: Ready on its FIRST XDS stream. This is the from-scratch
+# proof of the control-plane opt-out that rebuild #1 could not give, because there the
+# opt-out was applied in place and the backing-off egress pod was deleted by hand.
+# Read 2026-09-12T19:35:02Z; nothing was restarted, deleted or upgraded before this reading.
+
+## the pod
+   NAME                          READY   STATUS    RESTARTS   AGE     IP            NODE                    NOMINATED NODE   READINESS GATES
+   agw-egress-6467f9bdf4-nzc9n   1/1     Running   0          4m44s   10.244.1.16   agent-mesh-lab-worker   <none>           <none>
+   restartCount=0  ready=true  started=2026-09-12T19:30:18Z
+   ReplicaSets for agw-egress (one means the Deployment never rolled):
+     NAME                    DESIRED   CURRENT   READY   AGE
+     agw-egress-6467f9bdf4   1         1         1       4m44s
+
+## its own log, the whole of it searched
+   lines in log:                          169
+   'Stream established' lines:            1
+   'XDS client connection error' lines:   0
+   'readiness check failed' lines:        0
+   the stream and readiness lines, in order:
+     readinessAddr:
+     2026-09-12T19:30:18.818581Z	info	management::hyper_helpers	listener established	address=[::]:15021 component="readiness"
+     2026-09-12T19:30:18.847919Z	info	agent_core::readiness	Task 'agentgateway' complete (31.538125ms), still awaiting 2 tasks	
+     2026-09-12T19:30:18.851932Z	info	agent_xds::client:xds{id=1}	Stream established	
+     2026-09-12T19:30:18.852095Z	info	agent_core::readiness	Task 'self workload' complete (35.714292ms), still awaiting 1 tasks	
+     2026-09-12T19:30:18.853708Z	info	agent_core::readiness	Task 'state manager' complete (37.3275ms), marking server ready	
+
+## kubelet events for the pod (a failed startup probe would appear here)
+   TYPE     REASON      COUNT   MESSAGE
+   Normal   Scheduled   1       Successfully assigned agentgateway-egress/agw-egress-6467f9bdf4-nzc9n to agent-mesh-lab-worker
+   Normal   Pulled      1       Container image "cr.agentgateway.dev/agentgateway:v1.5.0" already present on machine and can be accessed by the pod
+   Normal   Created     1       Container created
+   Normal   Started     1       Container started
+
+## the controller it dials: opted out, and ztunnel agrees
+   NAME                                    DATAPLANE-MODE   RESTARTS
+   agentgateway-65bf468754-7f9wk           none             0
+   agentgateway-ingress-685c99bbf9-pb8cp   <none>           0
+# $ istioctl ztunnel-config workloads   (the agentgateway rows)
+   NAMESPACE           POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+   agentgateway-egress agw-egress-6467f9bdf4-nzc9n                          10.244.1.16                   agent-mesh-lab-worker        None     TCP
+   agentgateway-system agentgateway-65bf468754-7f9wk                        10.244.1.13                   agent-mesh-lab-worker        None     TCP
+   agentgateway-system agentgateway-ingress-685c99bbf9-pb8cp                10.244.1.17                   agent-mesh-lab-worker        None     HBONE

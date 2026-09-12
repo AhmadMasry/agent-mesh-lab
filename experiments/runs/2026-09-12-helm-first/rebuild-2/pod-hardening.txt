@@ -1,0 +1,29 @@
+# Pod hardening on the chart-installed telemetry pods, rebuild #2, 2026-09-12T19:41:51Z.
+# Each field is printed where it is SET -- container level (c) and pod level (p) -- because
+# the two differ by chart, and a reader of one level alone would get it wrong (review M-2).
+# The escalation column is now named after its securityContext field. It was first
+# labelled `noesc(c)`, which read as "no escalation: false"; it holds the value of
+# allowPrivilegeEscalation, and `false` there means escalation is NOT allowed. Relabelled
+# 2026-09-12 (fix round 2); no value in the table changed.
+
+   POD             ro(c)      nonroot(c) nonroot(p) user(c)    user(p)    caps(c)    allowPrivEsc(c) SA token
+   otel-collector  true                  true                  10001      ["ALL"]    false    none
+   jaeger          true       true                             10001      ["ALL"]    false    none
+   prometheus      true                  true                  65534      ["ALL"]    false    mounted
+   (empty = unset at that level)
+
+## where each setting comes from
+   otel-collector  read-only, caps, no escalation: container level, set by otel-collector-values.yaml
+                   non-root and user 10001: POD level, set by otel-collector-values.yaml
+                   no token: serviceAccount.automountServiceAccountToken false in the values file
+   jaeger          read-only, caps, no escalation: container level, set by jaeger-values.yaml
+                   runAsNonRoot: CONTAINER level, set by jaeger-values.yaml (jaeger.securityContext)
+                   runAsUser 10001: POD level, the chart's own default (jaeger.podSecurityContext)
+                   no token: jaeger.serviceAccount.automountServiceAccountToken false in the values file
+   prometheus      read-only, caps, no escalation: container level, set by prometheus-values.yaml
+                   non-root and user 65534: POD level, the chart's own default (server.securityContext)
+                   token MOUNTED: kept, because the five jobs' role: pod and role: endpoints discovery
+                   reads the Kubernetes API with it
+So "non-root" holds on all three, but not at one level: pod level on otel-collector and
+prometheus, container level for runAsNonRoot on jaeger with its user from the chart's pod level.
+Not given by the chart: a narrower ClusterRole for Prometheus than the chart's own.

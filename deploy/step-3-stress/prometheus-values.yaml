@@ -30,6 +30,14 @@ configmapReload:
     # and this lab restarts the Deployment when it changes the scrape configuration,
     # so it is off. `server.extraFlags` keeps the chart's default
     # `web.enable-lifecycle`, which is what the sidecar would have called.
+    #
+    # The consequence, measured on 2026-09-12 rather than assumed: this chart puts no
+    # config-checksum annotation on the server Deployment -- unlike the collector
+    # chart, whose Deployment carries `checksum/config` -- so with the sidecar off a
+    # ConfigMap-only change does not roll the server and needs an explicit
+    # `kubectl -n telemetry rollout restart deploy/prometheus`. That is the same
+    # handling the manifest route already needed, so the two routes behave alike; it
+    # is written down because the first Helm-route step-3 hit it (build.txt).
     enabled: false
 
 server:
@@ -43,11 +51,18 @@ server:
     repository: prom/prometheus
     tag: v3.14.0
 
-  # `global` in the pod's prometheus.yml is written from this key alone: the chart's
-  # ConfigMap template emits `global:` from `.Values.server.global` and ignores a
-  # `global` given under serverFiles."prometheus.yml" (verified by rendering the
-  # chart with one there and finding the chart's own values in the output). Both
-  # intervals are the manifest's. scrape_timeout is the chart's default and also
+  # `global` in the pod's prometheus.yml is written from this key and from nowhere
+  # else, and a `global` given under serverFiles."prometheus.yml" as well is not
+  # ignored but emitted a SECOND time, which Prometheus refuses. Measured, not read:
+  # the first Helm-route step-3 of 2026-09-12 crashed the server with "line 77: field
+  # global already set in type config.plain", and the rendered ConfigMap carried
+  # `global:` at line 1 from this key and again at line 77 from the other. The
+  # template's reason is visible in charts/prometheus/templates/cm.yaml: it writes
+  # `global:` from `.Values.server.global`, then `unset`s only `scrape_configs` from
+  # serverFiles."prometheus.yml" and dumps the keys that remain. The failure and the
+  # rendered file are in
+  # experiments/runs/2026-09-12-helm-first/prometheus-first-attempt-failure.txt.
+  # Both intervals are the manifest's. scrape_timeout is the chart's default and also
   # Prometheus's own, which the manifest leaves unstated, so it is left alone.
   global:
     scrape_interval: 15s
@@ -113,13 +128,13 @@ scrapeConfigs:
 # `.Values.scrapeConfigs` (all off, above) and this file's own `scrape_configs` under
 # one `scrape_configs:` key, so what lands in the pod is exactly these five jobs.
 # `rule_files` is emptied: the chart's default names four rule files, and the
-# manifest's prometheus.yml has no rule_files key at all.
+# manifest's prometheus.yml has no rule_files key at all. **No `global` here** -- see
+# `server.global` above for the measured reason; a key left here that the template does
+# not unset is appended to the file after the scrape jobs, and a second `global` makes
+# the file invalid.
 serverFiles:
   prometheus.yml:
     rule_files: []
-    global:
-      scrape_interval: 15s
-      evaluation_interval: 15s
     scrape_configs:
       - job_name: istiod
         kubernetes_sd_configs:

@@ -1,0 +1,88 @@
+# FILE NAME KEPT (2026-09-12, fix round 2): the name predates the corrected attribution and is kept because deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml cites it and the deployed subtree must stay identical to the tree rebuild #2 built; the content below is what the record supports.
+# Rebuild #1 came up, and the controller's two plaintext clients both failed with the controller
+# captured: ztunnel refused Prometheus's scrape under the mesh-wide STRICT PeerAuthentication,
+# naming the policy, and the egress proxy's XDS dial was reset. Recorded 2026-09-12T18:12:31Z.
+# Nothing was changed to work around it.
+#
+# Corrected 2026-09-12 (fix round 1): headings 1 and 2 of this file first said ztunnel named the
+# policy "on both hops" and that the egress waypoint "therefore" never became ready. The ztunnel
+# lines kept in section 1 are all Prometheus -> 9092; no ztunnel line for the agw-egress -> 9978
+# connection was kept, and the pod that held its log (ztunnel-d7x4s) was replaced at 18:26Z. So
+# the policy is attributed on 9092 only; for 9978 what is recorded is the proxy's own reset and
+# its failed startup probes (section 2), and that opting the controller out cured them.
+
+## 1. ztunnel names the policy that refuses the Prometheus -> 9092 scrape
+# Source: kubectl -n istio-system logs ztunnel-d7x4s, the last six 'policy rejection' lines. All
+# six are src.workload prometheus -> dst.addr 10.244.1.13:9092, each with
+# error="connection closed due to policy rejection: explicitly denied by:
+# istio-system/istio_converted_static_strict" -- the mesh-wide PeerAuthentication
+# deploy/step-2-ambient-agw/peer-authentication.yaml installs (security.istio.io/v1,
+# name default, namespace istio-system, spec.mtls.mode STRICT, no selector).
+
+2026-09-12T18:11:08.289302Z	error	access	connection complete	src.addr=10.244.1.27:44866 src.workload="prometheus-598d8d56c9-wmj46" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.13:9092 dst.service="agentgateway.agentgateway-system.svc.cluster.local" dst.workload="agentgateway-864d45549-qnnzr" dst.namespace="agentgateway-system" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+2026-09-12T18:11:23.290803Z	error	access	connection complete	src.addr=10.244.1.27:55270 src.workload="prometheus-598d8d56c9-wmj46" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.13:9092 dst.service="agentgateway.agentgateway-system.svc.cluster.local" dst.workload="agentgateway-864d45549-qnnzr" dst.namespace="agentgateway-system" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+2026-09-12T18:11:38.290035Z	error	access	connection complete	src.addr=10.244.1.27:43812 src.workload="prometheus-598d8d56c9-wmj46" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.13:9092 dst.service="agentgateway.agentgateway-system.svc.cluster.local" dst.workload="agentgateway-864d45549-qnnzr" dst.namespace="agentgateway-system" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+2026-09-12T18:11:53.289505Z	error	access	connection complete	src.addr=10.244.1.27:59298 src.workload="prometheus-598d8d56c9-wmj46" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.13:9092 dst.service="agentgateway.agentgateway-system.svc.cluster.local" dst.workload="agentgateway-864d45549-qnnzr" dst.namespace="agentgateway-system" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+2026-09-12T18:12:08.289901Z	error	access	connection complete	src.addr=10.244.1.27:49920 src.workload="prometheus-598d8d56c9-wmj46" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.13:9092 dst.service="agentgateway.agentgateway-system.svc.cluster.local" dst.workload="agentgateway-864d45549-qnnzr" dst.namespace="agentgateway-system" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+2026-09-12T18:12:23.291680Z	error	access	connection complete	src.addr=10.244.1.27:42488 src.workload="prometheus-598d8d56c9-wmj46" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.13:9092 dst.service="agentgateway.agentgateway-system.svc.cluster.local" dst.workload="agentgateway-864d45549-qnnzr" dst.namespace="agentgateway-system" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+
+## 2. the egress waypoint's XDS dial is reset, and it never becomes ready
+NAME                          READY   STATUS             RESTARTS        AGE
+agw-egress-84f894db95-f2zc4   0/1     CrashLoopBackOff   6 (2m27s ago)   16m
+-- its own reading of the same refusal:
+2026-09-12T18:09:25.231784Z	warn	agent_xds::client:xds{id=15}	XDS client connection error: gRPC connection error: status: Unknown, message: "upstream call failed: Connect: Connection reset by peer (os error 104)", retrying in 15s	
+2026-09-12T18:09:40.233933Z	warn	agent_xds::client:xds{id=16}	XDS client connection error: gRPC connection error: status: Unknown, message: "upstream call failed: Connect: Connection reset by peer (os error 104)", retrying in 15s	
+2026-09-12T18:09:55.235791Z	warn	agent_xds::client:xds{id=17}	XDS client connection error: gRPC connection error: status: Unknown, message: "upstream call failed: Connect: Connection reset by peer (os error 104)", retrying in 15s	
+-- the address it dials, from its Deployment's environment:
+XDS_ADDRESS=https://agentgateway.agentgateway-system.svc.cluster.local:9978
+XDS_ROOT_CA=/etc/xds-tls/ca.crt
+CA_ADDRESS=https://istiod.istio-system.svc:15012
+-- and the startup probe the kubelet keeps failing:
+  Warning  Unhealthy  6m26s (x301 over 16m)  kubelet            spec.containers{agentgateway}: Startup probe failed: HTTP probe failed with statuscode: 500
+  Normal   Killing    5m27s (x6 over 15m)    kubelet            spec.containers{agentgateway}: Container agentgateway failed startup probe, will be restarted
+
+## 3. what the PeerAuthentication objects on this cluster actually cover
+NS                    NAME                           MODE     SELECTOR                                                                            PORTLEVEL
+agentgateway-system   agentgateway-ingress-metrics   STRICT   map[matchLabels:map[gateway.networking.k8s.io/gateway-name:agentgateway-ingress]]   map[15020:map[mode:PERMISSIVE]]
+istio-system          default                        STRICT   <none>                                                                              <none>
+# The one exception that exists, peer-authentication-ingress-metrics.yaml, makes port
+# 15020 PERMISSIVE on the INGRESS proxy for the scraper. Nothing covers 9978 (the
+# control plane's XDS port) or 9092 (its metrics port) on the controller pod.
+
+## 4. namespace enrolment, which is what makes these two hops plaintext-into-ambient
+NAME                  STATUS   AGE   LABELS
+lab                   Active   19m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=lab
+agentgateway-system   Active   16m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=agentgateway-system,name=agentgateway-system
+agentgateway-egress   Active   16m   kubernetes.io/metadata.name=agentgateway-egress
+telemetry             Active   15m   kubernetes.io/metadata.name=telemetry
+# agentgateway-egress is deliberately not ambient-enrolled (agentgateway's documented
+# ambient egress shape, recorded in the followups-7 entry), and telemetry is
+# deliberately not ambient-enrolled (deploy/step-3-stress/namespace.yaml). Both dial
+# the controller pod, which IS ambient because step-2b labels its namespace.
+
+## 5. the counted consequence: the clean check
+# RUN_ITEM=2026-09-12-helm-first/clean-check experiments/gate2-single-clean.sh
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-211051-worker,1,1,1,1,0,task/TASK_STATE_FAILED
+orchestrator,g2c-211051-orchestrator,1,1,1,1,0,task/TASK_STATE_FAILED
+# committed shape at 32d9cbb (followups-8): 1/1/1/1/1 per worker item with
+# TASK_STATE_COMPLETED; here invocations=0 and both tasks TASK_STATE_FAILED. The model
+# leg is the one that fails, and it is the leg that crosses agw-egress.
+
+## 6. the counted consequence: Prometheus targets
+agentgateway-controlplane  down      http://10.244.1.13:9092/metrics                        Get "http://10.244.1.13:9092/metrics": read tcp 10.244.1.27:43812->10.244.1.13:9092: read: connection reset by peer
+agentgateway-proxies       down      http://10.244.1.16:15020/metrics                       Get "http://10.244.1.16:15020/metrics": dial tcp 10.244.1.16:15020: connect: connection refused
+agentgateway-proxies       up        http://10.244.1.17:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.22:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.23:15020/metrics                       
+istiod                     up        http://10.244.1.6:15014/metrics                        
+otel-collector             up        http://otel-collector.telemetry.svc.cluster.local:8889/metrics 
+ztunnel                    up        http://10.244.0.6:15020/metrics                        
+ztunnel                    up        http://10.244.1.8:15020/metrics                        
+-- 7/9 targets up
+# roster 9 discovered, which is the right roster and says the chart's five scrape jobs
+# are correct; 7 up against the committed 9. The two down are the same cause:
+#   agentgateway-controlplane  read: connection reset by peer  <- the STRICT refusal on 9092 (section 1)
+#   agentgateway-proxies 10.244.1.16  connection refused       <- agw-egress's stats
+#                                                                listener is drained while
+#                                                                it restarts

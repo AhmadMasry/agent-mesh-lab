@@ -1,0 +1,63 @@
+# Per-hop connection security on REBUILD #1, after the control-plane opt-out and the seven-day
+# TTL were applied in place (build.txt) -- one reading of every istio_tcp_connections_opened_total
+# series, tcp-connection-security-raw.txt, taken with
+# experiments/runs/2026-09-12-mtls-enforced/promq.sh security after the plaintext probe.
+#
+# REGENERATED 2026-09-12 in fix round 1 from that same committed raw reading, nothing re-measured.
+# The first version of this table dropped destination_workload, so two of its rows could not be
+# told apart or explained (the ingress proxy -> the orchestrator pod, and the ingress proxy -> the
+# collector, both with destination_service unknown), and it put `source` in the reporter column
+# of legs no ztunnel reports. This version adds destination_workload, explains every row by
+# letter, and writes `none` as the reporter of unreported legs. The letters and their meaning
+# are the same as rebuild #2's table, rebuild-2/hops-security.csv, whose header carries the full
+# explanation of each; rebuild #2's reading has the same set of legs with running totals of its
+# own.
+#
+# One reading, so connections_opened is a running total. Per-run loadgen Job names are collapsed
+# to `loadgen`. The counter counts connections OPENED, so the refused probe (M) counts.
+#
+#   A-H  hops between mesh workloads -- the load client, the scripts' curl pods, the orchestrator,
+#        the worker, both waypoints, the ingress proxy, the egress waypoint's inbound -- mutual_tls
+#   I    the ingress proxy's own XDS dial to its controller, plaintext since the controller opted
+#        out: the opt-out's measured cost, off the traffic path                            unknown
+#   J    Prometheus scraping the ingress proxy's 15020, accepted by its PERMISSIVE exception unknown
+#   K    control-endpoint resets to the mock model, which opts out of ambient              unknown
+#   L    span and access-log export to the collector in the unenrolled telemetry namespace,
+#        including the ingress proxy's own OTLP export                                     unknown
+#   M    the plaintext probe into each receiver, REFUSED                                    unknown
+#   N    agw-egress -> the controller's XDS on 9978 and Prometheus -> the controller's 9092: neither
+#        end captured, so no ztunnel reports them; corroborated by agw-egress's established stream
+#        and the agentgateway-controlplane target up (controlplane-optout.txt). With I, the three
+#        control-plane legs followups-7's table lacked.                               not-reported
+#   O    agw-egress -> mockllm, the model leg's second half                             not-reported
+#   P    telemetry export from the other uncaptured emitters (agw-egress, both waypoints,
+#        mockllm)                                                                     not-reported
+reporter,source_workload,destination_service,destination_workload,connection_security_policy,connections_opened,row
+destination,loadgen,agentgateway-ingress.agentgateway-system.svc.cluster.local,agentgateway-ingress,mutual_tls,3,A
+source,loadgen,agentgateway-ingress.agentgateway-system.svc.cluster.local,agentgateway-ingress,mutual_tls,3,A
+source,a3t-curl,worker.lab.svc.cluster.local,agentgateway-waypoint,mutual_tls,4,B
+source,gate2-curl,worker.lab.svc.cluster.local,agentgateway-waypoint,mutual_tls,3,B
+source,loadgen,worker.lab.svc.cluster.local,agentgateway-waypoint,mutual_tls,3,C
+source,orchestrator,worker.lab.svc.cluster.local,agentgateway-waypoint,mutual_tls,3,D
+source,a3t-curl,orchestrator.lab.svc.cluster.local,agentgateway-waypoint-orch,mutual_tls,4,B
+source,gate2-curl,orchestrator.lab.svc.cluster.local,agentgateway-waypoint-orch,mutual_tls,3,B
+source,loadgen,orchestrator.lab.svc.cluster.local,agentgateway-waypoint-orch,mutual_tls,3,E
+source,worker,model.lab.internal,agw-egress,mutual_tls,1,F
+destination,agentgateway-ingress,orchestrator.lab.svc.cluster.local,orchestrator,mutual_tls,1,G
+destination,agentgateway-waypoint-orch,orchestrator.lab.svc.cluster.local,orchestrator,mutual_tls,1,H
+source,agentgateway-ingress,unknown,orchestrator,mutual_tls,1,G
+destination,agentgateway-waypoint,worker.lab.svc.cluster.local,worker,mutual_tls,1,H
+source,agentgateway-ingress,agentgateway.agentgateway-system.svc.cluster.local,agentgateway,unknown,1,I
+destination,prometheus,unknown,agentgateway-ingress,unknown,21,J
+source,a3t-curl,mockllm.lab.svc.cluster.local,mockllm,unknown,4,K
+source,gate2-curl,mockllm.lab.svc.cluster.local,mockllm,unknown,3,K
+source,loadgen,otel-collector.telemetry.svc.cluster.local,otel-collector,unknown,6,L
+source,orchestrator,otel-collector.telemetry.svc.cluster.local,otel-collector,unknown,1,L
+source,worker,otel-collector.telemetry.svc.cluster.local,otel-collector,unknown,1,L
+source,agentgateway-ingress,unknown,otel-collector,unknown,1,L
+destination,mtls-probe,orchestrator.lab.svc.cluster.local,orchestrator,unknown,1,M
+destination,mtls-probe,worker.lab.svc.cluster.local,worker,unknown,1,M
+none,agw-egress,agentgateway.agentgateway-system.svc.cluster.local:9978,agentgateway,not-reported,none,N
+none,prometheus,agentgateway.agentgateway-system.svc.cluster.local:9092,agentgateway,not-reported,none,N
+none,agw-egress,mockllm.lab.svc.cluster.local,mockllm,not-reported,none,O
+none,agw-egress|agentgateway-waypoint|agentgateway-waypoint-orch|mockllm,otel-collector.telemetry.svc.cluster.local,otel-collector,not-reported,none,P

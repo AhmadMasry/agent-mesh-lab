@@ -1,0 +1,64 @@
+# The cluster rebuild #2 left, 2026-09-12T19:41:52Z.
+
+## helm releases
+   NAME             	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART                          	APP VERSION
+   agentgateway     	agentgateway-system	1       	2026-09-12 22:29:50.885258 +0300 EEST	deployed	agentgateway-v1.5.0            	v1.5.0     
+   agentgateway-crds	agentgateway-system	1       	2026-09-12 22:29:48.828473 +0300 EEST	deployed	agentgateway-crds-v1.5.0       	v1.5.0     
+   istio-base       	istio-system       	1       	2026-09-12 22:28:13.008466 +0300 EEST	deployed	base-1.31.0                    	1.31.0     
+   istio-cni        	istio-system       	1       	2026-09-12 22:28:25.73531 +0300 EEST 	deployed	cni-1.31.0                     	1.31.0     
+   istiod           	istio-system       	1       	2026-09-12 22:28:15.147062 +0300 EEST	deployed	istiod-1.31.0                  	1.31.0     
+   jaeger           	telemetry          	1       	2026-09-12 22:32:29.213914 +0300 EEST	deployed	jaeger-4.13.1                  	2.20.0     
+   otel-collector   	telemetry          	1       	2026-09-12 22:32:19.175432 +0300 EEST	deployed	opentelemetry-collector-0.173.1	0.160.0    
+   prometheus       	telemetry          	1       	2026-09-12 22:32:46.813416 +0300 EEST	deployed	prometheus-29.28.1             	v3.14.0    
+   ztunnel          	istio-system       	1       	2026-09-12 22:28:43.561877 +0300 EEST	deployed	ztunnel-1.31.0                 	1.31.0     
+
+## pods (kube-system and local-path-storage omitted)
+   NAMESPACE             NAME                                                   READY   RESTARTS   NODE
+   agentgateway-egress   agw-egress-6467f9bdf4-nzc9n                            true    0          agent-mesh-lab-worker
+   agentgateway-system   agentgateway-65bf468754-7f9wk                          true    0          agent-mesh-lab-worker
+   agentgateway-system   agentgateway-ingress-685c99bbf9-pb8cp                  true    0          agent-mesh-lab-worker
+   istio-system          istio-cni-node-7rhl8                                   true    0          agent-mesh-lab-worker
+   istio-system          istio-cni-node-8v5bj                                   true    0          agent-mesh-lab-control-plane
+   istio-system          istiod-7d565d6dd7-6gvfs                                true    0          agent-mesh-lab-worker
+   istio-system          ztunnel-lrp5m                                          true    0          agent-mesh-lab-control-plane
+   istio-system          ztunnel-vc6zq                                          true    0          agent-mesh-lab-worker
+   lab                   agentgateway-waypoint-b89486546-52wz9                  true    0          agent-mesh-lab-worker
+   lab                   agentgateway-waypoint-orch-5b56f859f9-qc6dd            true    0          agent-mesh-lab-worker
+   lab                   loadgen-a3t-223615-r1-orchestrator-tjs52               false   0          agent-mesh-lab-worker
+   lab                   loadgen-a3t-223615-r1-worker-v5mdk                     false   0          agent-mesh-lab-worker
+   lab                   loadgen-a3t-223615-r2-orchestrator-qx77r               false   0          agent-mesh-lab-worker
+   lab                   loadgen-a3t-223615-r2-worker-84vg9                     false   0          agent-mesh-lab-worker
+   lab                   loadgen-g2c-rb2-orchestrator-qmkgv                     false   0          agent-mesh-lab-worker
+   lab                   loadgen-g2c-rb2-worker-k2q4d                           false   0          agent-mesh-lab-worker
+   lab                   mockllm-b75b99bd6-rv7k4                                true    0          agent-mesh-lab-worker
+   lab                   orchestrator-6b9f8bc5b5-85qwq                          true    0          agent-mesh-lab-worker
+   lab                   worker-769f77c6d4-c25bp                                true    0          agent-mesh-lab-worker
+   telemetry             jaeger-656f58f4c7-kgv5x                                true    0          agent-mesh-lab-worker
+   telemetry             mtls-probe                                             true    0          agent-mesh-lab-worker
+   telemetry             otel-collector-7c6665959f-6h6ww                        true    0          agent-mesh-lab-worker
+   telemetry             prometheus-566c455884-gksw6                            true    0          agent-mesh-lab-worker
+
+## ABSENCE CHECK: no optional chart sub-component exists anywhere in the cluster
+# $ kubectl get pods,svc,deploy,ds,sts -A -o name | grep -E 'alertmanager|node-exporter|pushgateway|kube-state'
+   (no output: 0 matches)
+# $ kubectl get pods,svc,deploy,ds,sts -A -o name | wc -l    (the set the grep searched)
+   66 objects searched
+# The same search for the collector and Jaeger charts' optional pieces -- the OAuth2 sidecar,
+# and the Spark and Elasticsearch jobs -- over the same kinds plus jobs and cronjobs, and over
+# every container name in the telemetry namespace:
+# $ kubectl get pods,svc,deploy,ds,sts,jobs,cronjobs -A -o name | grep -Ei 'oauth2|spark|es-index|es-rollover|es-lookback|index-cleaner|rollover|lookback'
+   (no output: 0 matches)
+# $ kubectl -n telemetry get pods -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.containers[*].name}{"\n"}{end}'
+   jaeger-656f58f4c7-kgv5x: jaeger
+   mtls-probe: mtls-probe
+   otel-collector-7c6665959f-6h6ww: opentelemetry-collector
+   prometheus-566c455884-gksw6: prometheus-server
+# One container per telemetry pod (mtls-probe is the probe's own pod): no configmap-reload
+# sidecar beside Prometheus, no OAuth2 proxy beside Jaeger.
+
+## cluster-scoped RBAC the charts created
+# $ kubectl get clusterrole,clusterrolebinding -o name | grep -E '/(prometheus|otel-collector|jaeger)$'
+   clusterrole.rbac.authorization.k8s.io/prometheus
+   clusterrolebinding.rbac.authorization.k8s.io/prometheus
+# Only Prometheus's. The collector chart (clusterRole.create false, no presets) and the Jaeger
+# chart create none; the match is on the exact object names, not a substring.

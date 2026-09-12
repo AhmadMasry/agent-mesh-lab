@@ -1,0 +1,26 @@
+# Prometheus scrape targets after the rebuild and the two fixes, 2026-09-12T18:28:53Z
+# Read with experiments/runs/2026-09-12-mtls-enforced/promq.sh targets (a short-lived
+# port-forward to svc/prometheus, /api/v1/targets?state=any, read-only).
+
+agentgateway-controlplane  up        http://10.244.1.31:9092/metrics                        
+agentgateway-proxies       up        http://10.244.1.17:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.22:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.23:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.34:15020/metrics                       
+istiod                     up        http://10.244.1.32:15014/metrics                       
+otel-collector             up        http://otel-collector.telemetry.svc.cluster.local:8889/metrics 
+ztunnel                    up        http://10.244.0.7:15020/metrics                        
+ztunnel                    up        http://10.244.1.33:15020/metrics                       
+-- 9/9 targets up
+
+# before the opt-out, for comparison (same command, 18:11:51Z):
+#   agentgateway-controlplane  down      http://10.244.1.13:9092/metrics                        Get "http://10.244.1.13:9092/metrics": read tcp 10.244.1.27:43812->10.244.1.13:9092: read: connection reset by peer
+#   agentgateway-proxies       down      http://10.244.1.16:15020/metrics                       Get "http://10.244.1.16:15020/metrics": dial tcp 10.244.1.16:15020: connect: connection refused
+#   agentgateway-proxies       up        http://10.244.1.17:15020/metrics                       
+#   agentgateway-proxies       up        http://10.244.1.22:15020/metrics                       
+#   agentgateway-proxies       up        http://10.244.1.23:15020/metrics                       
+#   istiod                     up        http://10.244.1.6:15014/metrics                        
+#   otel-collector             up        http://otel-collector.telemetry.svc.cluster.local:8889/metrics 
+#   ztunnel                    up        http://10.244.0.6:15020/metrics                        
+#   ztunnel                    up        http://10.244.1.8:15020/metrics                        
+#   -- 7/9 targets up

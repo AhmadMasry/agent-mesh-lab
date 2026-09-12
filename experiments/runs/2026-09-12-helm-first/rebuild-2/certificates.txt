@@ -1,0 +1,56 @@
+# Istio images and workload certificates on rebuild #2, read 2026-09-12T19:34:39Z.
+
+## images, from the running workloads
+   ds/ztunnel               docker.io/istio/ztunnel:1.31.0-distroless
+   ds/istio-cni-node        docker.io/istio/install-cni:1.31.0-distroless
+   deploy/istiod            docker.io/istio/pilot:1.31.0-distroless
+   ztunnel container env: ISTIO_META_ENABLE_HBONE=true  SECRET_TTL=168h
+   istiod container env:  DEFAULT_WORKLOAD_CERT_TTL=168h
+   running pods' imageID:
+      istio-cni-node-7rhl8  agent-mesh-lab-worker  docker.io/istio/install-cni@sha256:d274207c7572adaf81289fd4eb4b430f9f38eba3b3603be3af17ecefbd46ccdd
+      istio-cni-node-8v5bj  agent-mesh-lab-control-plane  docker.io/istio/install-cni@sha256:d274207c7572adaf81289fd4eb4b430f9f38eba3b3603be3af17ecefbd46ccdd
+      istiod-7d565d6dd7-6gvfs  agent-mesh-lab-worker  docker.io/istio/pilot@sha256:78b5d404521ac0337e556f6cb8f9efa8d401abe8b6e0b74930020a56eea13b8e
+      ztunnel-lrp5m  agent-mesh-lab-control-plane  docker.io/istio/ztunnel@sha256:36632f26754ef3828f12c24d7d5f1c1573b1cfaf96ce4485539ceaaab793568b
+      ztunnel-vc6zq  agent-mesh-lab-worker  docker.io/istio/ztunnel@sha256:36632f26754ef3828f12c24d7d5f1c1573b1cfaf96ce4485539ceaaab793568b
+# All three are the -distroless variant, as on the istioctl route; rebuild #1's Helm route ran
+# docker.io/istio/ztunnel:1.31.0 before ztunnel-values.yaml gained profile: ambient.
+
+## certificates, worker node -- every captured workload runs here
+# $ istioctl ztunnel-config certificates --node agent-mesh-lab-worker
+   CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+   spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           17f459507f8e242e29763371b376fab9     2026-09-19T19:30:18Z     2026-09-12T19:28:18Z
+   spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           1b594c6a697491b6424e2d40f8c2e04e     2036-09-09T19:28:20Z     2026-09-12T19:28:20Z
+   spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           fd55ca88943895bab1178412fd34735f     2026-09-19T19:29:08Z     2026-09-12T19:27:08Z
+   spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           1b594c6a697491b6424e2d40f8c2e04e     2036-09-09T19:28:20Z     2026-09-12T19:28:20Z
+
+## leaf lifetimes, computed from the reading above
+   spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress
+      NOT BEFORE 2026-09-12T19:28:18Z   NOT AFTER 2026-09-19T19:30:18Z   NOT AFTER - NOT BEFORE = 7 days, 0:02:00 (168.0333 h)
+      NOT AFTER - 168h = 2026-09-12T19:30:18Z, i.e. two minutes after NOT BEFORE
+   spiffe://cluster.local/ns/lab/sa/default
+      NOT BEFORE 2026-09-12T19:27:08Z   NOT AFTER 2026-09-19T19:29:08Z   NOT AFTER - NOT BEFORE = 7 days, 0:02:00 (168.0333 h)
+      NOT AFTER - 168h = 2026-09-12T19:29:08Z, i.e. two minutes after NOT BEFORE
+# Both leaves are 168h forward from issuance with NOT BEFORE backdated two minutes: the
+# same reading rebuild #1 took after the TTL was applied in place, and the same two-minute
+# offset its pre-change 24 h leaf showed.
+
+## certificates, control-plane node
+# $ istioctl ztunnel-config certificates --node agent-mesh-lab-control-plane
+   CERTIFICATE NAME     TYPE     STATUS     VALID CERT     SERIAL NUMBER     NOT AFTER     NOT BEFORE
+# Header only. The only non-kube-system pods on that node are the two Istio node agents
+# themselves, so its ztunnel captures no workload and holds no leaf:
+   istio-system   istio-cni-node-8v5bj         agent-mesh-lab-control-plane
+   istio-system   ztunnel-lrp5m                agent-mesh-lab-control-plane
+
+## identities that exist, and the namespaces that have none
+   NAME                  STATUS   AGE     LABELS
+   lab                   Active   7m42s   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=lab
+   agentgateway-system   Active   4m51s   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=agentgateway-system,name=agentgateway-system
+   agentgateway-egress   Active   4m21s   kubernetes.io/metadata.name=agentgateway-egress
+   telemetry             Active   2m23s   kubernetes.io/metadata.name=telemetry
+# The two leaves above are the only identities issued: lab/sa/default (the worker and the
+# orchestrator, the lab's captured pods, share that service account; mockllm opts out) and
+# agentgateway-system/sa/agentgateway-ingress. There is none for telemetry, which carries no
+# istio.io/dataplane-mode label and so is not enrolled; none for agentgateway-egress, likewise;
+# and none for the agentgateway controller, whose pod opts out of ambient even though its
+# namespace is enrolled.

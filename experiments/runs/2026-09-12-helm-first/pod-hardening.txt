@@ -1,0 +1,60 @@
+# Pod hardening as the charts actually installed it, read off the running pods.
+# 2026-09-12T18:13:00Z. Three questions per pod: read-only root filesystem, non-root,
+# and whether a ServiceAccount token is mounted.
+
+NAMESPACE        POD                    READONLY   RUNASNONROOT RUNASUSER    CAPSDROP   TOKEN
+telemetry        otel-collector         true        true         10001       ["ALL"]    none
+telemetry        jaeger                 true       true          10001       ["ALL"]    none
+telemetry        prometheus             true        true         65534       ["ALL"]    mounted
+
+# runAsNonRoot and runAsUser are printed as 'container pod' -- the container-level value
+# then the pod-level one; <unset> on the container side with a pod-level value means the
+# pod context supplies it, which is how all three charts express it.
+
+## the effective user each process is actually running as, read from inside the pod
+-- telemetry/otel-collector runAsUser (spec, pod level): {"runAsGroup":10001,"runAsNonRoot":true,"runAsUser":10001}
+-- telemetry/jaeger runAsUser (spec, pod level): {"fsGroup":10001,"runAsGroup":10001,"runAsUser":10001}
+-- telemetry/prometheus runAsUser (spec, pod level): {"fsGroup":65534,"runAsGroup":65534,"runAsNonRoot":true,"runAsUser":65534}
+
+## what the charts allowed and what they did not
+Allowed, and set:
+  read-only root filesystem, allowPrivilegeEscalation false and all capabilities
+  dropped on all three, through `securityContext` (collector, jaeger) and
+  `server.containerSecurityContext` (prometheus). All three came up with it; the
+  host-side `docker run --read-only` check taken before the rebuild had already shown
+  the images tolerate it (readonly-rootfs-check.txt).
+
+  no ServiceAccount token on the collector (`serviceAccount.automountServiceAccountToken:
+  false`) and on the trace backend (`jaeger.serviceAccount.automountServiceAccountToken:
+  false`).
+
+Non-root, and at which level it is set -- corrected 2026-09-12 (fix round 1), because this
+  paragraph first said every chart sets it at the pod level, which is not true of jaeger:
+  collector    runAsNonRoot and runAsUser 10001 at the POD level, set by
+               otel-collector-values.yaml (podSecurityContext)
+  jaeger       runAsNonRoot at the CONTAINER level, set by jaeger-values.yaml
+               (jaeger.securityContext); runAsUser 10001 at the POD level, the chart's own
+               default (jaeger.podSecurityContext)
+  prometheus   runAsNonRoot and runAsUser 65534 at the POD level, the chart's own default
+               (server.securityContext)
+  Rebuild #2's rebuild-2/pod-hardening.txt prints each field at both levels.
+
+Not allowed by the chart:
+  Prometheus keeps its ServiceAccount token. It has to: the five scrape jobs use
+  `role: pod` and `role: endpoints` Kubernetes discovery, which reads the API with that
+  token. `server.automountServiceAccountToken: false` exists in the chart and was not
+  used, for that reason.
+
+  The Prometheus chart's ClusterRole is wider than the manifest's. The manifest grants
+  get/list/watch on nodes, services, endpoints and pods -- "the smallest role that
+  role: pod and role: endpoints need", in its own words. The chart's adds
+  nodes/metrics, ingresses and configmaps, plus ingresses and ingresses/status in
+  networking.k8s.io. The chart offers no narrower one: only
+  `server.useExistingClusterRoleName`, which would require the role to come from a
+  manifest and so would put half of this component back on the other route. Recorded as
+  a difference; it does not stop the Helm route reproducing the lab.
+
+  The Jaeger chart's Service publishes fourteen ports where the manifest publishes
+  three. A Service port opens no listener -- the listeners are the image's on both
+  routes -- so nothing measured moves, and trimming it would mean overriding a template
+  rather than a value.

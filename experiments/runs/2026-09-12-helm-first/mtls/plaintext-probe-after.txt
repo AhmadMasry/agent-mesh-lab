@@ -1,0 +1,63 @@
+== 2026-09-12T18:31:35Z | phase=after ==
+-- the prober's namespace is not ambient-enrolled:
+NAME        STATUS   AGE   LABELS
+telemetry   Active   34m   kubernetes.io/metadata.name=telemetry
+-- the policy, as the cluster has it at this moment:
+apiVersion: v1
+items:
+- apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"PeerAuthentication","metadata":{"annotations":{},"name":"agentgateway-ingress-metrics","namespace":"agentgateway-system"},"spec":{"mtls":{"mode":"STRICT"},"portLevelMtls":{"15020":{"mode":"PERMISSIVE"}},"selector":{"matchLabels":{"gateway.networking.k8s.io/gateway-name":"agentgateway-ingress"}}}}
+    creationTimestamp: "2026-09-12T17:56:04Z"
+    generation: 1
+    name: agentgateway-ingress-metrics
+    namespace: agentgateway-system
+    resourceVersion: "1836"
+    uid: 53c50a79-7af4-4379-91cb-27df9473556d
+  spec:
+    mtls:
+      mode: STRICT
+    portLevelMtls:
+      "15020":
+        mode: PERMISSIVE
+    selector:
+      matchLabels:
+        gateway.networking.k8s.io/gateway-name: agentgateway-ingress
+- apiVersion: security.istio.io/v1
+  kind: PeerAuthentication
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"security.istio.io/v1","kind":"PeerAuthentication","metadata":{"annotations":{},"name":"default","namespace":"istio-system"},"spec":{"mtls":{"mode":"STRICT"}}}
+    creationTimestamp: "2026-09-12T17:54:34Z"
+    generation: 1
+    name: default
+    namespace: istio-system
+    resourceVersion: "1250"
+    uid: 5f9f1162-5657-487f-95d8-a04e32dee66c
+  spec:
+    mtls:
+      mode: STRICT
+kind: List
+metadata:
+-- the prober is not in the mesh, as ztunnel sees it (no row for telemetry/mtls-probe is the expected reading):
+NAMESPACE           POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+lab                 agentgateway-waypoint-b89486546-g4rvn                10.244.1.22                   agent-mesh-lab-worker        None     TCP
+lab                 agentgateway-waypoint-orch-5b56f859f9-v29nd          10.244.1.23                   agent-mesh-lab-worker        None     TCP
+lab                 mockllm-74b65f899c-st8wt                             10.244.1.19                   agent-mesh-lab-worker        None     TCP
+lab                 model-external                                       mockllm.lab.svc.cluster.local                              None     TCP
+lab                 orchestrator-57f74c5b94-gndsd                        10.244.1.20                   agent-mesh-lab-worker        None     HBONE
+lab                 worker-775c6c8769-tvrdt                              10.244.1.21                   agent-mesh-lab-worker        None     HBONE
+telemetry           jaeger-656f58f4c7-6wnpt                              10.244.1.25                   agent-mesh-lab-worker        None     TCP
+telemetry           otel-collector-7c6665959f-tbd2j                      10.244.1.24                   agent-mesh-lab-worker        None     TCP
+telemetry           prometheus-598d8d56c9-wmj46                          10.244.1.27                   agent-mesh-lab-worker        None     TCP
+-- worker http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json
+   curl exit=56 http_code=000
+   stderr: curl: (56) Recv failure: Connection reset by peer command terminated with exit code 56
+-- orchestrator http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json
+   curl exit=56 http_code=000
+   stderr: curl: (56) Recv failure: Connection reset by peer command terminated with exit code 56
+

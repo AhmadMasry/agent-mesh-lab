@@ -1,0 +1,55 @@
+
+# ============================================================================
+# The seven-day proof, taken after commit 845526a was applied through the istiod
+# and ztunnel charts. 2026-09-12T18:27:11Z
+# ============================================================================
+
+## the two settings, read off the running workloads (not off the files)
+-- istiod Deployment container env:
+   DEFAULT_WORKLOAD_CERT_TTL=168h
+-- ztunnel DaemonSet container env:
+   SECRET_TTL=168h
+-- MAX_WORKLOAD_CERT_TTL is set on neither; its documented default 2160h0m0s stands:
+   occurrences in istiod env: 0
+
+## the ztunnel restart, which is what makes the leaves be reissued
+# The env change is a pod-template change, so the DaemonSet rolled on the upgrade
+# itself; no separate 'rollout restart' was needed and none was issued.
+NAME            AGE                    STATUS
+ztunnel-455r8   2026-09-12T18:26:28Z   Running
+ztunnel-wskpm   2026-09-12T18:26:27Z   Running
+
+## istioctl ztunnel-config certificates --node agent-mesh-lab-worker
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           aac6ee1b42a049979b215051fc1c1fba     2026-09-19T18:26:28Z     2026-09-12T18:24:28Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           8a11b9ae6a8150b4780be9481f3b07f5     2036-09-09T17:53:50Z     2026-09-12T17:53:50Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           c4a4944a8595db9631d43863f891ad4e     2026-09-19T18:26:28Z     2026-09-12T18:24:28Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           8a11b9ae6a8150b4780be9481f3b07f5     2036-09-09T17:53:50Z     2026-09-12T17:53:50Z
+
+## the arithmetic, stated exactly rather than rounded
+# The brief asked for NOT AFTER minus NOT BEFORE equal to 168h on every leaf. The
+# measured span is 168h02m, and the two minutes are not noise to be waved past:
+
+   agentgateway-ingress                                                  
+      NOT BEFORE 2026-09-12T18:24:28Z   NOT AFTER 2026-09-19T18:26:28Z
+      NOT AFTER - NOT BEFORE = 7 days, 0:02:00 = 168.0333 h
+      168h would be 2026-09-19T18:24:28Z
+   default                                                               
+      NOT BEFORE 2026-09-12T18:24:28Z   NOT AFTER 2026-09-19T18:26:28Z
+      NOT AFTER - NOT BEFORE = 7 days, 0:02:00 = 168.0333 h
+      168h would be 2026-09-19T18:24:28Z
+
+# Read the other way, the requested lifetime is exact. Both leaves were issued at
+# 18:26:28Z -- the moment the new ztunnel pods came up, 18:26:27Z and 18:26:28Z --
+# and 2026-09-12T18:26:28Z + 168h is 2026-09-19T18:26:28Z to the second, which is
+# the NOT AFTER both carry. NOT BEFORE is two minutes EARLIER than issuance, i.e.
+# backdated. So the issued validity is exactly the requested 168h forward from
+# issuance, plus a constant two-minute backdating of NOT BEFORE.
+
+# That the two minutes are a constant and not a property of the new lifetime is
+# evidenced by the reading taken before the change, in certificates.txt: the 24 h
+# leaf read NOT BEFORE 2026-09-12T17:52:34Z, NOT AFTER 2026-09-13T17:54:34Z, which
+# is 24h02m by the same subtraction and 24h exactly forward from its 17:54:34Z
+# issuance. The offset is therefore unchanged by this task, and no document was
+# consulted for its mechanism, so none is claimed here -- it is recorded as
+# observed on both readings.

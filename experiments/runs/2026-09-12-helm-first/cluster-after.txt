@@ -1,0 +1,84 @@
+# The cluster as the Helm route left it, 2026-09-12T18:09:29Z
+
+## helm releases, all namespaces
+NAME             	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART                          	APP VERSION
+agentgateway     	agentgateway-system	1       	2026-09-12 20:55:35.451063 +0300 EEST	deployed	agentgateway-v1.5.0            	v1.5.0     
+agentgateway-crds	agentgateway-system	1       	2026-09-12 20:55:33.135012 +0300 EEST	deployed	agentgateway-crds-v1.5.0       	v1.5.0     
+istio-base       	istio-system       	1       	2026-09-12 20:53:42.297606 +0300 EEST	deployed	base-1.31.0                    	1.31.0     
+istio-cni        	istio-system       	1       	2026-09-12 20:53:55.066383 +0300 EEST	deployed	cni-1.31.0                     	1.31.0     
+istiod           	istio-system       	1       	2026-09-12 20:53:44.589005 +0300 EEST	deployed	istiod-1.31.0                  	1.31.0     
+jaeger           	telemetry          	3       	2026-09-12 21:09:15.198733 +0300 EEST	deployed	jaeger-4.13.1                  	2.20.0     
+otel-collector   	telemetry          	3       	2026-09-12 21:09:13.471163 +0300 EEST	deployed	opentelemetry-collector-0.173.1	0.160.0    
+prometheus       	telemetry          	3       	2026-09-12 21:09:17.591293 +0300 EEST	deployed	prometheus-29.28.1             	v3.14.0    
+ztunnel          	istio-system       	1       	2026-09-12 20:54:05.363042 +0300 EEST	deployed	ztunnel-1.31.0                 	1.31.0     
+
+## pods
+NAMESPACE             NAME                                                   READY   STATUS    RESTARTS      AGE   IP            NODE                           NOMINATED NODE   READINESS GATES
+agentgateway-egress   agw-egress-84f894db95-f2zc4                            0/1     Running   6 (85s ago)   13m   10.244.1.16   agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-864d45549-qnnzr                           1/1     Running   0             13m   10.244.1.13   agent-mesh-lab-worker          <none>           <none>
+agentgateway-system   agentgateway-ingress-74b5d88fd7-thfsv                  1/1     Running   0             13m   10.244.1.17   agent-mesh-lab-worker          <none>           <none>
+istio-system          istio-cni-node-4wc86                                   1/1     Running   0             15m   10.244.1.7    agent-mesh-lab-worker          <none>           <none>
+istio-system          istio-cni-node-fqjsw                                   1/1     Running   0             15m   10.244.0.5    agent-mesh-lab-control-plane   <none>           <none>
+istio-system          istiod-568c8fc964-pkrl4                                1/1     Running   0             15m   10.244.1.6    agent-mesh-lab-worker          <none>           <none>
+istio-system          ztunnel-bhd9z                                          1/1     Running   0             15m   10.244.0.6    agent-mesh-lab-control-plane   <none>           <none>
+istio-system          ztunnel-d7x4s                                          1/1     Running   0             15m   10.244.1.8    agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-b89486546-g4rvn                  1/1     Running   0             12m   10.244.1.22   agent-mesh-lab-worker          <none>           <none>
+lab                   agentgateway-waypoint-orch-5b56f859f9-v29nd            1/1     Running   0             12m   10.244.1.23   agent-mesh-lab-worker          <none>           <none>
+lab                   mockllm-74b65f899c-st8wt                               1/1     Running   0             12m   10.244.1.19   agent-mesh-lab-worker          <none>           <none>
+lab                   orchestrator-57f74c5b94-gndsd                          1/1     Running   0             12m   10.244.1.20   agent-mesh-lab-worker          <none>           <none>
+lab                   worker-775c6c8769-tvrdt                                1/1     Running   0             12m   10.244.1.21   agent-mesh-lab-worker          <none>           <none>
+telemetry             jaeger-656f58f4c7-6wnpt                                1/1     Running   0             12m   10.244.1.25   agent-mesh-lab-worker          <none>           <none>
+telemetry             otel-collector-7c6665959f-tbd2j                        1/1     Running   0             12m   10.244.1.24   agent-mesh-lab-worker          <none>           <none>
+telemetry             prometheus-598d8d56c9-wmj46                            1/1     Running   0             86s   10.244.1.27   agent-mesh-lab-worker          <none>           <none>
+
+## the telemetry namespace's objects, by kind
+NAME                                  READY   STATUS    RESTARTS   AGE
+pod/jaeger-656f58f4c7-6wnpt           1/1     Running   0          12m
+pod/otel-collector-7c6665959f-tbd2j   1/1     Running   0          12m
+pod/prometheus-598d8d56c9-wmj46       1/1     Running   0          86s
+
+NAME                     TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                                                                                                              AGE
+service/jaeger           ClusterIP   10.96.209.155   <none>        5775/UDP,5778/TCP,6831/UDP,6832/UDP,9411/TCP,14250/TCP,14267/TCP,14268/TCP,4317/TCP,4318/TCP,16686/TCP,16685/TCP,8888/TCP,8889/TCP   12m
+service/otel-collector   ClusterIP   10.96.241.221   <none>        4317/TCP,4318/TCP,8889/TCP                                                                                                           12m
+service/prometheus       ClusterIP   10.96.8.76      <none>        9090/TCP                                                                                                                             12m
+
+NAME                             READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/jaeger           1/1     1            1           12m
+deployment.apps/otel-collector   1/1     1            1           12m
+deployment.apps/prometheus       1/1     1            1           12m
+
+NAME                                        DESIRED   CURRENT   READY   AGE
+replicaset.apps/jaeger-656f58f4c7           1         1         1       12m
+replicaset.apps/otel-collector-7c6665959f   1         1         1       12m
+replicaset.apps/prometheus-566c455884       0         0         0       12m
+replicaset.apps/prometheus-598d8d56c9       1         1         1       86s
+
+NAME                            AGE
+serviceaccount/default          12m
+serviceaccount/jaeger           12m
+serviceaccount/otel-collector   12m
+serviceaccount/prometheus       12m
+
+NAME                           DATA   AGE
+configmap/istio-ca-crl         1      12m
+configmap/istio-ca-root-cert   1      12m
+configmap/kube-root-ca.crt     1      12m
+configmap/otel-collector       1      12m
+configmap/prometheus           6      12m
+
+## cluster-scoped objects the prometheus chart created
+clusterrole.rbac.authorization.k8s.io/prometheus                                                              2026-09-12T17:57:23Z
+clusterrolebinding.rbac.authorization.k8s.io/prometheus                                                              ClusterRole/prometheus                                                              12m
+
+## and the ones the collector and jaeger charts did NOT create (clusterRole.create=false, no presets)
+# CORRECTION (2026-09-12, fix round 1): the lines below show nothing about absence. They are a
+# substring match on "collector" and list Kubernetes' own garbage-collector roles, not anything
+# a chart created. The absence check this section meant to be -- an exact-name RBAC match, and a
+# search for alertmanager, node-exporter, pushgateway and kube-state over pods, services,
+# Deployments, DaemonSets and StatefulSets in all namespaces, with its empty result -- was taken
+# on rebuild #2: rebuild-2/cluster-after.txt. It could not be re-taken on this cluster, which was
+# deleted for rebuild #2.
+clusterrole.rbac.authorization.k8s.io/system:controller:generic-garbage-collector                             2026-09-12T17:51:40Z
+clusterrole.rbac.authorization.k8s.io/system:controller:pod-garbage-collector                                 2026-09-12T17:51:40Z
+clusterrolebinding.rbac.authorization.k8s.io/system:controller:generic-garbage-collector                             ClusterRole/system:controller:generic-garbage-collector                             17m
+clusterrolebinding.rbac.authorization.k8s.io/system:controller:pod-garbage-collector                                 ClusterRole/system:controller:pod-garbage-collector                                 17m

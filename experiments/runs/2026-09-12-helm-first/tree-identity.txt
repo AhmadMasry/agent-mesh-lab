@@ -1,0 +1,147 @@
+# tree-identity.txt -- which tree each rebuild built, stated by IDs that survive a history rewrite.
+# Written 2026-09-12 in fix round 2.
+#
+# Why this file exists. The branch was rewritten twice by `git rebase -i --autosquash` (fix round 1,
+# then fix round 2). A rewrite gives every rewritten commit a new SHA, and the old SHAs stop being
+# reachable from any branch once the local safety refs are deleted. Several records, and some commit
+# messages, cite commit or tree SHAs from before a rewrite. A git object ID of a TREE or a BLOB,
+# however, depends only on content: if the deployed files are unchanged by a rewrite, their subtree
+# and blob IDs are unchanged too, and they stay resolvable from the pushed branch forever. So the
+# identity of what each rebuild built is recorded here as the subtree ID of every deployed path, and
+# each claim below can be checked against the pushed branch with the commands in section 4.
+#
+# The deployed paths are the ones `make step-1 … step-3` read: deploy/, Makefile, agents/, fixtures/,
+# experiments/lib, experiments/*.sh, and the build inputs .ko.yaml, go.mod, go.sum, internal/ and
+# kind-config.yaml.
+#
+# Commits are named here by SUBJECT, which a rewrite does not change, and by position on the branch.
+# The head's own SHA is never listed: this file lives in the branch, and any rewrite that carries it
+# changes that SHA. Identity is by subject order and subtree IDs.
+
+## 1. Rebuild #1 -- experiments/runs/2026-09-12-helm-first/build.txt
+#
+# Built at the commit whose subject is
+#     build(deploy): drop the three telemetry manifests from their old paths
+# -- the second commit on the branch. Its SHA at the time was 5dcb7c93695835a3bcb5bcae3c41a138b1e1fc90
+# (pre-rewrite; build.txt line 4). The commit with that subject on the pushed branch carries the SAME
+# deployed subtrees, because no deployed path of that commit was changed by either fix round:
+#
+#   deploy             2d62ff242f0cc88815179895297abbf0cc4735cd
+#   Makefile           e8097d3f1e5410e026ce53e5f3417a0bd24650c2
+#   agents             878ce64e44490041505a2283ebf8b24489163fb0
+#   fixtures           e6e6682ac210d535317f26cdb7abe305f611e27b
+#   experiments/lib    0cc3db9375f0abc487d41cca90f6d5a35a6c03c8
+#   .ko.yaml           2dcd19898e03215672f4d46b546607aa73b335ce
+#   go.mod             abc29a2c977755ab4e435a9d1513889bd5b2da24
+#   go.sum             0f26f234d88a2447bc3b268cd20ea6e9409a978e
+#   internal           20c9f60cc7d0b4e867af80078b6bf5be201c42f7
+#   kind-config.yaml   aa98aa461ddc41c129eb2f37de64db667a4ed629
+#   experiments/*.sh blobs:
+#     experiments/gate1-baseline.sh                7bc0d6fed83642750309bb7d5235dcf9108f30bb
+#     experiments/gate1-mockllm-deterministic.sh   23b431967f6f488cd389228a0cd53870915f8106
+#     experiments/gate1-three-ledgers.sh           bc0dd3869993305cf187780d18573a0e663803b8
+#     experiments/gate1-wire-version.sh            4be7bf022fc7fbfc196d942b70b5f532c4457047
+#     experiments/gate2-a1.sh                      7c476e7e72bfa52f6bc1c87139a6d01c49755e20
+#     experiments/gate2-a2.sh                      cb5d335f70aac3838a548e5a3eb82569e95299e6
+#     experiments/gate2-single-clean.sh            e529370258e513f1b238e890c1ff18d9ee15a257
+#     experiments/gate3-gateway-retry-mechanics.sh 81d023087e6eff22af939f1410e6c7ed17bb4720
+#     experiments/gate3-matrix.sh                  4ee6eadc32ac1b794c4829616d36bd7fbd69a83c
+#     experiments/gate3-trace-per-work-item.sh     777d819469b90c4ff697a5ca0ea10ede2c70304d
+#     experiments/scan-images.sh                   f531249d0450d43e914f3f3590747b5818f9f558
+#
+# What rebuild #1 ran that is NOT that tree, all recorded in build.txt and in the findings entry:
+#   - its second and third `make step-3` ran with deploy/step-3-stress/prometheus-values.yaml changed
+#     in the working tree by the uncommitted fix for the duplicate `global` key. The third run, the one
+#     that passed, used blob acfeee5d750bc0f14f96c86424b0ef72911b94bf, which is the
+#     file the commit "docs(findings): Helm-first installation reproduced from a deleted cluster; counts
+#     and trace shape re-taken" committed and which is unchanged since; the second run used that file less
+#     a comment block added between the two runs. The tree at the commit above holds blob
+#     d8738e7b4b7ec9e4642969cb051c80d386764ab6, the defective one.
+#   - after step-3 passed, the seven-day certificate settings and the control-plane ambient opt-out were
+#     applied to the rebuilt cluster in place by `helm upgrade -i`, from working-tree files later committed
+#     as "build(deploy): workload certificates issued for seven days through the istiod Helm values" and
+#     "fix(mesh): the agentgateway control plane opts out of ambient, as the mock model does"; and two
+#     manual steps were taken (a Prometheus rollout restart, the deletion of the backing-off egress pod).
+# Rebuild #1 is therefore identified here as "that tree, then patched"; rebuild #2 below is the build of
+# an exact committed tree.
+
+## 2. Rebuild #2 -- experiments/runs/2026-09-12-helm-first/rebuild-2/build.txt
+#
+# Built with `git status --short` empty at commit 24992118b225c48cf2bda8cde0903d5332af2fcf, tree
+# 8992bf978609e2da7956c0378e493f766edd7a8e (both pre-rewrite; rebuild-2/build.txt lines 5-6). That commit was the tip of fix round 1's
+# fixup commits -- "fixup! docs(runs): re-render the two make -n routes so the record matches the tree"
+# -- and was folded away by fix round 1's autosquash, so neither ID is on the pushed branch.
+# Its deployed subtrees:
+#
+#   deploy             1d0025adfe2e699e84681a18d7aeb235b722ef63
+#   Makefile           d5ccb2437ca6264d34c4a2cb823426b7c9f32b4a
+#   agents             878ce64e44490041505a2283ebf8b24489163fb0
+#   fixtures           e6e6682ac210d535317f26cdb7abe305f611e27b
+#   experiments/lib    0cc3db9375f0abc487d41cca90f6d5a35a6c03c8
+#   .ko.yaml           2dcd19898e03215672f4d46b546607aa73b335ce
+#   go.mod             abc29a2c977755ab4e435a9d1513889bd5b2da24
+#   go.sum             0f26f234d88a2447bc3b268cd20ea6e9409a978e
+#   internal           20c9f60cc7d0b4e867af80078b6bf5be201c42f7
+#   kind-config.yaml   aa98aa461ddc41c129eb2f37de64db667a4ed629
+#   experiments/*.sh blobs:
+#     experiments/gate1-baseline.sh                7bc0d6fed83642750309bb7d5235dcf9108f30bb
+#     experiments/gate1-mockllm-deterministic.sh   23b431967f6f488cd389228a0cd53870915f8106
+#     experiments/gate1-three-ledgers.sh           bc0dd3869993305cf187780d18573a0e663803b8
+#     experiments/gate1-wire-version.sh            4be7bf022fc7fbfc196d942b70b5f532c4457047
+#     experiments/gate2-a1.sh                      7c476e7e72bfa52f6bc1c87139a6d01c49755e20
+#     experiments/gate2-a2.sh                      cb5d335f70aac3838a548e5a3eb82569e95299e6
+#     experiments/gate2-single-clean.sh            e529370258e513f1b238e890c1ff18d9ee15a257
+#     experiments/gate3-gateway-retry-mechanics.sh 81d023087e6eff22af939f1410e6c7ed17bb4720
+#     experiments/gate3-matrix.sh                  4ee6eadc32ac1b794c4829616d36bd7fbd69a83c
+#     experiments/gate3-trace-per-work-item.sh     777d819469b90c4ff697a5ca0ea10ede2c70304d
+#     experiments/scan-images.sh                   f531249d0450d43e914f3f3590747b5818f9f558
+#
+# The last commit on the pushed branch -- subject "docs(runs): re-render the two make -n routes so the
+# record matches the tree" -- carries every one of these IDs unchanged: fix round 1 and fix round 2
+# changed only records, prose and commit messages after rebuild #2, never a deployed path. That equality
+# is the proof that the tree rebuild #2 built from a deleted cluster is the tree the branch deploys.
+
+## 3. The SHAs this repository's records and messages cite, and the commits they now are
+#
+# SHAs in commit messages and in rebuild #1's records are pre-rewrite SHAs; this map resolves them to
+# subjects. The "fix round 1" column is the history the reviewer re-reviewed; fix round 2 rewrote every
+# commit after the first again (its amend! commits reword three messages), so those SHAs are superseded
+# too, except that of the first commit. The subject column is the stable identity.
+#
+#   pre fix round 1   fix round 1   subject (branch order)
+#   45fdc7e           288a97f       build(deploy): Helm first, with the previous route as the fallback when helm is absent
+#   5dcb7c9           eab1d21       build(deploy): drop the three telemetry manifests from their old paths
+#   845526a           6c7d9f0       build(deploy): workload certificates issued for seven days through the istiod Helm values
+#   af77786           c2894fd       fix(mesh): the agentgateway control plane opts out of ambient, as the mock model does
+#   98a0d3a           (folded into the fix(mesh) commit above)
+#                                   was: build(mesh): the agentgateway control plane opted out of ambient — infrastructure, not the traffic path
+#   aeae314           48b2ab9       docs(findings): Helm-first installation reproduced from a deleted cluster; counts and trace shape re-taken
+#   8161bc8           (folded into the docs(findings) commit above)
+#                                   was: docs(findings): followups-7's mTLS entry corrected; the rebuild entry gains the uncaptured control plane and its two legs
+#   877e59d           11465e0       docs(runs): re-render the two make -n routes so the record matches the tree
+#   (fix round 1's fixup tip, rebuild #2's commit)  2499211 -> folded; see section 2
+#
+# Where pre-rewrite SHAs appear, each resolved by the map above:
+#   build.txt:4                   5dcb7c9  the commit rebuild #1 was built at
+#   build.txt:2593-2594           845526a, af77786  the two commits applied in place afterwards
+#   certificates-168h.txt:3       845526a
+#   controlplane-optout.txt:2     af77786
+#   make-n-helm.txt:4             877e59d
+#   rebuild-2/build.txt:5-7       2499211 and its tree 8992bf97; see section 2
+#
+# Three commit messages cited pre-rewrite SHAs until fix round 2 -- "build(deploy): drop the three
+# telemetry manifests…" (45fdc7e), "docs(findings): Helm-first installation…" (5dcb7c9, 845526a,
+# af77786) and "docs(runs): re-render…" (45fdc7e, 845526a, af77786). Fix round 2's amend! commits reword
+# all three to cite by subject and point to this file.
+#   The messages of "fix(mesh): …" and "docs(findings): …" also say "not on 2026-09-08, as an earlier
+#   version of this message said": that earlier version is the pre-fix-round-1 commit of the same subject.
+
+## 4. How to check every claim above against the pushed branch
+#
+#   subject → commit:   git log --format='%h %s' <base>..<branch>
+#   subtree of a path:  git rev-parse <commit>:deploy     (likewise :Makefile, :agents, :fixtures,
+#                       :experiments/lib, :.ko.yaml, :go.mod, :go.sum, :internal, :kind-config.yaml)
+#   a script's blob:    git rev-parse <commit>:experiments/gate2-single-clean.sh   (and each other .sh)
+#   rebuild #1:         every section 1 ID equals `git rev-parse <commit "build(deploy): drop the three
+#                       telemetry manifests…">:<path>`
+#   rebuild #2:         every section 2 ID equals `git rev-parse <last commit>:<path>`

@@ -1,0 +1,70 @@
+# The agentgateway control plane opted out of ambient: applied, and proved uncaptured.
+# Commit af77786 (values file) applied through the step-2b 'helm upgrade -i agentgateway'
+# line with -f deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml at 18:25:52Z
+# (exit 0, 3 s; build.txt). Readings taken 2026-09-12T18:42:05Z.
+
+## 1. the controller restarted with the label
+  agentgateway-65bf468754-n5dh4  istio.io/dataplane-mode=none  ready=true  started=2026-09-12T18:25:55Z
+
+## 2. ztunnel's own view: the controller is TCP (not captured), the ingress proxy HBONE (captured)
+# $ istioctl ztunnel-config workloads   (rows for the four namespaces the lab uses)
+NAMESPACE           POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+agentgateway-egress agw-egress-84f894db95-h4vqp                          10.244.1.34                   agent-mesh-lab-worker        None     TCP
+agentgateway-system agentgateway-65bf468754-n5dh4                        10.244.1.31                   agent-mesh-lab-worker        None     TCP
+agentgateway-system agentgateway-ingress-74b5d88fd7-thfsv                10.244.1.17                   agent-mesh-lab-worker        None     HBONE
+lab                 agentgateway-waypoint-b89486546-g4rvn                10.244.1.22                   agent-mesh-lab-worker        None     TCP
+lab                 agentgateway-waypoint-orch-5b56f859f9-v29nd          10.244.1.23                   agent-mesh-lab-worker        None     TCP
+lab                 mockllm-74b65f899c-st8wt                             10.244.1.19                   agent-mesh-lab-worker        None     TCP
+lab                 model-external                                       mockllm.lab.svc.cluster.local                              None     TCP
+lab                 orchestrator-57f74c5b94-gndsd                        10.244.1.20                   agent-mesh-lab-worker        None     HBONE
+lab                 worker-775c6c8769-tvrdt                              10.244.1.21                   agent-mesh-lab-worker        None     HBONE
+telemetry           jaeger-656f58f4c7-6wnpt                              10.244.1.25                   agent-mesh-lab-worker        None     TCP
+telemetry           mtls-probe                                           10.244.1.43                   agent-mesh-lab-worker        None     TCP
+telemetry           otel-collector-7c6665959f-tbd2j                      10.244.1.24                   agent-mesh-lab-worker        None     TCP
+telemetry           prometheus-598d8d56c9-wmj46                          10.244.1.27                   agent-mesh-lab-worker        None     TCP
+# Reading it: agentgateway-system/agentgateway-* (the controller) = TCP, so ztunnel does not
+# capture it; agentgateway-system/agentgateway-ingress-* = HBONE, so the ingress PROXY stays
+# captured and keeps its port-15020 PERMISSIVE exception. The worker and orchestrator are
+# HBONE, as before. The mock, the egress waypoint and the telemetry pods are TCP by design.
+# The two istiod-driven waypoints read TCP too, and did so before this task: followups-7's
+# attempt-2 probe log records the same TCP rows for agentgateway-waypoint and
+# agentgateway-waypoint-orch (experiments/runs/2026-09-12-mtls-enforced/attempt-2/). Before
+# the opt-out, the controller was captured on this cluster, as far as the record shows: its
+# namespace carried istio.io/dataplane-mode=ambient and the pod carried no opt-out label, and
+# ztunnel logged policy rejections of the Prometheus -> 9092 scrape with direction="inbound" and
+# dst.workload the controller pod (strict-refuses-egress-xds.txt). No workloads reading was taken
+# before the opt-out on this cluster, and no ztunnel line for the agw-egress -> 9978 dial was kept.
+# (Corrected 2026-09-12, fix round 1: this paragraph first said ztunnel logged "the refused XDS
+# and scrape connections", and added a rule, "which ztunnel does only for a pod it captures", for
+# which no source was given.)
+
+## 3. agw-egress became Ready, on a fresh XDS stream
+  NAME                          READY   STATUS    RESTARTS   AGE
+  agw-egress-84f894db95-h4vqp   1/1     Running   0          14m
+-- its own log:
+  readinessAddr:
+  2026-09-12T18:27:42.888444Z	info	management::hyper_helpers	listener established	address=[::]:15021 component="readiness"
+  2026-09-12T18:27:42.916956Z	info	agent_core::readiness	Task 'agentgateway' complete (30.18125ms), still awaiting 2 tasks	
+  2026-09-12T18:27:42.920099Z	info	agent_xds::client:xds{id=1}	Stream established	
+  XDS connection errors in the current pod's log: 0
+# Before the opt-out: 0/1, 301 failed startup probes over 13 minutes, and the log repeating
+# 'XDS client connection error ... Connection reset by peer' beside 'readiness check failed
+# ... pending="self workload, state manager"'. The backing-off pod was deleted once so it
+# would dial fresh (build.txt); its replacement established the stream in its first second.
+
+## 4. STRICT still refuses what it should, and nothing else
+  ztunnel-455r8: policy rejections 2, of them to the controller 0
+  ztunnel-wskpm: policy rejections 0, of them to the controller 0
+-- and the ones there are:
+    mtls-probe -> worker-775c6c8769-tvrdt  (explicitly denied by istio-system/istio_converted_static_strict)
+    mtls-probe -> orchestrator-57f74c5b94-gndsd  (explicitly denied by istio-system/istio_converted_static_strict)
+# Exactly the plaintext probe's two intentional refusals, one per receiver. The opt-out
+# removed the controller from what STRICT governs; it did not loosen STRICT for anything
+# on the traffic path.
+
+## 5. the counts it restores
+-- Prometheus (prometheus-targets.txt): 9/9 targets up, with agentgateway-controlplane up at 10.244.1.31:9092
+-- clean check (clean-check-after/summary.csv):
+     receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+     worker,g2c-after-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+     orchestrator,g2c-after-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED

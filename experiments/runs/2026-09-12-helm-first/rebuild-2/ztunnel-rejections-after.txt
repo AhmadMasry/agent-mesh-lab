@@ -1,0 +1,15 @@
+# ztunnel policy rejections on rebuild #2, AFTER the clean check, the REPS=2 trace and the
+# plaintext probe. 2026-09-12T19:38:31Z. Baseline before any of them: 0 on both ztunnels
+# (ztunnel-rejections-baseline.txt).
+
+## ztunnel-lrp5m (agent-mesh-lab-control-plane): 0
+## ztunnel-vc6zq (agent-mesh-lab-worker): 2
+   2026-09-12T19:38:31.243077Z	error	access	connection complete	src.addr=10.244.1.35:38072 src.workload="mtls-probe" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.21:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="worker-769f77c6d4-c25bp" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+   2026-09-12T19:38:31.310363Z	error	access	connection complete	src.addr=10.244.1.35:49952 src.workload="mtls-probe" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.20:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-6b9f8bc5b5-85qwq" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+
+## by receiver
+   worker: 1 rejection(s), from src.workload="mtls-probe" 
+   orchestrator: 1 rejection(s), from src.workload="mtls-probe" 
+   total 2; from anything other than mtls-probe: 0
+# Exactly the plaintext probe's two -- one per receiver -- and nothing else: no refusal of the
+# egress waypoint, the scraper, or any traffic-path hop.
