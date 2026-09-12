@@ -1,0 +1,88 @@
+# The Telemetry resources that select the `otel-tracing` provider declared in
+# deploy/step-2-ambient-agw/istio-meshconfig.yaml.
+#
+# Sources, both read 2026-09-12:
+#   the task     https://istio.io/latest/docs/tasks/observability/distributed-tracing/opentelemetry/
+#   the reference https://istio.io/latest/docs/reference/config/telemetry/
+#
+# Three objects, because the reference describes two different reaches and a waypoint
+# needs the second:
+#
+#   1. The mesh-wide one, in istio-system. "For mesh level configuration, put a resource
+#      in the root configuration namespace for your Istio installation without a
+#      workload selector." This cluster's ConfigMap reads `rootNamespace: istio-system`,
+#      recorded in experiments/runs/2026-09-12-waypoint-tracing/apply.txt. Only one such
+#      resource may exist: "For any namespace, including the root configuration
+#      namespace, it is only valid to have a single workload selector-less Telemetry
+#      resource", and `kubectl get telemetry -A` found none before this.
+#
+#   2. and 3. One per waypoint, in lab, each naming its Gateway. The reference is
+#      explicit that the mesh-wide one above does not reach a waypoint on its own:
+#      "NOTE: Waypoint proxies are required to use this field for policies to apply;
+#      selector policies will be ignored", and "Gateways and waypoints are targeted for
+#      telemetry configuration using the targetRefs field". The attachment type used is
+#      the first the reference lists: "kind: Gateway with group:
+#      gateway.networking.k8s.io in the same namespace" -- hence two objects in lab
+#      rather than one, each beside the Gateway it names. The reference states no
+#      restriction by GatewayClass.
+#
+# Fields:
+#   providers            "Name of provider(s) to use for span reporting." The name is
+#                        the one the mesh config declares. "NOTE: At the moment, only a
+#                        single provider can be specified in a given Tracing rule."
+#   randomSamplingPercentage
+#                        "Controls the rate at which traffic will be selected for
+#                        tracing if no prior sampling decision has been made... Defaults
+#                        to 0%. Valid values [0.00-100.00]." 100 is the task page's own
+#                        value, and this lab counts hops, so a sampled-away hop would
+#                        read as a missing one.
+#
+# No customTags. The task page's example adds a literal tag to show the mechanism; this
+# lab's work-item attribute is lifted by the collector, as the telemetry design rule
+# records, so nothing is added here.
+#
+# Whether the two waypoint objects reach anything is the measurement, not an assumption:
+# Istio's agentgateway page names Telemetry among the APIs "not applied to agentgateway
+# proxies", and both waypoints are agentgateway proxies of class
+# istio-agentgateway-waypoint. The result is counted in findings.md.
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: mesh-tracing
+  namespace: istio-system
+spec:
+  # No selector and no targetRefs: the mesh-wide default.
+  tracing:
+    - providers:
+        - name: otel-tracing
+      randomSamplingPercentage: 100
+---
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: waypoint-tracing
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-waypoint
+  tracing:
+    - providers:
+        - name: otel-tracing
+      randomSamplingPercentage: 100
+---
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: waypoint-orch-tracing
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-waypoint-orch
+  tracing:
+    - providers:
+        - name: otel-tracing
+      randomSamplingPercentage: 100

@@ -11,6 +11,11 @@
 #   agentgateway-tracing.yaml
 #                          OTLP export for the ingress and the egress waypoint, the two
 #                          proxies agentgateway's own control plane drives
+#   istio-tracing.yaml     the Telemetry resources that select the `otel-tracing`
+#                          provider the step-2 mesh configuration declares: one
+#                          mesh-wide in istio-system, one per waypoint in lab. A
+#                          waypoint needs the targetRefs form; the reference says
+#                          selector policies are ignored for waypoints
 #
 # What the patches add:
 #   orchestrator-instrumentation.yaml
@@ -35,6 +40,7 @@ resources:
   - jaeger.yaml
   - prometheus.yaml
   - agentgateway-tracing.yaml
+  - istio-tracing.yaml
 patches:
   - path: orchestrator-instrumentation.yaml
     target:

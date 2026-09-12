@@ -1,0 +1,59 @@
+# The OpenTelemetry tracing provider in Istio's mesh configuration, passed to the
+# step-2 `istioctl install` with -f.
+#
+# Every field here comes from the Istio OpenTelemetry task, read 2026-09-12:
+# https://istio.io/latest/docs/tasks/observability/distributed-tracing/opentelemetry/
+# That page says "All tracing options can be configured globally via MeshConfig. To
+# simplify configuration, it is recommended to create a single YAML file which you can
+# pass to the `istioctl install -f` command", which is what this file is. Its gRPC
+# example is reproduced below unchanged except for `service`, which names this lab's
+# collector instead of the page's; the provider name `otel-tracing` and port 4317 are
+# the page's own.
+#
+# Field by field, from the MeshConfig reference read the same day
+# (https://istio.io/latest/docs/reference/config/istio.mesh.v1alpha1/,
+# MeshConfig.ExtensionProvider.OpenTelemetryTracingProvider):
+#
+#   enableTracing   "Flag to control generation of trace spans and request IDs.
+#                   Requires a trace span collector defined in the proxy configuration."
+#   name            "A unique name identifying the extension provider."
+#   service         "REQUIRED. Specifies the OpenTelemetry endpoint that will receive
+#                   OTLP traces. The format is [<Namespace>/]<Hostname>. The
+#                   specification of <Namespace> is required only when it is
+#                   insufficient to unambiguously resolve a service in the service
+#                   registry." The collector's fully qualified name resolves on its own,
+#                   so no namespace prefix is used.
+#   port            "REQUIRED. Specifies the port of the service." 4317 is the
+#                   collector's OTLP gRPC port, the one deploy/step-3-stress already
+#                   serves; 4318 is its HTTP port and is not used here.
+#   (no grpc/http)  grpc: "When empty, traces will check whether HTTP is set. If not,
+#                   traces will use default GRPC configurations." So leaving both out
+#                   selects gRPC, and no protocol field is needed. The task page adds
+#                   "Only one exporter can be configured at a time (either gRPC or HTTP)".
+#   resource_detectors
+#                   "Specifies Resource Detectors to be used by the OpenTelemetry
+#                   Tracer." The task page's example enables the environment detector,
+#                   which "adds attributes from the environment variable
+#                   OTEL_RESOURCE_ATTRIBUTES to the exported OpenTelemetry resource".
+#                   Spelled snake_case here because that is how the task page spells it;
+#                   the reference table spells the same field resourceDetectors.
+#
+# This file is mesh configuration, not a Kustomize overlay, and names no cluster type.
+#
+# What it reaches is measured, not assumed. Istio's own agentgateway page
+# (https://istio.io/latest/docs/ambient/usage/agentgateway/, read 2026-09-12) says
+# Istio's configuration APIs, "Telemetry" among those it lists by name, "are not
+# applied to agentgateway proxies", and every gateway and waypoint on this cluster is an
+# agentgateway. The count is the point; see findings.md.
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  meshConfig:
+    enableTracing: true
+    extensionProviders:
+      - name: otel-tracing
+        opentelemetry:
+          port: 4317
+          service: otel-collector.telemetry.svc.cluster.local
+          resource_detectors:
+            environment: {}

@@ -138,7 +138,10 @@ step-2: check-go-sources-clean orchestrator-image
 	kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/experimental-install.yaml
 	istioctl version --remote=false
 	istioctl version --remote=false | grep -q 1.31.0 || { echo "istioctl on PATH is not the pinned 1.31.0 (see versions.yaml)" >&2; exit 1; }
-	istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -y
+	# -f adds the OpenTelemetry tracing provider to the mesh configuration. The Istio
+	# task recommends exactly this: a single YAML file passed to `istioctl install -f`.
+	# The profile and the agentgateway pilot flag are unchanged.
+	istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y
 	kubectl kustomize deploy/step-2-ambient-agw | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
 	# ztunnel captures a pod when it starts, so pods that predate the namespace's
 	# ambient label are restarted to be enrolled.

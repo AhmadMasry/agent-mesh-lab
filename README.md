@@ -404,6 +404,24 @@ the collector's own endpoint. Read them with
 `curl http://prometheus.telemetry.svc.cluster.local:9090/api/v1/targets` from
 inside the cluster, or through a port-forward.
 
+Istio's own tracing configuration is here too, in two pieces. The mesh
+configuration `deploy/step-2-ambient-agw/istio-meshconfig.yaml`, passed to the
+step-2 `istioctl install` with `-f`, declares one OpenTelemetry extension
+provider named `otel-tracing` pointing at the collector's OTLP gRPC port, which
+is the file the Istio OpenTelemetry task recommends creating for exactly this.
+The Telemetry resources in `deploy/step-3-stress/istio-tracing.yaml` select that
+provider at 100% sampling: one mesh-wide in `istio-system`, the root namespace
+this cluster reports, and one per waypoint in `lab` naming its Gateway, because
+the Telemetry reference says waypoints are targeted by `targetRefs` and that
+selector policies are ignored for them. What this covers is narrower than it
+looks. ztunnel emits no spans, by design: it is the L4 layer, and the L7 hop is
+the waypoint. The agentgateway ingress and the egress waypoint are not covered
+either and stay on their `AgentgatewayPolicy`, since agentgateway's own control
+plane drives them, not istiod. That leaves the two istiod-driven waypoints as
+the hops this configuration is aimed at, and whether it reaches them is counted
+in `findings.md` rather than assumed: Istio's agentgateway page lists `Telemetry`
+among the configuration APIs "not applied to agentgateway proxies".
+
 The collector lifts one work item's identity onto one set of names. The Python
 auto-instrumentation records the four identity headers as
 `http.request.header.x_logical_work_item_id` and its siblings, each holding a
