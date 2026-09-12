@@ -1,0 +1,33 @@
+# Points each waypoint Gateway at the ConfigMap that carries its agentgateway
+# configuration. The Gateways themselves are not edited: `agentgateway-waypoint` is
+# step 2's and `agentgateway-waypoint-orch` is step 2c's, and this overlay adds the
+# reference on top, as every step here does.
+#
+# The field is the one Istio's Gateway API page documents for customising a generated
+# Deployment: "The `parametersRef` can be used to fully customize the generated
+# resources. This must reference a `ConfigMap` in the same namespace as the `Gateway`."
+# Read 2026-09-12; see deploy/step-3-stress/waypoint-tracing-config.yaml for what the
+# ConfigMaps hold and for what is documented and what is a measured probe.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agentgateway-waypoint
+  namespace: lab
+spec:
+  infrastructure:
+    parametersRef:
+      group: ""
+      kind: ConfigMap
+      name: waypoint-tracing-config
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agentgateway-waypoint-orch
+  namespace: lab
+spec:
+  infrastructure:
+    parametersRef:
+      group: ""
+      kind: ConfigMap
+      name: waypoint-orch-tracing-config

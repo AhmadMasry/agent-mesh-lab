@@ -418,9 +418,27 @@ looks. ztunnel emits no spans, by design: it is the L4 layer, and the L7 hop is
 the waypoint. The agentgateway ingress and the egress waypoint are not covered
 either and stay on their `AgentgatewayPolicy`, since agentgateway's own control
 plane drives them, not istiod. That leaves the two istiod-driven waypoints as
-the hops this configuration is aimed at, and whether it reaches them is counted
-in `findings.md` rather than assumed: Istio's agentgateway page lists `Telemetry`
-among the configuration APIs "not applied to agentgateway proxies".
+the hops this configuration is aimed at, and measured on 2026-09-12 it reaches
+neither: the counts did not move and `/config_dump` still read `"tracing": null`
+on both. That is what Istio documents, its agentgateway page listing `Telemetry`
+among the configuration APIs "not applied to agentgateway proxies", so the
+provider and the Telemetry resources stay as the documented default rather than
+being removed.
+
+What does make those two waypoints emit is
+`deploy/step-3-stress/waypoint-tracing-config.yaml`: istiod starts each waypoint
+with `--config {}`, an empty agentgateway configuration document, and this fills
+it with the `config.tracing` block agentgateway's own documentation describes,
+delivered by the `parametersRef` Deployment overlay Istio's Gateway API page
+documents. The reference is added by a step-3 patch,
+`waypoint-parameters-patch.yaml`, because the Gateways themselves belong to
+step 2 and step 2c and no overlay edits an earlier one in place. With it the
+worker path counts 12 spans instead of 8 and the orchestrator path 66 instead of
+62, and the dangling parents per work item go from 2 to **0** — the trace closes.
+Neither project documents that combination; it was established by measurement
+here, and `findings.md` carries the counts and says so. Being undocumented, it is
+the part of this pipeline most likely to need rechecking when either project
+moves.
 
 The collector lifts one work item's identity onto one set of names. The Python
 auto-instrumentation records the four identity headers as

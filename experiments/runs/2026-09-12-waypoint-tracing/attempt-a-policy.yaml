@@ -1,0 +1,56 @@
+# Attempt (a) — an AgentgatewayPolicy with tracing targeting each istiod-driven waypoint
+# Gateway in lab, re-tested at Istio 1.31.0 / agentgateway v1.5.0 on 2026-09-12.
+#
+# This is the configuration docs/upstream/agentgateway-policy-attached-to-istiod-driven-waypoint.md
+# already records as reported attached and not programmed. The brief asks for it to be
+# re-tested at these versions rather than taken from the earlier record.
+#
+# The shape is the project's own, from
+# https://agentgateway.dev/docs/kubernetes/latest/documentation/observability/traces/setup.md
+# (read 2026-09-12): "The agentgateway proxy does not emit traces by default. To enable
+# tracing, create an AgentgatewayPolicy that points at an OTLP-compatible backend and
+# sets a sampling rate for your traces." Same fields as the ingress and egress policies
+# that do work, so the only variable is which control plane drives the target.
+#
+# One object per Gateway, both in lab: "A policy must be in the same namespace as the
+# resources that it targets" (the targeting page). The frontend section's only valid
+# target kind is Gateway, per the same page's targeting table.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: tracing-waypoint
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-waypoint
+  frontend:
+    tracing:
+      backendRef:
+        name: otel-collector
+        namespace: telemetry
+        port: 4317
+      protocol: GRPC
+      randomSampling: "true"
+      clientSampling: "true"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: tracing-waypoint-orch
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-waypoint-orch
+  frontend:
+    tracing:
+      backendRef:
+        name: otel-collector
+        namespace: telemetry
+        port: 4317
+      protocol: GRPC
+      randomSampling: "true"
+      clientSampling: "true"

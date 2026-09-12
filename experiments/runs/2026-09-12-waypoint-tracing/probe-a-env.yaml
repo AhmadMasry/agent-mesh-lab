@@ -1,0 +1,84 @@
+# Route (b), attempt 1 — an author-directed probe, 2026-09-12.
+#
+# NOT a documented configuration, and the entry says so. Istio's agentgateway page says
+# Istio programs these proxies "only through the Gateway API resources listed above",
+# and agentgateway's own documents describe no environment-variable configuration at all
+# (see probe-b-config.yaml for what they do describe). The author directed this attempt
+# anyway; it is recorded as a probe, not as a documented route.
+#
+# The delivery mechanism IS documented, and is Istio's own. From
+# https://istio.io/latest/docs/tasks/traffic-management/ingress/gateway-api/ (read
+# 2026-09-12): "The parametersRef can be used to fully customize the generated
+# resources. This must reference a ConfigMap in the same namespace as the Gateway", and
+# "These configurations will be overlaid on top of the generated resources using a
+# Strategic Merge Patch strategy." The documented ConfigMap keys are service,
+# deployment, serviceAccount, horizontalPodAutoscaler and podDisruptionBudget; only
+# `deployment` is used here.
+#
+# The container name `agentgateway` is the strategic-merge key, read from the running
+# pod rather than assumed.
+#
+# The variables are the standard OTLP ones the author named. The collector's HTTP port
+# is used because OTEL_EXPORTER_OTLP_PROTOCOL is set to http/protobuf; the collector
+# serves 4317 gRPC and 4318 HTTP both.
+#
+# Apply, then the Gateways need the reference (the Gateway objects themselves are not
+# edited in deploy/, since this is a probe that is reverted unless it produces spans):
+#
+#   kubectl apply -f experiments/runs/2026-09-12-waypoint-tracing/probe-a-env.yaml
+#   kubectl -n lab patch gateway agentgateway-waypoint --type merge \
+#     -p '{"spec":{"infrastructure":{"parametersRef":{"group":"","kind":"ConfigMap","name":"waypoint-otel-env"}}}}'
+#   kubectl -n lab patch gateway agentgateway-waypoint-orch --type merge \
+#     -p '{"spec":{"infrastructure":{"parametersRef":{"group":"","kind":"ConfigMap","name":"waypoint-orch-otel-env"}}}}'
+#   kubectl -n lab rollout status deploy/agentgateway-waypoint deploy/agentgateway-waypoint-orch
+#
+# Revert, if no span carries either waypoint's service name:
+#
+#   kubectl -n lab patch gateway agentgateway-waypoint --type json \
+#     -p '[{"op":"remove","path":"/spec/infrastructure/parametersRef"}]'
+#   kubectl -n lab patch gateway agentgateway-waypoint-orch --type json \
+#     -p '[{"op":"remove","path":"/spec/infrastructure/parametersRef"}]'
+#   kubectl -n lab delete cm waypoint-otel-env waypoint-orch-otel-env
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: waypoint-otel-env
+  namespace: lab
+data:
+  deployment: |
+    spec:
+      template:
+        spec:
+          containers:
+            - name: agentgateway
+              env:
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: http://otel-collector.telemetry.svc.cluster.local:4318
+                - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                  value: http/protobuf
+                - name: OTEL_TRACES_EXPORTER
+                  value: otlp
+                - name: OTEL_SERVICE_NAME
+                  value: agentgateway-waypoint
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: waypoint-orch-otel-env
+  namespace: lab
+data:
+  deployment: |
+    spec:
+      template:
+        spec:
+          containers:
+            - name: agentgateway
+              env:
+                - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                  value: http://otel-collector.telemetry.svc.cluster.local:4318
+                - name: OTEL_EXPORTER_OTLP_PROTOCOL
+                  value: http/protobuf
+                - name: OTEL_TRACES_EXPORTER
+                  value: otlp
+                - name: OTEL_SERVICE_NAME
+                  value: agentgateway-waypoint-orch

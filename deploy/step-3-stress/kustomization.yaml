@@ -11,6 +11,12 @@
 #   agentgateway-tracing.yaml
 #                          OTLP export for the ingress and the egress waypoint, the two
 #                          proxies agentgateway's own control plane drives
+#   waypoint-tracing-config.yaml
+#                          the agentgateway configuration that makes the two istiod-driven
+#                          waypoints emit spans: config.tracing in the --config argument
+#                          istiod passes empty, delivered by the Gateway parametersRef
+#                          Deployment overlay. Measured on 2026-09-12 and kept; the file
+#                          says which halves are documented and which join is a probe
 #   istio-tracing.yaml     the Telemetry resources that select the `otel-tracing`
 #                          provider the step-2 mesh configuration declares: one
 #                          mesh-wide in istio-system, one per waypoint in lab. A
@@ -40,8 +46,12 @@ resources:
   - jaeger.yaml
   - prometheus.yaml
   - agentgateway-tracing.yaml
+  - waypoint-tracing-config.yaml
   - istio-tracing.yaml
 patches:
+  # Adds spec.infrastructure.parametersRef to the two waypoint Gateways, which step 2
+  # and step 2c created without one.
+  - path: waypoint-parameters-patch.yaml
   - path: orchestrator-instrumentation.yaml
     target:
       kind: Deployment

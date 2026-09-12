@@ -423,3 +423,291 @@ configmap/waypoint-otel-env created
 configmap/waypoint-orch-otel-env created
 gateway.gateway.networking.k8s.io/agentgateway-waypoint patched
 gateway.gateway.networking.k8s.io/agentgateway-waypoint-orch patched
+deployment "agentgateway-waypoint" successfully rolled out
+deployment "agentgateway-waypoint-orch" successfully rolled out
+-- did istiod re-render? generation and OTEL_ env --
+agentgateway-waypoint generation=3 otel_env=4 pod=agentgateway-waypoint-65bf94cbdb-tmtsb
+agentgateway-waypoint-orch generation=3 otel_env=4 pod=agentgateway-waypoint-orch-76c6db97fb-t87pw
+-- REPS=1 run into probe-a/ --
+run exit: 0
+== summary ==
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+orchestrator,a3t-175239-r1-orchestrator,2,62,agentgateway-ingress=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2,agentgateway-waypoint-orch|agentgateway-waypoint,no:5/62
+worker,a3t-175239-r1-worker,2,8,agw-egress=2|loadgen=2|mockllm=1|worker=3,agentgateway-waypoint,no:3/8
+-- waypoint services in spans.csv --
+0 0 
+
+== probe A result: no waypoint span (0 rows for either waypoint service in probe-a/); probe B (agentgateway config.tracing through the --config argument via the same overlay) run by the controller, 2026-09-12T14:54:03Z ==
+configmap/waypoint-otel-config created
+configmap/waypoint-orch-otel-config created
+gateway.gateway.networking.k8s.io/agentgateway-waypoint patched
+gateway.gateway.networking.k8s.io/agentgateway-waypoint-orch patched
+deployment "agentgateway-waypoint" successfully rolled out
+deployment "agentgateway-waypoint-orch" successfully rolled out
+-- args after --
+agentgateway-waypoint generation=4 args=["--config","{\"config\":{\"tracing\":{\"otlpEndpoint\":\"http://otel-collector.telemetry.svc.cluster.local:4317\",\"otlpProtocol\":\"grpc\"
+agentgateway-waypoint-orch generation=4 args=["--config","{\"config\":{\"tracing\":{\"otlpEndpoint\":\"http://otel-collector.telemetry.svc.cluster.local:4317\",\"otlpProtocol\":\"grpc\"
+-- pods --
+agentgateway-waypoint-6658bc8f98-ff2wx        0     2026-09-12T14:54:03Z
+agentgateway-waypoint-orch-5685545ccf-pxrp9   0     2026-09-12T14:54:03Z
+-- config.tracing on the admin endpoint --
+agentgateway-waypoint tracing={"endpoint":"http://otel-collector.telemetry.svc.cluster.local:4317","headers":{},"protocol":"grpc","fields":{"remove":[],"add":{}},"random_sampling":"true","client_sampling":"true","path":"/v1/traces"}
+agentgateway-waypoint-orch tracing={"endpoint":"http://otel-collector.telemetry.svc.cluster.local:4317","headers":{},"protocol":"grpc","fields":{"remove":[],"add":{}},"random_sampling":"true","client_sampling":"true","path":"/v1/traces"}
+-- REPS=1 run into probe-b/ --
+run exit: 0
+== summary ==
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+orchestrator,a3t-175437-r1-orchestrator,2,66,agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2,none,no:5/66
+worker,a3t-175437-r1-worker,2,12,agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3,none,no:3/12
+-- waypoint services in spans.csv --
+4 4 
+
+== probe B KEPT (spans on both waypoints). REPS=2 run with the kept configuration by the controller, 2026-09-12T14:56:31Z ==
+run exit: 0
+== summary ==
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+orchestrator,a3t-175631-r1-orchestrator,2,66,agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2,none,no:5/66
+worker,a3t-175631-r1-worker,2,12,agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3,none,no:3/12
+orchestrator,a3t-175631-r2-orchestrator,2,66,agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2,none,no:5/66
+worker,a3t-175631-r2-worker,2,12,agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3,none,no:3/12
+-- dangling parents per work item (parent_span_id not among the trace's span ids) --
+  a3t-175631-r1-orchestrator: spans=66 trace_ids=2 dangling=0
+  a3t-175631-r1-worker: spans=12 trace_ids=2 dangling=0
+  a3t-175631-r2-orchestrator: spans=66 trace_ids=2 dangling=0
+  a3t-175631-r2-worker: spans=12 trace_ids=2 dangling=0
+
+== attempt (a): AgentgatewayPolicy tracing on each waypoint Gateway, re-tested on a clean waypoint state; run by the controller, 2026-09-12T14:59:24Z ==
+-- 1. lift the kept parametersRef so the waypoints run --config '{}' again --
+gateway.gateway.networking.k8s.io/agentgateway-waypoint patched
+gateway.gateway.networking.k8s.io/agentgateway-waypoint-orch patched
+deployment "agentgateway-waypoint" successfully rolled out
+deployment "agentgateway-waypoint-orch" successfully rolled out
+agentgateway-waypoint args=["--config","{}"]
+agentgateway-waypoint tracing=null policies=0
+agentgateway-waypoint-orch args=["--config","{}"]
+agentgateway-waypoint-orch tracing=null policies=0
+-- 2. apply the policies --
+  name: tracing-waypoint   name: tracing-waypoint-orch 
+agentgatewaypolicy.agentgateway.dev/tracing-waypoint created
+agentgatewaypolicy.agentgateway.dev/tracing-waypoint-orch created
+tracing-waypoint status.ancestors[0]={"ancestorRef":{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"agentgateway-waypoint","namespace":"lab"},"conditions":[{"lastTransitionTime":"2026-09-12T14:59:43Z","message":"Policy accepted","observedGeneration":1,"reason":"Valid","status":"True","type":"Accepted"},{"lastTransitionTime":"2026-09-12T14:59:43Z","message":"Attached to all targets","observedGeneration":1,"reason":"Attac
+tracing-waypoint-orch status.ancestors[0]={"ancestorRef":{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"agentgateway-waypoint-orch","namespace":"lab"},"conditions":[{"lastTransitionTime":"2026-09-12T14:59:43Z","message":"Policy accepted","observedGeneration":1,"reason":"Valid","status":"True","type":"Accepted"},{"lastTransitionTime":"2026-09-12T14:59:43Z","message":"Attached to all targets","observedGeneration":1,"reason":"
+
+# ---- MARKER, added 2026-09-12 in the review fix round. No captured output is edited, moved or ----
+# ---- removed; this block is inserted between two existing ones to name their provenance.      ----
+#
+# The controller's attempt-(a) block above is interrupted here and resumes below at
+# "-- 3. REPS=1 run into attempt-a/". Between this marker and that line sits the implementer's
+# section 13, written at 14:59:53Z, which takes no /config_dump read of its own.
+#
+# `tracing=null policies=0` appears twice in this file for each waypoint, and the two pairs are
+# different reads:
+#
+#   pair 1, above under "-- 1. lift the kept parametersRef …"  — the CLEAN state, taken after the
+#           parametersRef was lifted and BEFORE any policy existed. Not what the entry cites.
+#   pair 2, below, immediately before "-- 3. REPS=1 run into attempt-a/" — the POST-POLICY read,
+#           taken after the two AgentgatewayPolicy objects reported Accepted/Attached True at
+#           14:59:43Z. **This is the pair the entry cites.** It is separated from its own
+#           "-- 2. apply the policies --" heading only because section 13 was appended between
+#           them; it belongs to the controller's attempt-(a) block, not to section 13.
+# ------------------------------------------------------------------------------------------------
+
+== 2026-09-12T14:59:53Z | 13. the probes counted, and the cluster reconciled with the overlay ==
+
+-- probe A (OTEL_ environment variables), one REPS=1 --
+a3t-175239-r1-worker        2 traces, 8 spans, agw-egress=2|loadgen=2|mockllm=1|worker=3, 2 dangling, 3/8
+a3t-175239-r1-orchestrator  2 traces,62 spans, agentgateway-ingress=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2, 2 dangling, 5/62
+# No waypoint service. Identical to the Istio-configuration run. Reverted.
+
+-- probe B (agentgateway config.tracing through --config), one REPS=1, then REPS=2 kept --
+a3t-175631-r1-worker        2 traces,12 spans, agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3, 0 dangling, 3/12
+a3t-175631-r2-worker        2 traces,12 spans, agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3, 0 dangling, 3/12
+a3t-175631-r1-orchestrator  2 traces,66 spans, agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2, 0 dangling, 5/66
+a3t-175631-r2-orchestrator  2 traces,66 spans, (same), 0 dangling, 5/66
+# The four waypoint spans on the worker path are two per request, inbound and outbound:
+#   GET /*    and GET  worker.lab.svc.cluster.local:8080   (the card fetch)
+#   POST /*   and POST worker.lab.svc.cluster.local:8080   (the SendMessage)
+# Nothing else moved: ingress 2, egress 2, mockllm 1, worker 3, orchestrator 53, loadgen 2,
+# trace ids 2, ledgers 2/1/1 and 4/2/1. The lab.work_item numerators are unchanged (3 and 5);
+# only the denominators grew, by the new waypoint spans.
+
+-- the cluster reconciled with what is committed --
+$ kubectl -n lab get gateway agentgateway-waypoint agentgateway-waypoint-orch -o jsonpath=...
+agentgateway-waypoint      parametersRef={"group":"","kind":"ConfigMap","name":"waypoint-otel-config"}
+agentgateway-waypoint-orch parametersRef={"group":"","kind":"ConfigMap","name":"waypoint-orch-otel-config"}
+# The live ConfigMap's data.deployment was diffed against the one kustomize builds from
+# deploy/step-3-stress/waypoint-tracing-config.yaml: identical, byte for byte.
+
+$ kubectl -n lab delete cm waypoint-otel-env waypoint-orch-otel-env
+configmap "waypoint-otel-env" deleted from lab namespace
+configmap "waypoint-orch-otel-env" deleted from lab namespace
+# Probe A's revert removed the parametersRef but left its two ConfigMaps behind; they
+# referenced nothing, and are removed here so the namespace holds only what the overlay
+# declares.
+agentgateway-waypoint tracing=null policies=0
+agentgateway-waypoint-orch tracing=null policies=0
+-- 3. REPS=1 run into attempt-a/ --
+run exit: 0
+== summary ==
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+orchestrator,a3t-175958-r1-orchestrator,2,62,agentgateway-ingress=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2,agentgateway-waypoint-orch|agentgateway-waypoint,no:5/62
+worker,a3t-175958-r1-worker,2,8,agw-egress=2|loadgen=2|mockllm=1|worker=3,agentgateway-waypoint,no:3/8
+waypoint span rows: 0 0 
+-- 4. delete the policies --
+agentgatewaypolicy.agentgateway.dev "tracing-waypoint" deleted from lab namespace
+agentgatewaypolicy.agentgateway.dev "tracing-waypoint-orch" deleted from lab namespace
+-- 5. restore the kept configuration (probe B ConfigMaps) --
+gateway.gateway.networking.k8s.io/agentgateway-waypoint patched
+gateway.gateway.networking.k8s.io/agentgateway-waypoint-orch patched
+deployment "agentgateway-waypoint" successfully rolled out
+deployment "agentgateway-waypoint-orch" successfully rolled out
+agentgateway-waypoint tracing={"endpoint":"http://otel-collector.telemetry.svc.cluster.local:4317","headers":{},"protocol":"grpc","fields":{"remove":[],"add":{}},"random_sampling":"true","client_sampling":"true","path":"/v1/traces"} policies=1
+agentgateway-waypoint-orch tracing={"endpoint":"http://otel-collector.telemetry.svc.cluster.local:4317","headers":{},"protocol":"grpc","fields":{"remove":[],"add":{}},"random_sampling":"true","client_sampling":"true","path":"/v1/traces"} policies=1
+-- certificate check --
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway true
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress true
+spiffe://cluster.local/ns/lab/sa/default true
+
+== reconcile with the durable ConfigMap names (deploy/step-3-stress/waypoint-tracing-config.yaml + the Gateway parametersRef), run by the controller, 2026-09-12T15:02:16Z ==
+configmap/waypoint-tracing-config created
+configmap/waypoint-orch-tracing-config created
+gateway.gateway.networking.k8s.io/agentgateway-waypoint patched
+gateway.gateway.networking.k8s.io/agentgateway-waypoint-orch patched
+deployment "agentgateway-waypoint" successfully rolled out
+deployment "agentgateway-waypoint-orch" successfully rolled out
+configmap "waypoint-otel-config" deleted from lab namespace
+configmap "waypoint-orch-otel-config" deleted from lab namespace
+-- ConfigMaps in lab now --
+configmap/istio-ca-crl configmap/istio-ca-root-cert configmap/kube-root-ca.crt configmap/waypoint-orch-tracing-config configmap/waypoint-tracing-config 
+-- Gateways' parametersRef --
+agentgateway-waypoint        waypoint-tracing-config
+agentgateway-waypoint-orch   waypoint-orch-tracing-config
+agentgateway-waypoint pod=agentgateway-waypoint-6658bc8f98-wpl2p tracing_endpoint=http://otel-collector.telemetry.svc.cluster.local:4317
+agentgateway-waypoint-orch pod=agentgateway-waypoint-orch-5685545ccf-flf8s tracing_endpoint=http://otel-collector.telemetry.svc.cluster.local:4317
+-- REPS=1 confirmation run into kept-renamed/ --
+run exit: 0
+== summary ==
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+orchestrator,a3t-180250-r1-orchestrator,2,66,agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2,none,no:5/66
+worker,a3t-180250-r1-worker,2,12,agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3,none,no:3/12
+  a3t-180250-r1-orchestrator: spans=66 trace_ids=2 dangling=0
+  a3t-180250-r1-worker: spans=12 trace_ids=2 dangling=0
+
+== 2026-09-12T15:04:59Z | 14. the rename confirmed, under the names that are committed ==
+# The kept ConfigMaps were renamed from the probe names (waypoint-otel-config,
+# waypoint-orch-otel-config) to the durable ones (waypoint-tracing-config,
+# waypoint-orch-tracing-config) and re-applied from deploy/step-3-stress/. A rename
+# changes each Gateway's parametersRef, so istiod re-rendered both Deployments and both
+# proxies restarted; the content is byte-identical, but the counts are re-taken rather
+# than carried over, because the committed manifests must be the ones that were measured.
+
+REPS=1 RUN_ITEM=2026-09-12-waypoint-tracing/kept-renamed:
+a3t-180250-r1-worker        2 traces,12 spans, agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3, 0 dangling, 3/12, ledgers 2/1/1
+a3t-180250-r1-orchestrator  2 traces,66 spans, agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2, 0 dangling, 5/66, ledgers 4/2/1
+# Reproduces kept/ exactly.
+
+-- the proxies, read again after the rename --
+agentgateway-waypoint      config.tracing SET endpoint=http://otel-collector.telemetry.svc.cluster.local:4317 protocol=grpc
+agentgateway-waypoint-orch config.tracing SET endpoint=http://otel-collector.telemetry.svc.cluster.local:4317 protocol=grpc
+$ kubectl -n lab get cm | grep waypoint
+waypoint-orch-tracing-config   1
+waypoint-tracing-config        1
+# Only the committed names remain; the probe-named ConfigMaps are gone.
+
+== commit 3: kubectl apply -k deploy/step-3-stress, run by the controller on the author's standing approval, 2026-09-12T15:07:49Z ==
+-- lab and telemetry pods before --
+telemetry   jaeger-d997cf5b-td5zv             2026-09-09T06:51:14Z
+telemetry   otel-collector-5d798544f5-ffkgn   2026-09-09T14:27:15Z
+telemetry   prometheus-949757dd7-58bft        2026-09-09T06:51:14Z
+jaeger-d997cf5b-td5zv             2026-09-09T06:51:14Z
+otel-collector-5d798544f5-ffkgn   2026-09-09T14:27:15Z
+prometheus-949757dd7-58bft        2026-09-09T06:51:14Z
+-- apply --
+configmap/otel-collector configured
+configmap/prometheus configured
+deployment.apps/mockllm configured
+deployment.apps/worker configured
+agentgatewaypolicy.agentgateway.dev/access-logs created
+agentgatewaypolicy.agentgateway.dev/access-logs created
+gateway.gateway.networking.k8s.io/agentgateway-waypoint configured
+gateway.gateway.networking.k8s.io/agentgateway-waypoint-orch configured
+httproute.gateway.networking.k8s.io/model-via-agw configured
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+(lines ending in 'unchanged' omitted)
+-- did any lab pod restart? --
+agentgateway-waypoint-6658bc8f98-wpl2p Running 0
+agentgateway-waypoint-orch-5685545ccf-flf8s Running 0
+mockllm-5f9ccd7f4f-vk5wm InvalidImageName 0
+mockllm-d6f98fccd-kztlz Running 0
+orchestrator-7cdfdb558c-262wl Running 0
+worker-749948c4fd-kmqrh InvalidImageName 0
+worker-757989db4b-xd2pj Running 0
+-- CORRECTION: the plain apply -k wrote the ko:// image references into deployment/worker and deployment/mockllm (only the step target's 'kustomize | ko apply' resolves them), leaving one InvalidImageName pod each beside the running ones. Undo those two rollouts to the last good template, 2026-09-12T15:08:33Z --
+Warning: resource deployments/worker was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+deployment.apps/worker rolled back
+Warning: resource deployments/mockllm was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+deployment.apps/mockllm rolled back
+deployment "worker" successfully rolled out
+deployment "mockllm" successfully rolled out
+-- lab pods after the undo --
+agentgateway-waypoint-6658bc8f98-wpl2p Running 0
+agentgateway-waypoint-orch-5685545ccf-flf8s Running 0
+mockllm-d6f98fccd-kztlz Running 0
+orchestrator-7cdfdb558c-262wl Running 0
+worker-757989db4b-xd2pj Running 0
+-- images and guard annotation --
+worker    kind.local/worker-918a018b7a581926ead34dec2ba0fb83:bf58044d0c311c405e7cf0fca9d0686ba3cb63f5b6c11f38f84e1656eddf718e    fdcc8676569986ce1046b91b146223b
+mockllm   kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:1c667be1352522b34884f2fbb5d0d24993876ae1eadc2436900585a7059abadd   fdcc8676569986ce1046b91b146223b
+-- collector and Prometheus restarted to take their changed ConfigMaps --
+deployment.apps/otel-collector restarted
+deployment.apps/prometheus restarted
+deployment "otel-collector" successfully rolled out
+deployment "prometheus" successfully rolled out
+jaeger-d997cf5b-td5zv             Running   2026-09-09T06:51:14Z
+otel-collector-5d798544f5-ffkgn   Running   2026-09-09T14:27:15Z
+otel-collector-75f76bf47b-7772p   Running   2026-09-12T15:08:42Z
+prometheus-64cd688b5b-9q52s       Running   2026-09-12T15:08:42Z
+prometheus-949757dd7-58bft        Running   2026-09-09T06:51:14Z
+-- access-log policies --
+agentgateway-egress   access-logs   agw-egress
+agentgateway-egress   tracing       agw-egress
+agentgateway-system   access-logs   agentgateway-ingress
+agentgateway-system   tracing       agentgateway-ingress
+-- REPS=1 run into agentgateway-otel/ --
+
+== 2026-09-12T15:09:49Z | 15. the policies list read, not just counted ==
+# The controller asked what the policy object is that appears on each waypoint after the
+# kept configuration (policies=1, where the clean state and the attempt-(a) state both read 0).
+# Read from the dump rather than assumed:
+
+$ curl -s localhost:15000/config_dump | jq '.policies'   # agentgateway-waypoint, lab
+[{"key":"frontend/tracing","name":null,
+  "target":{"gateway":{"gatewayName":"agentgateway-waypoint","gatewayNamespace":"lab","listenerName":null}},
+  "policy":{"frontend":{"tracing":{
+     "inlineBackend":"otel-collector.telemetry.svc.cluster.local:4317",
+     "attributes":{},"resources":{},"remove":[],
+     "randomSampling":"true","clientSampling":"true","path":"/v1/traces","protocol":"grpc"}}}}]
+
+# So the proxy compiles its own config.tracing section into an internal frontend.tracing
+# policy targeting its own Gateway. To see whether that is the same object an
+# AgentgatewayPolicy produces, the ingress proxy was read the same way -- same version,
+# configured the documented way by agentgateway's own control plane:
+
+$ curl -s localhost:15000/config_dump | jq '.policies'   # agentgateway-ingress, agentgateway-system
+[{"key":"frontend/agentgateway-system/tracing:frontend-tracing:agentgateway-system/agentgateway-ingress",
+  "name":{"kind":"AgentgatewayPolicy","name":"tracing","namespace":"agentgateway-system"},
+  "target":{"gateway":{"gatewayName":"agentgateway-ingress","gatewayNamespace":"agentgateway-system"}},
+  "policy":{"frontend":{"tracing":{
+     "service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},
+     "attributes":{},"resources":{},"remove":[],
+     "randomSampling":"true","clientSampling":"true","path":"/v1/traces","protocol":"grpc"}}}}]
+and its own config.tracing is null -- the mirror image of the waypoint's.
+
+# The same structure from both surfaces. attributes, resources, remove, randomSampling,
+# clientSampling, path and protocol are identical; the differences are provenance (name
+# names the AgentgatewayPolicy, against null for the synthesised one) and how the collector
+# is addressed (a resolved service reference against an inline host:port). The proxy's
+# support for the documented policy is therefore complete; what fails for an istiod-driven
+# waypoint is delivery alone. This is in the entry and in the upstream draft.

@@ -1,0 +1,88 @@
+# What makes the two istiod-driven agentgateway waypoints emit spans. Measured on
+# 2026-09-12 and kept because it worked; the counts are in findings.md.
+#
+# This is the one configuration of three that produced a waypoint span. Istio's own
+# Telemetry API did not (its agentgateway page lists `Telemetry` among the APIs "not
+# applied to agentgateway proxies", and the measurement agrees: spans unchanged, two
+# dangling parents per work item). OpenTelemetry environment variables on the waypoint
+# pods did not either: the binary reads none, and `--help` inside the running proxy
+# lists no environment option.
+#
+# **Say plainly what is documented here and what is not.** Two halves, each documented
+# by its own project, and a join that neither documents:
+#
+#   the fields    agentgateway's standalone tracing page
+#                 https://agentgateway.dev/docs/standalone/latest/documentation/observability/traces/setup.md
+#                 (read 2026-09-12): "The `config.tracing` section sets tracing defaults
+#                 for the agentgateway process itself. Agentgateway reads the `config`
+#                 section only at startup, so a change to this section requires a
+#                 restart." otlpEndpoint is "OTLP collector endpoint URL that
+#                 agentgateway exports traces to"; otlpProtocol is "OTLP transport
+#                 protocol, either `grpc` or `http`. Defaults to `grpc`"; randomSampling
+#                 is "The fraction of requests that start a new trace when the incoming
+#                 request does not already carry one. Defaults to `false`";
+#                 clientSampling is the same for a request that already carries one,
+#                 "Defaults to `true`". Both are set because this lab counts hops and a
+#                 sampled-away hop would read as a missing one.
+#
+#   the delivery  Istio's Gateway API page
+#                 https://istio.io/latest/docs/tasks/traffic-management/ingress/gateway-api/
+#                 (read 2026-09-12): "The `parametersRef` can be used to fully customize
+#                 the generated resources. This must reference a `ConfigMap` in the same
+#                 namespace as the `Gateway`", and "These configurations will be overlaid
+#                 on top of the generated resources using a Strategic Merge Patch
+#                 strategy." The documented keys are service, deployment, serviceAccount,
+#                 horizontalPodAutoscaler and podDisruptionBudget; only `deployment` is
+#                 used, keyed on the container name `agentgateway` read from the pod.
+#
+#   the join      not documented by either project, and applied here by the author's
+#                 direction of 2026-09-12 as a probe that was then measured. Istio's
+#                 agentgateway page says "agentgateway's own native configuration format
+#                 and custom resources are likewise not managed by Istio; Istio programs
+#                 the proxy solely through the Gateway API resources described in this
+#                 guide." What this overlay does is put a configuration Istio does not
+#                 manage into the argument istiod itself passes, through a Deployment
+#                 patch Istio does document. It is recorded as a probe that worked, not
+#                 as a supported route, and it can stop working at any version of either
+#                 project.
+#
+# Why the argument is the surface at all, read from the running proxy rather than
+# assumed: istiod starts each waypoint with `args: ["--config","{}"]` -- the agentgateway
+# configuration document, empty. The block below fills it. The exact JSON was checked
+# with the binary's own validator inside the waypoint container before it was applied:
+#   /app/agentgateway --config '<the JSON below>' --validate-only  ->  "Configuration is valid!"
+#
+# A change here needs a waypoint restart, because agentgateway "reads the `config`
+# section only at startup". The Deployment is istiod's, so the restart is
+# `kubectl -n lab rollout restart deploy/agentgateway-waypoint deploy/agentgateway-waypoint-orch`.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: waypoint-tracing-config
+  namespace: lab
+data:
+  deployment: |
+    spec:
+      template:
+        spec:
+          containers:
+            - name: agentgateway
+              args:
+                - --config
+                - '{"config":{"tracing":{"otlpEndpoint":"http://otel-collector.telemetry.svc.cluster.local:4317","otlpProtocol":"grpc","randomSampling":true,"clientSampling":true}}}'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: waypoint-orch-tracing-config
+  namespace: lab
+data:
+  deployment: |
+    spec:
+      template:
+        spec:
+          containers:
+            - name: agentgateway
+              args:
+                - --config
+                - '{"config":{"tracing":{"otlpEndpoint":"http://otel-collector.telemetry.svc.cluster.local:4317","otlpProtocol":"grpc","randomSampling":true,"clientSampling":true}}}'

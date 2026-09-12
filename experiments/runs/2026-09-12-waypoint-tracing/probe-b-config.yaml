@@ -1,0 +1,75 @@
+# Route (b), attempt 2 — the agentgateway configuration field the project's own
+# documents name for tracing, delivered through Istio's documented Deployment patch.
+# 2026-09-12. Run only if attempt 1 (probe-a-env.yaml) produces no waypoint span.
+#
+# Why this is better founded than attempt 1. Three facts read this session:
+#
+# 1. The binary names no environment variables. Read from the running waypoint:
+#    `/app/agentgateway --help` lists exactly `-c, --config <config>  Use config from
+#    bytes`, `-f, --file <file>  Use config from file`, `--validate-only`, `-V`,
+#    `--version`, `-h`. No environment variable appears, and no environment variable is
+#    named anywhere in agentgateway's standalone configuration or tracing pages.
+#
+# 2. istiod already uses that surface, and leaves it empty. The waypoint container's
+#    args on this cluster are `["--config","{}"]` -- read from the pod, not assumed. So
+#    the proxy is started with an empty inline agentgateway configuration.
+#
+# 3. The tracing fields are documented, on the project's own standalone page
+#    https://agentgateway.dev/docs/standalone/latest/documentation/observability/traces/setup.md
+#    (read 2026-09-12): "The `config.tracing` section sets tracing defaults for the
+#    agentgateway process itself. Agentgateway reads the `config` section only at
+#    startup, so a change to this section requires a restart." Its field table:
+#    otlpEndpoint "OTLP collector endpoint URL that agentgateway exports traces to";
+#    otlpProtocol "OTLP transport protocol, either `grpc` or `http`. Defaults to `grpc`";
+#    randomSampling "The fraction of requests that start a new trace when the incoming
+#    request does not already carry one. Defaults to `false`"; clientSampling "The
+#    fraction of requests that agentgateway traces when the incoming request already
+#    carries a trace. Defaults to `true`." Both sampling settings are set for the same
+#    reason the ingress and egress policies set them: this lab counts hops, and a
+#    sampled-away hop would read as a missing one.
+#
+# The exact config below was validated against the exact binary, inside the running
+# waypoint container, before this file was written:
+#   kubectl -n lab exec <waypoint pod> -c agentgateway -- /app/agentgateway \
+#     --config '<the JSON below>' --validate-only   ->   "Configuration is valid!"
+#
+# What is documented and what is not, stated plainly for the entry: the tracing fields
+# are documented by agentgateway, and the Deployment patch is documented by Istio; what
+# no document describes is replacing an istiod-managed waypoint's args this way. Istio's
+# agentgateway page says "agentgateway's own native configuration format and custom
+# resources are likewise not managed by Istio". So this too is recorded as a probe.
+#
+# Apply, patch the Gateways to reference these ConfigMaps, restart (the config section is
+# read "only at startup"), one REPS=1 run, then revert unless a waypoint span appears.
+# The same patch/revert commands as probe-a-env.yaml, with these ConfigMap names.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: waypoint-otel-config
+  namespace: lab
+data:
+  deployment: |
+    spec:
+      template:
+        spec:
+          containers:
+            - name: agentgateway
+              args:
+                - --config
+                - '{"config":{"tracing":{"otlpEndpoint":"http://otel-collector.telemetry.svc.cluster.local:4317","otlpProtocol":"grpc","randomSampling":true,"clientSampling":true}}}'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: waypoint-orch-otel-config
+  namespace: lab
+data:
+  deployment: |
+    spec:
+      template:
+        spec:
+          containers:
+            - name: agentgateway
+              args:
+                - --config
+                - '{"config":{"tracing":{"otlpEndpoint":"http://otel-collector.telemetry.svc.cluster.local:4317","otlpProtocol":"grpc","randomSampling":true,"clientSampling":true}}}'
