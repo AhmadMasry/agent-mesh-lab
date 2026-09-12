@@ -404,6 +404,35 @@ the collector's own endpoint. Read them with
 `curl http://prometheus.telemetry.svc.cluster.local:9090/api/v1/targets` from
 inside the cluster, or through a port-forward.
 
+One warning about applying this overlay, measured the hard way on 2026-09-12.
+**A plain `kubectl apply -k deploy/step-3-stress` is not a safe way to push a
+telemetry change.** The overlay carries the Go Deployments, whose images are
+`ko://` references that only `kubectl kustomize … | ko apply` resolves, so a
+plain `apply -k` writes the literal `ko://` string into `deployment/worker` and
+`deployment/mockllm` and each gains an `InvalidImageName` pod beside its running
+one. It happened here while applying a telemetry-only change and was undone with
+`kubectl -n lab rollout undo deploy/worker deploy/mockllm`: the Deployments
+returned to their `kind.local` images, the `lab.agent-mesh/go-sources` guard
+annotation was intact, and the serving pods never changed. Apply a telemetry-only
+change by file — `kubectl apply -f` the manifests it touches — or run `make
+step-3`, which pipes through `ko`.
+
+The agentgateway-driven proxies report on three channels, and only two of
+them are OTLP at v1.5.0. Traces and access logs go to the collector: each of
+the ingress and the egress waypoint carries an `AgentgatewayPolicy` with
+`frontend.tracing` and one with `frontend.accessLog.otlp`, and the collector
+grew a `logs` pipeline whose only exporter is `debug`, so records are counted
+rather than stored. Turning OTLP access logs on takes nothing away, because the
+project's page says export "happens in addition to the standard stdout output";
+the stdout access logs earlier runs read are unchanged. Metrics are the third
+channel and stay a scrape: v1.5.0 documents no OTLP metrics exporter for the
+proxy, and `frontend.metrics` carries only label additions. Prometheus now also
+scrapes the agentgateway control plane on port 9092, which the
+`agentgateway-proxies` job never reached because that job keeps only pods
+carrying `gateway.networking.k8s.io/gateway-name` and the controller pod carries
+none. The control plane documents no tracing of its own, so it contributes
+metrics and nothing else.
+
 Istio's own tracing configuration is here too, in two pieces. The mesh
 configuration `deploy/step-2-ambient-agw/istio-meshconfig.yaml`, passed to the
 step-2 `istioctl install` with `-f`, declares one OpenTelemetry extension

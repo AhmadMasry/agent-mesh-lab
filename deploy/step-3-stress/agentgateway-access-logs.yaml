@@ -1,0 +1,68 @@
+# OTLP access-log export for the two proxies agentgateway's own control plane drives:
+# the ingress in front of Agent A and the egress waypoint in front of the model. The
+# same two Gateways that already export traces under agentgateway-tracing.yaml.
+#
+# Source, read 2026-09-12:
+# https://agentgateway.dev/docs/kubernetes/latest/documentation/observability/access-logs/export.md
+# (the docs at /docs/kubernetes/latest/ are the v1.5.0 set: the version-support table's
+# first row is "1.5.x | 27 Aug 2026", and v1.5.0 is the pinned control plane and proxy.)
+#
+# What the page says this does: "When you configure OTLP log export, agentgateway
+# formats each access log as an OTLP LogRecord and sends it to an OpenTelemetry
+# Collector". Nothing already counted is lost by turning it on: "Log export happens in
+# addition to the standard stdout output, so you can send logs to an OTLP collector
+# without losing local visibility" -- the proxies' stdout access logs, which earlier
+# runs read, stay exactly as they are.
+#
+# The field is spec.frontend.accessLog.otlp, with backendRef (name, namespace, port) and
+# protocol, reproduced from the page's own policy. Two objects rather than one for the
+# same reason as the tracing policies: "A policy must be in the same namespace as the
+# resources that it targets" (the targeting page), while the backendRef names a Service
+# in another namespace.
+#
+# The two istiod-driven waypoints in lab are deliberately not targeted. Whether an
+# AgentgatewayPolicy reaches them at all is what the waypoint measurement in findings.md
+# answers; a policy here would prejudge it.
+#
+# Metrics are not exported over OTLP because v1.5.0 documents no way to do it: the data
+# plane's metrics are a Prometheus endpoint on 15020, and spec.frontend.metrics carries
+# only label additions ("The Kubernetes API only supports adding labels. Removing
+# default metric labels or an entire metric is not supported via AgentgatewayPolicy
+# resource"). They stay scraped, as they already are.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: access-logs
+  namespace: agentgateway-system
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-ingress
+  frontend:
+    accessLog:
+      otlp:
+        backendRef:
+          name: otel-collector
+          namespace: telemetry
+          port: 4317
+        protocol: GRPC
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: access-logs
+  namespace: agentgateway-egress
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agw-egress
+  frontend:
+    accessLog:
+      otlp:
+        backendRef:
+          name: otel-collector
+          namespace: telemetry
+          port: 4317
+        protocol: GRPC

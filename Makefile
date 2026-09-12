@@ -238,6 +238,16 @@ step-2c: check-go-sources-clean
 # The certificate check runs first, as the experiment scripts do, because a
 # cluster left asleep for a day has an expired ztunnel workload certificate and
 # every mesh hop fails until ztunnel is restarted.
+#
+# **Never apply this overlay with a plain `kubectl apply -k deploy/step-3-stress`.**
+# The overlay carries the Go Deployments, whose images are `ko://` references that
+# only `kubectl kustomize ... | ko apply` resolves; a plain `apply -k` writes the
+# raw `ko://` string into deployment/worker and deployment/mockllm and each gets an
+# InvalidImageName pod beside the running one. Measured on 2026-09-12 while applying
+# a telemetry-only change, and undone with `kubectl -n lab rollout undo deploy/worker
+# deploy/mockllm`; the serving pods never changed and the guard annotation survived.
+# A telemetry-only change to this overlay is applied by file -- `kubectl apply -f`
+# the manifests it touches -- or by running this target, which pipes through ko.
 TELEMETRY_NS                := telemetry
 step-3: check-go-sources-clean
 	@set -e; \

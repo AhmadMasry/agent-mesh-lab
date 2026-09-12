@@ -100,6 +100,12 @@ data:
         endpoint: 0.0.0.0:8889
       debug:
         verbosity: basic
+      # A second debug instance for the logs pipeline only, so the access-log records
+      # print in full while the traces and metrics pipelines keep the basic output the
+      # earlier runs were counted against. verbosity: detailed is what agentgateway's
+      # own OTLP access-log page uses in the collector it calls "Standalone debug".
+      debug/logs:
+        verbosity: detailed
 
     service:
       extensions: [health_check]
@@ -112,6 +118,15 @@ data:
           receivers: [otlp]
           processors: [batch]
           exporters: [prometheus, debug]
+        # The agentgateway proxies' access logs, arriving as OTLP LogRecords from the
+        # ingress and the egress waypoint. The debug exporter is the only one: this
+        # counts records, and a log store is outside the component list this lab keeps.
+        # The shape is the one the project's OTLP access-log page gives for a collector
+        # that "writes each log record to its own pod output".
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug/logs]
       telemetry:
         logs:
           level: info

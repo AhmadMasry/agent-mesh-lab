@@ -711,3 +711,47 @@ and its own config.tracing is null -- the mirror image of the waypoint's.
 # is addressed (a resolved service reference against an inline host:port). The proxy's
 # support for the documented policy is therefore complete; what fails for an istiod-driven
 # waypoint is delivery alone. This is in the entry and in the upstream draft.
+run exit: 0
+== summary ==
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+orchestrator,a3t-180908-r1-orchestrator,2,66,agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2,none,no:5/66
+worker,a3t-180908-r1-worker,2,12,agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3,none,no:3/12
+-- Prometheus targets after --
+active=9 up=9 jobs=agentgateway-controlplane,agentgateway-proxies,istiod,otel-collector,ztunnel
+
+== 2026-09-12T15:14:58Z | 16. commit 3's after-state, read ==
+-- Prometheus targets --
+before: 8 active, 8 up   agentgateway-proxies=4 ztunnel=2 istiod=1 otel-collector=1   (no control plane)
+after : 9 active, 9 up   + agentgateway-controlplane=1
+
+-- control-plane scrape, series names returned (8; the reference table lists 5 metrics,
+   and the histogram expands into _bucket/_count/_sum) --
+agentgateway_controller_build_info
+agentgateway_controller_reconcile_duration_seconds_bucket / _count / _sum
+agentgateway_controller_reconciliations_running
+agentgateway_controller_reconciliations_total
+agentgateway_xds_auth_rq_success_total
+agentgateway_xds_auth_rq_total
+
+-- agentgateway_requests_total, 7 series over all four proxies (cumulative since pod start,
+   not per-run; the waypoints read low because their pods restarted most recently) --
+agentgateway-ingress       ns=agentgateway-system   28
+agw-egress                 ns=agentgateway-egress   56
+agentgateway-waypoint      ns=lab                   10
+agentgateway-waypoint-orch ns=lab                    6
+labels: gateway, gateway_name, namespace, route, route_rule, listener, bind, backend, method, protocol, reason
+
+-- access logs at the collector (pod otel-collector-75f76bf47b-7772p), 3 records for 2 work items --
+agentgateway-egress/agw-egress            2   (the model call, on both paths)
+agentgateway-system/agentgateway-ingress  1   (the SendMessage, orchestrator path only)
+# All 3 of 3 carry trace.id and span.id. The orchestrator work item's ingress and egress
+# records share trace id a0e513073f583048267750271d7f5153, so a log line joins to its trace.
+# One record in full:
+#   gateway=agentgateway-egress/agw-egress listener=inner-http route=agentgateway-egress/model-via-agw
+#   endpoint=mockllm.lab.svc.cluster.local:8080 src.identity=spiffe://cluster.local/ns/lab/sa/default
+#   http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.status=200
+#   protocol=http duration=202ms trace.id=65dd790a... span.id=6a36bf72...
+
+-- the run, unchanged from the entry above --
+a3t-180908-r1-worker        2 traces,12 spans, agentgateway-waypoint=4|..., 0 dangling, 3/12, ledgers 2/1/1
+a3t-180908-r1-orchestrator  2 traces,66 spans, both waypoints=2, 0 dangling, 5/66, ledgers 4/2/1

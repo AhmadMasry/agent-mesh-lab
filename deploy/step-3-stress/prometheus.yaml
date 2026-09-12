@@ -102,6 +102,30 @@ data:
             action: replace
             target_label: namespace
 
+      # The agentgateway control plane, which the agentgateway-proxies job above does
+      # not reach: that job keeps only pods carrying gateway.networking.k8s.io/gateway-name,
+      # and the controller pod carries none. Its own metrics page: "The agentgateway
+      # control plane exposes Prometheus-compatible metrics on port 9092", and "Agentgateway
+      # emits metrics automatically on two separate ports, one for the control plane and
+      # one for the data plane. No additional configuration is required to enable them."
+      # The pod declares the port and names it `metrics`, so the container port name is
+      # the selector rather than a hard-coded address.
+      - job_name: agentgateway-controlplane
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [agentgateway-system]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: agentgateway
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: metrics
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+
       # The collector's prometheus exporter, on the port its exporter block names.
       - job_name: otel-collector
         static_configs:
