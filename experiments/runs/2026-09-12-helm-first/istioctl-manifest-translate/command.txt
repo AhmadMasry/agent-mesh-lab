@@ -1,0 +1,23 @@
+# Istio's own documented IstioOperator-to-Helm migration command, run on this host.
+# Source of the command: https://istio.io/latest/blog/2024/in-cluster-operator-deprecation-announcement/
+#   "Helm migration requires translating your IstioOperator YAML into Helm values.
+#    Istio 1.24 and above includes a manifest translate command to perform this
+#    operation. The output is a values.yaml file, and a shell script to install
+#    equivalent Helm charts."
+#
+# $ istioctl version --remote=false
+client version: 1.31.0
+# $ istioctl manifest translate -f deploy/step-2-ambient-agw/istio-meshconfig.yaml
+# Output written to a temporary directory; README.md, pilot-values.yaml and
+# base-values.yaml from it are beside this file. The two generated install scripts are
+# not kept: they relabel existing in-cluster objects into a Helm release, which is a
+# migration of a live cluster and not what this task does -- this task rebuilds from a
+# deleted cluster. Their Helm lines are recorded here instead:
+#   helm upgrade --install base  --namespace istio-system -f base-values.yaml  oci://ghcr.io/istio/release/charts/base
+#   helm upgrade --install pilot --namespace istio-system -f pilot-values.yaml oci://ghcr.io/istio/release/charts/istiod
+# The step-2 recipe uses the chart names and the repository URL the ambient Helm
+# install page gives instead of these OCI references, and the release names that page
+# uses (istio-base, istiod, istio-cni, ztunnel).
+#
+# The command reported migration supported for base and pilot, and NOT supported for
+# istio-ingressgateway -- a component this lab does not install.

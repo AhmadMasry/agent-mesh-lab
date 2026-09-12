@@ -1,0 +1,83 @@
+# Istio's configuration as Helm values, for the Helm route of `make step-2`.
+#
+# Why this file exists. The author's direction of 2026-09-12 was to install every
+# component through Helm where a chart exists, and to move the configuration this
+# lab had been passing through the IstioOperator file into the Helm deployment
+# because Istio is deprecating the operator. What Istio actually says, read this
+# session, is narrower than the direction's phrasing, and the narrower statement is
+# recorded here rather than paraphrased, because the migration's justification has
+# to be Istio's own words:
+#
+#   "Istio's In-Cluster Operator has been deprecated in Istio 1.23."
+#   "This deprecation only affects users of the In-Cluster Operator. Users who
+#    install Istio with the istioctl install command and an IstioOperator YAML file
+#    are not affected."
+#   "Operator-based Installations of Istio will continue to run indefinitely, but
+#    cannot be upgraded past 1.23.x."
+#   "The Istio project will continue to support installation and upgrade via the
+#    istioctl command, as well as with Helm. Because of Helm's popularity within the
+#    platform engineering ecosystem, we recommend most users migrate to Helm.
+#    istioctl install is based on Helm templates, and future versions may integrate
+#    deeper with Helm."
+#   -- https://istio.io/latest/blog/2024/in-cluster-operator-deprecation-announcement/
+#      (read 2026-09-12)
+#
+# So: this lab never ran the in-cluster operator; it ran `istioctl install -f` with
+# an IstioOperator file, which is the form Istio says is "not affected". The move to
+# Helm values is therefore taken on Istio's recommendation, not on a removal
+# deadline, and the IstioOperator file stays as the fallback route. That is measured
+# and stated, not assumed: see findings.md.
+#
+# How the values below were produced. Not by hand. Istio documents the migration
+# command on the same page -- "Helm migration requires translating your
+# IstioOperator YAML into Helm values. Istio 1.24 and above includes a manifest
+# translate command to perform this operation" -- and it was run in this session:
+#
+#   istioctl manifest translate -f deploy/step-2-ambient-agw/istio-meshconfig.yaml
+#
+# Its pilot-values.yaml carried the `meshConfig` block below unchanged, key for key
+# and value for value, which is the byte-equality check the two routes are held to.
+# The output is in experiments/runs/2026-09-12-helm-first/istioctl-manifest-translate/.
+#
+# What translate did not carry, because it was never in the file: the two settings
+# step-2 passed with `--set`. They are added here at the keys the charts document.
+#
+#   profile: ambient
+#     The ambient Helm install page installs istiod and cni with
+#     `--set profile=ambient` and ztunnel without it
+#     (https://istio.io/latest/docs/ambient/install/helm/, read 2026-09-12). The
+#     istiod chart resolves it from files/profile-ambient.yaml, whose own header
+#     reads "The ambient profile enables ambient mode. The Istiod, CNI, and ztunnel
+#     charts must be deployed".
+#
+#   pilot.env.PILOT_ENABLE_AGENTGATEWAY
+#     The istiod chart's values.yaml at 1.31.0 documents the key as `env` under its
+#     `_internal_defaults_do_not_set` root ("Additional container arguments" sits
+#     above it; the env map itself is `env: {}`), and the chart ships
+#     templates/zzy_descope_legacy.yaml, whose comment reads "Copy anything under
+#     `.pilot` to `.`, to avoid the need to specify a redundant prefix." Both
+#     spellings were rendered in this session against chart 1.31.0 and both put the
+#     variable in the istiod container's env with value "true"; `--set
+#     foo.env.PILOT_ENABLE_AGENTGATEWAY=true` put nothing there, so the prefix is
+#     recognised rather than merged blindly. `pilot.env` is used here because it is
+#     the spelling the chart's own ambient profile file uses for
+#     PILOT_ENABLE_AMBIENT. The render is in the run directory.
+#
+# This file is mesh configuration, not a Kustomize overlay, and names no cluster type.
+profile: ambient
+
+pilot:
+  env:
+    PILOT_ENABLE_AGENTGATEWAY: "true"
+
+# Byte-equal to spec.meshConfig in deploy/step-2-ambient-agw/istio-meshconfig.yaml.
+# Every field's source is quoted in that file's header and is not repeated here.
+meshConfig:
+  enableTracing: true
+  extensionProviders:
+    - name: otel-tracing
+      opentelemetry:
+        port: 4317
+        service: otel-collector.telemetry.svc.cluster.local
+        resource_detectors:
+          environment: {}

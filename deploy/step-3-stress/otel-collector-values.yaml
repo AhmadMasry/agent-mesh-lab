@@ -1,0 +1,208 @@
+# The OpenTelemetry Collector as Helm chart values, for the Helm route of
+# `make step-3`. Same collector, same pipelines, same image as
+# deploy/step-3-stress-nohelm/otel-collector.yaml, which stays as the fallback
+# route's manifest; that file's header carries the source for every field of the
+# pipeline configuration and none of it is repeated here.
+#
+# Chart: open-telemetry/opentelemetry-collector 0.173.1, appVersion 0.160.0, from
+# https://open-telemetry.github.io/opentelemetry-helm-charts. Pinned in
+# versions.yaml under opentelemetry-collector-chart with the URLs read in this
+# session. appVersion 0.160.0 is the collector version this lab already counted
+# against, so the chart route does not move the collector.
+#
+# The image is pinned rather than left to the chart's appVersion default, so the
+# tag in the tree is the tag the scan record and every earlier findings entry name.
+mode: deployment
+
+# Without this the Service would be named otel-collector-opentelemetry-collector.
+# `otel-collector.telemetry.svc.cluster.local` is written into Istio's mesh
+# configuration, both agentgateway policies, the two waypoint ConfigMaps, all three
+# lab Deployments' environment and one Prometheus scrape job, so the name is part of
+# the lab's configuration and not a chart default to accept.
+fullnameOverride: otel-collector
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.160.0"
+
+# The chart's default port set opens jaeger (three ports) and zipkin, which nothing
+# in this lab speaks, and leaves the collector's internal-metrics port closed. The
+# ports kept are the two OTLP listeners the manifest declares; prom-export is added
+# for the `prometheus` exporter's 8889, which the Prometheus scrape job reads.
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    protocol: TCP
+    appProtocol: grpc
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+    protocol: TCP
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+  metrics:
+    enabled: false
+  prom-export:
+    enabled: true
+    containerPort: 8889
+    servicePort: 8889
+    protocol: TCP
+
+# Hardening the chart exposes and the manifest does not carry. Recorded as a
+# difference between the two routes rather than back-ported, because the manifest is
+# the shape the earlier runs were counted against. The collector writes no files for
+# these pipelines -- no file_storage extension, no persistent queue -- and reads no
+# Kubernetes API, since every preset that would need one is off (below).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+securityContext:
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
+
+# Every preset is off in the chart's own defaults; they are restated here because a
+# preset is what would add a component this lab's scope does not admit (a log
+# collector, host metrics, a cluster-metrics receiver, the Kubernetes attributes
+# processor and the cluster role it needs). Restating them means a chart upgrade that
+# flipped a default could not bring one in unnoticed.
+presets:
+  logsCollection:
+    enabled: false
+  hostMetrics:
+    enabled: false
+  kubernetesAttributes:
+    enabled: false
+  kubeletMetrics:
+    enabled: false
+  kubernetesEvents:
+    enabled: false
+  kubernetesObjects:
+    enabled: false
+  clusterMetrics:
+    enabled: false
+  profiling:
+    enabled: false
+  resourceDetection:
+    enabled: false
+
+clusterRole:
+  create: false
+
+# Neither needs the Prometheus Operator CRDs this cluster does not have; both are
+# off by default and are restated for the same reason the presets are.
+podMonitor:
+  enabled: false
+serviceMonitor:
+  enabled: false
+
+# The collector configuration. The chart merges this onto its own `config` defaults,
+# so the four components the defaults add and this lab does not use -- the jaeger,
+# zipkin and prometheus receivers and the memory_limiter processor -- are removed
+# with `null`. The chart's comment on `alternateConfig` says null removal is what
+# breaks "when the chart is used as a subchart" and that alternateConfig "is not
+# recommended ... when installing the chart directly", so null is the route taken
+# here and the rendered ConfigMap is compared against the manifest's collector.yaml
+# in the run directory.
+config:
+  extensions:
+    # The chart's default endpoint is ${env:MY_POD_IP}:13133 and its probes address
+    # that port; the manifest binds 0.0.0.0. Both are reachable by the kubelet. The
+    # manifest's spelling is kept so the two routes serve the same address.
+    health_check:
+      endpoint: 0.0.0.0:13133
+
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    jaeger: null
+    zipkin: null
+    prometheus: null
+
+  processors:
+    batch: {}
+    memory_limiter: null
+    filter:
+      error_mode: ignore
+      trace_conditions:
+        - span.attributes["url.path"] == "/healthz"
+        - span.attributes["http.route"] == "/healthz"
+        - span.attributes["http.target"] == "/healthz"
+        - IsMatch(span.name, "^GET /healthz")
+    transform:
+      error_mode: ignore
+      trace_statements:
+        - set(span.attributes["lab.work_item"], span.attributes["http.request.header.x_logical_work_item_id"][0]) where span.attributes["lab.work_item"] == nil and span.attributes["http.request.header.x_logical_work_item_id"] != nil
+        - set(span.attributes["lab.message_id"], span.attributes["http.request.header.x_a2a_message_id"][0]) where span.attributes["lab.message_id"] == nil and span.attributes["http.request.header.x_a2a_message_id"] != nil
+        - set(span.attributes["lab.task_id"], span.attributes["http.request.header.x_a2a_task_id"][0]) where span.attributes["lab.task_id"] == nil and span.attributes["http.request.header.x_a2a_task_id"] != nil
+        - set(span.attributes["lab.caller"], span.attributes["http.request.header.x_caller"][0]) where span.attributes["lab.caller"] == nil and span.attributes["http.request.header.x_caller"] != nil
+
+  exporters:
+    # Rendered as `otlp_grpc`, not `otlp`, and the pipeline reference with it: the
+    # chart's `rewriteDeprecatedComponentNames` defaults to true and its rename table
+    # maps exporter `otlp` to `otlp_grpc`. That default is kept rather than switched
+    # off, because at the collector version this lab pins the rewritten name is the
+    # component's current name and the manifest's is its alias: exporter/otlpexporter
+    # at tag exporter/otlpexporter/v0.160.0 declares `type: otlp_grpc` with
+    # `deprecated_type: otlp` in metadata.yaml, and its factory registers the second
+    # with `xexporter.WithDeprecatedTypeAlias`. So the two routes configure the same
+    # exporter under two names it answers to, which is the one textual difference
+    # between the rendered ConfigMap and the manifest's collector.yaml. The chart's
+    # own note on the value -- "Set to false if using older Collector images that do
+    # not recognize the new names" -- does not apply to 0.160.0.
+    otlp:
+      endpoint: jaeger.telemetry.svc.cluster.local:4317
+      tls:
+        insecure: true
+    prometheus:
+      endpoint: 0.0.0.0:8889
+    debug:
+      verbosity: basic
+    debug/logs:
+      verbosity: detailed
+
+  service:
+    extensions:
+      - health_check
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [filter, transform, batch]
+        exporters: [otlp, debug]
+      metrics:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [prometheus, debug]
+      logs:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [debug/logs]
+    telemetry:
+      logs:
+        level: info
+      # The chart's default adds a pull exporter on 8888 for the collector's own
+      # metrics and six k8s.* resource attributes. The manifest has neither, and the
+      # `metrics` port above is closed, so both are removed to keep the two routes'
+      # configuration the same.
+      metrics: null
+      resource: null

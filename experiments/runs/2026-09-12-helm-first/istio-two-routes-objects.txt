@@ -1,0 +1,22 @@
+# The two step-2 Istio routes compared as object sets, rendered on this host.
+# Fallback route: istioctl manifest generate --set profile=ambient
+#   --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml
+# Helm route: helm template of base, istiod (-f istio-values.yaml), cni (--set profile=ambient)
+#   and ztunnel, all at chart 1.31.0 from https://blob.istio.io/istio-release/charts
+
+istioctl route objects: 44
+helm route objects:     45
+
+## only on the istioctl route (0)
+## only on the helm route (1)
+   ValidatingWebhookConfiguration           istiod-default-validator
+
+## the two settings under test, read back out of each rendering
+   istioctl PILOT_ENABLE_AGENTGATEWAY present: True
+   istioctl PILOT_ENABLE_AMBIENT present:      True
+   istioctl enableTracing: true present:       True
+   istioctl otel-tracing provider present:     True
+   helm     PILOT_ENABLE_AGENTGATEWAY present: True
+   helm     PILOT_ENABLE_AMBIENT present:      True
+   helm     enableTracing: true present:       True
+   helm     otel-tracing provider present:     True

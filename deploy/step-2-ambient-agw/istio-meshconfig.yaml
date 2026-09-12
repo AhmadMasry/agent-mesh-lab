@@ -1,5 +1,27 @@
-# The OpenTelemetry tracing provider in Istio's mesh configuration, passed to the
-# step-2 `istioctl install` with -f.
+# FALLBACK ROUTE ONLY, from 2026-09-12. The OpenTelemetry tracing provider in Istio's
+# mesh configuration, passed to the step-2 `istioctl install` with -f. `make step-2`
+# takes this route only when `helm` is not on PATH; when it is, the same configuration
+# is installed as Helm values from deploy/step-2-ambient-agw/istio-values.yaml, whose
+# meshConfig block is byte-equal to this file's spec.meshConfig after the two-space
+# indentation offset is removed (the comparison and both sha256 sums are in
+# experiments/runs/2026-09-12-helm-first/meshconfig-block-equality.txt).
+#
+# Why the file stays rather than being deleted. What Istio deprecated is the
+# in-cluster operator, not this form. Its announcement, read 2026-09-12 at
+# https://istio.io/latest/blog/2024/in-cluster-operator-deprecation-announcement/:
+#
+#   "Istio's In-Cluster Operator has been deprecated in Istio 1.23."
+#   "This deprecation only affects users of the In-Cluster Operator. Users who install
+#    Istio with the istioctl install command and an IstioOperator YAML file are not
+#    affected."
+#   "The Istio project will continue to support installation and upgrade via the
+#    istioctl command, as well as with Helm. Because of Helm's popularity within the
+#    platform engineering ecosystem, we recommend most users migrate to Helm."
+#
+# This lab has never run the in-cluster operator; it runs `istioctl install -f` with
+# this file, which is the form Istio calls unaffected. The move to Helm values was
+# taken on Istio's recommendation and on the author's direction of 2026-09-12, not on
+# a removal deadline, which is why this route is kept and is still exercised.
 #
 # Every field here comes from the Istio OpenTelemetry task, read 2026-09-12:
 # https://istio.io/latest/docs/tasks/observability/distributed-tracing/opentelemetry/

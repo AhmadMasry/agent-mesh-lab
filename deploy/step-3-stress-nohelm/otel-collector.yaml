@@ -1,0 +1,209 @@
+# FALLBACK ROUTE ONLY. This manifest is what `make step-3` applies when `helm` is not
+# on PATH. On the Helm route the same collector comes from chart
+# open-telemetry/opentelemetry-collector 0.173.1 with
+# deploy/step-3-stress/otel-collector-values.yaml, which carries this file's pipeline
+# configuration key for key. Until 2026-09-12 this file was
+# deploy/step-3-stress/otel-collector.yaml, and findings entries dated before then
+# cite it at that path.
+#
+# The OpenTelemetry Collector: one OTLP receiver for everything that emits spans in
+# this lab, one processor that lifts the four identity headers onto a single set of
+# attribute names, and three exporters (the trace backend, a Prometheus endpoint, and
+# a log of what arrived).
+#
+# A plain Deployment, not an OpenTelemetryCollector custom resource: no OpenTelemetry
+# Operator is installed, and a Deployment keeps the number of moving parts between a
+# span and the backend small enough to read in one file.
+#
+# Versions and every fact quoted below are pinned in versions.yaml under
+# opentelemetry-collector, with the URLs they were read from.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector
+  namespace: telemetry
+data:
+  collector.yaml: |
+    extensions:
+      # Answers the readiness probe below. Its default endpoint is localhost:13133,
+      # which the kubelet cannot reach, so the address is given explicitly; the path
+      # is the extension's default, "/".
+      health_check:
+        endpoint: 0.0.0.0:13133
+
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      batch: {}
+      # The readiness probes of the three lab pods are by far the largest source of
+      # spans in an idle cluster: 150 spans a minute with no work item in flight,
+      # against the handful a work item produces. They are dropped here rather than
+      # at each agent, because the probe endpoints are deliberately in front of every
+      # ledger and no agent should learn about tracing to serve one. Measured on both
+      # sides of this processor in
+      # experiments/runs/2026-09-09-a3-gateway-retry-mechanics/collector-span-rate.txt:
+      # without it, 150 spans accepted and 150 exported in 60 s; with it, 150 accepted,
+      # 150 into the filter, 0 out of it and 0 exported.
+      #
+      # Four conditions, because the three probes are described by three different
+      # vocabularies, all read off real probe spans in this cluster:
+      #   url.path      the Go binaries (worker, mockllm) under otelhttp's semconv
+      #   http.route    the Python agent's server span
+      #   http.target   the same span's older spelling, kept so a semconv change on
+      #                 either side does not silently stop matching
+      #   the name      the Python agent's two ASGI "http send" child spans per probe,
+      #                 which carry no path attribute at all and are only identifiable
+      #                 by the name they inherit from their parent
+      # A span is dropped when any one condition is true: the filter processor's
+      # README at this tag says the conditions are ORed together. `trace_conditions`
+      # with path-prefixed paths is the syntax that README documents at 0.160.0; the
+      # `traces.span` spelling it calls deprecated is not used here.
+      filter:
+        error_mode: ignore
+        trace_conditions:
+          - span.attributes["url.path"] == "/healthz"
+          - span.attributes["http.route"] == "/healthz"
+          - span.attributes["http.target"] == "/healthz"
+          - IsMatch(span.name, "^GET /healthz")
+      # One work item is identified by four headers on the wire. Two instrumentations
+      # put them on a span under two different names, and every query in this gate
+      # reads one name, so the two spellings are joined here rather than in either
+      # agent.
+      #
+      #   Python (the distro's Starlette/ASGI instrumentation, Task 1): the ASGI
+      #   instrumentation captures the headers named in
+      #   OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST as
+      #   http.request.header.<lowercased name with - replaced by _>, and the value is
+      #   a list of the header's values, so the first element is taken.
+      #
+      #   Go (internal/otel, Task 1): sets lab.work_item, lab.message_id, lab.task_id
+      #   and lab.caller on the server span itself, as strings.
+      #
+      # Each statement runs only where the lab.* attribute is not already set, so a
+      # span that arrives with the Go spelling is left alone.
+      transform:
+        error_mode: ignore
+        trace_statements:
+          - set(span.attributes["lab.work_item"], span.attributes["http.request.header.x_logical_work_item_id"][0]) where span.attributes["lab.work_item"] == nil and span.attributes["http.request.header.x_logical_work_item_id"] != nil
+          - set(span.attributes["lab.message_id"], span.attributes["http.request.header.x_a2a_message_id"][0]) where span.attributes["lab.message_id"] == nil and span.attributes["http.request.header.x_a2a_message_id"] != nil
+          - set(span.attributes["lab.task_id"], span.attributes["http.request.header.x_a2a_task_id"][0]) where span.attributes["lab.task_id"] == nil and span.attributes["http.request.header.x_a2a_task_id"] != nil
+          - set(span.attributes["lab.caller"], span.attributes["http.request.header.x_caller"][0]) where span.attributes["lab.caller"] == nil and span.attributes["http.request.header.x_caller"] != nil
+
+    exporters:
+      # The trace backend. OTLP gRPC on 4317, plaintext: the hop is inside the
+      # cluster and neither end of it is under test.
+      otlp:
+        endpoint: jaeger.telemetry.svc.cluster.local:4317
+        tls:
+          insecure: true
+      # The prometheus exporter has no default endpoint and serves /metrics on the
+      # one it is given; 8889 is the port the Prometheus scrape job below uses.
+      prometheus:
+        endpoint: 0.0.0.0:8889
+      debug:
+        verbosity: basic
+      # A second debug instance for the logs pipeline only, so the access-log records
+      # print in full while the traces and metrics pipelines keep the basic output the
+      # earlier runs were counted against. verbosity: detailed is what agentgateway's
+      # own OTLP access-log page uses in the collector it calls "Standalone debug".
+      debug/logs:
+        verbosity: detailed
+
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [filter, transform, batch]
+          exporters: [otlp, debug]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [prometheus, debug]
+        # The agentgateway proxies' access logs, arriving as OTLP LogRecords from the
+        # ingress and the egress waypoint. The debug exporter is the only one: this
+        # counts records, and a log store is outside the component list this lab keeps.
+        # The shape is the one the project's OTLP access-log page gives for a collector
+        # that "writes each log record to its own pod output".
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug/logs]
+      telemetry:
+        logs:
+          level: info
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: telemetry
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.160.0
+          args: ["--config=/conf/collector.yaml"]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+            - name: prom-export
+              containerPort: 8889
+            - name: health
+              containerPort: 13133
+          # Without this, `rollout status` returns when the pod is Running rather
+          # than when the OTLP listener is accepting, and a span posted promptly
+          # after a restart can be sent into a socket that is not up yet.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            failureThreshold: 12
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: telemetry
+  labels:
+    app: otel-collector
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+    - name: prom-export
+      port: 8889
+      targetPort: prom-export

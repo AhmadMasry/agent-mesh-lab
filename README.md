@@ -29,7 +29,7 @@ agents/worker/         Go, a2a-go; hosts the pre-dispatch ingress and execution 
 fixtures/mockllm/      Go; OpenAI-compatible model endpoint; failure injection; invocation ledger
 fixtures/replay/       Go; controlled duplicate-delivery harness (modes M1–M3)
 fixtures/loadgen/      Go; a2a-go client
-deploy/                Kustomize: base, step-1-nomesh, step-2-ambient-agw, step-2b-agw-ingress-egress, step-2c-gate2, step-3-stress
+deploy/                Kustomize: base, step-1-nomesh, step-2-ambient-agw, step-2b-agw-ingress-egress, step-2c-gate2, step-3-stress, step-3-stress-nohelm
 experiments/           one runnable script per checklist item; cited run outputs under experiments/runs/,
                        shared helpers under experiments/lib/, test inputs under experiments/fixtures/
 docs/upstream/         draft issue texts for behaviour that looks like a project gap; filed by a human
@@ -52,12 +52,55 @@ on the machine used for Gate 1 (each checked with its own version command;
 | docker buildx | `docker buildx version` | `github.com/docker/buildx v0.36.1-desktop.1 83d819cf8237b52ef45a2a9857eeb83a7b10977f` |
 | uv | `uv --version` | `uv 0.12.12 (Homebrew 2026-09-09 aarch64-apple-darwin)` |
 | kubescape | `kubescape version` | `4.0.14` |
+| helm | `helm version` | `v4.3.0` (GitCommit `bec5b06ed841fe5269972d864d5177944fd5970f`, Go `go1.27.1`) |
 | go | `go version` | `go version go1.27.1 darwin/arm64` |
 
 `ko apply`/`ko build` are called with `--platform=linux/$(go env GOARCH)`
 throughout the Makefile and `experiments/*.sh`, so the built images match
 whatever architecture this machine's Go toolchain reports — no per-host edit
 needed.
+
+### Helm first, the previous route as the fallback
+
+From 2026-09-12, on the author's direction, every component with a published
+chart is installed by Helm when `helm` is on PATH, and by the route that target
+used before that date when it is not. The Makefile holds one guard,
+`HELM := $(shell command -v helm 2>/dev/null)`, and each step target that
+installs a component branches on it; both routes are named in that target's
+comment, and `make -n step-2 step-3` run once with helm on PATH and once without
+is committed as
+`experiments/runs/2026-09-12-helm-first/make-n-{helm,nohelm}.txt`.
+
+| Component | Helm route | Route when `helm` is absent |
+| --- | --- | --- |
+| Gateway API CRDs | none — the project publishes no chart | `kubectl apply --server-side -f <release>/experimental-install.yaml`, on both routes |
+| Istio (base, istiod, cni, ztunnel) | four charts at `1.31.0` from `https://blob.istio.io/istio-release/charts`; istiod takes `deploy/step-2-ambient-agw/istio-values.yaml` | `istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y` |
+| agentgateway control plane | two OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts` | none — the project documents no other install, and `make step-2b` says so and stops |
+| Collector | chart `opentelemetry-collector` `0.173.1` with `deploy/step-3-stress/otel-collector-values.yaml` | `deploy/step-3-stress-nohelm/otel-collector.yaml` |
+| Trace backend | chart `jaeger` `4.13.1` with `deploy/step-3-stress/jaeger-values.yaml` | `deploy/step-3-stress-nohelm/jaeger.yaml` |
+| Prometheus | chart `prometheus` `29.28.1` with `deploy/step-3-stress/prometheus-values.yaml` | `deploy/step-3-stress-nohelm/prometheus.yaml` |
+
+Every chart version and every values key used is recorded in `versions.yaml`
+with the URL it was read from. A chart's optional sub-components are disabled and
+each disable is stated in the values file: the Prometheus chart's four subcharts
+(`alertmanager`, `kube-state-metrics`, `prometheus-node-exporter`,
+`prometheus-pushgateway`) and its `configmap-reload` sidecar; the collector
+chart's nine presets, its cluster role and its `PodMonitor`/`ServiceMonitor`; the
+Jaeger chart's OAuth2 sidecar, its Ingress and HTTPRoute, its NetworkPolicy
+(`networkPolicy.enabled: false`), the three Elasticsearch maintenance jobs
+(`esIndexCleaner`, `esRollover`, `esLookback`) and the Spark job. The scope rule this serves is
+CLAUDE.md's rule 6: the component list is fixed, and a chart default is not a
+reason to widen it.
+
+Istio's configuration moved with the components. What Istio deprecated is its
+in-cluster operator, not `istioctl install -f <IstioOperator>`: its announcement
+says "This deprecation only affects users of the In-Cluster Operator. Users who
+install Istio with the istioctl install command and an IstioOperator YAML file
+are not affected", and "we recommend most users migrate to Helm". So the
+IstioOperator file is kept as the fallback route and the Helm values file was
+produced with Istio's own documented `istioctl manifest translate`; the two
+files' mesh-configuration blocks are byte-equal after the indentation offset, and
+the check is committed beside the run.
 
 The worker and mock Deployments do not rebuild themselves: a change under
 `agents/worker/`, `fixtures/mockllm/`, or `internal/` reaches them only
@@ -403,6 +446,17 @@ by running the scripts above.
 Step 3 adds the pipeline the Gate 3 traces travel through. It applies on top of
 step 2c and adds only new objects: a `telemetry` namespace holding an
 OpenTelemetry Collector, a Jaeger v2 trace backend and Prometheus.
+
+From 2026-09-12 the overlay is two overlays, because the three components are
+installed by chart when `helm` is on PATH. `deploy/step-3-stress` carries step
+3's *configuration* — the namespace, the Istio `Telemetry` resources, the two
+agentgateway policies, the waypoint ConfigMap and the three Deployment patches —
+and is applied on both routes. `deploy/step-3-stress-nohelm` applies on top of it
+and adds the three component manifests, and is applied only when `helm` is
+absent. Two overlays rather than one conditional list, so that
+`kubectl kustomize deploy/step-3-stress` has a single meaning and each overlay
+still applies cleanly on top of the previous step; the reasoning is in
+`deploy/step-3-stress/kustomization.yaml`'s header.
 No OpenTelemetry Operator is installed: the Python agent starts under the
 OpenTelemetry distro's `opentelemetry-instrument` launcher, installed in its own
 image (see below), and the Operator's injection route was measured in four states
@@ -438,8 +492,9 @@ the collector's own endpoint. Read them with
 inside the cluster, or through a port-forward.
 
 One warning about applying this overlay, measured the hard way on 2026-09-12.
-**A plain `kubectl apply -k deploy/step-3-stress` is not a safe way to push a
-telemetry change.** The overlay carries the Go Deployments, whose images are
+**A plain `kubectl apply -k deploy/step-3-stress` (or `-k
+deploy/step-3-stress-nohelm`) is not a safe way to push a
+telemetry change.** Either overlay carries the Go Deployments, whose images are
 `ko://` references that only `kubectl kustomize … | ko apply` resolves, so a
 plain `apply -k` writes the literal `ko://` string into `deployment/worker` and
 `deployment/mockllm` and each gains an `InvalidImageName` pod beside its running

@@ -1,0 +1,111 @@
+# make -n step-2 step-3, with helm on PATH
+# $ command -v helm -> /opt/homebrew/bin/helm
+# $ helm version -> v4.3.0+gbec5b06
+
+if [ -n "" ]; then \
+		echo "uncommitted changes under the Go paths the image stamp hashes; commit or stash them before a step target runs ko apply:" >&2; \
+		printf '%s\n' "" >&2; \
+		exit 1; \
+	fi
+docker build --pull --no-cache --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+kind load docker-image orchestrator:dev --name agent-mesh-lab
+# Applied unconditionally: a present CRD does not tell us the channel it came
+# from, and the experimental channel is what carries HTTPRoute.Retry.
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/experimental-install.yaml
+istioctl version --remote=false
+istioctl version --remote=false | grep -q 1.31.0 || { echo "istioctl on PATH is not the pinned 1.31.0 (see versions.yaml)" >&2; exit 1; }
+# Istio, two routes (see the HELM comment at the top of this file).
+#
+# Helm route, taken when helm is on PATH: the four charts the ambient Helm install
+# page installs, in the page's order, each pinned to 1.31.0 and each from the
+# repository URL that page's `helm repo add` line gives. `--repo` is used instead of
+# `helm repo add` so the target adds nothing to the user's Helm configuration.
+# `helm upgrade -i` rather than the page's `helm install`, so a re-run of this
+# target is not an error -- the same substitution step-2b already makes. The page
+# passes `--set profile=ambient` to istiod and cni and nothing to ztunnel or base;
+# here istiod takes the profile from istio-values.yaml, which also carries the mesh
+# configuration the IstioOperator file carries and the agentgateway pilot flag
+# step-2 used to pass with --set. That file's header quotes Istio on why this route
+# is now first, and records that `istioctl manifest translate` produced its
+# meshConfig block.
+#
+# Previous route, taken when helm is absent: `istioctl install -f` with the
+# IstioOperator file, which is what this target ran until 2026-09-12 and which
+# Istio's own deprecation announcement calls a form "not affected" by the
+# in-cluster operator's removal.
+if [ -n "/opt/homebrew/bin/helm" ]; then \
+		echo "step-2: Istio via Helm (/opt/homebrew/bin/helm), charts pinned to 1.31.0"; \
+	else \
+		echo "step-2: helm not on PATH; Istio via istioctl install -f deploy/step-2-ambient-agw/istio-meshconfig.yaml"; \
+	fi
+set -e; \
+	if [ -n "/opt/homebrew/bin/helm" ]; then \
+		helm upgrade -i istio-base base --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
+			-n istio-system --create-namespace --wait; \
+		helm upgrade -i istiod istiod --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
+			-n istio-system -f deploy/step-2-ambient-agw/istio-values.yaml --wait; \
+		helm upgrade -i istio-cni cni --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
+			-n istio-system --set profile=ambient --wait; \
+		helm upgrade -i ztunnel ztunnel --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
+			-n istio-system --wait; \
+	else \
+		istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y; \
+	fi
+kubectl kustomize deploy/step-2-ambient-agw | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+# ztunnel captures a pod when it starts, so pods that predate the namespace's
+# ambient label are restarted to be enrolled.
+kubectl -n lab rollout restart deployment/mockllm deployment/worker deployment/orchestrator
+kubectl -n lab rollout status deployment/agentgateway-waypoint --timeout=180s
+kubectl -n lab rollout status deployment/mockllm --timeout=120s
+kubectl -n lab rollout status deployment/worker --timeout=120s
+kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+set -e; \
+	echo "== certificate check =="; \
+	certs=$(istioctl ztunnel-config certificates --node agent-mesh-lab-worker); \
+	printf '%s\n' "$certs"; \
+	if printf '%s\n' "$certs" | awk '$1 ~ /ns\/lab\/sa\/default$/ && $2 == "Leaf" { print $4 }' | grep -qx true; then \
+		echo "certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted"; \
+	else \
+		echo "certificate check: VALID CERT is not true; restarting ztunnel" >&2; \
+		kubectl -n istio-system rollout restart daemonset/ztunnel; \
+		kubectl -n istio-system rollout status daemonset/ztunnel --timeout=180s; \
+		istioctl ztunnel-config certificates --node agent-mesh-lab-worker \
+			| awk '$1 ~ /ns\/lab\/sa\/default$/ && $2 == "Leaf" { print $4 }' | grep -qx true \
+			|| { echo "certificate check: VALID CERT still not true after a ztunnel restart" >&2; exit 1; }; \
+		echo "certificate check: VALID CERT true after a ztunnel restart"; \
+	fi
+# The telemetry components, two routes (see the HELM comment at the top of this
+# file). Helm route: each of the three from its project's chart, pinned above, with
+# the values file beside the manifest it replaces; the namespace is created by the
+# configuration overlay, which is applied first so `--create-namespace` is not
+# needed and the namespace's own labels are the overlay's. Previous route: the three
+# manifests, which now live in deploy/step-3-stress-nohelm and are pulled in by that
+# overlay on top of this one.
+if [ -n "/opt/homebrew/bin/helm" ]; then \
+		echo "step-3: telemetry via Helm (/opt/homebrew/bin/helm); collector chart 0.173.1, jaeger chart 4.13.1, prometheus chart 29.28.1"; \
+	else \
+		echo "step-3: helm not on PATH; telemetry from the manifests in deploy/step-3-stress-nohelm"; \
+	fi
+set -e; \
+	if [ -n "/opt/homebrew/bin/helm" ]; then \
+		kubectl kustomize deploy/step-3-stress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -; \
+		helm upgrade -i otel-collector opentelemetry-collector --repo https://open-telemetry.github.io/opentelemetry-helm-charts \
+			--version 0.173.1 -n telemetry \
+			-f deploy/step-3-stress/otel-collector-values.yaml --wait; \
+		helm upgrade -i jaeger jaeger --repo https://jaegertracing.github.io/helm-charts \
+			--version 4.13.1 -n telemetry \
+			-f deploy/step-3-stress/jaeger-values.yaml --wait; \
+		helm upgrade -i prometheus prometheus --repo https://prometheus-community.github.io/helm-charts \
+			--version 29.28.1 -n telemetry \
+			-f deploy/step-3-stress/prometheus-values.yaml --wait; \
+	else \
+		kubectl kustomize deploy/step-3-stress-nohelm | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -; \
+	fi
+kubectl -n telemetry rollout status deployment/otel-collector --timeout=180s
+kubectl -n telemetry rollout status deployment/jaeger --timeout=180s
+kubectl -n telemetry rollout status deployment/prometheus --timeout=180s
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=fdcc8676569986ce1046b91b146223b5f41313f8
+echo
+echo "trace backend query Service: jaeger.telemetry.svc.cluster.local:16686 (its own UI and API; nothing else is installed)"
+echo "read it from this host with: kubectl -n telemetry port-forward svc/jaeger 16686:16686  then open http://127.0.0.1:16686"

@@ -1,0 +1,183 @@
+# Prometheus as Helm chart values, for the Helm route of `make step-3`. Same server,
+# same image, same five scrape jobs as deploy/step-3-stress-nohelm/prometheus.yaml,
+# which stays as the fallback route's manifest; that file's header carries the source
+# for every port, path and selector below and none of it is repeated here.
+#
+# Chart: prometheus-community/prometheus 29.28.1, appVersion v3.14.0, from
+# https://prometheus-community.github.io/helm-charts. Pinned in versions.yaml under
+# prometheus-chart with the URLs read in this session. appVersion v3.14.0 is the
+# Prometheus version this lab already counted against, so the chart route does not
+# move Prometheus.
+#
+# Scope rule 6, twice over. This chart is the one in the set that would otherwise
+# bring components this lab does not admit: four subcharts, every one of them
+# enabled in the chart's own defaults, and a configmap-reload sidecar. Chart.yaml at
+# 29.28.1 declares each subchart with a `condition`, so each is turned off by the
+# key named in that condition, and all five disables are below and are counted in
+# the findings entry by `helm template | grep -c kind:`.
+alertmanager:
+  enabled: false
+kube-state-metrics:
+  enabled: false
+prometheus-node-exporter:
+  enabled: false
+prometheus-pushgateway:
+  enabled: false
+configmapReload:
+  prometheus:
+    # A second image and a second process in the server pod, whose only job is to
+    # POST /-/reload when the ConfigMap changes. The manifest has no such container,
+    # and this lab restarts the Deployment when it changes the scrape configuration,
+    # so it is off. `server.extraFlags` keeps the chart's default
+    # `web.enable-lifecycle`, which is what the sidecar would have called.
+    enabled: false
+
+server:
+  # Without this the Service and Deployment would be named prometheus-server.
+  fullnameOverride: prometheus
+
+  # The chart's default repository is quay.io/prometheus/prometheus and its default
+  # tag is the chart appVersion. Both are set explicitly to the image the manifest
+  # runs and the scan record names, so the two routes run the same bytes.
+  image:
+    repository: prom/prometheus
+    tag: v3.14.0
+
+  # `global` in the pod's prometheus.yml is written from this key alone: the chart's
+  # ConfigMap template emits `global:` from `.Values.server.global` and ignores a
+  # `global` given under serverFiles."prometheus.yml" (verified by rendering the
+  # chart with one there and finding the chart's own values in the output). Both
+  # intervals are the manifest's. scrape_timeout is the chart's default and also
+  # Prometheus's own, which the manifest leaves unstated, so it is left alone.
+  global:
+    scrape_interval: 15s
+    evaluation_interval: 15s
+    scrape_timeout: 10s
+
+  # The chart's default publishes port 80 in front of the container's 9090; the
+  # manifest publishes 9090. Kept at 9090 so a port-forward or an in-cluster URL
+  # reads the same on both routes.
+  service:
+    servicePort: 9090
+
+  # The chart defaults to a PersistentVolumeClaim; the manifest uses an emptyDir,
+  # and this lab's Prometheus is queried once per run for `up` per target and is not
+  # a store worth keeping across a pod. `false` selects emptyDir, in the chart's own
+  # words: "If true, Prometheus server will create/use a Persistent Volume Claim /
+  # If false, use emptyDir".
+  persistentVolume:
+    enabled: false
+
+  # Hardening the chart exposes and the manifest does not carry; recorded as a
+  # difference between the two routes rather than back-ported. The chart's pod-level
+  # default already runs as 65534 with runAsNonRoot, which is left as it is; the
+  # container-level context is empty by default. Prometheus writes only to its data
+  # directory, which is the emptyDir mounted at /data above.
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+# The chart's ten built-in scrape jobs, every one enabled by default, and none of
+# them a target this lab measures: they would scrape the API servers, the nodes,
+# cAdvisor, annotated Services and Pods, the pushgateway, and Prometheus itself.
+# The lab's target count is nine, from the five jobs below, and a run records `up`
+# per target, so an extra job is not spare capacity -- it changes the number a
+# findings entry cites. All ten are off by name.
+scrapeConfigs:
+  prometheus:
+    enabled: false
+  kubernetes-api-servers:
+    enabled: false
+  kubernetes-nodes:
+    enabled: false
+  kubernetes-nodes-cadvisor:
+    enabled: false
+  kubernetes-service-endpoints:
+    enabled: false
+  kubernetes-service-endpoints-slow:
+    enabled: false
+  prometheus-pushgateway:
+    enabled: false
+  kubernetes-services:
+    enabled: false
+  kubernetes-pods:
+    enabled: false
+  kubernetes-pods-slow:
+    enabled: false
+
+# The scrape configuration itself. The chart's ConfigMap template writes
+# `serverFiles."prometheus.yml"` out as prometheus.yml and appends both
+# `.Values.scrapeConfigs` (all off, above) and this file's own `scrape_configs` under
+# one `scrape_configs:` key, so what lands in the pod is exactly these five jobs.
+# `rule_files` is emptied: the chart's default names four rule files, and the
+# manifest's prometheus.yml has no rule_files key at all.
+serverFiles:
+  prometheus.yml:
+    rule_files: []
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    scrape_configs:
+      - job_name: istiod
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: [istio-system]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: istiod;http-monitoring
+
+      - job_name: ztunnel
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [istio-system]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: ztunnel
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: ztunnel-stats
+
+      - job_name: agentgateway-proxies
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_gateway_networking_k8s_io_gateway_name]
+            action: keep
+            regex: .+
+          - source_labels: [__meta_kubernetes_pod_ip]
+            action: replace
+            target_label: __address__
+            replacement: $1:15020
+          - source_labels: [__meta_kubernetes_pod_label_gateway_networking_k8s_io_gateway_name]
+            action: replace
+            target_label: gateway_name
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+
+      - job_name: agentgateway-controlplane
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [agentgateway-system]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: agentgateway
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: metrics
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: namespace
+
+      - job_name: otel-collector
+        static_configs:
+          - targets: ["otel-collector.telemetry.svc.cluster.local:8889"]

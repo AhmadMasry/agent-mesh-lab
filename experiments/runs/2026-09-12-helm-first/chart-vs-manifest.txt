@@ -1,0 +1,72 @@
+# The three telemetry components: what the chart renders beside what the manifest
+# declares. Rendered on this host with `helm template`; no cluster involved.
+
+## collector: component sets in each rendering (top-level sections)
+   extensions  manifest=['health_check']                                     chart=['health_check']                                     same
+   receivers   manifest=['otlp']                                             chart=['otlp']                                             same
+   processors  manifest=['batch', 'filter', 'transform']                     chart=['batch', 'filter', 'transform']                     same
+   exporters   manifest=['debug', 'debug/logs', 'otlp', 'prometheus']        chart=['debug', 'debug/logs', 'otlp_grpc', 'prometheus']   DIFFERENT
+
+## collector: pipelines, read out of each rendering with yq
+   traces   receivers   manifest=["otlp"]                           chart=["otlp"]                           same
+   traces   processors  manifest=["filter","transform","batch"]     chart=["filter","transform","batch"]     same
+   traces   exporters   manifest=["otlp","debug"]                   chart=["otlp_grpc","debug"]              same components, exporter key renamed by the chart
+   metrics  receivers   manifest=["otlp"]                           chart=["otlp"]                           same
+   metrics  processors  manifest=["batch"]                          chart=["batch"]                          same
+   metrics  exporters   manifest=["prometheus","debug"]             chart=["prometheus","debug"]             same
+   logs     receivers   manifest=["otlp"]                           chart=["otlp"]                           same
+   logs     processors  manifest=["batch"]                          chart=["batch"]                          same
+   logs     exporters   manifest=["debug/logs"]                     chart=["debug/logs"]                     same
+   (service.extensions) manifest=["health_check"]  chart=["health_check"]
+   (service.telemetry)  manifest={"logs":{"level":"info"}}  chart={"logs":{"level":"info"}}
+   (filter processor identical) yes
+   (transform processor identical) yes
+   (otlp receiver identical) yes
+   (trace exporter target identical) manifest=jaeger.telemetry.svc.cluster.local:4317 chart=jaeger.telemetry.svc.cluster.local:4317
+   (prometheus exporter identical) yes
+   (health_check identical) yes
+
+## collector: the one key that differs, and why it is the same component
+   manifest exporter key: otlp        (registered at 0.160.0 as deprecated_type)
+   chart exporter key:    otlp_grpc   (registered at 0.160.0 as type)
+   source: metadata.yaml and factory.go at tag exporter/otlpexporter/v0.160.0;
+           the chart's rewriteDeprecatedComponentNames default performs the rename.
+
+## prometheus: scrape jobs in each rendering
+   manifest (5): ['istiod', 'ztunnel', 'agentgateway-proxies', 'agentgateway-controlplane', 'otel-collector']
+   chart    (5): ['istiod', 'ztunnel', 'agentgateway-proxies', 'agentgateway-controlplane', 'otel-collector']
+   same five jobs, same order
+
+## object kinds rendered by each route
+   prometheus manifest: {'ServiceAccount': 1, 'ClusterRole': 1, 'ClusterRoleBinding': 1, 'ConfigMap': 1, 'Deployment': 1, 'Service': 1}
+   prometheus chart:    {'ServiceAccount': 1, 'ConfigMap': 1, 'ClusterRole': 1, 'ClusterRoleBinding': 1, 'Service': 1, 'Deployment': 1}
+   jaeger manifest:     {'Deployment': 1, 'Service': 1}
+   jaeger chart:        {'ServiceAccount': 1, 'Service': 1, 'Deployment': 1}
+   collector manifest:  {'ConfigMap': 1, 'Deployment': 1, 'Service': 1}
+   collector chart:     {'ServiceAccount': 1, 'ConfigMap': 1, 'Service': 1, 'Deployment': 1}
+
+## images each route runs
+   collector manifest   ['otel/opentelemetry-collector-contrib:0.160.0']
+   collector chart      ['otel/opentelemetry-collector-contrib:0.160.0']
+   jaeger manifest      ['jaegertracing/jaeger:2.20.0']
+   jaeger chart         ['jaegertracing/jaeger:2.20.0']
+   prometheus manifest  ['prom/prometheus:v3.14.0']
+   prometheus chart     ['prom/prometheus:v3.14.0']
+
+## Service names and ports each route publishes
+   collector manifest   [('otel-collector', ['4317', '4318', '8889'])]
+   collector chart      [('otel-collector', ['4317', '4318', '8889'])]
+   jaeger manifest      [('jaeger', ['4317', '4318', '16686'])]
+   jaeger chart         [('jaeger', ['5775', '5778', '6831', '6832', '9411', '14250', '14267', '14268', '4317', '4318', '16686', '16685', '8888', '8889'])]
+   prometheus manifest  [('prometheus', ['9090'])]
+   prometheus chart     [('prometheus', ['9090'])]
+
+## the Jaeger chart's Service publishes more ports than the manifest's
+# The manifest publishes the three the lab uses (4317, 4318, 16686). The chart
+# publishes fourteen: every listener the all-in-one image has, including the Jaeger
+# agent's UDP ports, Zipkin, the v1 collector ports, the gRPC query port and the two
+# internal-metrics ports. A Service port creates no listener -- the listeners are the
+# image's either way -- so this changes nothing the lab measures, and the three the
+# collector's exporter and `make export-trace` address are among them. Recorded as a
+# difference, not corrected: trimming the Service would mean overriding a chart
+# template rather than a value.

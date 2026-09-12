@@ -1,0 +1,30 @@
+# Byte-equality of the mesh configuration block on the two routes.
+# The IstioOperator carries it at spec.meshConfig (indented two spaces further);
+# the Helm values file carries it at the top level. The blocks are compared after
+# removing exactly that two-space offset, and nothing else.
+
+## deploy/step-2-ambient-agw/istio-meshconfig.yaml, spec.meshConfig, dedented by 2
+   |meshConfig:
+   |  enableTracing: true
+   |  extensionProviders:
+   |    - name: otel-tracing
+   |      opentelemetry:
+   |        port: 4317
+   |        service: otel-collector.telemetry.svc.cluster.local
+   |        resource_detectors:
+   |          environment: {}
+   sha256 = 2079bfbe090ebb60e49a83d172077ceecf4da1b6e37e5968fd8d7600cf11ce88
+
+## deploy/step-2-ambient-agw/istio-values.yaml, meshConfig
+   |meshConfig:
+   |  enableTracing: true
+   |  extensionProviders:
+   |    - name: otel-tracing
+   |      opentelemetry:
+   |        port: 4317
+   |        service: otel-collector.telemetry.svc.cluster.local
+   |        resource_detectors:
+   |          environment: {}
+   sha256 = 2079bfbe090ebb60e49a83d172077ceecf4da1b6e37e5968fd8d7600cf11ce88
+
+## result: EQUAL

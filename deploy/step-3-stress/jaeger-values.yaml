@@ -1,0 +1,88 @@
+# The trace backend as Helm chart values, for the Helm route of `make step-3`. Same
+# Jaeger v2, same all-in-one shape, same in-memory storage, same image as
+# deploy/step-3-stress-nohelm/jaeger.yaml, which stays as the fallback route's
+# manifest; that file's header carries the source for the image's default
+# configuration and the query API and none of it is repeated here.
+#
+# Chart: jaegertracing/jaeger 4.13.1, appVersion 2.20.0, from
+# https://jaegertracing.github.io/helm-charts. Pinned in versions.yaml under
+# trace-backend-chart with the URLs read in this session. The brief asked whether a
+# chart version runs Jaeger v2 all-in-one with in-memory storage the way the manifest
+# does: 4.13.1 does, and it is the chart's default behaviour rather than something
+# configured here.
+#
+#   - `jaeger.enabled` is true and `jaeger.replicas` is 1 in the chart's own
+#     defaults, and the rendered objects are one ServiceAccount, one Service and one
+#     Deployment labelled `app.kubernetes.io/component: all-in-one`.
+#   - `userconfig` is empty in the chart's defaults -- its comment reads "User
+#     provided config to override the config completely" -- so no ConfigMap is
+#     rendered and the container runs the configuration built into the image, which
+#     is the memory-backed all-in-one the manifest's header quotes. Left empty here
+#     for exactly that reason.
+#   - `storage.type` is `elasticsearch` in the defaults but is not the running
+#     backend: the chart's own comment says "In Jaeger v2, Elasticsearch is
+#     configured directly in config.extensions.jaeger_storage", and that the storage
+#     settings "are only used by the ES maintenance jobs (esIndexCleaner, esRollover,
+#     esLookback)". All four of those jobs, and `spark`, are `enabled: false` in the
+#     chart's defaults; they are restated below so a chart upgrade that flipped one
+#     could not add a component unnoticed (scope rule 6).
+#
+# The image is pinned rather than left to the chart's appVersion default, so the tag
+# in the tree is the tag the scan record and every earlier findings entry name.
+
+# Release name `jaeger` in namespace `telemetry` already gives the Service the name
+# `jaeger`, which is what the collector's exporter
+# (jaeger.telemetry.svc.cluster.local:4317) and `make export-trace`
+# (kubectl -n telemetry port-forward svc/jaeger) address. Set explicitly so the name
+# does not depend on the release name a future recipe happens to use.
+fullnameOverride: jaeger
+
+jaeger:
+  enabled: true
+  replicas: 1
+  image:
+    repository: jaegertracing/jaeger
+    tag: "2.20.0"
+
+  # Hardening the chart exposes and the manifest does not carry; recorded as a
+  # difference between the two routes rather than back-ported. The chart's pod-level
+  # default already runs as 10001 and is left as it is; the container-level context
+  # is empty by default. In-memory storage means the process writes no files.
+  securityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    capabilities:
+      drop:
+        - ALL
+
+  serviceAccount:
+    # Nothing in the trace backend reads the Kubernetes API.
+    automountServiceAccountToken: false
+
+  # An OAuth2 proxy sidecar in front of the query UI: a second image, and a
+  # component this lab's scope does not admit. Off in the chart's defaults, restated.
+  oAuthSidecar:
+    enabled: false
+
+  # No Ingress and no HTTPRoute. The query API is read through a port-forward that
+  # `make export-trace` starts and stops; an HTTPRoute here would put the trace
+  # backend on the same Gateway API objects the experiments measure.
+  ingress:
+    enabled: false
+  httproute:
+    enabled: false
+
+# The four Elasticsearch maintenance jobs and the Spark dependencies job, all off in
+# the chart's defaults and restated (scope rule 6).
+spark:
+  enabled: false
+esIndexCleaner:
+  enabled: false
+esRollover:
+  enabled: false
+esLookback:
+  enabled: false
+
+networkPolicy:
+  enabled: false
