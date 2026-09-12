@@ -19,7 +19,7 @@ LWI="${LWI:-clean-${RUN_ID}-001}"
 RUN_ITEM="${RUN_ITEM:-$(date +%F)-three-ledgers}"
 RUN_DIR="experiments/runs/${RUN_ITEM}"
 CURL_POD="ledgers-curl"
-CURL_IMAGE="curlimages/curl:8.11.1"
+CURL_IMAGE="curlimages/curl:8.22.0"
 MOCK_URL="http://mockllm.lab.svc.cluster.local:8080"
 
 mkdir -p "$RUN_DIR"

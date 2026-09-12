@@ -16,7 +16,7 @@ SVC_URL="http://mockllm.lab.svc.cluster.local:8080"
 RUN_ITEM="2026-09-05-mockllm-deterministic"
 RUN_DIR="experiments/runs/${RUN_ITEM}"
 CURL_POD="mockllm-det-curl"
-CURL_IMAGE="curlimages/curl:8.11.1"
+CURL_IMAGE="curlimages/curl:8.22.0"
 
 FIXED_BODY='{"model":"mockllm-det-test","messages":[{"role":"user","content":"deterministic check"}]}'
 

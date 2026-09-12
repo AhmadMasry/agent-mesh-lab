@@ -1,0 +1,55 @@
+# Commit 1 local build and tests, before any cluster step. Taken 2026-09-12T20:37:00Z in the repository root on branch followups-10.
+# host: Darwin arm64; go version go1.27.1 darwin/arm64; uv 0.12.13 (Homebrew 2026-09-10 aarch64-apple-darwin); ko 0.19.1; docker 29.7.2
+
+## $ go build ./...  (20:37:00Z)
+## exit=0
+
+## $ go vet ./...  (20:37:02Z)
+## exit=0
+
+## $ gofmt -l .  (20:37:03Z)
+## exit=0
+
+## $ go test ./... -count=1  (20:37:03Z)
+ok  	github.com/AhmadMasry/agent-mesh-lab/agents/worker	0.564s
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen	0.945s
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm	2.856s
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/replay	1.281s
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/a2areq	1.587s
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/httpclient	1.928s
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/otel	2.318s
+## exit=0
+
+## $ make test  (20:37:06Z)
+go test ./...
+ok  	github.com/AhmadMasry/agent-mesh-lab/agents/worker	0.317s
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen	0.826s
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm	0.729s
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/replay	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/a2areq	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/httpclient	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/otel	1.101s
+ok  jaeger-spans.jq: fixture rows unchanged
+ok  derive-layer: gateway-waypoint -> gateway
+ok  derive-layer: gateway-ingress -> gateway
+ok  derive-layer: gateway-egress -> gateway
+ok  derive-layer: none-baseline -> none
+ok  derive-layer: none-baseline-py -> none
+ok  derive-layer: client-http-waypoint -> client-http
+ok  derive-layer: client-http-ingress -> client-http
+ok  derive-layer: client-http-py -> client-http
+ok  derive-layer: client-sdk -> client-sdk
+ok  derive-layer: model-client -> model-client
+ok  derive-layer: not-attributable -> not-attributable
+## exit=0
+
+## $ (cd agents/orchestrator && uv run pytest -q)  (20:37:08Z)
+...........................................                              [100%]
+43 passed in 2.84s
+## exit=0
+
+## $ go test ./... -count=1 -json | count of test-level pass/fail/skip events  (20:37:24Z)
+  76 pass
+## top-level tests only (no subtests):
+  74 pass
+## make test ok lines: 26 (of which go test packages 7 appear twice across the two runs above; make test's own: 7 packages + 12 jq/derive-layer checks)

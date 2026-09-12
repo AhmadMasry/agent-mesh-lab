@@ -1,0 +1,68 @@
+# Follow-ups 10 pin audit. Every "latest" value was read from the source named in the row on 2026-09-12 between 20:28Z and 20:41Z;
+# nothing is from memory. moved = the value in the tree after commit 1 differs from the value before it.
+# held = the latest the documents name was not taken, for the reason in the note.
+# Fix round 1 (2026-09-13): the source column of the 13 lockfile and module-graph rows that moved (5 uv.lock, 6 go.mod, 2 graph-only) named the resolver command (uv lock --upgrade, go get -u ./..., go list -m all); it now names the registry each value was read from, re-read 2026-09-13T03:07:56Z with the same values, and their versions_yaml_key column names the two aggregate keys that now hold them. No value changed.
+component,versions_yaml_key,previous,latest_read,moved,source,note
+kind,kind,v0.33.0,v0.33.0,no,https://api.github.com/repos/kubernetes-sigs/kind/releases?per_page=8 ; https://formulae.brew.sh/api/formula/kind.json,brew-installed 0.33.0
+kind node image (Kubernetes),kubernetes,v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5,v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5,no,https://api.github.com/repos/kubernetes-sigs/kind/releases/latest (body) ; https://api.github.com/repos/kubernetes/kubernetes/releases/latest ; https://dl.k8s.io/release/stable.txt,kubernetes releases/latest and stable.txt both read v1.37.0
+Istio,istio,1.31.0,1.31.0,no,https://api.github.com/repos/istio/istio/releases?per_page=8,newest non-prerelease 1.31.0 (2026-08-31); 1.30.4 and 1.29.7 are older lines
+Istio chart base,istio-chart-version,1.31.0 (app 1.31.0),1.31.0 (app 1.31.0),no,https://blob.istio.io/istio-release/charts/index.yaml,
+Istio chart istiod,istio-chart-version,1.31.0 (app 1.31.0),1.31.0 (app 1.31.0),no,https://blob.istio.io/istio-release/charts/index.yaml,
+Istio chart cni,istio-chart-version,1.31.0 (app 1.31.0),1.31.0 (app 1.31.0),no,https://blob.istio.io/istio-release/charts/index.yaml,
+Istio chart ztunnel,istio-chart-version,1.31.0 (app 1.31.0),1.31.0 (app 1.31.0),no,https://blob.istio.io/istio-release/charts/index.yaml,
+agentgateway proxy image,agentgateway,v1.5.0,v1.5.0,no,https://api.github.com/repos/agentgateway/agentgateway/releases?per_page=8,
+agentgateway control-plane charts,agentgateway-controlplane,v1.5.0 (app v1.5.0),v1.5.0 (app v1.5.0),no,helm show chart oci://cr.agentgateway.dev/charts/agentgateway --version v1.5.0 ; same for agentgateway-crds,"an unversioned `helm show chart` resolves tag 1.5.0 (digests 4dd9b1e2… and c78e0963…), whose unpacked charts differ from v1.5.0's only in Chart.yaml version/appVersion lacking the v; same release, not a move"
+agentgateway stated Istio range,agentgateway-controlplane,1.23 - 1.30 (for 1.5.x),1.23 - 1.30 (for 1.5.x),no,https://raw.githubusercontent.com/agentgateway/website/main/assets/agw-docs/pages/reference/versions.md,"row 1.5.x: Kubernetes 1.32 - 1.37, Gateway API 1.4 - 1.6, Istio 1.23 - 1.30; Istio 1.31.0 stays one minor above, as recorded since followups-6; neither side moved"
+Gateway API CRDs,gateway-api,v1.6.2 experimental,v1.6.2 experimental,no,https://api.github.com/repos/kubernetes-sigs/gateway-api/releases?per_page=8,experimental-install.yaml asset present
+A2A specification,a2a-spec,3303592588e388e62e0f69f701af531d2f4e3991 (v1.0.1),3303592588e388e62e0f69f701af531d2f4e3991 (v1.0.1),no,https://api.github.com/repos/a2aproject/A2A/releases/latest ; https://api.github.com/repos/a2aproject/A2A/git/refs/tags/v1.0.1,
+a2a-go,a2a-go,v2.5.0,v2.5.0,no,https://api.github.com/repos/a2aproject/a2a-go/releases?per_page=8 ; https://proxy.golang.org/github.com/a2aproject/a2a-go/v2/@latest,
+a2a-python (a2a-sdk),a2a-python,1.1.2,PyPI 1.1.2 ; GitHub v1.1.4,held,https://pypi.org/pypi/a2a-sdk/json ; https://api.github.com/repos/a2aproject/a2a-python/releases/latest,"GitHub tags v1.1.3 and v1.1.4 were never published to PyPI (publish job failed on metadata version 2.5; upstream issue a2aproject/a2a-python#1199 open); 1.1.2 is the latest installable release; reported as a Stop, see a2a-python-pypi-vs-github.txt"
+openai-python,openai-python,3.9.0,3.13.0,yes,https://api.github.com/repos/openai/openai-python/releases/latest ; https://pypi.org/pypi/openai/json ; https://raw.githubusercontent.com/openai/openai-python/v3.13.0/src/openai/_constants.py,DEFAULT_MAX_RETRIES 2 and DEFAULT_TIMEOUT 600 s / connect 5 s unchanged; requires httpx2>=2.7.0 <3
+uvicorn,(pyproject pin),0.52.4,0.52.4,no,https://pypi.org/pypi/uvicorn/json,
+pytest,(pyproject pin),9.1.1,9.1.1,no,https://pypi.org/pypi/pytest/json,
+pytest-asyncio,(pyproject pin),1.4.0,1.4.0,no,https://pypi.org/pypi/pytest-asyncio/json,
+uv.lock anyio,python-lock-moves-2026-09-12,4.15.0,4.15.1,yes,https://pypi.org/pypi/anyio/json,
+uv.lock google-auth,python-lock-moves-2026-09-12,2.57.1,2.58.0,yes,https://pypi.org/pypi/google-auth/json,
+uv.lock jiter,python-lock-moves-2026-09-12,0.16.0,0.17.0,yes,https://pypi.org/pypi/jiter/json,cp314 manylinux aarch64/x86_64 wheels present (local/py314-support.txt)
+uv.lock sse-starlette,python-lock-moves-2026-09-12,3.4.10,3.4.11,yes,https://pypi.org/pypi/sse-starlette/json,
+uv.lock wrapt,python-lock-moves-2026-09-12,2.4.0,2.4.1,yes,https://pypi.org/pypi/wrapt/json,cp314 manylinux aarch64/x86_64 wheels present (local/py314-support.txt)
+uv.lock httpx,httpx,0.28.1,0.28.1,no,https://pypi.org/pypi/httpx/json,
+uv.lock httpcore,httpcore,1.0.9,1.0.9,no,https://pypi.org/pypi/httpcore/json,
+uv.lock httpx2,(uv.lock),2.12.0,2.12.0,no,https://pypi.org/pypi/httpx2/json,
+uv.lock protobuf,(uv.lock),6.33.6,6.33.6 (PyPI latest 7.36.1),held,https://pypi.org/pypi/protobuf/json ; https://raw.githubusercontent.com/a2aproject/a2a-python/v1.1.4/pyproject.toml,"a2a-sdk requires protobuf>=5.29.5,<7; uv lock --upgrade resolves the newest version inside that bound"
+OpenTelemetry Python distro,otel-python-distro,0.65b0,0.65b0,no,https://pypi.org/pypi/opentelemetry-distro/json,
+OpenTelemetry Python OTLP/HTTP exporter,otel-python-distro,1.44.0,1.44.0,no,https://pypi.org/pypi/opentelemetry-exporter-otlp-proto-http/json,
+OpenTelemetry Python instrumentation-starlette,otel-python-distro,0.65b0,0.65b0,no,https://pypi.org/pypi/opentelemetry-instrumentation-starlette/json,
+OpenTelemetry Python instrumentation-httpx,otel-python-distro,0.65b0,0.65b0,no,https://pypi.org/pypi/opentelemetry-instrumentation-httpx/json,
+OpenTelemetry Go,otel-go,v1.46.0,v1.46.0,no,https://api.github.com/repos/open-telemetry/opentelemetry-go/releases?per_page=8 ; https://proxy.golang.org/go.opentelemetry.io/otel/@latest (and sdk trace otlptracehttp),v1.47.0-rc.1 is a prerelease and not taken
+OpenTelemetry Go contrib otelhttp,otel-go-contrib,v0.71.0,v0.71.0,no,https://proxy.golang.org/go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp/@latest,
+go.mod golang.org/x/mod,golang-x-mod,v0.40.0,v0.41.0,yes,go get -u ./... ; https://proxy.golang.org/golang.org/x/mod/@latest ; https://vuln.go.dev/ID/GO-2026-6179.json ; https://vuln.go.dev/ID/GO-2026-6180.json,advisories' fixed version v0.40.0; v0.41.0 is at or above it
+go.mod google.golang.org/grpc,grpc-go,v1.83.2,v1.83.2,no,https://proxy.golang.org/google.golang.org/grpc/@latest ; https://api.github.com/advisories/GHSA-2v4p-qf9q-27wj,advisory's fixed version for the 1.83 line 1.83.2; at it
+go.mod golang.org/x/net,go-module-moves-2026-09-12,v0.58.0,v0.59.0,yes,https://proxy.golang.org/golang.org/x/net/@latest,
+go.mod golang.org/x/sync,go-module-moves-2026-09-12,v0.22.0,v0.23.0,yes,https://proxy.golang.org/golang.org/x/sync/@latest,
+go.mod golang.org/x/sys,go-module-moves-2026-09-12,v0.47.0,v0.48.0,yes,https://proxy.golang.org/golang.org/x/sys/@latest,
+go.mod golang.org/x/text,go-module-moves-2026-09-12,v0.41.0,v0.42.0,yes,https://proxy.golang.org/golang.org/x/text/@latest,
+go.mod google.golang.org/genproto/googleapis/api,go-module-moves-2026-09-12,v0.0.0-20260819154853-08b0e4226688,v0.0.0-20260911204522-f61a6ca850bd,yes,https://proxy.golang.org/google.golang.org/genproto/googleapis/api/@latest,
+go.mod google.golang.org/genproto/googleapis/rpc,go-module-moves-2026-09-12,v0.0.0-20260819154853-08b0e4226688,v0.0.0-20260911204522-f61a6ca850bd,yes,https://proxy.golang.org/google.golang.org/genproto/googleapis/rpc/@latest,
+go.mod github.com/google/uuid,(go.mod),v1.6.0,v1.6.0,no,https://proxy.golang.org/github.com/google/uuid/@latest,
+module graph golang.org/x/crypto,go-module-moves-2026-09-12,v0.55.0,v0.57.0,yes,https://proxy.golang.org/golang.org/x/crypto/@latest,not a go.mod requirement; moves with the graph
+module graph golang.org/x/term,go-module-moves-2026-09-12,v0.45.0,v0.46.0,yes,https://proxy.golang.org/golang.org/x/term/@latest,not a go.mod requirement; moves with the graph
+OpenTelemetry Collector contrib image,opentelemetry-collector,0.160.0,0.160.0,no,https://api.github.com/repos/open-telemetry/opentelemetry-collector-releases/releases/latest ; https://hub.docker.com/v2/repositories/otel/opentelemetry-collector-contrib/tags/0.160.0,digest sha256:799dc6cf… unchanged
+OpenTelemetry Collector chart,opentelemetry-collector-chart,0.173.1 (app 0.160.0),0.173.1 (app 0.160.0),no,https://open-telemetry.github.io/opentelemetry-helm-charts/index.yaml,
+Jaeger image,trace-backend,2.20.0,2.20.0,no,https://api.github.com/repos/jaegertracing/jaeger/releases?per_page=8 ; https://hub.docker.com/v2/repositories/jaegertracing/jaeger/tags/2.20.0,digest sha256:46a88626… unchanged
+Jaeger chart,trace-backend-chart,4.13.1 (app 2.20.0),4.13.1 (app 2.20.0),no,https://jaegertracing.github.io/helm-charts/index.yaml,
+Prometheus image,prometheus,v3.14.0,v3.14.0,no,https://api.github.com/repos/prometheus/prometheus/releases?per_page=8 ; https://hub.docker.com/v2/repositories/prom/prometheus/tags/v3.14.0,v3.13.3 (2026-09-07) is a patch on the older 3.13 line
+Prometheus chart,prometheus-chart,29.28.1 (app v3.14.0),29.28.1 (app v3.14.0),no,https://prometheus-community.github.io/helm-charts/index.yaml,
+Go toolchain,go,go1.27.1,go1.27.1,no,https://go.dev/dl/?mode=json,host go1.27.1 darwin/arm64
+Amazon Linux 2023 base tag,amazonlinux-2023,:2023 @sha256:a0646b8b… release 2023.12.20260909,:2023 @sha256:a0646b8b… release 2023.12.20260909,no,https://docs.aws.amazon.com/linux/al2023/release-notes/toc-contents.json ; docker buildx imagetools inspect public.ecr.aws/amazonlinux/amazonlinux:2023 ; local/orchestrator-image.txt,floating tag; observed at build
+Amazon Linux 2023 python3.14 package,amazonlinux-2023,python3.14-3.14.7-1.amzn2023.0.1,python3.14-3.14.7-1.amzn2023.0.1,no,local/orchestrator-image.txt,observed at build; dnf upgrade: Nothing to do.
+uv (image tag floats),uv,0.12.13 @sha256:b485bd65…,0.12.13 @sha256:b485bd65…,no,https://api.github.com/repos/astral-sh/uv/releases/latest ; local/orchestrator-image.txt,host uv 0.12.13 (brew) is the same version
+distroless base (tag floats),distroless,static-debian13:nonroot @sha256:1c2c046b…,static-debian13:nonroot @sha256:1c2c046b…,no,docker buildx imagetools inspect gcr.io/distroless/static-debian13:nonroot,
+Python on this host (tests),(agents/orchestrator/.python-version),3.14.7,3.14.7,no,https://www.python.org/api/v2/downloads/release/?is_published=true&pre_release=false,
+curlimages/curl (experiment scripts' in-cluster client),curl-image,8.11.1,8.22.0,yes,https://api.github.com/repos/curl/curl/releases/latest ; https://hub.docker.com/v2/repositories/curlimages/curl/tags?page_size=8&ordering=last_updated,"found by the audit: CURL_IMAGE in ten experiments/*.sh; image config (User curl_user, entrypoint) identical to 8.11.1"
+Kubescape CLI,kubescape,4.0.14,4.0.14,no,https://api.github.com/repos/kubescape/kubescape/releases/latest ; https://formulae.brew.sh/api/formula/kubescape.json,brew-installed 4.0.14
+Helm,helm,v4.3.0,v4.3.0,no,https://api.github.com/repos/helm/helm/releases/latest ; https://formulae.brew.sh/api/formula/helm.json,brew-installed 4.3.0
+ko,(host tool),0.19.1,0.19.1,no,https://api.github.com/repos/ko-build/ko/releases/latest ; https://formulae.brew.sh/api/formula/ko.json,brew-installed 0.19.1
+istioctl on this host,(host tool; must equal istio),1.31.0,1.31.0,no,https://formulae.brew.sh/api/formula/istioctl.json,"installed by `brew install istioctl` (/opt/homebrew/bin/istioctl -> ../Cellar/istioctl/1.31.0/bin/istioctl) and updated by `brew upgrade istioctl`; formula stable 1.31.0 = the Istio pin; step-2 refuses a different client"
+kubectl,(host tool),v1.37.0,v1.37.0,no,https://dl.k8s.io/release/stable.txt ; https://formulae.brew.sh/api/formula/kubernetes-cli.json,brew kubernetes-cli 1.37.0
+Docker Desktop (docker engine),(host tool),4.90.0 (engine 29.7.2),4.90.0 (engine 29.7.2),no,https://desktop.docker.com/mac/main/arm64/appcast.xml ; https://formulae.brew.sh/api/cask/docker-desktop.json ; https://api.github.com/repos/moby/moby/releases?per_page=5,"appcast's newest item is 4.90.0 (238679), the installed build; upstream moby docker-v29.8.0 (2026-09-03) is not in a Docker Desktop release"
