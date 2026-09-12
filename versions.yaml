@@ -65,3 +65,113 @@ istio-mesh-rootnamespace:   { value: "rootNamespace: istio-system in this cluste
 istio-ambient-health-probe-address: { value: "kubelet probes carried on link-local 169.254.7.127 (IPv4) / fd16:9254:7127:1337:ffff:ffff:ffff:ffff (IPv6); no PeerAuthentication exemption needed", read: "2026-09-12", source: [ "https://istio.io/latest/docs/ambient/usage/networkpolicy/", "https://istio.io/latest/docs/ambient/architecture/traffic-redirection/" ] }   # why the STRICT policy needed no probe carve-out and why readiness was still checked after applying it. "This behavior is transparently enabled when you add pods to the ambient mesh, and by default ambient uses the link-local addresses 169.254.7.127 (IPv4) and fd16:9254:7127:1337:ffff:ffff:ffff:ffff (IPv6) to identify and correctly allow kubelet health probe packets." The redirection page shows the in-pod rule that does it, `-A ISTIO_PRERT -s 169.254.7.127/32 -p tcp -m tcp -j ACCEPT`, alongside the two rules the probe exercises: "If the traffic is plaintext (destination port != 15008), it will be redirected to the in-pod ztunnel plaintext listening port 15006. If the traffic is HBONE (destination port == 15008), it will be redirected to the in-pod ztunnel HBONE listening port 15008." -- the plaintext 15006 path is the one STRICT refuses
 istio-ambient-pod-optout:   { value: "pod label istio.io/dataplane-mode=none opts one pod out of ambient; Beta; pod label takes precedence over the namespace label", read: "2026-09-12", source: [ "https://istio.io/latest/docs/ambient/usage/add-workloads/" ] }   # the label added to deploy/base/mockllm.yaml so the mock stands in for an external provider. Selection logic, verbatim: ambient "mode is used for a pod if -- The namespace or pod has the label istio.io/dataplane-mode=ambient -- The pod does not have the opt-out label istio.io/dataplane-mode=none -- The annotation sidecar.istio.io/status is not present on the pod." The label reference table gives `istio.io/dataplane-mode`, Feature Status **Beta**, Resource "Namespace or Pod (latter has precedence)", Description "Add your resource to an ambient mesh. Valid values: ambient or none." -- the parenthesis is what makes a pod label override the `lab` namespace label. The same page cautions on the general case: "Note that two pods within the same namespace could in theory be set to use different modes by labeling individual pods separately from the namespace label; however, this is not recommended. For most common use cases a single mode should be used for all pods within a single namespace." Used here for the single workload that represents something outside the mesh, and recorded as a deliberate departure from that advice rather than an oversight
 istio-peerauth-portlevel:   { value: "portLevelMtls documented on PeerAuthentication and requires a selector; whether ztunnel honours a port-level mode is NOT stated by any current page -- measured, not documented", read: "2026-09-12", source: [ "https://istio.io/latest/docs/reference/config/security/peer_authentication/", "https://istio.io/latest/docs/ambient/usage/l4-policy/", "https://istio.io/v1.21/docs/ops/ambient/usage/ztunnel/" ] }   # the field behind deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metrics.yaml, and the gap beside it. Documented: "portLevelMtls map<uint32, MutualTLS> -- Port specific mutual TLS settings. These only apply when a workload selector is specified. The port refers to the port of the workload, not the port of the Kubernetes service."; PERMISSIVE is "Connection can be either plaintext or mTLS tunnel." The reference's ambient paragraph restricts exactly one mode and says nothing about port-level settings: "Because of this, DISABLE mode is not supported." **Not documented:** the ambient L4 page, which is the page that says "Istio's peer authentication policies, which configure mutual TLS (mTLS) modes, are supported by ztunnel", never mentions portLevelMtls or a port-level mode anywhere, and no current Istio page states whether ztunnel honours one. So the effect was measured rather than assumed, and the object is kept on that count. The third URL is recorded because it is the nearest explicit statement and is deliberately NOT relied on: a retired alpha-era page (404 in current docs) reading "the PeerAuthentication resource is not supported by all components (i.e. waypoint proxies) in Istio ambient mode. Hence it is recommended to only use the STRICT mTLS mode currently" -- two years of releases old, about waypoints rather than ztunnel, against this lab's 1.31.0
+
+# --- Follow-ups 8: no sampling anywhere. The author's decision of 2026-09-12 was to
+# --- "config otel everywhere not to sample and send all traces for the experiment", so
+# --- every span emitter on the path was audited and the one that was inheriting a default
+# --- was made explicit. The audit is the key below; the counted result is in findings.md.
+otel-sampling: { value: "every emitter explicit at 100%: Go sdktrace.AlwaysSample(); Python OTEL_TRACES_SAMPLER=always_on; agentgateway ingress/egress randomSampling+clientSampling \"true\"; waypoint config.tracing randomSampling+clientSampling true; Istio Telemetry randomSamplingPercentage 100; collector traces pipeline carries no sampler processor", read: "2026-09-12", source: [ "https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/", "https://raw.githubusercontent.com/open-telemetry/opentelemetry-python/v1.44.0/opentelemetry-sdk/src/opentelemetry/sdk/trace/sampling.py", "https://raw.githubusercontent.com/open-telemetry/opentelemetry-go/sdk/v1.46.0/sdk/trace/sampling.go", "https://agentgateway.dev/docs/kubernetes/latest/documentation/observability/traces/setup.md", "https://agentgateway.dev/docs/standalone/latest/documentation/observability/traces/setup.md", "https://istio.io/latest/docs/reference/config/telemetry/" ] }
+# The audit table, emitter -> setting -> file -> document. **Five emitters**, then two
+# entries that are not emitters and are listed so the enumeration is exhaustive rather
+# than apparently exhaustive: the collector (the pipeline, the one other place sampling
+# could be applied) and the path's non-emitters (ztunnel, the agentgateway control plane,
+# and the replay fixture). Five is the count used everywhere this audit is referred to.
+#
+#   worker, mockllm, loadgen (Go, internal/otel)
+#     setting   sdktrace.WithSampler(sdktrace.AlwaysSample())
+#     file      internal/otel/otel.go:73 (one Setup shared by these three binaries -- the
+#               worker agent and two of the three fixtures -- which are the only importers
+#               of internal/otel). The remaining fixture, replay,
+#               carries no OpenTelemetry code at all and emits nothing by construction:
+#               `grep -rn otel fixtures/replay/` is empty and always has been. Recorded
+#               this way after review, replacing an earlier note in this key that said
+#               replay was silent because it had no OTLP endpoint set -- that described a
+#               gate replay never reaches, and would have told a reader that one
+#               environment variable could make it emit at AlwaysSample().
+#     document  opentelemetry-go sdk/v1.46.0 sdk/trace/sampling.go, read 2026-09-12:
+#               "AlwaysSample returns a Sampler that samples every trace." The pinned
+#               version is the otel-go key above. Nothing in these binaries reads
+#               OTEL_TRACES_SAMPLER; the sampler is set in code, which is why the
+#               environment variable is not added to the Go Deployments.
+#
+#   orchestrator (Python, opentelemetry-distro under opentelemetry-instrument)
+#     setting   OTEL_TRACES_SAMPLER=always_on            <- THE ONE CHANGE OF 2026-09-12
+#     file      deploy/step-3-stress/orchestrator-instrumentation.yaml
+#     document  the SDK environment-variable specification, read 2026-09-12:
+#               OTEL_TRACES_SAMPLER is "Sampler to be used for traces", Default
+#               "parentbased_always_on", and "always_on" is the "AlwaysOnSampler";
+#               OTEL_TRACES_SAMPLER_ARG "will only be used if OTEL_TRACES_SAMPLER is set".
+#               The SDK in the image agrees, which is what makes the variable reach this
+#               emitter rather than being decoration: opentelemetry-python v1.44.0
+#               opentelemetry-sdk/src/opentelemetry/sdk/trace/sampling.py reads
+#               os.getenv(OTEL_TRACES_SAMPLER, "parentbased_always_on"), maps "always_on"
+#               to ALWAYS_ON in _KNOWN_SAMPLERS, and documents always_on as "Sampler that
+#               always samples spans, regardless of the parent span's sampling decision"
+#               against "parentbased_always_on - (default) Sampler that respects its
+#               parent span's sampling decision, but otherwise always samples". Recorded
+#               plainly: the default this replaces samples every span this lab produces
+#               too, since a root is always sampled and every inbound parent here is
+#               sampled. The change is to the record, not to the behaviour -- this was
+#               the only emitter of the five whose setting was inherited rather than
+#               stated, and this lab counts hops.
+#
+#   agentgateway ingress (agentgateway-ingress) and egress waypoint (agw-egress)
+#     setting   frontend.tracing.randomSampling: "true", clientSampling: "true"
+#     file      deploy/step-3-stress/agentgateway-tracing.yaml (one AgentgatewayPolicy each)
+#     document  the project's Kubernetes tracing setup page, read 2026-09-12: "The
+#               agentgateway proxy does not emit traces by default"; randomSampling
+#               applies when "The incoming request carries no trace context, so the proxy
+#               decides whether to start a new trace", Default `false`; clientSampling
+#               applies when "The incoming request already carries a trace from an
+#               upstream client", Default `true`. Both are set because the two cover
+#               different requests and only one of them defaults on.
+#
+#   agentgateway-waypoint and agentgateway-waypoint-orch (istiod-driven)
+#     setting   config.tracing.randomSampling: true, clientSampling: true
+#     file      deploy/step-3-stress/waypoint-tracing-config.yaml, inside the --config
+#               JSON delivered by the parametersRef Deployment overlay
+#     document  the project's standalone tracing setup page, read 2026-09-12:
+#               randomSampling is "The fraction of requests that start a new trace when
+#               the incoming request does not already carry one. Defaults to `false`";
+#               clientSampling is "The fraction of requests that agentgateway traces when
+#               the incoming request already carries a trace. Defaults to `true`".
+#               "Agentgateway reads the `config` section only at startup, so a change to
+#               this section requires a restart" -- so a change here needs a waypoint
+#               rollout restart, and none was needed for this task since the block is
+#               unchanged. See agentgateway-standalone-config-tracing above.
+#
+#   Istio Telemetry resources (three objects; reach no proxy in this lab)
+#     setting   tracing[].randomSamplingPercentage: 100
+#     file      deploy/step-3-stress/istio-tracing.yaml
+#     document  the Telemetry reference, read 2026-09-12: randomSamplingPercentage
+#               "Controls the rate at which traffic will be selected for tracing if no
+#               prior sampling decision has been made... Defaults to 0%. Valid values
+#               [0.00-100.00]." Kept at 100 as the documented default of this lab even
+#               though the 2026-09-12 measurement found these objects reach neither
+#               waypoint (Istio's agentgateway page lists Telemetry among the APIs "not
+#               applied to agentgateway proxies"); ztunnel emits no spans at all, being L4.
+#
+#   the collector (not an emitter; the one place sampling could still be applied)
+#     setting   traces pipeline processors are [filter, transform, batch] -- no
+#               probabilistic_sampler, no tail_sampling anywhere in deploy/
+#     file      deploy/step-3-stress/otel-collector.yaml
+#     note      the `filter` stays and is not sampling: it drops the health-probe spans by
+#               design, which is a named exclusion rather than a fraction. Jaeger stores
+#               what it receives, with one bound this audit should name rather than imply
+#               "nothing drops a span anywhere": the all-in-one image's default
+#               configuration is an in-memory store "holding at most 100000 traces"
+#               (deploy/step-3-stress/jaeger.yaml records it), and in-memory means a
+#               restart of that pod loses every trace it holds. Immaterial at the twenty
+#               traces this run produced, and the reason a run exports the traces it cites
+#               into its run directory rather than citing the backend.
+#
+#   the path's non-emitters (listed so "every hop" is checkable, not assumed)
+#     ztunnel               emits no spans at all, by design: it is the L4 layer and the
+#                           L7 hop is the waypoint. Its connection-security metrics are
+#                           the instrument for that leg (followups-7's entry).
+#     agentgateway control  the controller pod in agentgateway-system documents no tracing
+#     plane                 of its own and contributes metrics and nothing else, which is
+#                           what followups-6's entry recorded when Prometheus was pointed
+#                           at its port 9092. It drives the ingress and the egress
+#                           waypoint; those two are emitters and are in the table above.
+#     replay                carries no OpenTelemetry code; see the Go entry above.

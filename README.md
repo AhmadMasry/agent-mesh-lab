@@ -521,13 +521,28 @@ overlay sets. `make step-3` installs no Operator and the step-3 overlay holds no
 and removed from step 3 on 2026-09-10 and from the cluster the same day, and
 `findings.md` carries the counts. The ingress and the
 egress proxies export because one `AgentgatewayPolicy` each says so; the
-istiod-driven waypoints export nothing, and appear in a trace only as a parent
-span id that no exported span carries. Because an A2A request keeps the work item
+istiod-driven waypoints export because the `config.tracing` block described above
+says so, which is what closed the dangling parents. Because an A2A request keeps the work item
 inside `Message.metadata`, where no HTTP instrumentation can see it, every lab
 client also sends it as a header, and the Go handler wrappers and the Python
 header capture put it on the span, so a work item is queryable. Reading one
 work item gives two traces, not one: the client fetches the agent card and
 sends the message as two separate roots.
+
+No emitter samples, and since 2026-09-12 every one of them says so in its own
+file rather than inheriting a default: the three Go binaries set
+`sdktrace.AlwaysSample()` in `internal/otel/otel.go`, the Python agent sets
+`OTEL_TRACES_SAMPLER=always_on` in
+`deploy/step-3-stress/orchestrator-instrumentation.yaml` (replacing the SDK
+default `parentbased_always_on`, which was the one inherited setting), the
+agentgateway ingress and the egress waypoint set `randomSampling: "true"` and
+`clientSampling: "true"` in `deploy/step-3-stress/agentgateway-tracing.yaml`, the
+two istiod-driven waypoints set the same pair as `config.tracing` booleans in
+`deploy/step-3-stress/waypoint-tracing-config.yaml`, and Istio's Telemetry
+resources set `randomSamplingPercentage: 100` in
+`deploy/step-3-stress/istio-tracing.yaml` — with the collector's traces pipeline
+carrying no `probabilistic_sampler` or `tail_sampling`, only the `filter` that
+drops health-probe spans by design.
 
 Traces come out of the backend one work item at a time:
 
