@@ -1,0 +1,189 @@
+# The pins read back from the rebuilt cluster, 2026-09-12T21:31:05Z, and compared with the values in versions.yaml.
+# Read-only: kubectl get / version, istioctl version, helm list.
+
+## kubectl version
+Client Version: v1.37.0
+Kustomize Version: v5.8.1
+Server Version: v1.37.0
+
+## istioctl version (client, control plane, data plane)
+client version: 1.31.0
+control plane version: 1.31.0
+data plane version:  (2 proxies), 1.31.0 (2 proxies)
+
+## helm list -A
+NAME             	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART                          	APP VERSION
+agentgateway     	agentgateway-system	1       	2026-09-13 00:15:46.725464 +0300 EEST	deployed	agentgateway-v1.5.0            	v1.5.0     
+agentgateway-crds	agentgateway-system	1       	2026-09-13 00:15:44.75279 +0300 EEST 	deployed	agentgateway-crds-v1.5.0       	v1.5.0     
+istio-base       	istio-system       	1       	2026-09-13 00:05:53.217152 +0300 EEST	deployed	base-1.31.0                    	1.31.0     
+istio-cni        	istio-system       	1       	2026-09-13 00:06:06.081273 +0300 EEST	deployed	cni-1.31.0                     	1.31.0     
+istiod           	istio-system       	1       	2026-09-13 00:05:55.249286 +0300 EEST	deployed	istiod-1.31.0                  	1.31.0     
+jaeger           	telemetry          	1       	2026-09-13 00:29:51.336463 +0300 EEST	deployed	jaeger-4.13.1                  	2.20.0     
+otel-collector   	telemetry          	1       	2026-09-13 00:29:40.320062 +0300 EEST	deployed	opentelemetry-collector-0.173.1	0.160.0    
+prometheus       	telemetry          	1       	2026-09-13 00:30:09.949195 +0300 EEST	deployed	prometheus-29.28.1             	v3.14.0    
+ztunnel          	istio-system       	1       	2026-09-13 00:06:15.615513 +0300 EEST	deployed	ztunnel-1.31.0                 	1.31.0     
+
+## every container image in the cluster, with the imageID the kubelet resolved, by namespace/pod
+agentgateway-egress  agw-egress-57fb64568c-8gdlg                           agentgateway             cr.agentgateway.dev/agentgateway:v1.5.0                                                                               cr.agentgateway.dev/agentgateway@sha256:bf2f339ef326d32def2aaeb44b1b4549801293c19b89e764a4228667d97d9896
+agentgateway-system  agentgateway-65bf468754-mvwff                         controller               cr.agentgateway.dev/controller:v1.5.0                                                                                 cr.agentgateway.dev/controller@sha256:319489cb86b7f901a52a3fc532ad07f136c92756f88cf02a4040909e20001120
+agentgateway-system  agentgateway-ingress-68ddf778fc-c92z6                 agentgateway             cr.agentgateway.dev/agentgateway:v1.5.0                                                                               cr.agentgateway.dev/agentgateway@sha256:bf2f339ef326d32def2aaeb44b1b4549801293c19b89e764a4228667d97d9896
+istio-system         istio-cni-node-799rp                                  install-cni              docker.io/istio/install-cni:1.31.0-distroless                                                                         docker.io/istio/install-cni@sha256:d274207c7572adaf81289fd4eb4b430f9f38eba3b3603be3af17ecefbd46ccdd
+istio-system         istio-cni-node-9c9x8                                  install-cni              docker.io/istio/install-cni:1.31.0-distroless                                                                         docker.io/istio/install-cni@sha256:d274207c7572adaf81289fd4eb4b430f9f38eba3b3603be3af17ecefbd46ccdd
+istio-system         istiod-7d565d6dd7-zb5jx                               discovery                docker.io/istio/pilot:1.31.0-distroless                                                                               docker.io/istio/pilot@sha256:78b5d404521ac0337e556f6cb8f9efa8d401abe8b6e0b74930020a56eea13b8e
+istio-system         ztunnel-n9r26                                         istio-proxy              docker.io/istio/ztunnel:1.31.0-distroless                                                                             docker.io/istio/ztunnel@sha256:36632f26754ef3828f12c24d7d5f1c1573b1cfaf96ce4485539ceaaab793568b
+istio-system         ztunnel-r94sl                                         istio-proxy              docker.io/istio/ztunnel:1.31.0-distroless                                                                             docker.io/istio/ztunnel@sha256:36632f26754ef3828f12c24d7d5f1c1573b1cfaf96ce4485539ceaaab793568b
+kube-system          coredns-559f6c778d-97xd4                              coredns                  registry.k8s.io/coredns/coredns:v1.14.6                                                                               sha256:fbccbf70a429fb9ce1cdb13a40ed96b16272ef763dafe050b2c0d121dd29811b
+kube-system          coredns-559f6c778d-pj7mw                              coredns                  registry.k8s.io/coredns/coredns:v1.14.6                                                                               sha256:fbccbf70a429fb9ce1cdb13a40ed96b16272ef763dafe050b2c0d121dd29811b
+kube-system          etcd-agent-mesh-lab-control-plane                     etcd                     registry.k8s.io/etcd:3.7.0-0                                                                                          sha256:c2e426bbd1cd63b4d1cbdca2eba371a0a2e64b6934dcc48c51a62d488fe64fe8
+kube-system          kindnet-qrzf9                                         kindnet-cni              docker.io/kindest/kindnetd:v20260820-69b56db7                                                                         sha256:8e13ccc0aaa682502a49e5f98b88acf75fbf5f724875058b3e7a78b1f38a11e7
+kube-system          kindnet-vvhtg                                         kindnet-cni              docker.io/kindest/kindnetd:v20260820-69b56db7                                                                         sha256:8e13ccc0aaa682502a49e5f98b88acf75fbf5f724875058b3e7a78b1f38a11e7
+kube-system          kube-apiserver-agent-mesh-lab-control-plane           kube-apiserver           registry.k8s.io/kube-apiserver-arm64:v1.37.0                                                                          docker.io/library/import-2026-08-26@sha256:4fbbef5581e6ed60b96426e3786371b57da07f66e350b4ff2b0077413c2b0444
+kube-system          kube-controller-manager-agent-mesh-lab-control-plane  kube-controller-manager  registry.k8s.io/kube-controller-manager-arm64:v1.37.0                                                                 docker.io/library/import-2026-08-26@sha256:dda35f6553455c1dde75aebfbb20759d24b7de776b884eb06415f242f276200c
+kube-system          kube-proxy-fqcgb                                      kube-proxy               registry.k8s.io/kube-proxy-arm64:v1.37.0                                                                              docker.io/library/import-2026-08-26@sha256:d5e740cce95911da5590b633aae2f7f7e3370ec9d212d4dbbbf3bf19fa07551f
+kube-system          kube-proxy-wmcx6                                      kube-proxy               registry.k8s.io/kube-proxy-arm64:v1.37.0                                                                              docker.io/library/import-2026-08-26@sha256:d5e740cce95911da5590b633aae2f7f7e3370ec9d212d4dbbbf3bf19fa07551f
+kube-system          kube-scheduler-agent-mesh-lab-control-plane           kube-scheduler           registry.k8s.io/kube-scheduler-arm64:v1.37.0                                                                          docker.io/library/import-2026-08-26@sha256:2aa78b45454b3df79d15bf6a57b4f9871f11ce16c8b645109ba2310076d228dd
+lab                  agentgateway-waypoint-b89486546-h8vd4                 agentgateway             cr.agentgateway.dev/agentgateway:v1.5.0                                                                               cr.agentgateway.dev/agentgateway@sha256:bf2f339ef326d32def2aaeb44b1b4549801293c19b89e764a4228667d97d9896
+lab                  agentgateway-waypoint-orch-5b56f859f9-hcf4b           agentgateway             cr.agentgateway.dev/agentgateway:v1.5.0                                                                               cr.agentgateway.dev/agentgateway@sha256:bf2f339ef326d32def2aaeb44b1b4549801293c19b89e764a4228667d97d9896
+lab                  loadgen-b1-234935-r1-01-smrfw                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r1-02-r5w5c                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r1-03-jrwk5                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r1-04-s4tst                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r1-05-x9gwv                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r2-01-tj564                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r2-02-c6p5q                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r2-03-vqzhl                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r2-04-jpn8l                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r2-05-2n2bg                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r3-01-8gtrq                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r3-02-qv9vb                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r3-03-6ld85                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r3-04-dbfr9                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r3-05-m4mwd                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r4-01-8gqf9                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r4-02-xcqnr                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r4-03-lccws                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r4-04-wtmgx                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r4-05-zt95s                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r5-01-rcc7j                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r5-02-pbkx4                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r5-03-qrccr                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r5-04-9ltj9                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r5-05-b9hb7                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r6-01-hvd9b                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r6-02-72l96                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r6-03-7572j                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r6-04-chcm9                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r6-05-b69mb                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r7-01-hzb9d                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r7-02-g5rx5                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r7-03-4xgmm                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r7-04-g9qw8                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b1-234935-r7-05-wl6px                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r1-01-2fkks                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r1-02-jdwvx                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r1-03-6qzl7                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r1-04-l8v4l                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r1-05-znjsb                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r2-01-w6nld                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r2-02-gfkmz                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r2-03-q6xxs                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r2-04-kv6lr                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r2-05-pn9kg                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r3-01-fsrgj                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r3-02-sf6mk                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r3-03-jfmbr                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r3-04-xgppm                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r3-05-4cvdp                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r4-01-gfrqt                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r4-02-j45t4                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r4-03-cqzhk                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r4-04-v5664                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2-000646-r4-05-qkslc                         loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r1-01-qdgbk                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r1-02-9mljz                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r1-03-qftdt                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r1-04-mnmcr                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r1-05-ncgn6                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r2-01-8v6kn                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r2-02-j8cmj                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r2-03-sjthg                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r2-04-cxwmq                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r2-05-sshl7                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r3-01-l8d4g                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r3-02-wmk6r                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r3-03-b4t86                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r3-04-b8gqm                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r3-05-6kh8q                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r4-01-zk6d7                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r4-02-67hx6                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r4-03-sc98z                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r4-04-jdbcl                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-001614-r4-05-q99f7                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r5-01-q5kwj                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r5-02-t4wks                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r5-03-fm8w4                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r5-04-dqp9g                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r5-05-kz5jg                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r6-01-6d565                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r6-02-xjxbg                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r6-03-ssfsb                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r6-04-595rd                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  loadgen-b2b-002435-r6-05-4pwc7                        loadgen                  kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:46ac549ad5af243b84dd1811805cf7af87558353f4b00103112ef52de1749f86  sha256:de1a25ae28a7a8f3ec8e8d9b4b9cd4f3cb0c35506b9975160a5b2af0b73c227b
+lab                  mockllm-f56fdb4d-d5ghw                                mockllm                  kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:970cf136526c09f5bc9db5a206f7a59531a9c121cae1372cbfe4a2af3b0a696a  sha256:39e4b9239411a6865878de8476688bdfa2539b801e2245bf40a38e154be43cb4
+lab                  orchestrator-76d95c858d-rjgw5                         orchestrator             docker.io/library/orchestrator:dev                                                                                    docker.io/library/import-2026-09-12@sha256:a259eafd9a62921f9d537ebe4fe814fb60e9d0bee0b122a779dcd68a10aa2011
+lab                  worker-7c66f49994-nkhrr                               worker                   kind.local/worker-918a018b7a581926ead34dec2ba0fb83:01c45fbf819796017172f71f06ef8a794e65fbf49cbef1064029bf1bb2b9055e   sha256:a55ba293f59017783d3d626de8e698f257f115445716c9dd1124e3c34e1b1d3d
+local-path-storage   local-path-provisioner-75f7fc7dc5-r26gp               local-path-provisioner   docker.io/kindest/local-path-provisioner:v20260820-69b56db7                                                           sha256:0771a8a05619f4bb6f4c8484f942f509b21a04ebe56ee26d17a3006e250bfd46
+telemetry            jaeger-656f58f4c7-52pwb                               jaeger                   docker.io/jaegertracing/jaeger:2.20.0                                                                                 docker.io/jaegertracing/jaeger@sha256:46a886260e04002d8f45e213fc39063fa11a50446048fdaa64786fc0840cb9f8
+telemetry            otel-collector-7c6665959f-rhpv8                       opentelemetry-collector  docker.io/otel/opentelemetry-collector-contrib:0.160.0                                                                docker.io/otel/opentelemetry-collector-contrib@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6
+telemetry            prometheus-566c455884-bkdtq                           prometheus-server        docker.io/prom/prometheus:v3.14.0                                                                                     docker.io/prom/prometheus@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0
+
+## init containers
+
+## node image
+NAME                           STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION            CONTAINER-RUNTIME
+agent-mesh-lab-control-plane   Ready    control-plane   42m   v1.37.0   172.18.0.3    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+agent-mesh-lab-worker          Ready    <none>          42m   v1.37.0   172.18.0.2    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+/agent-mesh-lab-control-plane kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+/agent-mesh-lab-worker kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+
+## Gateway API CRD bundle version and channel annotations
+v1.6.2 experimental
+
+## agentgateway proxies' own version lines
+-- lab deploy/agentgateway-waypoint
+2026-09-12T21:29:38.954331Z	info	agentgateway_app::commands::run	version: {
+  "version": "1.5.0",
+  "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+  "rust_version": "1.98.0",
+  "build_profile": "release",
+  "build_target": "aarch64-unknown-linux-gnu"
+}	
+-- lab deploy/agentgateway-waypoint-orch
+2026-09-12T21:29:38.957470Z	info	agentgateway_app::commands::run	version: {
+  "version": "1.5.0",
+  "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+  "rust_version": "1.98.0",
+  "build_profile": "release",
+  "build_target": "aarch64-unknown-linux-gnu"
+}	
+-- agentgateway-system deploy/agentgateway-ingress
+2026-09-12T21:16:11.685728Z	info	agentgateway_app::commands::run	version: {
+  "version": "1.5.0",
+  "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+  "rust_version": "1.98.0",
+  "build_profile": "release",
+  "build_target": "aarch64-unknown-linux-gnu"
+}	
+-- agentgateway-egress deploy/agw-egress
+2026-09-12T21:16:11.650094Z	info	agentgateway_app::commands::run	version: {
+  "version": "1.5.0",
+  "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+  "rust_version": "1.98.0",
+  "build_profile": "release",
+  "build_target": "aarch64-unknown-linux-gnu"
+}	
+
+## orchestrator image package versions, read inside the running pod's image on this host
+{'a2a-sdk': '1.1.2', 'openai': '3.13.0', 'httpx2': '2.12.0', 'httpx': '0.28.1', 'opentelemetry-sdk': '1.44.0', 'opentelemetry-distro': '0.65b0'}
+orchestrator-76d95c858d-rjgw5 docker.io/library/import-2026-09-12@sha256:a259eafd9a62921f9d537ebe4fe814fb60e9d0bee0b122a779dcd68a10aa2011
+local orchestrator:dev id sha256:50e12c72760638e49cf4c3c7b0a3888e3a40a476f863eb4dc0ca07566b5091ab

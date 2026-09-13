@@ -1,0 +1,34 @@
+# Follow-ups 10 wall clock, 2026-09-12T20:48:19Z to 2026-09-13T02:29:22Z = 20463 s (5 h 41 min 3 s), every second
+# accounted for. Each phase ran as one background driver whose log is named; each gap between two drivers held only
+# reads of local files on this host (the driver's progress file, compare.py over committed and new summaries, hops.py,
+# copying logs) and the start of the next driver. No cluster write happened outside a driver.
+#
+# phase                                   from                   to                     seconds  log
+  rebuild + Gate 1 baselines              2026-09-12T20:48:19Z   2026-09-12T21:30:49Z     2550   rebuild/build.txt (per-target table at its end)
+  gap                                     2026-09-12T21:30:49Z   2026-09-12T21:31:05Z       16
+  instruments                             2026-09-12T21:31:05Z   2026-09-12T21:35:52Z      287   rebuild/instruments.txt (one read-only istioctl call from outside it, noted there)
+  gap                                     2026-09-12T21:35:52Z   2026-09-12T21:36:09Z       17
+  A.1 (6 invocations)                     2026-09-12T21:36:09Z   2026-09-12T22:32:02Z     3353   logs/experiment-a-a1.txt
+  gap                                     2026-09-12T22:32:02Z   2026-09-12T22:32:15Z       13
+  A.2 (7 invocations)                     2026-09-12T22:32:15Z   2026-09-12T23:31:27Z     3552   logs/experiment-a-a2.txt
+  gap                                     2026-09-12T23:31:27Z   2026-09-12T23:31:48Z       21
+  A.3 + egress row (16 invocations)       2026-09-12T23:31:48Z   2026-09-13T02:29:22Z    10654   logs/experiment-a-a3.txt
+# sum: 2550 + 16 + 287 + 17 + 3353 + 13 + 3552 + 21 + 10654 = 20463
+#
+# per invocation (wall seconds, from the logs):
+#   A.1  M1 go 531, M1 py 569, M2 go 559, M2 py 575, M3 go 553, M3 py 566
+#   A.2  go http 477, go sdk 512, py http retries 520, py http resend 516, py sdk 513, go http 503 504, py http resend 503 510
+#   A.3  baseline go 697, baseline py 733, R1 go http 716, R1 go sdk 716, R1 py http 717, R1 py sdk 711, R2 go waypoint 722,
+#        R2 go ingress 282, R2 py ingress 289, R2 py ingress-incluster 727, R3 go 716, R3 py 724, R4 go 724, R4 py 725,
+#        egress go 718, egress py 737
+# every invocation exited 0 on its first run; none was repeated.
+# after: rebuild/cluster-after.txt read at 2026-09-13T02:29:52Z (read-only).
+
+# Fix round 1 (2026-09-13), on the same step-3 cluster, no step target run:
+#   M5 driver (logs/fix-round-1-m5.txt)          2026-09-13T03:06:24Z   2026-09-13T03:15:41Z      557
+#     retry stanzas read 0 -> gateway retry mechanics ROUTE=waypoint 197 s -> read 0 -> ROUTE=ingress 106 s -> read 0
+#     -> ROUTE=egress 231 s -> read 0 -> gate1-three-ledgers.sh 22 s
+#   gap                                           2026-09-13T03:15:41Z   2026-09-13T03:16:08Z       27   (compare.py over local files; reading the ruling)
+#   gate1-mockllm-deterministic.sh                2026-09-13T03:16:08Z   2026-09-13T03:16:18Z       10   (mockllm-deterministic/restore-proof.txt)
+# Every invocation exited 0 on its first run. Between 02:29:22Z and 03:06:24Z the cluster was read, never written:
+# rebuild/cluster-after.txt (02:29:52Z, 02:34:01Z) and the reviewer's own read-only checks.

@@ -1,0 +1,22 @@
+# Istio images, the certificate lifetime settings and the workload certificates on the rebuilt cluster, read 2026-09-12T21:31:06Z.
+
+## images, from the running workloads
+   ds/ztunnel               docker.io/istio/ztunnel:1.31.0-distroless
+   ds/istio-cni-node        docker.io/istio/install-cni:1.31.0-distroless
+   deploy/istiod            docker.io/istio/pilot:1.31.0-distroless
+   ztunnel container env: ISTIO_META_ENABLE_HBONE=true SECRET_TTL=168h 
+   istiod container env:  DEFAULT_WORKLOAD_CERT_TTL=168h PILOT_ENABLE_AGENTGATEWAY=true 
+
+## istioctl ztunnel-config certificates --node agent-mesh-lab-worker
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           25386c0a7adc42935ce013410cf2c189     2026-09-19T21:16:11Z     2026-09-12T21:14:11Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           a2bc26d460ac40db5145fb1bc641a682     2026-09-19T21:06:38Z     2026-09-12T21:04:38Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+
+## istioctl ztunnel-config certificates --node agent-mesh-lab-control-plane
+CERTIFICATE NAME     TYPE     STATUS     VALID CERT     SERIAL NUMBER     NOT AFTER     NOT BEFORE
+
+## leaf lifetimes, NOT AFTER minus NOT BEFORE, from the worker node's table re-read 2026-09-12T21:32:21Z (the first read's column index was wrong; this replaces its error output)
+   spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress    VALID true NOT BEFORE 2026-09-12T21:14:11Z NOT AFTER 2026-09-19T21:16:11Z span 168h02m
+   spiffe://cluster.local/ns/lab/sa/default                                 VALID true NOT BEFORE 2026-09-12T21:04:38Z NOT AFTER 2026-09-19T21:06:38Z span 168h02m

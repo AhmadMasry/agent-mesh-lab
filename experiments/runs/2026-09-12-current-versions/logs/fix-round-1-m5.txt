@@ -1,0 +1,207 @@
+# fix round 1 / M5, started 2026-09-13T03:06:24Z, HEAD a02ea8e699a49158e9f157f8a85b5d9d14c9b59f
+## retry stanzas before  started 2026-09-13T03:06:24Z  deployed-paths status: (empty)
+## $ retries
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+## retry stanzas before  finished 2026-09-13T03:06:25Z  exit=0  wall=1s
+
+## gateway retry mechanics waypoint  started 2026-09-13T03:06:25Z  deployed-paths status: (empty)
+## $ env ROUTE=waypoint REPS=5 RUN_ITEM=2026-09-12-current-versions/gateway-retry-mechanics experiments/gate3-gateway-retry-mechanics.sh
+== certificate check ==
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           25386c0a7adc42935ce013410cf2c189     2026-09-19T21:16:11Z     2026-09-12T21:14:11Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           a2bc26d460ac40db5145fb1bc641a682     2026-09-19T21:06:38Z     2026-09-12T21:04:38Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+2026-09-13T03:06:25Z ROUTE=waypoint pre-run retry stanzas across every HTTPRoute: 0
+== starting the control pod ==
+2026-09-13T03:06:26Z run 060625: route=waypoint reps=5
+2026-09-13T03:06:26Z deployment/worker replicas: spec=1 ready=1
+2026-09-13T03:06:26Z deployment/mockllm replicas: spec=1 ready=1
+== switching the retry stanza on for the waypoint route ==
+httproute.gateway.networking.k8s.io/worker configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-12-current-versions/gateway-retry-mechanics/routes-on-waypoint/routes.txt
+2026-09-13T03:06:26Z retry stanzas across every HTTPRoute with ROUTE=waypoint on: 1 (expected 1)
+== reading lab/agentgateway-waypoint /config_dump ==
+config_dump: lab/agentgateway-waypoint holds 1 retry policy/policies
+== dry run: one repetition, its directory deleted afterwards ==
+== waypoint: logical_work_item_id=a3r-waypoint-060625-dry ==
+  waypoint,a3r-waypoint-060625-dry,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+== dry run done; experiments/runs/2026-09-12-current-versions/gateway-retry-mechanics/a3r-waypoint-060625-dry removed ==
+== waypoint: 5 repetitions ==
+== waypoint: logical_work_item_id=a3r-waypoint-060625-01 ==
+  waypoint,a3r-waypoint-060625-01,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+== waypoint: logical_work_item_id=a3r-waypoint-060625-02 ==
+  waypoint,a3r-waypoint-060625-02,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+== waypoint: logical_work_item_id=a3r-waypoint-060625-03 ==
+  waypoint,a3r-waypoint-060625-03,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+== waypoint: logical_work_item_id=a3r-waypoint-060625-04 ==
+  waypoint,a3r-waypoint-060625-04,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+== waypoint: logical_work_item_id=a3r-waypoint-060625-05 ==
+  waypoint,a3r-waypoint-060625-05,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+== summary (waypoint) ==
+route,work_item,arrivals_at_worker,invocations_at_mock,retried,identity_source,messageId_same,rpc_id_same,taskId_same,caller_same,body_sha256_same,body_len_same,executes,client_result,trace_spans,notes
+waypoint,a3r-waypoint-060625-01,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+waypoint,a3r-waypoint-060625-02,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+waypoint,a3r-waypoint-060625-03,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+waypoint,a3r-waypoint-060625-04,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+waypoint,a3r-waypoint-060625-05,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,14,
+== restoring the waypoint route: removing the retry stanza ==
+2026-09-13T03:09:42Z retry-off ROUTE=waypoint restored; retry stanzas across every HTTPRoute: 0
+## gateway retry mechanics waypoint  finished 2026-09-13T03:09:42Z  exit=0  wall=197s
+
+## retry stanzas after waypoint  started 2026-09-13T03:09:42Z  deployed-paths status: (empty)
+## $ retries
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+## retry stanzas after waypoint  finished 2026-09-13T03:09:42Z  exit=0  wall=0s
+
+## gateway retry mechanics ingress  started 2026-09-13T03:09:42Z  deployed-paths status: (empty)
+## $ env ROUTE=ingress REPS=5 RUN_ITEM=2026-09-12-current-versions/gateway-retry-mechanics experiments/gate3-gateway-retry-mechanics.sh
+== certificate check ==
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           25386c0a7adc42935ce013410cf2c189     2026-09-19T21:16:11Z     2026-09-12T21:14:11Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           a2bc26d460ac40db5145fb1bc641a682     2026-09-19T21:06:38Z     2026-09-12T21:04:38Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+2026-09-13T03:09:42Z ROUTE=ingress pre-run retry stanzas across every HTTPRoute: 0
+== starting the control pod ==
+2026-09-13T03:10:13Z run 060942: route=ingress reps=5
+2026-09-13T03:10:13Z deployment/worker replicas: spec=1 ready=1
+2026-09-13T03:10:13Z deployment/mockllm replicas: spec=1 ready=1
+== switching the retry stanza on for the ingress route ==
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 2
+route objects read back into experiments/runs/2026-09-12-current-versions/gateway-retry-mechanics/routes-on-ingress/routes.txt
+2026-09-13T03:10:13Z retry stanzas across every HTTPRoute with ROUTE=ingress on: 2 (expected 2)
+== reading agentgateway-system/agentgateway-ingress /config_dump ==
+config_dump: agentgateway-system/agentgateway-ingress holds 2 retry policy/policies
+== the ingress is reachable on 127.0.0.1:18080 ==
+== dry run: one repetition, its directory deleted afterwards ==
+== ingress: logical_work_item_id=a3r-ingress-060942-dry ==
+  ingress,a3r-ingress-060942-dry,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+== dry run done; experiments/runs/2026-09-12-current-versions/gateway-retry-mechanics/a3r-ingress-060942-dry removed ==
+== ingress: 5 repetitions ==
+== ingress: logical_work_item_id=a3r-ingress-060942-01 ==
+  ingress,a3r-ingress-060942-01,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+== ingress: logical_work_item_id=a3r-ingress-060942-02 ==
+  ingress,a3r-ingress-060942-02,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+== ingress: logical_work_item_id=a3r-ingress-060942-03 ==
+  ingress,a3r-ingress-060942-03,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+== ingress: logical_work_item_id=a3r-ingress-060942-04 ==
+  ingress,a3r-ingress-060942-04,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+== ingress: logical_work_item_id=a3r-ingress-060942-05 ==
+  ingress,a3r-ingress-060942-05,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+== summary (ingress) ==
+route,work_item,arrivals_at_worker,invocations_at_mock,retried,identity_source,messageId_same,rpc_id_same,taskId_same,caller_same,body_sha256_same,body_len_same,executes,client_result,trace_spans,notes
+ingress,a3r-ingress-060942-01,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+ingress,a3r-ingress-060942-02,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+ingress,a3r-ingress-060942-03,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+ingress,a3r-ingress-060942-04,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+ingress,a3r-ingress-060942-05,2,1,yes,ingress-arrivals,yes,yes,n-a,n-a,yes,yes,1,task/TASK_STATE_COMPLETED,9,
+== restoring the ingress route: removing the retry stanza ==
+2026-09-13T03:11:28Z retry-off ROUTE=ingress restored; retry stanzas across every HTTPRoute: 0
+## gateway retry mechanics ingress  finished 2026-09-13T03:11:28Z  exit=0  wall=106s
+
+## retry stanzas after ingress  started 2026-09-13T03:11:28Z  deployed-paths status: (empty)
+## $ retries
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+## retry stanzas after ingress  finished 2026-09-13T03:11:28Z  exit=0  wall=0s
+
+## gateway retry mechanics egress  started 2026-09-13T03:11:28Z  deployed-paths status: (empty)
+## $ env ROUTE=egress REPS=5 RUN_ITEM=2026-09-12-current-versions/gateway-retry-mechanics experiments/gate3-gateway-retry-mechanics.sh
+== certificate check ==
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           25386c0a7adc42935ce013410cf2c189     2026-09-19T21:16:11Z     2026-09-12T21:14:11Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           a2bc26d460ac40db5145fb1bc641a682     2026-09-19T21:06:38Z     2026-09-12T21:04:38Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+2026-09-13T03:11:29Z ROUTE=egress pre-run retry stanzas across every HTTPRoute: 0
+== starting the control pod ==
+2026-09-13T03:11:59Z run 061128: route=egress reps=5
+2026-09-13T03:12:00Z deployment/worker replicas: spec=1 ready=1
+2026-09-13T03:12:00Z deployment/mockllm replicas: spec=1 ready=1
+== switching the retry stanza on for the egress route ==
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-12-current-versions/gateway-retry-mechanics/routes-on-egress/routes.txt
+2026-09-13T03:12:00Z retry stanzas across every HTTPRoute with ROUTE=egress on: 1 (expected 1)
+== reading agentgateway-egress/agw-egress /config_dump ==
+config_dump: agentgateway-egress/agw-egress holds 1 retry policy/policies
+== dry run: one repetition, its directory deleted afterwards ==
+== egress: logical_work_item_id=a3r-egress-061128-dry ==
+  egress,a3r-egress-061128-dry,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+== dry run done; experiments/runs/2026-09-12-current-versions/gateway-retry-mechanics/a3r-egress-061128-dry removed ==
+== egress: 5 repetitions ==
+== egress: logical_work_item_id=a3r-egress-061128-01 ==
+  egress,a3r-egress-061128-01,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+== egress: logical_work_item_id=a3r-egress-061128-02 ==
+  egress,a3r-egress-061128-02,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+== egress: logical_work_item_id=a3r-egress-061128-03 ==
+  egress,a3r-egress-061128-03,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+== egress: logical_work_item_id=a3r-egress-061128-04 ==
+  egress,a3r-egress-061128-04,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+== egress: logical_work_item_id=a3r-egress-061128-05 ==
+  egress,a3r-egress-061128-05,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+== summary (egress) ==
+route,work_item,arrivals_at_worker,invocations_at_mock,retried,identity_source,messageId_same,rpc_id_same,taskId_same,caller_same,body_sha256_same,body_len_same,executes,client_result,trace_spans,notes
+egress,a3r-egress-061128-01,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+egress,a3r-egress-061128-02,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+egress,a3r-egress-061128-03,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+egress,a3r-egress-061128-04,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+egress,a3r-egress-061128-05,1,2,yes,invocation-lines,yes,n-a,yes,yes,yes,n-a,1,task/TASK_STATE_FAILED,14,
+== restoring the egress route: removing the retry stanza ==
+2026-09-13T03:15:18Z retry-off ROUTE=egress restored; retry stanzas across every HTTPRoute: 0
+## gateway retry mechanics egress  finished 2026-09-13T03:15:19Z  exit=0  wall=231s
+
+## retry stanzas after egress  started 2026-09-13T03:15:19Z  deployed-paths status: (empty)
+## $ retries
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+## retry stanzas after egress  finished 2026-09-13T03:15:19Z  exit=0  wall=0s
+
+## three ledgers (worker Service, step 3 path)  started 2026-09-13T03:15:19Z  deployed-paths status: (empty)
+## $ env RUN_ITEM=2026-09-12-current-versions/three-ledgers experiments/gate1-three-ledgers.sh
+== resetting mockllm counters and injections ==
+reset: 204
+== launching loadgen Job for logical_work_item_id=clean-061519-001 ==
+2026/09/13 06:15:21 Using base gcr.io/distroless/static-debian13:nonroot@sha256:1c2c046bc09ed40fad370b599a0b1ae7987f55b01e247cf27a7c27cd97e5bbc7 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/13 06:15:22 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+ M experiments/runs/2026-09-12-current-versions/compare.py
+ M experiments/runs/2026-09-12-current-versions/comparison.csv
+ M experiments/runs/2026-09-12-current-versions/table.py
+?? experiments/runs/2026-09-12-current-versions/gateway-retry-mechanics/
+
+2026/09/13 06:15:22 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/13 06:15:23 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:962fde6b6a8d32b2554ef6b68a0f4c81ea0f0f03e797f5781a4507a01c097cc7
+2026/09/13 06:15:37 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:962fde6b6a8d32b2554ef6b68a0f4c81ea0f0f03e797f5781a4507a01c097cc7
+2026/09/13 06:15:37 Adding tag latest
+2026/09/13 06:15:37 Added tag latest
+== collecting ledgers ==
+## ingress
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-13T03:15:38.005445751Z","remote":"10.244.1.130:44387","method":"SendMessage","id":"635b7e05-17fd-46d9-9bab-f6b488c1a1e0","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"","logical_work_item_id":"clean-061519-001","a2a_version":"1.0","content_type":"application/json","body_sha256":"be719b2738195486932b6a16730cb34d102a0b10383aaf8419e688fc545a9428","body_len":280,"source":"worker"}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-13T03:15:38.005445751Z","remote":"10.244.1.130:44387","method":"SendMessage","id":"635b7e05-17fd-46d9-9bab-f6b488c1a1e0","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"","logical_work_item_id":"clean-061519-001","a2a_version":"1.0","content_type":"application/json","body_sha256":"be719b2738195486932b6a16730cb34d102a0b10383aaf8419e688fc545a9428","body_len":280,"status":200,"source":"worker"}
+## execution
+{"ledger":"execution","ts":"2026-09-13T03:15:38.005489126Z","event":"received","method":"SendMessage","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"","logical_work_item_id":"clean-061519-001","source":"worker"}
+{"ledger":"execution","ts":"2026-09-13T03:15:38.005525334Z","event":"execute","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"01a098c3-6795-77a7-a3a8-e5bf982a7563","contextId":"01a098c3-6795-77e1-9fdd-9c85da511000","logical_work_item_id":"clean-061519-001","source":"worker"}
+{"ledger":"execution","ts":"2026-09-13T03:15:38.005531417Z","event":"state","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"01a098c3-6795-77a7-a3a8-e5bf982a7563","contextId":"01a098c3-6795-77e1-9fdd-9c85da511000","logical_work_item_id":"clean-061519-001","state":"TASK_STATE_SUBMITTED","source":"worker"}
+{"ledger":"execution","ts":"2026-09-13T03:15:38.005540084Z","event":"state","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"01a098c3-6795-77a7-a3a8-e5bf982a7563","contextId":"01a098c3-6795-77e1-9fdd-9c85da511000","logical_work_item_id":"clean-061519-001","state":"TASK_STATE_WORKING","source":"worker"}
+{"ledger":"execution","ts":"2026-09-13T03:15:38.207881376Z","event":"state","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"01a098c3-6795-77a7-a3a8-e5bf982a7563","contextId":"01a098c3-6795-77e1-9fdd-9c85da511000","logical_work_item_id":"clean-061519-001","state":"TASK_STATE_COMPLETED","source":"worker"}
+{"ledger":"execution","ts":"2026-09-13T03:15:38.208500376Z","event":"result","method":"SendMessage","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"01a098c3-6795-77a7-a3a8-e5bf982a7563","contextId":"01a098c3-6795-77e1-9fdd-9c85da511000","logical_work_item_id":"clean-061519-001","result_kind":"task","state":"TASK_STATE_COMPLETED","source":"worker"}
+## invocation
+{"ledger":"invocation","ts":"2026-09-13T03:15:38.207030584Z","logical_work_item_id":"clean-061519-001","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"01a098c3-6795-77a7-a3a8-e5bf982a7563","caller":"worker","body_sha256":"15aedffab9885813db3bf1e10de0b72c4ebc73ffd249105a24c0929b647586f1","stream":false,"injection":"none","outcome":"ok","latency_ms":201.13,"source":"mockllm"}
+## client
+{"ledger":"client","ts":"2026-09-13T03:15:38.209337501Z","attempt":1,"logical_work_item_id":"clean-061519-001","messageId":"01a098c3-6795-7138-b2f4-7dbf63050c71","taskId":"01a098c3-6795-77a7-a3a8-e5bf982a7563","result_kind":"task","state":"TASK_STATE_COMPLETED","a2a_version":"1.0","card_protocol_versions":["1.0"],"source":"loadgen"}
+== summary ==
+deliveries_ingress_jsonrpc,ingress_arrivals_for_work_item,dispatches,distinct_message_ids,tasks_created,task_final_state,invocations,a2a_version_seen,client_result_kind
+1,1,1,1,1,TASK_STATE_COMPLETED,1,1.0,task
+## three ledgers (worker Service, step 3 path)  finished 2026-09-13T03:15:41Z  exit=0  wall=22s
+
+# M5 finished 2026-09-13T03:15:41Z

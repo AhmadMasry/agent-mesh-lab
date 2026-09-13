@@ -1,0 +1,40 @@
+== 2026-09-13T03:06:25Z | ROUTE=waypoint | RUN_ID=060625 | REPS=5 ==
+kubectl -n lab port-forward deploy/agentgateway-waypoint 15002:15000
+curl -s http://127.0.0.1:15002/config_dump | jq '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value]'
+
+[
+  {
+    "key": "lab/worker.0.0.mesh",
+    "name": "worker",
+    "namespace": "lab",
+    "kind": "HTTPRoute",
+    "matches": [
+      {
+        "path": {
+          "pathPrefix": "/"
+        }
+      }
+    ],
+    "backends": [
+      {
+        "weight": 1,
+        "service": {
+          "name": "lab/worker.lab.svc.cluster.local",
+          "port": 8080
+        }
+      }
+    ],
+    "inlinePolicies": [
+      {
+        "retry": {
+          "attempts": 1,
+          "backoff": "100ms",
+          "codes": [
+            "503 Service Unavailable"
+          ]
+        }
+      }
+    ]
+  }
+]
+2026-09-13T03:06:29Z lab/agentgateway-waypoint holds 1 retry policy/policies in its own config_dump

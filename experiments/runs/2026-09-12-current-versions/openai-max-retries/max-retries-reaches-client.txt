@@ -1,0 +1,38 @@
+# Rule 4 at openai-python 3.13.0: the orchestrator's explicit max_retries=0 still reaches the client. Read 2026-09-12T20:50:56Z.
+
+## 1. The library, read at the tag: https://raw.githubusercontent.com/openai/openai-python/v3.13.0/src/openai/_base_client.py
+##    (default still 2: https://raw.githubusercontent.com/openai/openai-python/v3.13.0/src/openai/_constants.py)
+   _constants.py:8:DEFAULT_MAX_RETRIES = 2
+   _base_client.py:399: max_retries: int = DEFAULT_MAX_RETRIES,
+   _base_client.py:406: self.max_retries = max_retries
+   _base_client.py:1049: max_retries = input_options.get_max_retries(self.max_retries)
+   _base_client.py:1052: for retries_taken in range(max_retries + 1):
+   _base_client.py:1056: remaining_retries = max_retries - retries_taken
+   _base_client.py:1673: max_retries = input_options.get_max_retries(self.max_retries)
+   _base_client.py:1676: for retries_taken in range(max_retries + 1):
+   (the async client's request loop is the second pair: attempts = max_retries + 1, so 0 means one attempt)
+
+## 2. The lab's construction, agents/orchestrator/orchestrator/model.py at the committed tree
+   4:(max_retries, documented default 2) and the connection retries of the httpx2
+   25:    def __init__(self, *, base_url: str, model: str, api_key: str, max_retries: int = 0,
+   28:        self.max_retries = max_retries
+   32:                transport=httpx2.AsyncHTTPTransport(retries=self.transport_retries), timeout=timeout
+   34:        self._client = AsyncOpenAI(base_url=base_url, api_key=api_key, max_retries=max_retries, http_client=http_client)
+   server.py:46:    max_retries = int(os.environ.get("MODEL_MAX_RETRIES", "0"))
+
+## 3. In the built image (orchestrator:dev, sha256:a8e345356c6c9424f9d301edb8fe589e3aad9336b244098827020524eed09c05), what the constructed client holds
+   openai 3.13.0 | ModelClient(max_retries=0) -> AsyncOpenAI.max_retries = 0 | httpx2 transport: AsyncHTTPTransport retries = 0
+   openai 3.13.0 | ModelClient(max_retries=2) -> AsyncOpenAI.max_retries = 2 | httpx2 transport: AsyncHTTPTransport retries = 0
+   openai.DEFAULT_MAX_RETRIES = 2
+
+## 4. The unit tests that count calls against a fake model returning HTTP 500, on this host at openai 3.13.0
+   tests/test_model.py::test_complete_sends_identity_headers_and_returns_text PASSED [ 25%]
+   tests/test_model.py::test_complete_does_not_retry_on_500_when_max_retries_is_zero PASSED [ 50%]
+   tests/test_model.py::test_control_openai_default_retries_do_retry_on_500 PASSED [ 75%]
+   tests/test_model.py::test_default_transport_has_connection_retries_disabled PASSED [100%]
+   ============================== 4 passed in 1.92s ===============================
+
+## 5. In the cluster: baseline runs 5 (MODEL_MAX_RETRIES=0) and 6 (=2) at step 2b, openai-runs-5-6/summary.csv in this run directory
+   2026-09-13T02:34:21Z: read from openai-runs-5-6/summary.csv after the run:
+   5    run 5 invocations=1 by_caller=orchestrator=1 client_result=task/TASK_STATE_FAILED notes=orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=0
+   5    run 6 invocations=3 by_caller=orchestrator=3 client_result=task/TASK_STATE_FAILED notes=orchestrator PLAN_MODEL_CALL=on MODEL_MAX_RETRIES=2

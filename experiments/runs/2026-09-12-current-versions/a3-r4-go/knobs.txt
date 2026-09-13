@@ -1,0 +1,34 @@
+2026-09-13T01:40:58Z image freshness: deployment/worker checkout-go-sources-hash=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd annotation=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd pod-imageIDs: worker-7c66f49994-hdds9=sha256:a55ba293f59017783d3d626de8e698f257f115445716c9dd1124e3c34e1b1d3d 
+2026-09-13T01:40:58Z image freshness: deployment/mockllm checkout-go-sources-hash=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd annotation=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd pod-imageIDs: mockllm-f56fdb4d-d5ghw=sha256:39e4b9239411a6865878de8476688bdfa2539b801e2245bf40a38e154be43cb4 
+== 2026-09-13T01:40:58Z | RUN=R4 RECEIVER=go | RUN_ID=044058 | REPS=20 ==
+row knobs: CLIENT_RETRIES=1 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport+503 MODEL_RETRIES=1 route-retry=waypoint
+injection note: one receiver mode per work item, so the 503 stands for both R1's and R2's injection
+receiver injection per repetition: http503-before-dispatch
+mock injection per repetition: {"mode":"close","at_count":1}
+stimulus: loadgen-job
+-- before --
+deployment/worker MODEL_RETRIES=
+deployment/orchestrator MODEL_MAX_RETRIES=0
+deployment/orchestrator DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+deployment/orchestrator PLAN_MODEL_CALL=off
+CLIENT_* on any Deployment in lab (empty means none):
+the Job this run renders: CLIENT_RETRIES=1 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport+503
+2026-09-13T01:40:58Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-13T01:40:58Z pre-run knob assertion passed for RUN=R4: stanzas=0 MODEL_RETRIES=<unset> (this row sets it: 1) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=1 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport+503
+2026-09-13T01:41:30Z pre-run MODEL_RETRIES on deployment/worker: <unset>
+2026-09-13T01:41:30Z setting deployment/worker: MODEL_RETRIES=1; if this script dies without restoring them, put them back with: kubectl -n lab set env deployment/worker MODEL_RETRIES-
+2026-09-13T01:41:32Z live after the rollout: MODEL_RETRIES=1 DOWNSTREAM_A2A_URL=<unset>
+2026-09-13T01:41:32Z retry stanzas on lab/worker: 1
+2026-09-13T01:41:32Z retry stanzas with ROUTE=waypoint on: 1 on the waypoint routes and 1 across every HTTPRoute (expected 1 each)
+2026-09-13T01:53:01Z restored deployment/worker: MODEL_RETRIES=<unset>
+2026-09-13T01:53:01Z live after the restore: MODEL_RETRIES= DOWNSTREAM_A2A_URL=
+2026-09-13T01:53:01Z retry-off ROUTE=waypoint restored; retry stanzas across every HTTPRoute: 0
+2026-09-13T01:53:01Z -- after (normal end) --
+retry stanzas across every HTTPRoute: 0
+retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-egress/model-via-agw=0
+deployment/worker MODEL_RETRIES=
+deployment/orchestrator MODEL_MAX_RETRIES=0
+deployment/orchestrator DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+deployment/orchestrator PLAN_MODEL_CALL=off
+CLIENT_* on any Deployment in lab (empty means none):
+injector resets on this exit path: mockllm.lab.svc.cluster.local:8080/control/reset=204 worker.lab.svc.cluster.local:8080/control/reset=204 orchestrator.lab.svc.cluster.local:8080/control/reset=204

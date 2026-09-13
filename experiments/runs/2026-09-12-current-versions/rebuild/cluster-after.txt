@@ -1,0 +1,47 @@
+# The cluster after the whole re-run, 2026-09-13T02:29:52Z. Read-only.
+
+## retry stanzas across every HTTPRoute: 0
+
+## knob environment on the three lab Deployments (CLIENT_*, MODEL_*RETRIES, DOWNSTREAM_A2A_URL, PLAN_MODEL_CALL)
+-- deploy/worker
+-- deploy/orchestrator
+   PLAN_MODEL_CALL=off
+   MODEL_MAX_RETRIES=0
+   DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+-- deploy/mockllm
+
+## long-running pods (Jobs excluded): restarts, age
+   agentgateway-egress   agw-egress-57fb64568c-8gdlg                            true    0     2026-09-12T21:16:11Z
+   agentgateway-system   agentgateway-65bf468754-mvwff                          true    0     2026-09-12T21:15:46Z
+   agentgateway-system   agentgateway-ingress-68ddf778fc-c92z6                  true    0     2026-09-12T21:16:11Z
+   istio-system          istio-cni-node-799rp                                   true    0     2026-09-12T21:06:06Z
+   istio-system          istio-cni-node-9c9x8                                   true    0     2026-09-12T21:06:06Z
+   istio-system          istiod-7d565d6dd7-zb5jx                                true    0     2026-09-12T21:05:55Z
+   istio-system          ztunnel-n9r26                                          true    0     2026-09-12T21:06:15Z
+   istio-system          ztunnel-r94sl                                          true    0     2026-09-12T21:06:15Z
+   lab                   agentgateway-waypoint-b89486546-h8vd4                  true    0     2026-09-12T21:29:38Z
+   lab                   agentgateway-waypoint-orch-5b56f859f9-hcf4b            true    0     2026-09-12T21:29:38Z
+   lab                   mockllm-f56fdb4d-d5ghw                                 true    0     2026-09-12T21:29:38Z
+   lab                   orchestrator-5c478c69b6-cvhr2                          true    0     2026-09-13T02:29:18Z
+   lab                   worker-7c66f49994-tbfx4                                true    0     2026-09-13T01:52:58Z
+   telemetry             jaeger-656f58f4c7-52pwb                                true    0     2026-09-12T21:29:51Z
+   telemetry             otel-collector-7c6665959f-rhpv8                        true    0     2026-09-12T21:29:40Z
+   telemetry             prometheus-566c455884-bkdtq                            true    0     2026-09-12T21:30:10Z
+
+## certificates (worker node)
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           25386c0a7adc42935ce013410cf2c189     2026-09-19T21:16:11Z     2026-09-12T21:14:11Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           a2bc26d460ac40db5145fb1bc641a682     2026-09-19T21:06:38Z     2026-09-12T21:04:38Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           ede973b5878de58ea6653ae3fa967e52     2036-09-09T21:06:00Z     2026-09-12T21:06:00Z
+
+## ztunnel policy rejections now
+   ztunnel-n9r26: 2
+   ztunnel-r94sl: 0
+
+## Prometheus targets
+ztunnel                    up        http://10.244.1.54:15020/metrics                       
+-- 9/9 targets up
+-- port-forward closed at 2026-09-13T02:29:53Z
+
+## CLIENT_* variables on any Deployment in any namespace, read 2026-09-13T02:34:01Z: 0

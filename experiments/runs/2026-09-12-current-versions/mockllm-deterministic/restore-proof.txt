@@ -1,0 +1,36 @@
+# Fix round 1 / M5: gate1-mockllm-deterministic.sh re-run unedited on the step-3 cluster, 2026-09-13T03:16:08Z.
+# The script hardcodes RUN_ITEM="2026-09-05-mockllm-deterministic" (experiments/gate1-mockllm-deterministic.sh line 16, no override)
+# and writes invocation.jsonl (line 141) and summary.csv (line 150) there with '>'. Ruling (a): run it unedited, move the
+# two files it writes into this directory, restore the committed pair through git, and prove the restore.
+
+## 1. before the run: the committed pair's blob IDs in HEAD and on disk
+100644 blob 2c1ef6a9525848dbf7e76ad7d376835dfb86c36f	experiments/runs/2026-09-05-mockllm-deterministic/invocation.jsonl
+100644 blob eb8af190c16ba7c78c7c3c3200c604010f72c024	experiments/runs/2026-09-05-mockllm-deterministic/summary.csv
+   on disk invocation.jsonl 2c1ef6a9525848dbf7e76ad7d376835dfb86c36f
+   on disk summary.csv eb8af190c16ba7c78c7c3c3200c604010f72c024
+   script blob at HEAD: 47846b108c4920a5ca01f85cd20456afeecec289  on disk: 47846b108c4920a5ca01f85cd20456afeecec289
+
+## 2. the run (step 3 cluster; the script talks to the mock Service only, from an in-cluster curl pod)
+   started 2026-09-13T03:16:08Z
+   finished 2026-09-13T03:16:18Z exit=0 wall=10s (console output: console.txt)
+
+## 3. what the run left in the committed directory
+   on disk invocation.jsonl ce243128418d0b5475567851ebb9a60be3fab222
+   on disk summary.csv 498d4eb2703aa05ba07048f9cd9b19982f838b4d
+ M experiments/runs/2026-09-05-mockllm-deterministic/invocation.jsonl
+ M experiments/runs/2026-09-05-mockllm-deterministic/summary.csv
+
+## 4. moved into this directory, then the committed pair restored
+   $ mv experiments/runs/2026-09-05-mockllm-deterministic/{invocation.jsonl,summary.csv} experiments/runs/2026-09-12-current-versions/mockllm-deterministic/
+   $ git checkout -- experiments/runs/2026-09-05-mockllm-deterministic  -> exit 0
+
+## 5. after the restore
+100644 blob 2c1ef6a9525848dbf7e76ad7d376835dfb86c36f	experiments/runs/2026-09-05-mockllm-deterministic/invocation.jsonl
+100644 blob eb8af190c16ba7c78c7c3c3200c604010f72c024	experiments/runs/2026-09-05-mockllm-deterministic/summary.csv
+   on disk invocation.jsonl 2c1ef6a9525848dbf7e76ad7d376835dfb86c36f
+   on disk summary.csv eb8af190c16ba7c78c7c3c3200c604010f72c024
+   $ git diff --stat -- experiments/runs/2026-09-05-mockllm-deterministic -> 0 lines
+   $ git status --short -- experiments/runs/2026-09-05-mockllm-deterministic -> 0 lines
+   $ git status --short over everything outside this fix round's own run-directory work:
+      (end; the only other entries are this fix round's uncommitted files under experiments/runs/2026-09-12-current-versions/)
+   script blob on disk after the run: 47846b108c4920a5ca01f85cd20456afeecec289 (unchanged)

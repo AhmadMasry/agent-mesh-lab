@@ -1,0 +1,150 @@
+2026-09-13T00:55:20Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-13T00:55:51Z run 035520: RUN=R2 RECEIVER=go SUB=ingress REPS=20 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport MODEL_RETRIES=<left as deployed> route-retry=ingress
+2026-09-13T00:55:51Z deployment/worker replicas: spec=1 ready=1
+2026-09-13T00:55:51Z deployment/mockllm replicas: spec=1 ready=1
+2026-09-13T00:55:51Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-13T00:55:51Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-13T00:55:51Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 2
+route objects read back into experiments/runs/2026-09-12-current-versions/a3-r2-go-ingress/routes.txt
+2026-09-13T00:55:51Z retry stanzas on lab/worker-ingress: 1
+2026-09-13T00:55:51Z retry stanzas on lab/orchestrator-ingress: 1
+2026-09-13T00:55:51Z retry stanzas with ROUTE=ingress on: 2 on the ingress routes and 2 across every HTTPRoute (expected 2 each)
+2026-09-13T00:55:52Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:55:52Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:55:52Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:55:52Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-dry"} -> 204
+2026-09-13T00:55:55Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-dry)
+2026-09-13T00:55:55Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-dry)
+2026-09-13T00:56:04Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:04Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:04Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:04Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-01"} -> 204
+2026-09-13T00:56:07Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-01)
+2026-09-13T00:56:07Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-01)
+2026-09-13T00:56:16Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:16Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:16Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:16Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-02"} -> 204
+2026-09-13T00:56:19Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-02)
+2026-09-13T00:56:19Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-02)
+2026-09-13T00:56:28Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:28Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:28Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:28Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-03"} -> 204
+2026-09-13T00:56:31Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-03)
+2026-09-13T00:56:31Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-03)
+2026-09-13T00:56:40Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:40Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:40Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:40Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-04"} -> 204
+2026-09-13T00:56:43Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-04)
+2026-09-13T00:56:43Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-04)
+2026-09-13T00:56:52Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:52Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:52Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:56:52Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-05"} -> 204
+2026-09-13T00:56:55Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-05)
+2026-09-13T00:56:55Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-05)
+2026-09-13T00:57:03Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:04Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:04Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:04Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-06"} -> 204
+2026-09-13T00:57:07Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-06)
+2026-09-13T00:57:07Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-06)
+2026-09-13T00:57:15Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:16Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:16Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:16Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-07"} -> 204
+2026-09-13T00:57:18Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-07)
+2026-09-13T00:57:18Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-07)
+2026-09-13T00:57:27Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:27Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:27Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:27Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-08"} -> 204
+2026-09-13T00:57:30Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-08)
+2026-09-13T00:57:30Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-08)
+2026-09-13T00:57:39Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:39Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:39Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:39Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-09"} -> 204
+2026-09-13T00:57:42Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-09)
+2026-09-13T00:57:42Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-09)
+2026-09-13T00:57:51Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:51Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:51Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:57:51Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-10"} -> 204
+2026-09-13T00:57:54Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-10)
+2026-09-13T00:57:54Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-10)
+2026-09-13T00:58:03Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:03Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:03Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:03Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-11"} -> 204
+2026-09-13T00:58:06Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-11)
+2026-09-13T00:58:06Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-11)
+2026-09-13T00:58:15Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:15Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:15Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:15Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-12"} -> 204
+2026-09-13T00:58:18Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-12)
+2026-09-13T00:58:18Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-12)
+2026-09-13T00:58:27Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:27Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:27Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:27Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-13"} -> 204
+2026-09-13T00:58:30Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-13)
+2026-09-13T00:58:30Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-13)
+2026-09-13T00:58:39Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:39Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:39Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:39Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-14"} -> 204
+2026-09-13T00:58:42Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-14)
+2026-09-13T00:58:42Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-14)
+2026-09-13T00:58:50Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:51Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:51Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:58:51Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-15"} -> 204
+2026-09-13T00:58:53Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-15)
+2026-09-13T00:58:53Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-15)
+2026-09-13T00:59:02Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:02Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:02Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:02Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-16"} -> 204
+2026-09-13T00:59:05Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-16)
+2026-09-13T00:59:05Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-16)
+2026-09-13T00:59:14Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:14Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:14Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:14Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-17"} -> 204
+2026-09-13T00:59:17Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-17)
+2026-09-13T00:59:17Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-17)
+2026-09-13T00:59:26Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:26Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:26Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:26Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-18"} -> 204
+2026-09-13T00:59:29Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-18)
+2026-09-13T00:59:29Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-18)
+2026-09-13T00:59:38Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:38Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:38Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:38Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-19"} -> 204
+2026-09-13T00:59:41Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-19)
+2026-09-13T00:59:41Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-19)
+2026-09-13T00:59:50Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:50Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:50Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-13T00:59:50Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-035520-20"} -> 204
+2026-09-13T00:59:53Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-20)
+2026-09-13T00:59:53Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-035520-20)
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/2026-09-12-current-versions/a3-r2-go-ingress/routes-off/routes.txt
+2026-09-13T01:00:02Z retry-off ROUTE=ingress restored; retry stanzas across every HTTPRoute: 0
+2026-09-13T01:00:02Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-13T01:00:02Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-13T01:00:02Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)

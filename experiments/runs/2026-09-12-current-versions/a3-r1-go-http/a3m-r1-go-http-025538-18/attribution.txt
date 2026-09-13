@@ -1,0 +1,13 @@
+work item a3m-r1-go-http-025538-18
+layer=client-http
+reason=the two worker server spans have distinct parent span ids e2609d23182a04f5 and da7fc5b9850e600a that do not converge on one proxy span / so each attempt crossed the proxy separately / client lines 1 which does not separate the two layers because the lab's HTTP retry loops below the line the client prints / a proxy that exports nothing leaves both parents dangling and is caught by the shared-parent rule instead because Task 2 measured the istiod-driven waypoint issuing one span id for both of its own attempts
+spans by service: agentgateway-waypoint=6|agw-egress=2|loadgen=2|mockllm=1|worker=4
+parents of the receiver POST spans, in start order: agentgateway-waypoint+agentgateway-waypoint
+parents of the model endpoint POST spans, in start order: agw-egress
+calls that entered the egress waypoint: 1
+upstream attempts the egress waypoint made: 1
+receiver POST server span ids, in start order: 5f9af253ade01748 c3f126e6d92624ed
+receiver POST server span parent ids, in start order: e2609d23182a04f5 da7fc5b9850e600a
+parents of those parents, in start order: b909a475f1646184 aba331a8912b208f
+ledgers: deliveries=2 dispatched=1 invocations=1 client_lines=1
+identity across the first two arrivals: messageId_same=yes rpc_id_same=yes body_same=yes
