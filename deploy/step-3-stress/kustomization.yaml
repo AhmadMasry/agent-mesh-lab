@@ -3,24 +3,13 @@
 # is touched by it.
 #
 # The three components themselves -- the collector, the trace backend and Prometheus
-# -- are not here. From 2026-09-12 they are installed by Helm chart when `helm` is on
-# PATH, and by deploy/step-3-stress-nohelm when it is not. **The choice, stated:** two
-# kustomization overlays, not a HELM-conditioned exclude. This overlay is the
-# configuration both routes share; deploy/step-3-stress-nohelm adds the three
-# component manifests on top of it and adds nothing else. Both overlays therefore
-# still apply cleanly on top of the previous step, which a conditional list inside one
-# kustomization would not: `kubectl kustomize deploy/step-3-stress` has one meaning,
-# and the route is chosen by the Makefile recipe, not by the overlay's contents.
-# Kustomize's default load restrictor refuses a `resources` entry naming a file above
-# its own root ("security; file ... is not in or below ..."), so the three manifests
-# moved into that overlay's directory rather than being referenced from it; each
-# carries a header line saying so and naming the path findings entries written before
-# that date cite. `--load-restrictor=LoadRestrictionsNone` would have lifted that --
-# the Makefile already passes it for the retry/ overlays under this directory, which
-# reach up to the step-2 route files -- and it was not used here: those overlays are
-# rendered and filtered to their HTTPRoute documents by `make retry-on`, while a step
-# overlay is applied whole, and a step overlay that only builds with a relaxed
-# restrictor is a step overlay `kubectl kustomize <dir>` cannot read.
+# -- are not here: `make step-3` applies this overlay first and then installs them from
+# their Helm charts with the three *-values.yaml files in this directory. Findings
+# entries dated before 2026-09-12 cite their manifests at deploy/step-3-stress/, and
+# entries from then until 2026-09-15 at deploy/step-3-stress-nohelm/, the overlay a host
+# without helm applied on top of this one; that overlay was retired on 2026-09-15
+# (followups-11) after experiments/runs/2026-09-15-helm-only/nohelm-coverage.txt found a
+# chart counterpart for each of its objects, and both paths are read from git history.
 #
 # What this adds:
 #   namespace.yaml         the telemetry namespace, deliberately not ambient-enrolled

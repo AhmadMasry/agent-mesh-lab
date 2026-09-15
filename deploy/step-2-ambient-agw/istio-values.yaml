@@ -1,10 +1,11 @@
-# Istio's configuration as Helm values, for the Helm route of `make step-2`.
+# Istio's configuration as Helm values, for `make step-2`, which installs Istio by Helm
+# and by no other route.
 #
 # Why this file exists. The author's direction of 2026-09-12 was to install every
 # component through Helm where a chart exists, and to move the configuration this
 # lab had been passing through the IstioOperator file into the Helm deployment
-# because Istio is deprecating the operator. What Istio actually says, read this
-# session, is narrower than the direction's phrasing, and the narrower statement is
+# because Istio is deprecating the operator. What Istio actually says, read on
+# 2026-09-12, is narrower than the direction's phrasing, and the narrower statement is
 # recorded here rather than paraphrased, because the migration's justification has
 # to be Istio's own words:
 #
@@ -24,23 +25,33 @@
 #
 # So: this lab never ran the in-cluster operator; it ran `istioctl install -f` with
 # an IstioOperator file, which is the form Istio says is "not affected". The move to
-# Helm values is therefore taken on Istio's recommendation, not on a removal
-# deadline, and the IstioOperator file stays as the fallback route. That is measured
-# and stated, not assumed: see findings.md.
+# Helm values was therefore taken on Istio's recommendation, not on a removal
+# deadline. On 2026-09-15 the author's direction retired the `istioctl install` route
+# altogether (followups-11): Istio is installed by Helm only, and istioctl stays as
+# this lab's debugging client. The deprecation, the unaffected form and the Helm
+# recommendation were re-read that day at the same URL.
 #
 # How the values below were produced. Not by hand. Istio documents the migration
 # command on the same page -- "Helm migration requires translating your
 # IstioOperator YAML into Helm values. Istio 1.24 and above includes a manifest
-# translate command to perform this operation" -- and it was run in this session:
+# translate command to perform this operation" -- and it was run on 2026-09-12:
 #
 #   istioctl manifest translate -f deploy/step-2-ambient-agw/istio-meshconfig.yaml
 #
 # Its pilot-values.yaml carried the `meshConfig` block below unchanged, key for key
-# and value for value, which is the byte-equality check the two routes are held to.
-# The output is in experiments/runs/2026-09-12-helm-first/istioctl-manifest-translate/.
+# and value for value. The output is in
+# experiments/runs/2026-09-12-helm-first/istioctl-manifest-translate/.
+#
+# That IstioOperator file was deleted on 2026-09-15 (followups-11), after
+# experiments/runs/2026-09-15-helm-only/operator-file-coverage.txt found every setting
+# of the retired route -- the file's and the two its recipe passed with `--set` -- in
+# this file and in ztunnel-values.yaml with the same values, and the two meshConfig
+# blocks byte-equal (same sha256). The file is read with
+# `git show 896917a:deploy/step-2-ambient-agw/istio-meshconfig.yaml`.
 #
 # What translate did not carry, because it was never in the file: the two settings
-# step-2 passed with `--set`. They are added here at the keys the charts document.
+# the retired recipe passed with `--set`. They are added here at the keys the charts
+# document.
 #
 #   profile: ambient
 #     The ambient Helm install page installs istiod and cni with
@@ -91,8 +102,9 @@ pilot:
     # istio-workload-cert-ttl.
     DEFAULT_WORKLOAD_CERT_TTL: "168h"
 
-# Byte-equal to spec.meshConfig in deploy/step-2-ambient-agw/istio-meshconfig.yaml.
-# Every field's source is quoted in that file's header and is not repeated here.
+# Byte-equal to spec.meshConfig of the retired IstioOperator file (same sha256,
+# experiments/runs/2026-09-15-helm-only/operator-file-coverage.txt). Every field's
+# source is quoted under versions.yaml key istio-otel-tracing-provider.
 meshConfig:
   enableTracing: true
   extensionProviders:

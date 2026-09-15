@@ -30,27 +30,36 @@ check-go-sources-clean:
 		exit 1; \
 	fi
 
-# HELM: the author's direction of 2026-09-12 -- "for deployment of all components,
-# first check if helm exists, if not fall back to other ways". Every step target that
-# installs a component tests this variable: non-empty means the Helm recipe runs,
-# empty means the recipe that target used before this date runs. Each such target's
-# comment names both routes, and `make -n step-2 step-2b step-3` run twice, once with helm on
-# PATH and once without, is committed in
-# experiments/runs/2026-09-12-helm-first/make-n-{helm,nohelm}.txt.
+# HELM: Istio, the agentgateway control plane and the three telemetry components are
+# installed by Helm and by nothing else. The author's direction of 2026-09-12 put Helm
+# first; the direction of 2026-09-15 made it the only route for Istio -- "installation
+# and deployment of istio, only helm" -- and retired the step-3 telemetry manifests
+# with it, each after a committed record showed the Helm values and charts carry
+# everything the retired inputs carried (experiments/runs/2026-09-15-helm-only/).
+# istioctl stays on PATH as this lab's debugging client, not as its installer.
 #
 # `command -v` is used rather than `which` because it is a POSIX shell builtin and
-# needs nothing on PATH itself. The value is the path to the binary, which the
-# recipes print, so a run record names the helm that ran.
+# needs nothing on PATH itself. The value is the path to the binary, which
+# helm-required prints, so a run record names the helm that ran.
 #
-# Two components have no Helm route and two have no other route, and both facts are
+# One component has no Helm route, and one has no route but Helm, and both facts are
 # recorded rather than worked around:
 #   - Gateway API's CRDs: the project publishes no Helm chart (its install page gives
 #     only `kubectl apply -f <release>/experimental-install.yaml`), so step-2 applies
-#     them the same way on both routes.
+#     them that way.
 #   - the agentgateway control plane (step-2b): the project documents only a Helm
-#     install of its two OCI charts, so there is no previous route to fall back to.
-#     That target now says so and stops instead of pretending one exists.
+#     install of its two OCI charts, and that target says so and stops without helm.
 HELM := $(shell command -v helm 2>/dev/null)
+
+# helm-required: the first prerequisite of step-2 and step-3, so that on a host without
+# helm those targets stop before anything is built, loaded or applied. It stops through
+# $(error), which make raises while expanding this recipe, so `make -n step-2` stops
+# with the same message and a non-zero status instead of printing a plan the host
+# cannot carry out. `make -n step-2 step-2b step-3` with helm on PATH is committed in
+# experiments/runs/2026-09-15-helm-only/make-n.txt.
+.PHONY: helm-required
+helm-required:
+	$(if $(HELM),@echo "helm: $(HELM)",$(error $(or $(MAKECMDGOALS),helm-required): helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. Install helm and re-run; nothing was applied))
 
 # Chart versions. Every one of these, and every values key the values files use, was
 # read from a document in the session that added it and is recorded in versions.yaml
@@ -160,61 +169,48 @@ step-1: check-go-sources-clean orchestrator-image
 	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
 # step-2: Istio Ambient with agentgateway as the waypoint. Versions come from
-# versions.yaml (gateway-api v1.6.2 experimental; istio 1.31.0 via the istioctl on
-# PATH; agentgateway v1.5.0 through the waypoint image annotation in the overlay).
+# versions.yaml (gateway-api v1.6.2 experimental; istio 1.31.0 through its four Helm
+# charts; agentgateway v1.5.0 through the waypoint image annotation in the overlay).
 # A setup target, like step-1: it rotates all three Deployments, and the worker's
 # log is a ledger source, so do not re-run it against a baseline in progress.
 # The overlay pulls in step-1, whose orchestrator Deployment needs the Python
 # image; ko builds the Go images inline, so orchestrator-image is the only
 # prerequisite that makes step-2 runnable on a cluster that never ran step-1.
 GATEWAY_API_VERSION := v1.6.2
-step-2: check-go-sources-clean orchestrator-image
+step-2: helm-required check-go-sources-clean orchestrator-image
 	# Applied unconditionally: a present CRD does not tell us the channel it came
 	# from, and the experimental channel is what carries HTTPRoute.Retry.
 	kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/experimental-install.yaml
+	# istioctl is this lab's debugging client, not its installer. step-3's certificate
+	# check and the experiment scripts read the mesh with `istioctl ztunnel-config`,
+	# and those reads were recorded with the client at the pinned version, so the
+	# client on PATH is held to the pin here.
 	istioctl version --remote=false
 	istioctl version --remote=false | grep -q 1.31.0 || { echo "istioctl on PATH is not the pinned 1.31.0 (see versions.yaml)" >&2; exit 1; }
-	# Istio, two routes (see the HELM comment at the top of this file).
-	#
-	# Helm route, taken when helm is on PATH: the four charts the ambient Helm install
-	# page installs, in the page's order, each pinned to 1.31.0 and each from the
-	# repository URL that page's `helm repo add` line gives. `--repo` is used instead of
-	# `helm repo add` so the target adds nothing to the user's Helm configuration.
-	# `helm upgrade -i` rather than the page's `helm install`, so a re-run of this
-	# target is not an error -- the same substitution step-2b already makes. The page
+	# Istio, by Helm (see the HELM comment at the top of this file): the four charts the
+	# ambient Helm install page installs, in the page's order, each pinned to 1.31.0 and
+	# each from the repository URL that page's `helm repo add` line gives. `--repo` is
+	# used instead of `helm repo add` so the target adds nothing to the user's Helm
+	# configuration. `helm upgrade -i` rather than the page's `helm install`, so a re-run
+	# of this target is not an error -- the same substitution step-2b makes. The page
 	# passes `--set profile=ambient` to istiod and cni and nothing to ztunnel or base;
 	# here istiod takes the profile from istio-values.yaml, which also carries the mesh
-	# configuration the IstioOperator file carries and the agentgateway pilot flag
-	# step-2 used to pass with --set. That file's header quotes Istio on why this route
-	# is now first, and records that `istioctl manifest translate` produced its
-	# meshConfig block. ztunnel takes a values file of its own, for the certificate
-	# lifetime it asks for and for the ambient profile; the page passes ztunnel nothing,
-	# but without the profile the Helm route ran a different ztunnel image and env from
-	# the istioctl route, and the reason neither key can live in istio-values.yaml is in
-	# ztunnel-values.yaml's header.
-	#
-	# Previous route, taken when helm is absent: `istioctl install -f` with the
-	# IstioOperator file, which is what this target ran until 2026-09-12 and which
-	# Istio's own deprecation announcement calls a form "not affected" by the
-	# in-cluster operator's removal.
-	@if [ -n "$(HELM)" ]; then \
-		echo "step-2: Istio via Helm ($(HELM)), charts pinned to $(ISTIO_CHART_VERSION)"; \
-	else \
-		echo "step-2: helm not on PATH; Istio via istioctl install -f deploy/step-2-ambient-agw/istio-meshconfig.yaml"; \
-	fi
-	@set -e; \
-	if [ -n "$(HELM)" ]; then \
-		helm upgrade -i istio-base base --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
-			-n istio-system --create-namespace --wait; \
-		helm upgrade -i istiod istiod --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
-			-n istio-system -f deploy/step-2-ambient-agw/istio-values.yaml --wait; \
-		helm upgrade -i istio-cni cni --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
-			-n istio-system --set profile=ambient --wait; \
-		helm upgrade -i ztunnel ztunnel --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
-			-n istio-system -f deploy/step-2-ambient-agw/ztunnel-values.yaml --wait; \
-	else \
-		istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y; \
-	fi
+	# configuration (the OpenTelemetry tracing provider), the agentgateway pilot flag and
+	# istiod's default workload certificate lifetime. ztunnel takes a values file of its
+	# own, for the certificate lifetime it asks for and for the ambient profile; the page
+	# passes ztunnel nothing, but without the profile the ztunnel chart ran the
+	# non-distroless image and lacked ISTIO_META_ENABLE_HBONE (measured 2026-09-12), and
+	# the reason neither key can live in istio-values.yaml is in ztunnel-values.yaml's
+	# header.
+	@echo "step-2: Istio via Helm ($(HELM)), charts pinned to $(ISTIO_CHART_VERSION)"
+	helm upgrade -i istio-base base --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
+		-n istio-system --create-namespace --wait
+	helm upgrade -i istiod istiod --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
+		-n istio-system -f deploy/step-2-ambient-agw/istio-values.yaml --wait
+	helm upgrade -i istio-cni cni --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
+		-n istio-system --set profile=ambient --wait
+	helm upgrade -i ztunnel ztunnel --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
+		-n istio-system -f deploy/step-2-ambient-agw/ztunnel-values.yaml --wait
 	kubectl kustomize deploy/step-2-ambient-agw | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
 	# ztunnel captures a pod when it starts, so pods that predate the namespace's
 	# ambient label are restarted to be enrolled.
@@ -240,11 +236,10 @@ step-2: check-go-sources-clean orchestrator-image
 # orchestrator-image is a prerequisite here for the same reason it is on step-2.
 AGENTGATEWAY_CHART_VERSION := v1.5.0
 step-2b: check-go-sources-clean orchestrator-image
-	# One route only, and the target says so rather than failing obscurely. The
+	# One route only, and the target says so rather than failing obscurely: the
 	# agentgateway documentation installs its control plane by Helm from two OCI charts
-	# and documents no other way, so there is nothing for the HELM guard to fall back
-	# to here; a rebuild on a host without helm stops at this target, which is a fact
-	# about the project's install surface and is recorded as one in findings.md.
+	# and documents no other way, which is a fact about the project's install surface
+	# and is recorded as one in findings.md.
 	@if [ -z "$(HELM)" ]; then \
 		echo "step-2b: helm is not on PATH, and the agentgateway control plane has no other documented install: the project's Istio ambient ingress and egress pages install charts agentgateway-crds and agentgateway from oci://cr.agentgateway.dev/charts (versions.yaml, agentgateway-controlplane). Install helm and re-run; nothing was applied." >&2; \
 		exit 1; \
@@ -307,19 +302,16 @@ step-2c: check-go-sources-clean
 # `opentelemetry-operator` and `otel-python-autoinstrumentation` keys stay in
 # versions.yaml, marked as not used, as the record those entries cite.
 #
-# The overlay adds only new objects: the telemetry namespace and, on the route
-# without helm, its three Deployments. It declares no change to any agent, fixture or
+# The overlay adds only new objects: the telemetry namespace and step 3's
+# configuration. It declares no change to any agent, fixture or
 # gateway. `ko apply` is used rather than `kubectl apply -k`
 # because the overlay pulls in deploy/base, whose Deployments carry ko:// image
 # references that only ko resolves; `kubectl apply -k` would send those strings to
 # the cluster as image names.
 #
-# From 2026-09-12 the overlay is split in two, because the three components are
-# installed by Helm chart when helm is on PATH: deploy/step-3-stress carries step 3's
-# configuration and is applied on both routes, and deploy/step-3-stress-nohelm adds
-# the three component manifests on top of it and is applied only on the route without
-# helm. The reasoning, and why it is two overlays rather than one conditional list, is
-# in deploy/step-3-stress/kustomization.yaml's header.
+# The three components themselves are installed from their charts, pinned above,
+# with the values files in deploy/step-3-stress (see the HELM comment at the top of
+# this file).
 #
 # This is still a setup target, and running it does rotate all three lab pods.
 # Measured on 2026-09-09, with the evidence in
@@ -336,8 +328,7 @@ step-2c: check-go-sources-clean
 # cluster left asleep for a day has an expired ztunnel workload certificate and
 # every mesh hop fails until ztunnel is restarted.
 #
-# **Never apply either overlay with a plain `kubectl apply -k deploy/step-3-stress`
-# or `-k deploy/step-3-stress-nohelm`.**
+# **Never apply the overlay with a plain `kubectl apply -k deploy/step-3-stress`.**
 # The overlay carries the Go Deployments, whose images are `ko://` references that
 # only `kubectl kustomize ... | ko apply` resolves; a plain `apply -k` writes the
 # raw `ko://` string into deployment/worker and deployment/mockllm and each gets an
@@ -347,7 +338,7 @@ step-2c: check-go-sources-clean
 # A telemetry-only change to this overlay is applied by file -- `kubectl apply -f`
 # the manifests it touches -- or by running this target, which pipes through ko.
 TELEMETRY_NS                := telemetry
-step-3: check-go-sources-clean
+step-3: helm-required check-go-sources-clean
 	@set -e; \
 	echo "== certificate check =="; \
 	certs=$$(istioctl ztunnel-config certificates --node $(CLUSTER_NAME)-worker); \
@@ -363,33 +354,22 @@ step-3: check-go-sources-clean
 			|| { echo "certificate check: VALID CERT still not true after a ztunnel restart" >&2; exit 1; }; \
 		echo "certificate check: VALID CERT true after a ztunnel restart"; \
 	fi
-	# The telemetry components, two routes (see the HELM comment at the top of this
-	# file). Helm route: each of the three from its project's chart, pinned above, with
-	# the values file beside the manifest it replaces; the namespace is created by the
-	# configuration overlay, which is applied first so `--create-namespace` is not
-	# needed and the namespace's own labels are the overlay's. Previous route: the three
-	# manifests, which now live in deploy/step-3-stress-nohelm and are pulled in by that
-	# overlay on top of this one.
-	@if [ -n "$(HELM)" ]; then \
-		echo "step-3: telemetry via Helm ($(HELM)); collector chart $(OTEL_COLLECTOR_CHART_VERSION), jaeger chart $(JAEGER_CHART_VERSION), prometheus chart $(PROMETHEUS_CHART_VERSION)"; \
-	else \
-		echo "step-3: helm not on PATH; telemetry from the manifests in deploy/step-3-stress-nohelm"; \
-	fi
-	@set -e; \
-	if [ -n "$(HELM)" ]; then \
-		kubectl kustomize deploy/step-3-stress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -; \
-		helm upgrade -i otel-collector opentelemetry-collector --repo $(OTEL_COLLECTOR_CHART_REPO) \
-			--version $(OTEL_COLLECTOR_CHART_VERSION) -n $(TELEMETRY_NS) \
-			-f deploy/step-3-stress/otel-collector-values.yaml --wait; \
-		helm upgrade -i jaeger jaeger --repo $(JAEGER_CHART_REPO) \
-			--version $(JAEGER_CHART_VERSION) -n $(TELEMETRY_NS) \
-			-f deploy/step-3-stress/jaeger-values.yaml --wait; \
-		helm upgrade -i prometheus prometheus --repo $(PROMETHEUS_CHART_REPO) \
-			--version $(PROMETHEUS_CHART_VERSION) -n $(TELEMETRY_NS) \
-			-f deploy/step-3-stress/prometheus-values.yaml --wait; \
-	else \
-		kubectl kustomize deploy/step-3-stress-nohelm | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -; \
-	fi
+	# The telemetry components, by Helm (see the HELM comment at the top of this file):
+	# each of the three from its project's chart, pinned above, with its values file in
+	# deploy/step-3-stress. The namespace is created by the configuration overlay, which
+	# is applied first so `--create-namespace` is not needed and the namespace's own
+	# labels are the overlay's.
+	@echo "step-3: telemetry via Helm ($(HELM)); collector chart $(OTEL_COLLECTOR_CHART_VERSION), jaeger chart $(JAEGER_CHART_VERSION), prometheus chart $(PROMETHEUS_CHART_VERSION)"
+	kubectl kustomize deploy/step-3-stress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
+	helm upgrade -i otel-collector opentelemetry-collector --repo $(OTEL_COLLECTOR_CHART_REPO) \
+		--version $(OTEL_COLLECTOR_CHART_VERSION) -n $(TELEMETRY_NS) \
+		-f deploy/step-3-stress/otel-collector-values.yaml --wait
+	helm upgrade -i jaeger jaeger --repo $(JAEGER_CHART_REPO) \
+		--version $(JAEGER_CHART_VERSION) -n $(TELEMETRY_NS) \
+		-f deploy/step-3-stress/jaeger-values.yaml --wait
+	helm upgrade -i prometheus prometheus --repo $(PROMETHEUS_CHART_REPO) \
+		--version $(PROMETHEUS_CHART_VERSION) -n $(TELEMETRY_NS) \
+		-f deploy/step-3-stress/prometheus-values.yaml --wait
 	kubectl -n $(TELEMETRY_NS) rollout status deployment/otel-collector --timeout=180s
 	kubectl -n $(TELEMETRY_NS) rollout status deployment/jaeger --timeout=180s
 	kubectl -n $(TELEMETRY_NS) rollout status deployment/prometheus --timeout=180s

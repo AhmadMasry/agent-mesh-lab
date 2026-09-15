@@ -29,7 +29,7 @@ agents/worker/         Go, a2a-go; hosts the pre-dispatch ingress and execution 
 fixtures/mockllm/      Go; OpenAI-compatible model endpoint; failure injection; invocation ledger
 fixtures/replay/       Go; controlled duplicate-delivery harness (modes M1–M3)
 fixtures/loadgen/      Go; a2a-go client
-deploy/                Kustomize: base, step-1-nomesh, step-2-ambient-agw, step-2b-agw-ingress-egress, step-2c-gate2, step-3-stress, step-3-stress-nohelm
+deploy/                Kustomize: base, step-1-nomesh, step-2-ambient-agw, step-2b-agw-ingress-egress, step-2c-gate2, step-3-stress
 experiments/           one runnable script per checklist item; cited run outputs under experiments/runs/,
                        shared helpers under experiments/lib/, test inputs under experiments/fixtures/
 docs/upstream/         draft issue texts for behaviour that looks like a project gap; filed by a human
@@ -60,25 +60,47 @@ throughout the Makefile and `experiments/*.sh`, so the built images match
 whatever architecture this machine's Go toolchain reports — no per-host edit
 needed.
 
-### Helm first, the previous route as the fallback
+Helm's repository cache can be empty while its repository list
+(`~/Library/Preferences/helm/repositories.yaml` on macOS) is not, and then an install
+with `--repo <URL>` can fail on a missing index file; `helm repo update` repopulates
+the cache. This was observed on the author's machine on 2026-09-15, after a macOS
+upgrade, with the error fragment `no cached repo found … cilium-index.yaml`; it was not
+reproduced for this README, since that would mean emptying the cache, and no record of
+it is committed.
 
-From 2026-09-12, on the author's direction, every component with a published
-chart is installed by Helm when `helm` is on PATH, and by the route that target
-used before that date when it is not. The Makefile holds one guard,
-`HELM := $(shell command -v helm 2>/dev/null)`, and each step target that
-installs a component branches on it; both routes are named in that target's
-comment, and `make -n step-2 step-2b step-3` run once with helm on PATH and once without
-is committed as
-`experiments/runs/2026-09-12-helm-first/make-n-{helm,nohelm}.txt`.
+### Istio and agentgateway through Helm; istioctl for debugging
 
-| Component | Helm route | Route when `helm` is absent |
-| --- | --- | --- |
-| Gateway API CRDs | none — the project publishes no chart | `kubectl apply --server-side -f <release>/experimental-install.yaml`, on both routes |
-| Istio (base, istiod, cni, ztunnel) | four charts at `1.31.0` from `https://blob.istio.io/istio-release/charts`; istiod takes `deploy/step-2-ambient-agw/istio-values.yaml`, ztunnel `ztunnel-values.yaml` | `istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y` |
-| agentgateway control plane | two OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts`, with `deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml` | none — the project documents no other install, and `make step-2b` says so and stops |
-| Collector | chart `opentelemetry-collector` `0.173.1` with `deploy/step-3-stress/otel-collector-values.yaml` | `deploy/step-3-stress-nohelm/otel-collector.yaml` |
-| Trace backend | chart `jaeger` `4.13.1` with `deploy/step-3-stress/jaeger-values.yaml` | `deploy/step-3-stress-nohelm/jaeger.yaml` |
-| Prometheus | chart `prometheus` `29.28.1` with `deploy/step-3-stress/prometheus-values.yaml` | `deploy/step-3-stress-nohelm/prometheus.yaml` |
+Istio, the agentgateway control plane and the three telemetry components are
+installed by Helm and by no other route. Helm is a requirement: without `helm` on
+PATH, `make step-2` and `make step-3` stop through their `helm-required`
+prerequisite before anything is built or applied, `make -n` included, and
+`make step-2b` stops with its own message. `make -n step-2 step-2b step-3` with helm
+on PATH is committed as `experiments/runs/2026-09-15-helm-only/make-n.txt`.
+
+| Component | Route |
+| --- | --- |
+| Gateway API CRDs | `kubectl apply --server-side -f <release>/experimental-install.yaml` — the project publishes no chart |
+| Istio (base, istiod, cni, ztunnel) | four charts at `1.31.0` from `https://blob.istio.io/istio-release/charts`; istiod takes `deploy/step-2-ambient-agw/istio-values.yaml`, ztunnel `ztunnel-values.yaml`, cni `--set profile=ambient` |
+| agentgateway control plane | two OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts`, with `deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml` — the project documents no other install |
+| Collector | chart `opentelemetry-collector` `0.173.1` with `deploy/step-3-stress/otel-collector-values.yaml` |
+| Trace backend | chart `jaeger` `4.13.1` with `deploy/step-3-stress/jaeger-values.yaml` |
+| Prometheus | chart `prometheus` `29.28.1` with `deploy/step-3-stress/prometheus-values.yaml` |
+
+istioctl remains a prerequisite, as this lab's debugging client and not its
+installer: the certificate check in `make step-3` and in the experiment scripts reads
+`istioctl ztunnel-config certificates`, the mTLS probe and the rebuild readings read
+`istioctl ztunnel-config workloads`, and run records name the client and mesh
+versions with `istioctl version`. Those reads were recorded with the client at the
+pinned `1.31.0`, so it must match the pin, and `make step-2` refuses any other.
+
+Until 2026-09-15 a host without helm installed Istio with `istioctl install` and an
+IstioOperator file, and the telemetry components from manifests in
+`deploy/step-3-stress-nohelm`; both routes were retired that day on the author's
+direction, because Istio recommends Helm and agentgateway has no route but Helm, so
+a rebuild without helm was never reproducible end to end (`findings.md`, "Gate 3 /
+both receivers / Helm-first installation"), and the records that the Helm values
+and charts carry every setting and object those routes carried are in
+`experiments/runs/2026-09-15-helm-only/`.
 
 Every chart version and every values key used is recorded in `versions.yaml`
 with the URL it was read from. A chart's optional sub-components are disabled and
@@ -98,11 +120,10 @@ Workload certificates are issued for **seven days**, by the author's decision of
 CSR" — and ztunnel *does* set a positive TTL in its CSR, so that variable never governs
 a ztunnel leaf. What lengthens the leaves is ztunnel's own `SECRET_TTL`, which defaults
 to 24 hours in ztunnel's source; `MAX_WORKLOAD_CERT_TTL` already permits seven days at
-its 2160h default and is left alone. Both are set on both routes —
+its 2160h default and is left alone. Both are set —
 `pilot.env.DEFAULT_WORKLOAD_CERT_TTL` in `istio-values.yaml` and `env.SECRET_TTL` in
-`ztunnel-values.yaml` on the Helm route, `spec.values.pilot.env` and
-`spec.values.ztunnel.env` in the IstioOperator file on the other — and both renderings
-were checked to put the variables in their containers, not only in the values ConfigMap.
+`ztunnel-values.yaml` — and the rendering was checked to put the variables in their
+containers, not only in the values ConfigMap.
 `versions.yaml` key `istio-workload-cert-ttl` carries the quotes. The separate
 non-renewal quirk this lab has recorded is not addressed by this.
 
@@ -118,16 +139,6 @@ the chart's `podLabels` — the same treatment the mock model gets, and the lab'
 for anything off the traffic path that must be reachable in plaintext, rather than
 poking port holes in the mesh-wide policy. The proxy pods are unaffected. `versions.yaml`
 key `agentgateway-controlplane-ambient-optout`.
-
-Istio's configuration moved with the components. What Istio deprecated is its
-in-cluster operator, not `istioctl install -f <IstioOperator>`: its announcement
-says "This deprecation only affects users of the In-Cluster Operator. Users who
-install Istio with the istioctl install command and an IstioOperator YAML file
-are not affected", and "we recommend most users migrate to Helm". So the
-IstioOperator file is kept as the fallback route and the Helm values file was
-produced with Istio's own documented `istioctl manifest translate`; the two
-files' mesh-configuration blocks are byte-equal after the indentation offset, and
-the check is committed beside the run.
 
 The worker and mock Deployments do not rebuild themselves: a change under
 `agents/worker/`, `fixtures/mockllm/`, or `internal/` reaches them only
@@ -487,16 +498,10 @@ Step 3 adds the pipeline the Gate 3 traces travel through. It applies on top of
 step 2c and adds only new objects: a `telemetry` namespace holding an
 OpenTelemetry Collector, a Jaeger v2 trace backend and Prometheus.
 
-From 2026-09-12 the overlay is two overlays, because the three components are
-installed by chart when `helm` is on PATH. `deploy/step-3-stress` carries step
-3's *configuration* — the namespace, the Istio `Telemetry` resources, the two
-agentgateway policies, the waypoint ConfigMap and the three Deployment patches —
-and is applied on both routes. `deploy/step-3-stress-nohelm` applies on top of it
-and adds the three component manifests, and is applied only when `helm` is
-absent. Two overlays rather than one conditional list, so that
-`kubectl kustomize deploy/step-3-stress` has a single meaning and each overlay
-still applies cleanly on top of the previous step; the reasoning is in
-`deploy/step-3-stress/kustomization.yaml`'s header.
+The three components are installed from their charts. `deploy/step-3-stress`
+carries step 3's *configuration* — the namespace, the Istio `Telemetry` resources,
+the two agentgateway policies, the waypoint ConfigMap and the three Deployment
+patches — and `make step-3` applies it before the three `helm upgrade -i` calls.
 No OpenTelemetry Operator is installed: the Python agent starts under the
 OpenTelemetry distro's `opentelemetry-instrument` launcher, installed in its own
 image (see below), and the Operator's injection route was measured in four states
@@ -532,9 +537,8 @@ the collector's own endpoint. Read them with
 inside the cluster, or through a port-forward.
 
 One warning about applying this overlay, measured the hard way on 2026-09-12.
-**A plain `kubectl apply -k deploy/step-3-stress` (or `-k
-deploy/step-3-stress-nohelm`) is not a safe way to push a
-telemetry change.** Either overlay carries the Go Deployments, whose images are
+**A plain `kubectl apply -k deploy/step-3-stress` is not a safe way to push a
+telemetry change.** The overlay carries the Go Deployments, whose images are
 `ko://` references that only `kubectl kustomize … | ko apply` resolves, so a
 plain `apply -k` writes the literal `ko://` string into `deployment/worker` and
 `deployment/mockllm` and each gains an `InvalidImageName` pod beside its running
@@ -562,10 +566,10 @@ none. The control plane documents no tracing of its own, so it contributes
 metrics and nothing else.
 
 Istio's own tracing configuration is here too, in two pieces. The mesh
-configuration `deploy/step-2-ambient-agw/istio-meshconfig.yaml`, passed to the
-step-2 `istioctl install` with `-f`, declares one OpenTelemetry extension
-provider named `otel-tracing` pointing at the collector's OTLP gRPC port, which
-is the file the Istio OpenTelemetry task recommends creating for exactly this.
+configuration, the `meshConfig` block of `deploy/step-2-ambient-agw/istio-values.yaml`
+that `make step-2` installs with the istiod chart, declares one OpenTelemetry
+extension provider named `otel-tracing` pointing at the collector's OTLP gRPC port,
+in the shape the Istio OpenTelemetry task gives for it.
 The Telemetry resources in `deploy/step-3-stress/istio-tracing.yaml` select that
 provider at 100% sampling: one mesh-wide in `istio-system`, the root namespace
 this cluster reports, and one per waypoint in `lab` naming its Gateway, because

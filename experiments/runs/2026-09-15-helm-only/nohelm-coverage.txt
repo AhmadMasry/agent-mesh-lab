@@ -1,0 +1,225 @@
+# The retired step-3 overlay deploy/step-3-stress-nohelm against the Helm route, object by object.
+# Generated 2026-09-15T19:21:54Z by experiments/runs/2026-09-15-helm-only/nohelm-coverage.sh
+# at HEAD 896917a6e811fd68a5ebdcfedbc66c8d5f52b1bd; git status --short -- deploy Makefile -> (empty)
+# deploy subtree 1d0025adfe2e699e84681a18d7aeb235b722ef63; Makefile blob d5ccb2437ca6264d34c4a2cb823426b7c9f32b4a
+# host tools: Client Version: v1.37.0; helm v4.3.0+gbec5b06; yq (https://github.com/mikefarah/yq/) version v4.53.6
+#
+# rendered streams (sha256 of the bytes each command printed):
+#   13abf2f71d1c246f44d6d702e520621158e33340f563c2a0e48d691a1cf7e121  kubectl kustomize deploy/step-3-stress-nohelm
+#   9da55bbc6d0afd831d2cd60314322f3e7d3e6e147d360ffa84494a4ae4450190  kubectl kustomize deploy/step-3-stress
+#   9ab1fc6e750393dc5c0dabeb1d5cde4bb83f0013e1db63511d8b9718dca2db7c  helm template otel-collector opentelemetry-collector --repo https://open-telemetry.github.io/opentelemetry-helm-charts --version 0.173.1 -n telemetry -f deploy/step-3-stress/otel-collector-values.yaml
+#   ea64f7743eb1edaceeb1359e44fa10fcc1c6ef9cbaf7141779050c997a5ccfd9  helm template jaeger jaeger --repo https://jaegertracing.github.io/helm-charts --version 4.13.1 -n telemetry -f deploy/step-3-stress/jaeger-values.yaml
+#   f8f951e4d72d2f7fc0cad6b5156deecf6a2424220c2cd340dca623d8f5038a41  helm template prometheus prometheus --repo https://prometheus-community.github.io/helm-charts --version 29.28.1 -n telemetry -f deploy/step-3-stress/prometheus-values.yaml
+
+## 1. what the retired overlay adds to deploy/step-3-stress
+   objects in the nohelm render: 43; in the step-3-stress render: 32
+   in nohelm and not in step-3-stress: 11
+      + ClusterRole lab-prometheus
+      + ClusterRoleBinding lab-prometheus
+      + ConfigMap telemetry/otel-collector
+      + ConfigMap telemetry/prometheus
+      + Deployment telemetry/jaeger
+      + Deployment telemetry/otel-collector
+      + Deployment telemetry/prometheus
+      + Service telemetry/jaeger
+      + Service telemetry/otel-collector
+      + Service telemetry/prometheus
+      + ServiceAccount telemetry/prometheus
+   in step-3-stress and not in nohelm: 0
+   in both but not byte-identical as JSON: 0
+   objects declared by the three manifest files: 11; equal to the added set: yes
+
+## 2. what the three charts render
+      ClusterRole prometheus
+      ClusterRoleBinding prometheus
+      ConfigMap telemetry/otel-collector
+      ConfigMap telemetry/prometheus
+      Deployment telemetry/jaeger
+      Deployment telemetry/otel-collector
+      Deployment telemetry/prometheus
+      Service telemetry/jaeger
+      Service telemetry/otel-collector
+      Service telemetry/prometheus
+      ServiceAccount telemetry/jaeger
+      ServiceAccount telemetry/otel-collector
+      ServiceAccount telemetry/prometheus
+
+## 3. object by object
+
+### ClusterRole lab-prometheus  ->  ClusterRole prometheus
+   (apiGroup, resource, verb) manifest: 12; chart: 30; manifest triples missing on the chart route: []
+   chart-only (apiGroup, resource): [["core","configmaps"],["core","ingresses"],["core","nodes/metrics"],["discovery.k8s.io","endpointslices"],["networking.k8s.io","ingresses"],["networking.k8s.io","ingresses/status"]]
+   chart-only nonResourceURLs rules: [{"nonResourceURLs":["/metrics"],"verbs":["get"]}]
+   => COVERED
+
+### ClusterRoleBinding lab-prometheus  ->  ClusterRoleBinding prometheus
+   manifest binds ClusterRole lab-prometheus to [["ServiceAccount","telemetry","prometheus"]]
+   chart    binds ClusterRole prometheus to [["ServiceAccount","telemetry","prometheus"]]
+   same subjects, bound to the counterpart ClusterRole: yes
+   => COVERED
+
+### ConfigMap telemetry/otel-collector  ->  ConfigMap telemetry/otel-collector
+   config key the Deployment reads: manifest otel-collector[collector.yaml], chart otel-collector[relay]
+   receivers   manifest=["otlp"]                                       chart=["otlp"]                                       same
+   processors  manifest=["batch","filter","transform"]                 chart=["batch","filter","transform"]                 same
+   exporters   manifest=["debug","debug/logs","otlp","prometheus"]     chart=["debug","debug/logs","otlp_grpc","prometheus"] DIFFERENT
+   extensions  manifest=["health_check"]                               chart=["health_check"]                               same
+   connectors  manifest=[]                                             chart=[]                                             same
+   pipeline logs     receivers  manifest=["otlp"]                         chart=["otlp"]                         same
+   pipeline logs     processors manifest=["batch"]                        chart=["batch"]                        same
+   pipeline logs     exporters  manifest=["debug/logs"]                   chart=["debug/logs"]                   same
+   pipeline metrics  receivers  manifest=["otlp"]                         chart=["otlp"]                         same
+   pipeline metrics  processors manifest=["batch"]                        chart=["batch"]                        same
+   pipeline metrics  exporters  manifest=["prometheus","debug"]           chart=["prometheus","debug"]           same
+   pipeline traces   receivers  manifest=["otlp"]                         chart=["otlp"]                         same
+   pipeline traces   processors manifest=["filter","transform","batch"]   chart=["filter","transform","batch"]   same
+   pipeline traces   exporters  manifest=["otlp","debug"]                 chart=["otlp_grpc","debug"]            DIFFERENT
+   whole configuration, manifest with exporter otlp renamed otlp_grpc, against the chart: identical
+   other ConfigMap keys on the chart route: none
+   => COVERED
+
+### ConfigMap telemetry/prometheus  ->  ConfigMap telemetry/prometheus
+   config key the Deployment reads: manifest [prometheus.yml], chart [prometheus.yml]
+   scrape jobs manifest (5): ["istiod","ztunnel","agentgateway-proxies","agentgateway-controlplane","otel-collector"]
+   scrape jobs chart    (5): ["istiod","ztunnel","agentgateway-proxies","agentgateway-controlplane","otel-collector"]
+   same names, same order: yes
+   job istiod                     whole job body identical
+   job ztunnel                    whole job body identical
+   job agentgateway-proxies       whole job body identical
+   job agentgateway-controlplane  whole job body identical
+   job otel-collector             whole job body identical
+   global.evaluation_interval  manifest=15s      chart=15s      same
+   global.scrape_interval      manifest=15s      chart=15s      same
+   global.scrape_timeout       manifest=<absent> chart=10s   (on the chart route only)
+   top-level rule_files         manifest="<absent>" chart=[]
+   other ConfigMap keys on the chart route: ["alerting_rules.yml","alerts","allow-snippet-annotations","recording_rules.yml","rules"]
+   => COVERED
+
+### Deployment telemetry/jaeger  ->  Deployment telemetry/jaeger
+   image         manifest=jaegertracing/jaeger:2.20.0 chart=jaegertracing/jaeger:2.20.0 same
+   replicas      manifest=1 chart=1 same
+   hardening declared by the manifest: none
+   hardening declared on the chart route: {"container.securityContext.allowPrivilegeEscalation":false,"container.securityContext.capabilities":{"drop":["ALL"]},"container.securityContext.readOnlyRootFilesystem":true,"container.securityContext.runAsNonRoot":true,"pod.securityContext.fsGroup":10001,"pod.securityContext.runAsGroup":10001,"pod.securityContext.runAsUser":10001}
+   every manifest hardening setting present with the same value on the chart route: yes
+   service account token   manifest: not set (ServiceAccount default, not rendered by this route); chart: ServiceAccount jaeger: False
+   containerPorts manifest=[4317,4318,16686] chart=[4317,4318,5775,5778,6831,6832,8888,8889,9411,13133,16685,16686]; manifest ports not declared on the chart: []
+   readinessProbe manifest=/ on 16686 chart=/status on 13133
+   livenessProbe  manifest=None chart=/status on 13133
+   args          manifest=null
+                 chart=   null
+   volumes       manifest=[] chart=[]
+   env names     manifest=[] chart=[]
+   serviceAccountName manifest=<default> chart=jaeger
+   => COVERED
+
+### Deployment telemetry/otel-collector  ->  Deployment telemetry/otel-collector
+   image         manifest=otel/opentelemetry-collector-contrib:0.160.0 chart=otel/opentelemetry-collector-contrib:0.160.0 same
+   replicas      manifest=1 chart=1 same
+   hardening declared by the manifest: none
+   hardening declared on the chart route: {"container.securityContext.allowPrivilegeEscalation":false,"container.securityContext.capabilities":{"drop":["ALL"]},"container.securityContext.readOnlyRootFilesystem":true,"pod.automountServiceAccountToken":false,"pod.securityContext.runAsGroup":10001,"pod.securityContext.runAsNonRoot":true,"pod.securityContext.runAsUser":10001}
+   every manifest hardening setting present with the same value on the chart route: yes
+   service account token   manifest: not set (ServiceAccount default, not rendered by this route); chart: pod: False
+   containerPorts manifest=[4317,4318,8889,13133] chart=[4317,4318,8889]; manifest ports not declared on the chart: [13133]
+   readinessProbe manifest=/ on 13133 chart=/ on 13133
+   livenessProbe  manifest=None chart=/ on 13133
+   args          manifest=["--config=/conf/collector.yaml"]
+                 chart=   ["--config=/conf/relay.yaml"]
+   config file   manifest --config=/conf/collector.yaml -> ConfigMap otel-collector key collector.yaml; chart --config=/conf/relay.yaml -> ConfigMap otel-collector key relay
+   volumes       manifest=["configMap:otel-collector"] chart=["configMap:otel-collector"]
+   env names     manifest=[] chart=["MY_POD_IP","OTEL_K8S_NODE_NAME","OTEL_K8S_NODE_IP","OTEL_K8S_NAMESPACE","OTEL_K8S_POD_NAME","OTEL_K8S_POD_IP"]
+   serviceAccountName manifest=<default> chart=otel-collector
+   => COVERED
+
+### Deployment telemetry/prometheus  ->  Deployment telemetry/prometheus
+   image         manifest=prom/prometheus:v3.14.0 chart=prom/prometheus:v3.14.0 same
+   replicas      manifest=1 chart=1 same
+   hardening declared by the manifest: none
+   hardening declared on the chart route: {"container.securityContext.allowPrivilegeEscalation":false,"container.securityContext.capabilities":{"drop":["ALL"]},"container.securityContext.readOnlyRootFilesystem":true,"pod.securityContext.fsGroup":65534,"pod.securityContext.runAsGroup":65534,"pod.securityContext.runAsNonRoot":true,"pod.securityContext.runAsUser":65534}
+   every manifest hardening setting present with the same value on the chart route: yes
+   service account token   manifest: not set (ServiceAccount prometheus); chart: not set (ServiceAccount prometheus)
+   containerPorts manifest=[9090] chart=[9090]; manifest ports not declared on the chart: []
+   readinessProbe manifest=/-/ready on 9090 chart=/-/ready on 9090
+   livenessProbe  manifest=None chart=/-/healthy on 9090
+   args          manifest=["--config.file=/etc/prometheus/prometheus.yml","--storage.tsdb.path=/prometheus","--web.listen-address=0.0.0.0:9090"]
+                 chart=   ["--storage.tsdb.retention.time=15d","--config.file=/etc/config/prometheus.yml","--storage.tsdb.path=/data","--web.console.libraries=/etc/prometheus/console_libraries","--web.console.templates=/etc/prometheus/consoles","--web.enable-lifecycle"]
+   config file   manifest --config.file=/etc/prometheus/prometheus.yml -> ConfigMap prometheus key prometheus.yml; chart --config.file=/etc/config/prometheus.yml -> ConfigMap prometheus key prometheus.yml
+   volumes       manifest=["configMap:prometheus","emptyDir"] chart=["configMap:prometheus","emptyDir"]
+   env names     manifest=[] chart=[]
+   serviceAccountName manifest=prometheus chart=prometheus
+   => COVERED
+
+### Service telemetry/jaeger  ->  Service telemetry/jaeger
+   name          manifest=jaeger chart=jaeger same
+   (port, targetPort) manifest=[[4317,4317],[4318,4318],[16686,16686]]
+   (port, targetPort) chart=   [[4317,4317],[4318,4318],[5775,5775],[5778,5778],[6831,6831],[6832,6832],[8888,8888],[8889,8889],[9411,9411],[14250,14250],[14267,14267],[14268,14268],[16685,16685],[16686,16686]]
+   manifest ports missing on the chart route: []; chart-only ports: [[5775,5775],[5778,5778],[6831,6831],[6832,6832],[8888,8888],[8889,8889],[9411,9411],[14250,14250],[14267,14267],[14268,14268],[16685,16685]]
+   the chart Service's selector selects the chart Deployment's pods: yes
+   => COVERED
+
+### Service telemetry/otel-collector  ->  Service telemetry/otel-collector
+   name          manifest=otel-collector chart=otel-collector same
+   (port, targetPort) manifest=[[4317,4317],[4318,4318],[8889,8889]]
+   (port, targetPort) chart=   [[4317,4317],[4318,4318],[8889,8889]]
+   manifest ports missing on the chart route: []; chart-only ports: []
+   the chart Service's selector selects the chart Deployment's pods: yes
+   => COVERED
+
+### Service telemetry/prometheus  ->  Service telemetry/prometheus
+   name          manifest=prometheus chart=prometheus same
+   (port, targetPort) manifest=[[9090,9090]]
+   (port, targetPort) chart=   [[9090,9090]]
+   manifest ports missing on the chart route: []; chart-only ports: []
+   the chart Service's selector selects the chart Deployment's pods: yes
+   => COVERED
+
+### ServiceAccount telemetry/prometheus  ->  ServiceAccount telemetry/prometheus
+   name manifest=prometheus chart=prometheus; used by the chart Deployment: prometheus
+   automountServiceAccountToken manifest=<unset> chart=<unset>
+   => COVERED
+
+## 4. chart-route objects with no manifest counterpart (differences, not gaps)
+      ServiceAccount telemetry/jaeger
+      ServiceAccount telemetry/otel-collector
+
+## result: 11 manifest object(s); 11 covered; 0 not covered
+
+## 5. notes on the differences above (written by hand after the generated sections, 2026-09-15)
+# Nothing here changes a verdict; each line says what a listed difference is.
+#
+# collector
+#   - exporter `otlp` is `otlp_grpc` on the chart route: the chart's rewriteDeprecatedComponentNames
+#     default renames it, and with that one rename applied the whole configuration is identical
+#     (section 3). The component identity was recorded under versions.yaml key
+#     opentelemetry-collector-chart on 2026-09-12 and is not re-read here.
+#   - the ConfigMap key is `relay` rather than `collector.yaml`; the --config argument resolves to it
+#     through the volume's items on each route (section 3, "config file").
+#   - containerPort 13133 is declared by the manifest and not by the chart; both routes' probes
+#     address 13133 by number, and a containerPort declaration opens no listener.
+#   - the chart adds six downward-API variables (MY_POD_IP, OTEL_K8S_*); the rendered configuration
+#     contains no `env:` reference (`grep -c 'env:'` over the chart ConfigMap's relay key -> 0).
+#   - the chart adds a ServiceAccount with the pod's token mount off (section 4).
+# Jaeger
+#   - the chart probes /status on 13133 where the manifest probed / on 16686 (both the image's own
+#     listeners); its Service publishes eleven ports beyond the manifest's three and its pod declares
+#     nine beyond them; the three the lab addresses (4317, 4318, 16686) are present with the same
+#     target ports.
+#   - the chart adds a ServiceAccount with its token mount off (section 4).
+# Prometheus
+#   - global.scrape_timeout 10s is on the chart route only. The configuration reference
+#     (https://prometheus.io/docs/prometheus/latest/configuration/configuration/, read 2026-09-15)
+#     gives "[ scrape_timeout: <duration> | default = 10s ]", so the manifest's effective value is
+#     the same. rule_files [] and four empty rule/alert keys are on the chart route only and name
+#     no rule.
+#   - args: the config path and the storage path differ with the mount paths (each resolves to the
+#     same ConfigMap key, and storage is an emptyDir on both); --web.listen-address=0.0.0.0:9090 is
+#     on the manifest only, and the command-line reference
+#     (https://prometheus.io/docs/prometheus/latest/command-line/prometheus/, read 2026-09-15) gives
+#     it the default 0.0.0.0:9090; chart-only are --storage.tsdb.retention.time=15d, the two console
+#     paths, and --web.enable-lifecycle, which the same reference describes as "Enable shutdown and
+#     reload via HTTP request." (default false). The lab sends no such request.
+#   - the ClusterRole is wider on the chart route (section 3 lists the extra resources and the
+#     /metrics nonResourceURL); every manifest rule is present. Recorded on 2026-09-12 as well.
+# Hardening
+#   - none of the three manifests declared a securityContext or a token setting, so the check "every
+#     manifest hardening setting present on the chart route" holds trivially; what the chart route
+#     declares is listed per Deployment in section 3 and is carried by the values files.

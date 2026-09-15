@@ -1,0 +1,86 @@
+# Every setting of the retired istioctl installation route, beside the Helm values file that carries it.
+# Generated 2026-09-15T19:18:11Z by experiments/runs/2026-09-15-helm-only/operator-file-coverage.sh
+# at HEAD 896917a6e811fd68a5ebdcfedbc66c8d5f52b1bd with `git status --short -- deploy/step-2-ambient-agw Makefile` -> (empty)
+# blobs: deploy/step-2-ambient-agw/istio-meshconfig.yaml 400ef8cd268ebf9ded785834b48c748f0ddde14d; deploy/step-2-ambient-agw/istio-values.yaml 76e3f4c92f8bbba1aff36b8f80f54ca6953f1cb5; deploy/step-2-ambient-agw/ztunnel-values.yaml b278d3e21dc092d57a29fb78bb40cb0131634b5b
+
+## 1. the recipe line the route ran (Makefile, at this HEAD)
+   216:		istioctl install --set profile=ambient --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true -f deploy/step-2-ambient-agw/istio-meshconfig.yaml -y; \
+
+## 2. key-by-key table
+   #   retired route: source and key                                                                            value                                          Helm route: file and key                                                                         value                                          result
+   1   istio-meshconfig.yaml spec.values.pilot.env.DEFAULT_WORKLOAD_CERT_TTL                                    "168h"                                         istio-values.yaml pilot.env.DEFAULT_WORKLOAD_CERT_TTL                                            "168h"                                         EQUAL
+   2   istio-meshconfig.yaml spec.values.ztunnel.env.SECRET_TTL                                                 "168h"                                         ztunnel-values.yaml env.SECRET_TTL                                                               "168h"                                         EQUAL
+   3   istio-meshconfig.yaml spec.meshConfig.enableTracing                                                      true                                           istio-values.yaml meshConfig.enableTracing                                                       true                                           EQUAL
+   4   istio-meshconfig.yaml spec.meshConfig.extensionProviders.0.name                                          "otel-tracing"                                 istio-values.yaml meshConfig.extensionProviders.0.name                                           "otel-tracing"                                 EQUAL
+   5   istio-meshconfig.yaml spec.meshConfig.extensionProviders.0.opentelemetry.port                            4317                                           istio-values.yaml meshConfig.extensionProviders.0.opentelemetry.port                             4317                                           EQUAL
+   6   istio-meshconfig.yaml spec.meshConfig.extensionProviders.0.opentelemetry.service                         "otel-collector.telemetry.svc.cluster.local"   istio-values.yaml meshConfig.extensionProviders.0.opentelemetry.service                          "otel-collector.telemetry.svc.cluster.local"   EQUAL
+   7   istio-meshconfig.yaml spec.meshConfig.extensionProviders.0.opentelemetry.resource_detectors.environment  {}                                             istio-values.yaml meshConfig.extensionProviders.0.opentelemetry.resource_detectors.environment   {}                                             EQUAL
+   8   recipe --set profile=ambient (istiod)                                                                    "ambient"                                      istio-values.yaml profile                                                                        "ambient"                                      EQUAL
+   9   recipe --set profile=ambient (ztunnel)                                                                   "ambient"                                      ztunnel-values.yaml profile                                                                      "ambient"                                      EQUAL
+   10  recipe --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true                                             "true"                                         istio-values.yaml pilot.env.PILOT_ENABLE_AGENTGATEWAY                                            "true"                                         EQUAL
+   11  recipe --set profile=ambient (cni)                                                                       "ambient"                                      Makefile step-2: helm upgrade -i istio-cni ... --set profile=ambient                             lines=1 with-flag=1                            EQUAL
+
+   settings on the retired route: 11; not found on the Helm route: 0
+
+## 3. the converse: every setting in the two values files, and where the retired route had it
+   istio-values.yaml profile                                                                        "ambient"                                      <- recipe --set profile=ambient
+   istio-values.yaml pilot.env.PILOT_ENABLE_AGENTGATEWAY                                            "true"                                         <- recipe --set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true
+   istio-values.yaml pilot.env.DEFAULT_WORKLOAD_CERT_TTL                                            "168h"                                         <- istio-meshconfig.yaml spec.values.pilot.env.DEFAULT_WORKLOAD_CERT_TTL
+   istio-values.yaml meshConfig.enableTracing                                                       true                                           <- istio-meshconfig.yaml spec.meshConfig.enableTracing
+   istio-values.yaml meshConfig.extensionProviders.0.name                                           "otel-tracing"                                 <- istio-meshconfig.yaml spec.meshConfig.extensionProviders.0.name
+   istio-values.yaml meshConfig.extensionProviders.0.opentelemetry.port                             4317                                           <- istio-meshconfig.yaml spec.meshConfig.extensionProviders.0.opentelemetry.port
+   istio-values.yaml meshConfig.extensionProviders.0.opentelemetry.service                          "otel-collector.telemetry.svc.cluster.local"   <- istio-meshconfig.yaml spec.meshConfig.extensionProviders.0.opentelemetry.service
+   istio-values.yaml meshConfig.extensionProviders.0.opentelemetry.resource_detectors.environment   {}                                             <- istio-meshconfig.yaml spec.meshConfig.extensionProviders.0.opentelemetry.resource_detectors.environment
+   ztunnel-values.yaml profile                                                                      "ambient"                                      <- recipe --set profile=ambient
+   ztunnel-values.yaml env.SECRET_TTL                                                               "168h"                                         <- istio-meshconfig.yaml spec.values.ztunnel.env.SECRET_TTL
+
+## 4. the meshConfig block, byte for byte
+# The IstioOperator carries it at spec.meshConfig, two spaces deeper; istio-values.yaml at the top
+# level. Each block is cut as text from its 'meshConfig:' line to the next line at that line's
+# indentation or shallower (end of file in both), comment lines dropped, and the operator file's
+# block dedented by exactly two spaces. Nothing else is changed before hashing.
+
+### deploy/step-2-ambient-agw/istio-meshconfig.yaml, spec.meshConfig, dedented by 2
+   |meshConfig:
+   |  enableTracing: true
+   |  extensionProviders:
+   |    - name: otel-tracing
+   |      opentelemetry:
+   |        port: 4317
+   |        service: otel-collector.telemetry.svc.cluster.local
+   |        resource_detectors:
+   |          environment: {}
+   sha256 = 2079bfbe090ebb60e49a83d172077ceecf4da1b6e37e5968fd8d7600cf11ce88
+
+### deploy/step-2-ambient-agw/istio-values.yaml, meshConfig
+   |meshConfig:
+   |  enableTracing: true
+   |  extensionProviders:
+   |    - name: otel-tracing
+   |      opentelemetry:
+   |        port: 4317
+   |        service: otel-collector.telemetry.svc.cluster.local
+   |        resource_detectors:
+   |          environment: {}
+   sha256 = 2079bfbe090ebb60e49a83d172077ceecf4da1b6e37e5968fd8d7600cf11ce88
+
+   result: EQUAL
+
+## 5. MAX_WORKLOAD_CERT_TTL, which neither route sets (versions.yaml key istio-workload-cert-ttl)
+   deploy/step-2-ambient-agw/istio-meshconfig.yaml      keys named MAX_WORKLOAD_CERT_TTL = 0
+   deploy/step-2-ambient-agw/istio-values.yaml          keys named MAX_WORKLOAD_CERT_TTL = 0
+   deploy/step-2-ambient-agw/ztunnel-values.yaml        keys named MAX_WORKLOAD_CERT_TTL = 0
+
+## 6. the base chart and the recipe's profile (added by hand in the review round, 2026-09-15)
+# The retired recipe's `--set profile=ambient` applied to the whole istioctl install, base included. Section 2 has
+# rows for istiod, ztunnel and cni only, because `make step-2` passes base nothing:
+#   Makefile   helm upgrade -i istio-base base --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) -n istio-system --create-namespace --wait
+#   cluster    helm get values istio-base -n istio-system -o json -> null
+# Whether that loses anything is answered by rendering the chart both ways, on this host, no cluster involved:
+#   helm template istio-base base --repo https://blob.istio.io/istio-release/charts --version 1.31.0 -n istio-system
+#     sha256 8a07ede0e85a8394753d0eb486412b7b51529aa22cd4f4785d6186cd71852512   17 objects (15 CustomResourceDefinition, 1 ServiceAccount, 1 ValidatingWebhookConfiguration)
+#   helm template istio-base base --repo https://blob.istio.io/istio-release/charts --version 1.31.0 -n istio-system --set profile=ambient
+#     sha256 8a07ede0e85a8394753d0eb486412b7b51529aa22cd4f4785d6186cd71852512   17 objects
+#   cmp of the two renders: identical
+# So the profile changes nothing in base at 1.31.0, and it is not passed there: a twelfth application of the
+# recipe's profile with no effect on what is rendered, not a setting missing from the Helm route.
