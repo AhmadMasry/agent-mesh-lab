@@ -1,0 +1,21 @@
+# helm-required with a PATH that lacks helm. 2026-09-15T19:41:49Z, at HEAD b74cfc80309f445e984753b010f3034f7897f36f.
+# Makefile blob a2a87fb69597fda4fd2b643771ec7d95b0c849c3.
+
+## the normal PATH, for comparison
+$ command -v helm -> /opt/homebrew/bin/helm
+
+## cluster snapshot before (sha256 of helm list -A and every Deployment, DaemonSet and Pod with its uid and generation)
+   d3e03f23824ed51214a4509c1a9ff175452de72f58d8a3085cbeaa8bb3fc59b6
+
+## the demonstration
+$ env PATH=/usr/bin:/bin:/usr/sbin:/sbin sh -c 'command -v helm; echo "command -v helm exit=$?"; command -v make git kubectl; /usr/bin/make -n step-2; echo "make -n step-2 exit=$?"'
+command -v helm exit=1
+/usr/bin/make
+/usr/bin/git
+Makefile:62: *** step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. Install helm and re-run; nothing was applied.  Stop.
+make -n step-2 exit=2
+
+## cluster snapshot after
+   d3e03f23824ed51214a4509c1a9ff175452de72f58d8a3085cbeaa8bb3fc59b6
+   before and after: identical
+# 2026-09-15T20:19:33Z, review round: the HEAD (b74cfc8…) in this record's first line is pre-rewrite; an autosquash gave that commit a new SHA. The identity of the tree this guard ran against is the deployed paths' object IDs in rebuild/build.txt, which the commit "build(deploy): Istio installed by Helm only; the istioctl installation route retired" carries unchanged, and the Makefile blob a2a87fb6… above is one of them.

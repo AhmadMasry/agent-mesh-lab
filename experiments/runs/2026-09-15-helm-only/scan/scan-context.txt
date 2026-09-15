@@ -1,0 +1,98 @@
+Kubescape image scan, context and provenance. Written by experiments/scan-images.sh.
+Generated 2026-09-15T19:43:11Z.
+
+Scanner
+-------
+$ kubescape version
+Your current version is: 4.0.14
+Build commit: 031cd40cc8de696fa30a648001853443019ec97a
+Build date: 2026-09-09T12:24:41Z
+
+Installed with the route the documentation gives for this platform
+(https://kubescape.io/docs/install-cli/; on macOS, `brew install kubescape`).
+Kubescape is a CNCF incubating project (https://www.cncf.io/projects/); Trivy and
+Grype are not CNCF projects, which is why this is the scanner the author chose.
+
+Vulnerability database, as each scan reported it:
+Vulnerability DB built: 2026-09-15
+
+Command, per image, documented at https://kubescape.io/docs/scanning/
+('kubescape scan image <image:tag>' and '--format json ... --output'):
+  kubescape scan image <image> --format json --output <name>.json
+
+Nothing is installed in the cluster: no Kubescape Operator, no node agent, no
+host scanner. This is a host-side CLI run against images in the local Docker
+daemon.
+
+What was scanned
+----------------
+Kubescape reads the local Docker daemon, not the kind node's containerd store, so
+the four Go images are rebuilt for the scan by the make target with
+  KO_DOCKER_REPO=ko.local ko build ./agents/worker ./fixtures/mockllm ./fixtures/loadgen ./fixtures/replay --platform=linux/$(go env GOARCH)
+from the same sources and the same .ko.yaml base that make step-3 uses. The base
+ko resolved for this build, from ko-build.txt:
+  Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
+
+Image IDs of what was scanned (local daemon):
+  worker        ko.local/worker-918a018b7a581926ead34dec2ba0fb83:latest
+                sha256:e4c7513739ae023fa2d3f08991bd88f8316fd8b9ce97e695b63d3882e8e87a87
+  mockllm       ko.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:latest
+                sha256:365832b608a00f346e6dbc12f5bd3b255b072a8de24f54318cd6faa7aa6b3640
+  loadgen       ko.local/loadgen-3213c6ac35f3a712608a51068f91d823:latest
+                sha256:f3fc309518149fbe591409b241f1e57dbd890d37aa085c5750d9055c98449558
+  replay        ko.local/replay-693f7c26c04c2e161a535fb994879193:latest
+                sha256:e803cbc9235ffa7227c8e1adcf8f78dc070c3e54fa28da833dee50b5bb38e208
+  orchestrator  orchestrator:dev
+                sha256:d97755c6bb96c99f87734ddfd62b4989d785fd09c27cb6c44c3e8ab1bd68d771
+
+Image IDs the lab pods are running (cluster):
+  mockllm-cc5ff69d7-89f8t
+                kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:1d856f9f0ee9a2996956ef407555c43f971cba833563fbcc341e78daea99247e
+                sha256:925326b0a7432b011a4389563fedd59127f372c2b5d272d0a73ee97ec81bb4bb
+  orchestrator-6b649d9fd6-jp54s
+                docker.io/library/orchestrator:dev
+                docker.io/library/import-2026-09-15@sha256:fe6a6401404ce870bb131bcbbffc5e2341cdc080e8e012178a5bafcc447ae7de
+  worker-7cb87c8985-gpslh
+                kind.local/worker-918a018b7a581926ead34dec2ba0fb83:c2a9f7e24e392ad9186aa38aafb25424f58f4bff3486f700431666ca25f8cc78
+                sha256:a5de0939644b85282a0f2eb724d3aab00ef91ca6d1dc797361a9913ccd6b3f6a
+
+Read as it is rather than as one would like it: the ko image IDs above do NOT
+equal the ones the pods run. This repository has measured before
+(experiments/runs/2026-09-09-a3-pipeline/replicasets.txt, and the comments on
+step-2c and step-3 in the Makefile) that ko rebuilds unchanged sources to a new
+digest on every apply, so a rebuild for a scan cannot reproduce the digest a
+previous apply loaded. What is equal is the input: the same checkout, the same
+.ko.yaml base tag resolved to the same index digest, and the same toolchain.
+The orchestrator's two identifiers differ for a different reason and are the SAME
+BUILD: `kind load docker-image` re-imports into the node's containerd store,
+which computes its own digest over the imported archive, so the pod reports an
+import-<date>@sha256:... reference while the daemon holds the build's own id.
+
+Files
+-----
+<image>-findings.csv is the per-finding record, one row per counted finding,
+columns id,severity,package,version,fixed_in,type, sorted by severity then id.
+fixed_in is EMPTY when the report carries no fix -- nothing to upgrade to --
+which is the column the findings entry's Interpretation counts. Derived from
+<image>.json by experiments/lib/kubescape-findings.jq, which is what this script
+runs; the program's own comments explain the columns and why the fields need no
+quoting.
+
+The row count of each CSV equals that image's total in summary.csv, and their
+per-severity counts equal its columns.
+
+What Kubescape wrote for this scan, read from the files themselves rather than
+stated as a fixed fact -- a report's size follows its match count, and both move
+with the image and the database date:
+  worker            10912 bytes       0 matches
+  mockllm           10928 bytes       0 matches
+  loadgen           10928 bytes       0 matches
+  replay            10915 bytes       0 matches
+  orchestrator       5715 bytes       0 matches
+
+Which of those JSON reports is committed is not this script's statement to make.
+CLAUDE.md keeps run outputs to small CSV or JSONL, so that is a decision of the
+commit carrying this run, and its message is where it is recorded. What this file
+can say is the two numbers above, that `make scan-images` regenerates every
+report, and that each <image>-findings.csv is derived from its own <image>.json
+and carries every finding in it whether that JSON is committed or not.

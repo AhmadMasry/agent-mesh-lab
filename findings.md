@@ -981,3 +981,91 @@ One entry per gate, receiver, and mode or run. Numbers first, interpretation sec
 
   One component could not be taken at the version its project calls latest. a2a-python's v1.1.3 and v1.1.4 exist only as GitHub tags, because upstream's PyPI publish job rejected their metadata. The lab stays on 1.1.2, the latest installable release, and the gap is upstream's, already filed there.
 - Follow-up: none. No documented behaviour changed. The a2a-python packaging gap is upstream issue a2aproject/a2a-python#1199, filed by others and open, so no draft is added here.
+
+## Gate 3 / both receivers / Istio installed by Helm only — Does the lab rebuild from a deleted cluster with the istioctl installation route retired, with the same counts and trace shape?
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.2 openai-python=3.13.0
+- Environment: kind
+- Method: the author's direction of 2026-09-15 — "let's only use istioctl for debugging, but installation and deployment of istio, only helm" — and, for the step-3 telemetry manifests, "if step-3-stress covers everything step-3-stress-nohelm does, retire step-3-stress-nohelm". No pin moves. Telemetry pins, all unmoved: collector=otel/opentelemetry-collector-contrib:0.160.0 (chart 0.173.1), jaeger=jaegertracing/jaeger:2.20.0 (chart 4.13.1), prometheus=prom/prometheus:v3.14.0 (chart 29.28.1), otel-go=v1.46.0, otel-go-contrib=v0.71.0, and the OpenTelemetry Python distro 0.65b0 with exporter 1.44.0.
+
+  **Proof before deletion** (commit "build(deploy): Istio installed by Helm only; the istioctl installation route retired"). The retired route had two inputs, the IstioOperator file and the recipe's own `--set` flags, and every setting of both was looked up in the Helm values (`operator-file-coverage.txt`):
+
+  | # | retired route | value | Helm route | value |
+  | --- | --- | --- | --- | --- |
+  | 1 | istio-meshconfig.yaml `spec.values.pilot.env.DEFAULT_WORKLOAD_CERT_TTL` | "168h" | istio-values.yaml `pilot.env.DEFAULT_WORKLOAD_CERT_TTL` | "168h" |
+  | 2 | istio-meshconfig.yaml `spec.values.ztunnel.env.SECRET_TTL` | "168h" | ztunnel-values.yaml `env.SECRET_TTL` | "168h" |
+  | 3 | `spec.meshConfig.enableTracing` | true | istio-values.yaml `meshConfig.enableTracing` | true |
+  | 4 | `spec.meshConfig.extensionProviders[0].name` | "otel-tracing" | `meshConfig.extensionProviders[0].name` | "otel-tracing" |
+  | 5 | `….opentelemetry.port` | 4317 | `….opentelemetry.port` | 4317 |
+  | 6 | `….opentelemetry.service` | "otel-collector.telemetry.svc.cluster.local" | `….opentelemetry.service` | "otel-collector.telemetry.svc.cluster.local" |
+  | 7 | `….opentelemetry.resource_detectors.environment` | {} | `….resource_detectors.environment` | {} |
+  | 8 | recipe `--set profile=ambient` (istiod) | "ambient" | istio-values.yaml `profile` | "ambient" |
+  | 9 | recipe `--set profile=ambient` (ztunnel) | "ambient" | ztunnel-values.yaml `profile` | "ambient" |
+  | 10 | recipe `--set values.pilot.env.PILOT_ENABLE_AGENTGATEWAY=true` | "true" | istio-values.yaml `pilot.env.PILOT_ENABLE_AGENTGATEWAY` | "true" |
+  | 11 | recipe `--set profile=ambient` (cni) | "ambient" | `make step-2`'s `helm upgrade -i istio-cni … --set profile=ambient` | "ambient" |
+
+  Eleven settings, **0 not found**, every value equal; the converse holds too, every setting in the two values files has its source on the retired route. PILOT_ENABLE_AGENTGATEWAY was a `--set` on the recipe line, never a key of the file. The two meshConfig blocks, cut as text and the operator file's dedented by two spaces, are byte-equal: sha256 `2079bfbe090ebb60e49a83d172077ceecf4da1b6e37e5968fd8d7600cf11ce88` for both. For the telemetry overlay (`nohelm-coverage.txt`): `kubectl kustomize deploy/step-3-stress-nohelm` rendered 43 objects and `deploy/step-3-stress` 32; the difference is exactly the 11 objects of the three manifests, and the overlay changed none of the 32. `helm template` of the three charts with the lab's values, compared object by object, gives each of the 11 a counterpart: **11 covered, 0 not covered**. The collector's configuration is identical once the chart's exporter rename `otlp` → `otlp_grpc` is applied, with the same three pipelines; Prometheus has the same five scrape jobs, in the same order, with identical job bodies; the three images are the same; and the manifests declared no securityContext or token setting, so every hardening setting they carried is trivially on the chart route, which adds its own (listed per Deployment). The differences the record lists are all additions on the chart route or path renames: a wider ClusterRole, eleven more Jaeger Service ports, Jaeger's probe on `/status`:13133, six downward-API variables on the collector, Prometheus's `scrape_timeout: 10s` (the documented default) and different storage and config paths. Then the file and the overlay were deleted, `make step-2` and `make step-3` lost their non-Helm branches and gained the `helm-required` prerequisite, `istioctl version --remote=false` stayed as the pin check for the debugging client, the README section became "Istio and agentgateway through Helm; istioctl for debugging", and in `versions.yaml` the one key that describes the retired route itself, `istio-operator-deprecation`, gained a `retired` field. The in-use keys whose comments describe the retired inputs are named as history in that file's follow-ups 11 footer. `make -n step-2 step-2b step-3` was re-rendered with helm (`make-n.txt`). Documents read on 2026-09-15: Istio's in-cluster operator deprecation announcement, and Prometheus's command-line and configuration references.
+
+  **Rebuild.** From a deleted cluster, at the tree then at commit `b74cfc80309f445e984753b010f3034f7897f36f` (tree `ab2dcfe933bce033bafc7b26ecd8d1777f9b24d9`). Both IDs are pre-rewrite: the review round's autosquash gave that commit a new SHA and a new tree, because it also changed README.md, versions.yaml and one coverage record. The identity of what was built is therefore the deployed paths' object IDs. `rebuild/rebuild.sh` recorded them with `git status --short` empty, and the commit on this branch with the subject "build(deploy): Istio installed by Helm only; the istioctl installation route retired" carries every one of them unchanged. Check each with `git rev-parse <commit>:<path>`. The cluster torn down was the one the author's walkthrough built on main at 896917a through step 3.
+  - deploy `1abb50913e9352df00f6cee1c53050fd80d186e8`, Makefile `a2a87fb69597fda4fd2b643771ec7d95b0c849c3`, agents `5d0431e2d2243b834ef5e10cef53460d10c7b5c8`, fixtures `e6e6682ac210d535317f26cdb7abe305f611e27b`, experiments/lib `0cc3db9375f0abc487d41cca90f6d5a35a6c03c8`;
+  - the 11 `experiments/*.sh` blobs:
+    - gate1-baseline.sh `f56199646533e595e7dcf724c0cf5346a0ceba23`
+    - gate1-mockllm-deterministic.sh `47846b108c4920a5ca01f85cd20456afeecec289`
+    - gate1-three-ledgers.sh `1f197f9d4786f09fb959d0cf603a537698abae6f`
+    - gate1-wire-version.sh `8ec5eed18855d8733a157f17dcf07d76d832b415`
+    - gate2-a1.sh `08b4027d33cc7decc6af42a2dee4926c35e002d7`
+    - gate2-a2.sh `4109f70cc893bf8898e499950e193c7309149ba2`
+    - gate2-single-clean.sh `8093cc82ba629e4acd5240df9393caaf166abb22`
+    - gate3-gateway-retry-mechanics.sh `0f767f518df9716bc83165e0f04c71be059d5530`
+    - gate3-matrix.sh `6017d9e0064da972ffa220d626dda12d91ad91a5`
+    - gate3-trace-per-work-item.sh `3d8ea01d9e826cc93b9b9f7b1ed67fabff72cfa6`
+    - scan-images.sh `f531249d0450d43e914f3f3590747b5818f9f558`
+
+  `rebuild/build.txt` holds the same IDs, beside the pre-rewrite HEAD and tree.
+
+  It then ran `make teardown`, `cluster-kind`, `step-1`, `step-2`, `step-2b`, `step-2c` and `step-3`, each timed, with the deployed paths' status read before each. There was **no manual step**: no pod deleted, no rollout restarted, no helm upgrade outside a make target.
+
+  **Readings, in the order their stamps show, on the step-3 cluster:**
+  - 19:37:25Z: ztunnel's policy rejections, before (`rebuild/ztunnel-rejections-before.txt`).
+  - 19:37:45–47Z: Helm releases against the Makefile's pins; Istio images, container env and the mesh ConfigMap; certificates; the mesh shape; the egress waypoint's first XDS stream (`rebuild/readback.sh`). These committed files are a second pass. A first pass at 19:37:23Z, before the rejection count, had a malformed pod-label listing and is not committed. Both passes are read-only.
+  - 19:37:55Z: `gate2-single-clean.sh`, whose ledger lines run to 19:38:39Z.
+  - 19:38:51Z: `REPS=2 gate3-trace-per-work-item.sh`, whose latest committed ledger line is stamped 19:40:35.66Z, with dangling parents counted by `trace/dangling.py`.
+  - 19:40:53Z: the plaintext probe from the unenrolled `telemetry` namespace: followups-10's `probe.sh`, unedited, with `OUT` pointed here. Its `cleanup` phase removed its own prober pod afterwards, as the two scripts above remove their own client pods.
+  - 19:41:01Z: ztunnel's policy rejections, after.
+  - 19:41:02Z: the Prometheus target roster.
+  - 19:41:41Z–19:43:11Z: `make scan-images`, a host-side `ko build` and Kubescape run. The guard demonstration (19:41:49Z) and the cluster-side fields of the Versions line (19:43:10Z, `rebuild/versions-readback.txt`) were read while it ran; neither touches what it scans.
+
+  **Guard demonstration** (`guard/make-n-without-helm.txt`): `env PATH=/usr/bin:/bin:/usr/sbin:/sbin sh -c '…; /usr/bin/make -n step-2'`, with a cluster snapshot before and after.
+- Result: **the lab rebuilds from a deleted cluster on Helm alone, every target exited 0 on its first run, and every figure checked is the committed one.** Timings (`rebuild/timings.txt`): teardown 1.508 s, cluster-kind 18.631 s, step-1 53.666 s, step-2 95.246 s, step-2b 64.110 s, step-2c 21.055 s, step-3 92.231 s — 346.447 s in the seven targets, plus 0.442 s of header reads and eight gaps of 0.015–0.033 s (0.208 s together: the status read and a log line each). That is **347.097 s** from the log's first line to its last, every interval accounted for. Followups-9 rebuild #2 took 347 s by whole seconds.
+  - **Helm:** `helm list -A` lists **9 releases, all 9 deployed at their pins**: base, istiod, cni, ztunnel 1.31.0; agentgateway-crds and agentgateway v1.5.0; opentelemetry-collector 0.173.1, jaeger 4.13.1, prometheus 29.28.1 (`rebuild/helm-releases.txt`).
+  - **Istio:** `ztunnel:1.31.0-distroless`, `install-cni:1.31.0-distroless` and `pilot:1.31.0-distroless`; ztunnel's env `ISTIO_META_ENABLE_HBONE=true SECRET_TTL=168h`, istiod's `DEFAULT_WORKLOAD_CERT_TTL=168h PILOT_ENABLE_AGENTGATEWAY=true`; `istioctl version` reads client version 1.31.0, control plane version 1.31.0 and data plane version `(2 proxies), 1.31.0 (2 proxies)`, as recorded in `rebuild/istio.txt`: two proxies report 1.31.0 and two report no version.
+  - **Mesh ConfigMap:** `istio-system/istio` carries `enableTracing: true` and the `otel-tracing` provider, port 4317, service `otel-collector.telemetry.svc.cluster.local`, `resource_detectors.environment: {}`.
+  - **Certificates:** both leaves `VALID CERT true`. `lab/sa/default` reads NOT BEFORE 2026-09-15T19:31:49Z, NOT AFTER 2026-09-22T19:33:49Z; `agentgateway-system/sa/agentgateway-ingress` reads 19:33:03Z and 2026-09-22T19:35:03Z. Both are **168h02m** by subtraction, the same span and the same two-minute NOT BEFORE offset as the Helm-first and followups-10 readings. The control-plane node's ztunnel holds no leaf (`rebuild/istio.txt`).
+  - **mTLS shape, unchanged** (`rebuild/mesh-shape.txt`):
+    - PeerAuthentication `istio-system/default` STRICT, and `agentgateway-ingress-metrics` STRICT with 15020 PERMISSIVE;
+    - `lab` and `agentgateway-system` labelled ambient; `telemetry` and `agentgateway-egress` not;
+    - the mock and the agentgateway controller carry `istio.io/dataplane-mode: none` and read TCP in ztunnel; the worker, the orchestrator and the ingress proxy read HBONE;
+    - the two waypoint Gateways carry `parametersRef` to `waypoint-tracing-config` and `waypoint-orch-tracing-config`.
+  - **Egress waypoint:** Ready on its first XDS stream: 1 `Stream established`, 0 XDS connection errors, 0 readiness failures, 0 restarts, one ReplicaSet.
+  - **Clean check:** **`1/1/1/1/1` with `TASK_STATE_COMPLETED`** on both receivers (`clean-check/summary.csv`).
+  - **Trace at `REPS=2`:**
+    - both worker rows exactly **12** spans, `agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3`;
+    - both orchestrator rows exactly **66**, `agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2`;
+    - on all four rows: `trace_ids` 2, `hops_without_span` `none`, 2 roots and **0 dangling parents** (`trace/summary.csv`, `trace/dangling.csv`). No hop went dark.
+  - **Plaintext probe:** **curl exit 56, no status, `Recv failure: Connection reset by peer`** on both receivers. ztunnel's policy rejections read **0** on both nodes before the clean check and **2** after the probe, both on the worker node, both from `telemetry/mtls-probe`, one per receiver, each `explicitly denied by: istio-system/istio_converted_static_strict`.
+  - **Prometheus:** **9/9 up**: `agentgateway-proxies` 4, `ztunnel` 2, `istiod` 1, `agentgateway-controlplane` 1, `otel-collector` 1.
+  - **Scan:** `make scan-images`, Kubescape 4.0.14 with a vulnerability database built 2026-09-15: **0 in every severity for all five images**.
+  - **Images.** The images' sources are unchanged: agents, fixtures, internal, go.mod, go.sum, .ko.yaml and agents/orchestrator/uv.lock have the same object IDs as at 896917a, since commit 1 touched no image input. **The image bytes are not unchanged**, though. The three base references are tags by the author's decision of 2026-09-10, and all three resolved to new digests since the followups-10 rebuild of 2026-09-12 (`rebuild/base-digests.txt`):
+    - `gcr.io/distroless/static-debian13:nonroot` `1c2c046b…` → `e2e927ec…`;
+    - `amazonlinux:2023` `a0646b8b…` → `155687eb…`;
+    - `ghcr.io/astral-sh/uv:latest` `b485bd65…` → `62f8c047…`, the builder's uv going 0.12.13 → 0.12.15.
+
+    The Amazon Linux release moved with its digest: the followups-10 build log reads `2023.12.20260909` (36 times) and this one `2023.12.20260914` (37 times). Its `python3.14-3.14.7-1.amzn2023.0.1` is the same in both. The scan's 0 is taken on those rebuilt images. `versions.yaml` records the 2026-09-15 observations beside the earlier ones on `distroless`, `amazonlinux-2023` and `uv`; the pins, which are the tags, do not move.
+  - **Versions line:** the kind nodes run `kindest/node:v1.37.0@sha256:a1ed56cf…`, the Gateway API CRDs read bundle v1.6.2 experimental, and every agentgateway proxy runs `cr.agentgateway.dev/agentgateway:v1.5.0`, so the line above is byte-equal to the previous entry's.
+  - **Guard:** with `/opt/homebrew/bin` off PATH, `command -v helm` exits 1 and kubectl is not found. `make -n step-2` prints `Makefile:62: *** step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. Install helm and re-run; nothing was applied.  Stop.` and **exits 2**. The cluster snapshot is identical before and after (sha256 `d3e03f23…` both).
+
+  Run outputs are under `experiments/runs/2026-09-15-helm-only/`:
+  - proofs: `operator-file-coverage.{sh,txt}`, `nohelm-coverage.{sh,py,txt}`, `make-n.txt`;
+  - rebuild: `rebuild/{build.txt,timings.csv,timings.txt,rebuild.sh,readback.sh,rejections.sh,helm-releases.txt,istio.txt,mesh-shape.txt,egress-first-stream.txt,ztunnel-rejections-before.txt,ztunnel-rejections-after.txt,prometheus-targets.txt,versions-readback.txt,base-digests.txt}`;
+  - checks: `clean-check/`, `trace/`, `mtls/`, `scan/`, `guard/`.
+- Interpretation: as documented, and nothing the retired route carried was lost. Istio's recommendation, re-read the same day, is Helm. Its Helm charts take every setting this lab passed to `istioctl install`, all eleven of the file and the recipe. The three telemetry charts render a counterpart for every object the manifests declared, so deleting the two inputs removed a route and no configuration; a rebuild from a deleted cluster reproduced the clean check, the 12/66 trace shape with no dangling parent, the probe's two refusals, 9/9 targets and the clean scan. What the retirement changes in practice is small, because the route it removes had not been reproducible end to end since the Helm-first entry found that agentgateway's control plane installs only by Helm. Before this task a Helm-less host got through step 2 and then stopped at step 2b. It now stops at step 2 before building anything, and `make -n` says so too. istioctl stays for what the lab actually uses it for: the certificate check, the workload table and version reads, all taken at the pinned client. One thing the brief expected did not hold. The images are not unchanged, only their sources are. The base references float by design, and in three days all three moved, which a comparison of repository object IDs cannot show. The scan and every count held on the moved bases. The new digests, the Amazon Linux release and uv's version are recorded in `versions.yaml` as observations dated 2026-09-15, beside the earlier ones, and no pin moves.
+- Follow-up: none
