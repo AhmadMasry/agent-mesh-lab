@@ -644,6 +644,38 @@ header capture put it on the span, so a work item is queryable. Reading one
 work item gives two traces, not one: the client fetches the agent card and
 sends the message as two separate roots.
 
+Two of those spans are named after operations rather than after HTTP verbs, and
+they are the lab's own agentic work: every model call is a `chat <model>` span
+and every A2A call is an `invoke_agent <name>` span, as the OpenTelemetry GenAI
+semantic conventions describe them. Those conventions live in their own
+repository, publish no release, and read **Status: Development**; the commit this
+lab read, the pages, and every rule taken from them are recorded in
+`versions.yaml` under `genai-semantic-conventions`. The two sides get there
+differently, and the asymmetry is the point. Python installs a package:
+`opentelemetry-instrumentation-openai-v2`, added to the agent's dependencies and
+loaded by the same launcher that loads the Starlette and httpx instrumentations,
+so the orchestrator's model call becomes a `chat` span with no code in this
+project. Go has no package to install — `opentelemetry-go-contrib` carries no
+GenAI, LLM or agent instrumentation, and `a2a-go` has no OpenTelemetry dependency
+at all — so `internal/otel` gains two small helpers, `ModelCall` and
+`InvokeAgent`, which the worker's model client and the load client call around
+the calls they already made. The agent side is by hand in both languages: no
+instrumentation knows that an A2A send is an agent invocation, so the load client
+says so through `InvokeAgent` and the orchestrator's forward says so through the
+one explicit span in `agents/orchestrator/orchestrator/forward.py`. What the
+spans carry is what the conventions ask for — the operation, the provider name
+(a recorded choice, `versions.yaml` under `genai-provider-name`), the model or
+the agent's name, version and description from its card, the endpoint's address
+and port, the response id, model, finish reasons and token counts the endpoint
+reported, the A2A `contextId` as the conversation, and on a failure the status
+the server answered with as `error.type` — plus, on the spans this lab writes,
+the four `lab.*` identity attributes, because a span that is not an HTTP span
+carries none of the headers the collector's transform reads. What is left unset
+is recorded too: `gen_ai.agent.id`, because an A2A v1.0 agent card carries no
+agent identifier. The
+package's `chat` span carries the `gen_ai.*` attributes and no `lab.*` ones;
+`findings.md` counts both sides.
+
 No emitter samples, and since 2026-09-12 every one of them says so in its own
 file rather than inheriting a default: the three Go binaries set
 `sdktrace.AlwaysSample()` in `internal/otel/otel.go`, the Python agent sets

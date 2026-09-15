@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +15,9 @@ import (
 
 	"github.com/a2aproject/a2a-go/v2/a2a"
 	"github.com/a2aproject/a2a-go/v2/a2asrv"
+	otelapi "go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/AhmadMasry/agent-mesh-lab/internal/httpclient"
 )
@@ -224,4 +228,127 @@ func executeLines(lines []executionLine) []executionLine {
 		}
 	}
 	return out
+}
+
+// TestModelClient_EmitsAChatSpanCarryingTheEndpointsCounts is the worker's half
+// of the GenAI semantic conventions: internal/otel states what the span says,
+// this states that the model client puts one around its call and reads the
+// endpoint's own answer onto it. The conventions' names and rules are quoted in
+// internal/otel/otel.go beside the document revision they were read from.
+func TestModelClient_EmitsAChatSpanCarryingTheEndpointsCounts(t *testing.T) {
+	// The provider is process-wide, so it is put back afterwards: without this
+	// every later test in this package would record spans it never asked for.
+	// internal/otel/otel_test.go documents the same hazard.
+	previous := otelapi.GetTracerProvider()
+	t.Cleanup(func() { otelapi.SetTracerProvider(previous) })
+	sr := tracetest.NewSpanRecorder()
+	otelapi.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sr)))
+
+	f, srv := newFakeModel(http.StatusOK)
+	defer srv.Close()
+	mc := newModelClient(srv.URL+"/v1", "mock", "unused", httpclient.New(5*time.Second))
+
+	text, err := mc.complete(context.Background(), identity{WorkItem: "w1", MessageID: "m1", TaskID: "t1", Caller: "worker"}, "hi")
+	if err != nil || text != "the fixed answer" {
+		t.Fatalf("complete: %q, %v", text, err)
+	}
+	// The span is around the call, not an extra call: the endpoint saw one request.
+	if got := f.calls.Load(); got != 1 {
+		t.Fatalf("requests that reached the endpoint: got %d, want 1", got)
+	}
+
+	var chat sdktrace.ReadOnlySpan
+	for _, span := range sr.Ended() {
+		if span.Name() == "chat mock" {
+			chat = span
+		}
+	}
+	if chat == nil {
+		t.Fatalf("no span named %q; spans ended: %v", "chat mock", spanNames(sr.Ended()))
+	}
+	got := map[string]string{}
+	for _, kv := range chat.Attributes() {
+		got[string(kv.Key)] = kv.Value.Emit()
+	}
+	want := map[string]string{
+		"gen_ai.operation.name": "chat",
+		"gen_ai.provider.name":  "openai",
+		"gen_ai.request.model":  "mock",
+		// The fake answers the same shape the mock does; these are its values.
+		"gen_ai.response.id":             "chatcmpl-x",
+		"gen_ai.response.model":          "mock",
+		"gen_ai.response.finish_reasons": `["stop"]`,
+		"gen_ai.usage.input_tokens":      "1",
+		"gen_ai.usage.output_tokens":     "1",
+		"lab.work_item":                  "w1",
+		"lab.message_id":                 "m1",
+		"lab.task_id":                    "t1",
+		"lab.caller":                     "worker",
+	}
+	for key, value := range want {
+		if got[key] != value {
+			t.Errorf("chat span attribute %s: got %q, want %q", key, got[key], value)
+		}
+	}
+	// server.address and server.port name the endpoint this client was built for,
+	// which the test server picks a port for at random.
+	host, port, err := net.SplitHostPort(strings.TrimPrefix(srv.URL, "http://"))
+	if err != nil {
+		t.Fatalf("reading the test server's address: %v", err)
+	}
+	if got["server.address"] != host || got["server.port"] != port {
+		t.Errorf("chat span server.address/server.port: got %q and %q, want %q and %q",
+			got["server.address"], got["server.port"], host, port)
+	}
+}
+
+// TestModelClient_AFailedCallRecordsTheStatusAsErrorType states what the
+// conventions ask of error.type -- "the error code returned by the Generative AI
+// provider", with `500` among their example values -- rather than what the Go
+// error happens to be.
+func TestModelClient_AFailedCallRecordsTheStatusAsErrorType(t *testing.T) {
+	previous := otelapi.GetTracerProvider()
+	t.Cleanup(func() { otelapi.SetTracerProvider(previous) })
+	sr := tracetest.NewSpanRecorder()
+	otelapi.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sr)))
+
+	_, srv := newFakeModel(http.StatusServiceUnavailable)
+	defer srv.Close()
+	mc := newModelClient(srv.URL+"/v1", "mock", "unused", httpclient.New(5*time.Second))
+
+	_, err := mc.complete(context.Background(), identity{WorkItem: "w1", Caller: "worker"}, "hi")
+	if err == nil {
+		t.Fatal("a 503 from the endpoint returned no error")
+	}
+	// The message the call has always failed with, unchanged.
+	if err.Error() != "model call: status 503" {
+		t.Errorf("error text: got %q, want %q", err.Error(), "model call: status 503")
+	}
+
+	var chat sdktrace.ReadOnlySpan
+	for _, span := range sr.Ended() {
+		if span.Name() == "chat mock" {
+			chat = span
+		}
+	}
+	if chat == nil {
+		t.Fatalf("no span named %q; spans ended: %v", "chat mock", spanNames(sr.Ended()))
+	}
+	for _, kv := range chat.Attributes() {
+		if string(kv.Key) == "error.type" {
+			if kv.Value.Emit() != "503" {
+				t.Errorf("error.type: got %q, want %q", kv.Value.Emit(), "503")
+			}
+			return
+		}
+	}
+	t.Error("the failed chat span carries no error.type")
+}
+
+func spanNames(spans []sdktrace.ReadOnlySpan) []string {
+	names := make([]string, 0, len(spans))
+	for _, span := range spans {
+		names = append(names, span.Name())
+	}
+	return names
 }

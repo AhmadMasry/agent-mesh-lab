@@ -72,6 +72,21 @@ func instrument(hc *http.Client, workItem string) *http.Client {
 	return hc
 }
 
+// agentFromCard reads onto the invoke_agent span what the resolved card says
+// about the agent: its name, version and description, each Conditionally
+// Required "When available." in the conventions, and the URL the client will
+// dial, which server.address and server.port come from. That URL is taken only
+// when the card advertises exactly one interface -- a lab card does -- because
+// with several the client's own choice of interface, not this function's, is the
+// one being dialled.
+func agentFromCard(card *a2a.AgentCard) labotel.Agent {
+	agent := labotel.Agent{Name: card.Name, Version: card.Version, Description: card.Description}
+	if len(card.SupportedInterfaces) == 1 {
+		agent.URL = card.SupportedInterfaces[0].URL
+	}
+	return agent
+}
+
 type clientLine struct {
 	Ledger string `json:"ledger"`
 	TS     string `json:"ts"`
@@ -179,7 +194,16 @@ func main() {
 
 	req := a2areq.Build(lwi, text)
 	line.MessageID = req.Message.ID
-	res, err := client.SendMessage(ctx, req)
+
+	// The GenAI `invoke_agent <name>` client span. It wraps the send, not the
+	// card fetch above and not the knob branches below: one span is one logical
+	// invocation, whatever CLIENT_SDK_RESEND then puts on the wire, and the
+	// resend code is untouched. What it says about the agent is what the
+	// resolved card said, and the identity is what this Job exists to send.
+	sendCtx, invoke := labotel.InvokeAgent(ctx, agentFromCard(card),
+		labotel.Identity{WorkItem: lwi, MessageID: req.Message.ID, Caller: "loadgen"})
+
+	res, err := client.SendMessage(sendCtx, req)
 	if err != nil {
 		// A failed attempt is a recorded outcome, printed before anything else
 		// happens, so the line exists whatever the next attempt does.
@@ -188,6 +212,7 @@ func main() {
 		if !k.sdkResend {
 			// The process exits non-zero only because no result object exists
 			// to describe.
+			invoke.End(err)
 			done(3)
 		}
 		// The SDK-layer resend asked for by CLIENT_SDK_RESEND: the same request
@@ -195,9 +220,10 @@ func main() {
 		// the wire is what A.2 measures, so nothing here is changed for it.
 		line.Attempt = 2
 		line.Error = ""
-		res, err = client.SendMessage(ctx, req)
+		res, err = client.SendMessage(sendCtx, req)
 		if err != nil {
 			line.Error = err.Error()
+			invoke.End(err)
 			emit()
 			done(3)
 		}
@@ -207,12 +233,17 @@ func main() {
 		line.ResultKind = "task"
 		line.TaskID = string(r.ID)
 		line.State = string(r.Status.State)
+		// The A2A contextId is the conversation identifier the conventions ask
+		// for, and it exists only when the answer was a Task.
+		invoke.Conversation(r.ContextID)
 	case *a2a.Message:
 		line.ResultKind = "message"
 		line.TaskID = string(r.TaskID)
+		invoke.Conversation(r.ContextID)
 	default:
 		line.ResultKind = fmt.Sprintf("%T", res)
 	}
+	invoke.End(nil)
 	emit()
 	done(0)
 }

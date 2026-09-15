@@ -14,9 +14,15 @@
 #     agentgateway ingress Gateway and its proxy in a namespace of their own,
 #     `agentgateway-ingress`, labelled ambient, and leaves the CONTROL PLANE's namespace
 #     `agentgateway-system` unlabelled, so the controller is outside the mesh by its namespace.
-#     It is infrastructure, not the traffic path: it serves XDS over its own TLS, its clients --
-#     the egress proxy by agentgateway's documented egress shape and Prometheus -- are outside
-#     the mesh and speak plaintext to it, and it carries no agentgateway traffic. From
+#     It is infrastructure, not the traffic path: it serves XDS over its own TLS and carries no
+#     agentgateway traffic, and it has three clients. Two are outside the mesh and speak
+#     plaintext to it: the egress proxy, by agentgateway's documented egress shape, and
+#     Prometheus. The third is the ingress proxy itself, which since that change dials XDS from
+#     inside the mesh, across the namespace boundary, to
+#     https://agentgateway.agentgateway-system.svc.cluster.local:9978 -- a captured pod reaching
+#     an uncaptured one, which ztunnel does not tunnel, so that leg is agentgateway's own TLS
+#     and not mesh mTLS. The hops table of the followups-12 rebuild records it as `unknown`
+#     connection security for exactly that reason. From
 #     2026-09-12 to 2026-09-15 the ingress shared that namespace, the namespace was labelled,
 #     and the controller was opted out pod by pod instead (agentgateway-values.yaml says why
 #     and what the 2026-09-12 rebuild recorded: ztunnel refusing Prometheus's scrape of the

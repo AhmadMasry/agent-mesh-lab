@@ -268,10 +268,14 @@ step-2b: helm-required check-go-sources-clean orchestrator-image
 	helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
 		--create-namespace --namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION)
 	# agentgateway-system holds the control plane only and is not labelled ambient, so the
-	# controller is outside the mesh by its namespace: it is not on the traffic path, and
-	# its two clients, the egress waypoint's XDS and Prometheus, speak plaintext to it.
-	# The values file sets nothing since follow-ups 12 and its header says what it set
-	# before and why that is gone.
+	# controller is outside the mesh by its namespace: it is not on the traffic path. It
+	# has three clients. Two are outside the mesh and speak plaintext to it: the egress
+	# waypoint's XDS and Prometheus. The third, since follow-ups 12, is the ingress proxy
+	# in the ambient namespace agentgateway-ingress, whose XDS dial to
+	# https://agentgateway.agentgateway-system.svc.cluster.local:9978 leaves a captured pod
+	# for an uncaptured one: ztunnel does not tunnel it, so it is not mesh mTLS, and what
+	# rides it is agentgateway's own TLS. The values file sets nothing since follow-ups 12
+	# and its header says what it set before and why that is gone.
 	helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
 		--namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION) \
 		-f deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml --wait
