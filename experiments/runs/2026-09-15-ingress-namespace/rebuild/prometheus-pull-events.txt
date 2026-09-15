@@ -1,0 +1,137 @@
+# The Prometheus pod installed by make step-3, read 2026-09-15T21:28:11Z (host clock), 9 s after make step-3 exited 0
+# at 21:28:02Z and before any reading began. Read-only. Captured on the controller's word so the pod's Events are kept
+# before they age out.
+#
+# What the Events below say, with the Age column subtracted from the read time (the cluster clock; the host's first
+# long sleep came after this read, host-sleep.txt):
+#   21:27:07Z  Scheduled; the kubelet starts pulling prom/prometheus:v3.14.0
+#   21:27:11Z  Failed: "failed to copy: httpReadSeeker: failed open: unexpected status from GET request to
+#              https://registry-1.docker.io/v2/prom/prometheus/blobs/sha256:e80cad42...: 502 Bad Gateway" -> ErrImagePull
+#   21:27:12Z  BackOff: ImagePullBackOff
+#   21:27:23Z  Pulling again (the event's count is 2)
+#   21:27:31Z  Pulled "in 7.346s (7.346s including waiting). Image size: 100695687 bytes"; Created; Started
+# The registry answered one blob request with 502; the kubelet's image back-off retried the pull on its own, 12 s after
+# the failure, and the second pull succeeded. About 16 s of step-3's 95.877 s wall lie between the first pull's start
+# and the second's. This is the platform's image-pull behaviour, recorded and not changed: the lab's no-retry rule
+# concerns the fixtures and the traffic path, and no hand touched the pod. The Helm install's --wait and the rollout
+# wait then held until the pod was Ready (its readiness probe reads delay=30s, below), which is how step-3 still
+# exited 0 on its first run.
+
+## kubectl -n telemetry get pods -o wide
+NAME                              READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+jaeger-656f58f4c7-f5fqd           1/1     Running   0          73s   10.244.1.25   agent-mesh-lab-worker   <none>           <none>
+otel-collector-7c6665959f-ftsn2   1/1     Running   0          84s   10.244.1.24   agent-mesh-lab-worker   <none>           <none>
+prometheus-566c455884-zqfnl       1/1     Running   0          64s   10.244.1.26   agent-mesh-lab-worker   <none>           <none>
+
+## kubectl -n telemetry describe pod/prometheus-566c455884-zqfnl
+Name:             prometheus-566c455884-zqfnl
+Namespace:        telemetry
+Priority:         0
+Service Account:  prometheus
+Node:             agent-mesh-lab-worker/172.18.0.3
+Start Time:       Wed, 16 Sep 2026 00:27:07 +0300
+Labels:           app.kubernetes.io/component=server
+                  app.kubernetes.io/instance=prometheus
+                  app.kubernetes.io/name=prometheus
+                  app.kubernetes.io/part-of=prometheus
+                  app.kubernetes.io/version=v3.14.0
+                  helm.sh/chart=prometheus-29.28.1
+                  pod-template-hash=566c455884
+Annotations:      <none>
+Status:           Running
+IP:               10.244.1.26
+IPs:
+  IP:           10.244.1.26
+Controlled By:  ReplicaSet/prometheus-566c455884
+Containers:
+  prometheus-server:
+    Container ID:  containerd://425d23a4c063ebe6a8805be3a00e5bbba7defb3ef3da1ea879a7e13af9ac6f7d
+    Image:         prom/prometheus:v3.14.0
+    Image ID:      docker.io/prom/prometheus@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0
+    Port:          9090/TCP
+    Host Port:     0/TCP
+    Args:
+      --storage.tsdb.retention.time=15d
+      --config.file=/etc/config/prometheus.yml
+      --storage.tsdb.path=/data
+      --web.console.libraries=/etc/prometheus/console_libraries
+      --web.console.templates=/etc/prometheus/consoles
+      --web.enable-lifecycle
+    State:          Running
+      Started:      Wed, 16 Sep 2026 00:27:31 +0300
+    Ready:          True
+    Restart Count:  0
+    Liveness:       http-get http://:9090/-/healthy delay=30s timeout=10s period=15s successThreshold=1 failureThreshold=3
+    Readiness:      http-get http://:9090/-/ready delay=30s timeout=4s period=5s successThreshold=1 failureThreshold=3
+    Environment:    <none>
+    Mounts:
+      /data from storage-volume (rw)
+      /etc/config from config-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-sxl7k (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  config-volume:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      prometheus
+    Optional:  false
+  storage-volume:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  kube-api-access-sxl7k:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                From               Message
+  ----     ------     ----               ----               -------
+  Normal   Scheduled  64s                default-scheduler  Successfully assigned telemetry/prometheus-566c455884-zqfnl to agent-mesh-lab-worker
+  Warning  Failed     60s                kubelet            spec.containers{prometheus-server}: Failed to pull image "prom/prometheus:v3.14.0": failed to pull and unpack image "docker.io/prom/prometheus:v3.14.0": failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/prom/prometheus/blobs/sha256:e80cad428b4d2dd5e1a839b9f94726c6a29605833e50b432497fcf6243e46594: 502 Bad Gateway
+  Warning  Failed     60s                kubelet            spec.containers{prometheus-server}: Error: ErrImagePull
+  Normal   BackOff    59s                kubelet            spec.containers{prometheus-server}: Back-off pulling image "prom/prometheus:v3.14.0"
+  Warning  Failed     59s                kubelet            spec.containers{prometheus-server}: Error: ImagePullBackOff
+  Normal   Pulling    48s (x2 over 64s)  kubelet            spec.containers{prometheus-server}: Pulling image "prom/prometheus:v3.14.0"
+  Normal   Pulled     40s                kubelet            spec.containers{prometheus-server}: Successfully pulled image "prom/prometheus:v3.14.0" in 7.346s (7.346s including waiting). Image size: 100695687 bytes.
+  Normal   Created    40s                kubelet            spec.containers{prometheus-server}: Container created
+  Normal   Started    40s                kubelet            spec.containers{prometheus-server}: Container started
+
+## kubectl -n telemetry get events --sort-by=.lastTimestamp (every event in the namespace)
+LAST SEEN   TYPE      REASON              OBJECT                                 SUBOBJECT                                  SOURCE                           MESSAGE                                                                                                                                                                                                                                                                                                                                                  FIRST SEEN   COUNT   NAME
+84s         Normal    Pulling             pod/otel-collector-7c6665959f-ftsn2    spec.containers{opentelemetry-collector}   kubelet, agent-mesh-lab-worker   Pulling image "otel/opentelemetry-collector-contrib:0.160.0"                                                                                                                                                                                                                                                                                             84s          1       otel-collector-7c6665959f-ftsn2.18d59bb02a550516
+84s         Normal    ScalingReplicaSet   deployment/otel-collector                                                         deployment-controller            Scaled up replica set otel-collector-7c6665959f from 0 to 1                                                                                                                                                                                                                                                                                              84s          1       otel-collector.18d59bb01468ae75
+84s         Normal    SuccessfulCreate    replicaset/otel-collector-7c6665959f                                              replicaset-controller            Created pod: otel-collector-7c6665959f-ftsn2                                                                                                                                                                                                                                                                                                             84s          1       otel-collector-7c6665959f.18d59bb0148f8e72
+84s         Normal    Scheduled           pod/otel-collector-7c6665959f-ftsn2                                               default-scheduler                Successfully assigned telemetry/otel-collector-7c6665959f-ftsn2 to agent-mesh-lab-worker                                                                                                                                                                                                                                                                 84s          1       otel-collector-7c6665959f-ftsn2.18d59bb014ac29b0
+76s         Warning   Unhealthy           pod/otel-collector-7c6665959f-ftsn2    spec.containers{opentelemetry-collector}   kubelet, agent-mesh-lab-worker   Readiness probe failed: Get "http://10.244.1.24:13133/": dial tcp 10.244.1.24:13133: connect: connection refused                                                                                                                                                                                                                                         76s          1       otel-collector-7c6665959f-ftsn2.18d59bb205c9b8b0
+76s         Normal    Started             pod/otel-collector-7c6665959f-ftsn2    spec.containers{opentelemetry-collector}   kubelet, agent-mesh-lab-worker   Container started                                                                                                                                                                                                                                                                                                                                        76s          1       otel-collector-7c6665959f-ftsn2.18d59bb205b5a051
+76s         Normal    Created             pod/otel-collector-7c6665959f-ftsn2    spec.containers{opentelemetry-collector}   kubelet, agent-mesh-lab-worker   Container created                                                                                                                                                                                                                                                                                                                                        76s          1       otel-collector-7c6665959f-ftsn2.18d59bb2046a445b
+76s         Normal    Pulled              pod/otel-collector-7c6665959f-ftsn2    spec.containers{opentelemetry-collector}   kubelet, agent-mesh-lab-worker   Successfully pulled image "otel/opentelemetry-collector-contrib:0.160.0" in 7.948s (7.948s including waiting). Image size: 100698310 bytes.                                                                                                                                                                                                              76s          1       otel-collector-7c6665959f-ftsn2.18d59bb20418d26c
+73s         Normal    ScalingReplicaSet   deployment/jaeger                                                                 deployment-controller            Scaled up replica set jaeger-656f58f4c7 from 0 to 1                                                                                                                                                                                                                                                                                                      73s          1       jaeger.18d59bb29abf55c5
+73s         Normal    SuccessfulCreate    replicaset/jaeger-656f58f4c7                                                      replicaset-controller            Created pod: jaeger-656f58f4c7-f5fqd                                                                                                                                                                                                                                                                                                                     73s          1       jaeger-656f58f4c7.18d59bb29ae3195e
+73s         Normal    Pulling             pod/jaeger-656f58f4c7-f5fqd            spec.containers{jaeger}                    kubelet, agent-mesh-lab-worker   Pulling image "jaegertracing/jaeger:2.20.0"                                                                                                                                                                                                                                                                                                              73s          1       jaeger-656f58f4c7-f5fqd.18d59bb29eaa4a71
+73s         Normal    Scheduled           pod/jaeger-656f58f4c7-f5fqd                                                       default-scheduler                Successfully assigned telemetry/jaeger-656f58f4c7-f5fqd to agent-mesh-lab-worker                                                                                                                                                                                                                                                                         73s          1       jaeger-656f58f4c7-f5fqd.18d59bb29b0543f3
+68s         Normal    Started             pod/jaeger-656f58f4c7-f5fqd            spec.containers{jaeger}                    kubelet, agent-mesh-lab-worker   Container started                                                                                                                                                                                                                                                                                                                                        68s          1       jaeger-656f58f4c7-f5fqd.18d59bb3dc2be764
+68s         Normal    Created             pod/jaeger-656f58f4c7-f5fqd            spec.containers{jaeger}                    kubelet, agent-mesh-lab-worker   Container created                                                                                                                                                                                                                                                                                                                                        68s          1       jaeger-656f58f4c7-f5fqd.18d59bb3daac27ce
+68s         Normal    Pulled              pod/jaeger-656f58f4c7-f5fqd            spec.containers{jaeger}                    kubelet, agent-mesh-lab-worker   Successfully pulled image "jaegertracing/jaeger:2.20.0" in 5.293s (5.293s including waiting). Image size: 46912021 bytes.                                                                                                                                                                                                                                68s          1       jaeger-656f58f4c7-f5fqd.18d59bb3da2a5809
+64s         Normal    SuccessfulCreate    replicaset/prometheus-566c455884                                                  replicaset-controller            Created pod: prometheus-566c455884-zqfnl                                                                                                                                                                                                                                                                                                                 64s          1       prometheus-566c455884.18d59bb4a446ddef
+64s         Normal    Scheduled           pod/prometheus-566c455884-zqfnl                                                   default-scheduler                Successfully assigned telemetry/prometheus-566c455884-zqfnl to agent-mesh-lab-worker                                                                                                                                                                                                                                                                     64s          1       prometheus-566c455884-zqfnl.18d59bb4a4760e80
+64s         Normal    ScalingReplicaSet   deployment/prometheus                                                             deployment-controller            Scaled up replica set prometheus-566c455884 from 0 to 1                                                                                                                                                                                                                                                                                                  64s          1       prometheus.18d59bb4a429a400
+60s         Warning   Failed              pod/prometheus-566c455884-zqfnl        spec.containers{prometheus-server}         kubelet, agent-mesh-lab-worker   Failed to pull image "prom/prometheus:v3.14.0": failed to pull and unpack image "docker.io/prom/prometheus:v3.14.0": failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/prom/prometheus/blobs/sha256:e80cad428b4d2dd5e1a839b9f94726c6a29605833e50b432497fcf6243e46594: 502 Bad Gateway   60s          1       prometheus-566c455884-zqfnl.18d59bb5bf8cc205
+60s         Warning   Failed              pod/prometheus-566c455884-zqfnl        spec.containers{prometheus-server}         kubelet, agent-mesh-lab-worker   Error: ErrImagePull                                                                                                                                                                                                                                                                                                                                      60s          1       prometheus-566c455884-zqfnl.18d59bb5bf8ee17a
+59s         Normal    BackOff             pod/prometheus-566c455884-zqfnl        spec.containers{prometheus-server}         kubelet, agent-mesh-lab-worker   Back-off pulling image "prom/prometheus:v3.14.0"                                                                                                                                                                                                                                                                                                         59s          1       prometheus-566c455884-zqfnl.18d59bb5f3ac657c
+59s         Warning   Failed              pod/prometheus-566c455884-zqfnl        spec.containers{prometheus-server}         kubelet, agent-mesh-lab-worker   Error: ImagePullBackOff                                                                                                                                                                                                                                                                                                                                  59s          1       prometheus-566c455884-zqfnl.18d59bb5f3ae2443
+48s         Normal    Pulling             pod/prometheus-566c455884-zqfnl        spec.containers{prometheus-server}         kubelet, agent-mesh-lab-worker   Pulling image "prom/prometheus:v3.14.0"                                                                                                                                                                                                                                                                                                                  64s          2       prometheus-566c455884-zqfnl.18d59bb4bb691650
+40s         Normal    Pulled              pod/prometheus-566c455884-zqfnl        spec.containers{prometheus-server}         kubelet, agent-mesh-lab-worker   Successfully pulled image "prom/prometheus:v3.14.0" in 7.346s (7.346s including waiting). Image size: 100695687 bytes.                                                                                                                                                                                                                                   40s          1       prometheus-566c455884-zqfnl.18d59bba41f27350
+40s         Normal    Created             pod/prometheus-566c455884-zqfnl        spec.containers{prometheus-server}         kubelet, agent-mesh-lab-worker   Container created                                                                                                                                                                                                                                                                                                                                        40s          1       prometheus-566c455884-zqfnl.18d59bba425e09f5
+40s         Normal    Started             pod/prometheus-566c455884-zqfnl        spec.containers{prometheus-server}         kubelet, agent-mesh-lab-worker   Container started                                                                                                                                                                                                                                                                                                                                        40s          1       prometheus-566c455884-zqfnl.18d59bba43e9f7de

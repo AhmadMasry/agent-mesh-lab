@@ -1,0 +1,30 @@
+# Gateways, routes and policies on the rebuilt cluster, as their status reads, 2026-09-15T21:28:29Z. Read-only.
+
+## Gateways: Accepted and Programmed
+   agentgateway-egress/agw-egress class=agentgateway Accepted=True (Accepted) Programmed=True (Programmed) addresses=10.96.79.49
+   agentgateway-ingress/agentgateway-ingress class=agentgateway Accepted=True (Accepted) Programmed=True (Programmed) addresses=10.96.179.187
+   lab/agentgateway-waypoint class=istio-agentgateway-waypoint Accepted=True (Accepted) Programmed=True (Programmed) addresses=10.96.71.94,agentgateway-waypoint.lab.svc.cluster.local
+   lab/agentgateway-waypoint-orch class=istio-agentgateway-waypoint Accepted=True (Accepted) Programmed=True (Programmed) addresses=10.96.49.19,agentgateway-waypoint-orch.lab.svc.cluster.local
+
+## HTTPRoutes: each parent's Accepted and ResolvedRefs, as the controller that holds the parent writes them
+   agentgateway-egress/model-via-agw parent=agentgateway-egress/agw-egress controller=agentgateway.dev/agentgateway Accepted=True (Accepted) ResolvedRefs=True (ResolvedRefs)
+   lab/orchestrator-ingress parent=agentgateway-ingress/agentgateway-ingress controller=agentgateway.dev/agentgateway Accepted=True (Accepted) ResolvedRefs=True (ResolvedRefs)
+   lab/worker parent=lab/worker controller=istio.io/agentgateway-waypoint-controller Accepted=True (Accepted) ResolvedRefs=True (ResolvedRefs)
+   lab/worker-ingress parent=agentgateway-ingress/agentgateway-ingress controller=agentgateway.dev/agentgateway Accepted=True (Accepted) ResolvedRefs=True (ResolvedRefs)
+
+## AgentgatewayPolicies: status, whole
+   agentgateway-egress/access-logs targets=agw-egress status={"ancestors":[{"ancestorRef":{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"agw-egress","namespace":"agentgateway-egress"},"conditions":[{"lastTransitionTime":"2026-09-15T21:26:45Z","message":"Policy accepted","observedGeneration":1,"reason":"Valid","status":"True","type":"Accepted"},{"lastTransitionTime":"2026-09-15T21:26:47Z","message":"Attached to all targets","observedGeneration":1,"reason":"Attached","status":"True","type":"Attached"}],"controllerName":"agentgateway.dev/agentgateway"}]}
+   agentgateway-egress/tracing targets=agw-egress status={"ancestors":[{"ancestorRef":{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"agw-egress","namespace":"agentgateway-egress"},"conditions":[{"lastTransitionTime":"2026-09-15T21:26:45Z","message":"Policy accepted","observedGeneration":1,"reason":"Valid","status":"True","type":"Accepted"},{"lastTransitionTime":"2026-09-15T21:26:47Z","message":"Attached to all targets","observedGeneration":1,"reason":"Attached","status":"True","type":"Attached"}],"controllerName":"agentgateway.dev/agentgateway"}]}
+   agentgateway-ingress/access-logs targets=agentgateway-ingress status={"ancestors":[{"ancestorRef":{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"agentgateway-ingress","namespace":"agentgateway-ingress"},"conditions":[{"lastTransitionTime":"2026-09-15T21:26:45Z","message":"Policy accepted","observedGeneration":1,"reason":"Valid","status":"True","type":"Accepted"},{"lastTransitionTime":"2026-09-15T21:26:47Z","message":"Attached to all targets","observedGeneration":1,"reason":"Attached","status":"True","type":"Attached"}],"controllerName":"agentgateway.dev/agentgateway"}]}
+   agentgateway-ingress/tracing targets=agentgateway-ingress status={"ancestors":[{"ancestorRef":{"group":"gateway.networking.k8s.io","kind":"Gateway","name":"agentgateway-ingress","namespace":"agentgateway-ingress"},"conditions":[{"lastTransitionTime":"2026-09-15T21:26:45Z","message":"Policy accepted","observedGeneration":1,"reason":"Valid","status":"True","type":"Accepted"},{"lastTransitionTime":"2026-09-15T21:26:47Z","message":"Attached to all targets","observedGeneration":1,"reason":"Attached","status":"True","type":"Attached"}],"controllerName":"agentgateway.dev/agentgateway"}]}
+
+## PeerAuthentication agentgateway-ingress-metrics and the pods its selector matches
+   agentgateway-ingress/agentgateway-ingress-metrics selector={"gateway.networking.k8s.io/gateway-name":"agentgateway-ingress"}
+   agentgateway-ingress/agentgateway-ingress-84b98df499-c8m9m
+
+## the orchestrator Deployment's PUBLIC_URL (what its card advertises)
+   PUBLIC_URL=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local
+
+## Services named agentgateway-ingress
+NAMESPACE              NAME                   TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+agentgateway-ingress   agentgateway-ingress   ClusterIP   10.96.179.187   <none>        80/TCP    2m28s

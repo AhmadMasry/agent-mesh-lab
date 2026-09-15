@@ -133,8 +133,10 @@ non-renewal quirk this lab has recorded is not addressed by this.
 The agentgateway **controller** is outside the mesh because its namespace is.
 `agentgateway-system` holds the control plane only and is not labelled ambient; the
 ingress Gateway and its proxy run in a namespace of their own, `agentgateway-ingress`,
-which the step-2b overlay creates with the ambient label. Two plaintext clients must
-reach the controller: the egress waypoint's XDS on 9978, and Prometheus's scrape of 9092.
+which the step-2b overlay creates with the ambient label. Three clients reach the
+controller. Two are outside the mesh and speak plaintext to it: the egress waypoint's XDS
+on 9978, and Prometheus's scrape of 9092. The third is the ingress proxy, which since
+this change dials XDS from inside the mesh, across the namespace boundary.
 Until follow-ups 12 (2026-09-15) the ingress ran in `agentgateway-system`, as in the
 example on agentgateway's ambient-ingress page, and `make step-2b` labelled that whole
 namespace for the ingress *proxy*'s sake, which captured the controller too. On the
@@ -412,17 +414,21 @@ current Istio page — it is measured here, and the file says so. And the agentg
 **control plane is outside the mesh**, by its namespace: the ingress proxy runs in
 `agentgateway-ingress`, which is enrolled, and `agentgateway-system`, which holds only
 the controller, is not. The controller is infrastructure, not the traffic path — it
-serves XDS over its own TLS, its two clients (the egress proxy, outside the mesh by
-agentgateway's documented egress shape, and Prometheus) speak plaintext to it, and it
-carries no agentgateway traffic. This was found late, on a from-scratch rebuild on
-2026-09-12, when the ingress still shared the controller's namespace and that namespace
-was enrolled: ztunnel refused Prometheus's scrape of the controller under STRICT, naming
-the policy, and the egress proxy's XDS dial was reset, so it never became ready. The
-earlier cluster had hidden it, because the egress proxy's XDS stream there had been
-opened before the policy — on 2026-09-12 itself, after the controller's last restart —
-and ztunnel enforces per connection; so a rebuild from a deleted cluster is the test for
-any change to who is captured. The fix then was a per-pod opt-out on the controller; on
-2026-09-15 (follow-ups 12) the ingress moved to its own namespace and the opt-out went.
+serves XDS over its own TLS and carries no agentgateway traffic. Two of its three clients
+speak plaintext to it from outside the mesh: the egress proxy, outside by agentgateway's
+documented egress shape, and Prometheus. The third is the ingress proxy, which dials it
+from inside the mesh, across the namespace boundary.
+
+This was found late, on a from-scratch rebuild on 2026-09-12, when the ingress
+still shared the controller's namespace and that namespace was enrolled: ztunnel
+refused Prometheus's scrape of the controller under STRICT, naming the policy,
+and the egress proxy's XDS dial was reset, so it never became ready. The earlier
+cluster had hidden it, because the egress proxy's XDS stream there had been
+opened before the policy — on 2026-09-12 itself, after the controller's last
+restart — and ztunnel enforces per connection; so a rebuild from a deleted
+cluster is the test for any change to who is captured. The fix then was a
+per-pod opt-out on the controller; on 2026-09-15 (follow-ups 12) the ingress
+moved to its own namespace and the opt-out went.
 
 The `telemetry` namespace stays **out** of the mesh on purpose. An in-mesh
 collector would enforce mTLS on inbound OTLP and so refuse the spans of every

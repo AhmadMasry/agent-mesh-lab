@@ -1,0 +1,420 @@
+# Follow-ups 12 readings, resumed 2026-09-15T22:21:40Z. HEAD 1e0bb7ee004f0e3e0d7761a7e4001d1949b86999; tracked changes: 
+## cluster state on resumption (pods, restarts, releases, nodes)  started 2026-09-15T22:21:40Z
+NAME                           STATUS   ROLES           AGE   VERSION
+agent-mesh-lab-control-plane   Ready    control-plane   60m   v1.37.0
+agent-mesh-lab-worker          Ready    <none>          59m   v1.37.0
+NAME             	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART                          	APP VERSION
+agentgateway     	agentgateway-system	1       	2026-09-16 00:25:01.783523 +0300 EEST	deployed	agentgateway-v1.5.0            	v1.5.0     
+agentgateway-crds	agentgateway-system	1       	2026-09-16 00:24:59.51865 +0300 EEST 	deployed	agentgateway-crds-v1.5.0       	v1.5.0     
+istio-base       	istio-system       	1       	2026-09-16 00:23:16.067103 +0300 EEST	deployed	base-1.31.0                    	1.31.0     
+istio-cni        	istio-system       	1       	2026-09-16 00:23:32.698408 +0300 EEST	deployed	cni-1.31.0                     	1.31.0     
+istiod           	istio-system       	1       	2026-09-16 00:23:21.304162 +0300 EEST	deployed	istiod-1.31.0                  	1.31.0     
+jaeger           	telemetry          	1       	2026-09-16 00:26:58.276872 +0300 EEST	deployed	jaeger-4.13.1                  	2.20.0     
+otel-collector   	telemetry          	1       	2026-09-16 00:26:47.394168 +0300 EEST	deployed	opentelemetry-collector-0.173.1	0.160.0    
+prometheus       	telemetry          	1       	2026-09-16 00:27:06.99852 +0300 EEST 	deployed	prometheus-29.28.1             	v3.14.0    
+ztunnel          	istio-system       	1       	2026-09-16 00:23:51.658797 +0300 EEST	deployed	ztunnel-1.31.0                 	1.31.0     
+agentgateway-egress/agw-egress-86466cb9fd-5llln phase=Running restarts=0
+agentgateway-ingress/agentgateway-ingress-84b98df499-c8m9m phase=Running restarts=0
+agentgateway-system/agentgateway-864d45549-2ctkc phase=Running restarts=0
+istio-system/istio-cni-node-sq8tb phase=Running restarts=0
+istio-system/istio-cni-node-xcqgr phase=Running restarts=0
+istio-system/istiod-7d565d6dd7-66bj6 phase=Running restarts=0
+istio-system/ztunnel-klbrz phase=Running restarts=0
+istio-system/ztunnel-mmcnq phase=Running restarts=0
+lab/agentgateway-waypoint-b89486546-w8djx phase=Running restarts=0
+lab/agentgateway-waypoint-orch-5b56f859f9-wvpvr phase=Running restarts=0
+lab/loadgen-a3t-004634-r1-orchestrator-wzc92 phase=Succeeded restarts=0
+lab/loadgen-a3t-004634-r1-worker-wbfv4 phase=Succeeded restarts=0
+lab/loadgen-a3t-004634-r2-worker-82lpg phase=Succeeded restarts=0
+lab/loadgen-a3t-221929-r1-orchestrator-rwgcs phase=Succeeded restarts=0
+lab/loadgen-a3t-221929-r1-worker-44zz8 phase=Succeeded restarts=0
+lab/loadgen-a3t-221929-r2-worker-6jtmm phase=Succeeded restarts=0
+lab/loadgen-g2c-004551-orchestrator-hvw5f phase=Succeeded restarts=0
+lab/loadgen-g2c-004551-worker-6d6r5 phase=Succeeded restarts=0
+lab/mockllm-8d69f4d5c-8cwbf phase=Running restarts=0
+lab/orchestrator-7b55c448dd-4f96s phase=Running restarts=0
+lab/worker-79f7b96cc6-8l8bc phase=Running restarts=0
+telemetry/jaeger-656f58f4c7-f5fqd phase=Running restarts=0
+telemetry/otel-collector-7c6665959f-ftsn2 phase=Running restarts=0
+telemetry/prometheus-566c455884-zqfnl phase=Running restarts=0
+## cluster state on resumption (pods, restarts, releases, nodes)  finished 2026-09-15T22:21:41Z  exit=0  wall=0.176s
+
+## trace per work item REPS=2 (fresh RUN_ID)  started 2026-09-15T22:21:41Z
+== certificate check ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           ee1ba1f3388a1db13cd4fef295646eea     2026-09-22T21:26:02Z     2026-09-15T21:24:02Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           480964a2151f929c3080972698fe9711     2036-09-12T21:23:27Z     2026-09-15T21:23:27Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           1f293d964e31c920b5afcf3cf57c7655     2026-09-22T21:24:15Z     2026-09-15T21:22:15Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           480964a2151f929c3080972698fe9711     2036-09-12T21:23:27Z     2026-09-15T21:23:27Z
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=a3t-222141-r1-worker ==
+2026/09/16 01:21:42 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/16 01:21:43 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-15-ingress-namespace/checks-2.sh
+?? experiments/runs/2026-09-15-ingress-namespace/checks.sh
+?? experiments/runs/2026-09-15-ingress-namespace/clean-check/
+?? experiments/runs/2026-09-15-ingress-namespace/hops.py
+?? experiments/runs/2026-09-15-ingress-namespace/probe-cp.sh
+?? experiments/runs/2026-09-15-ingress-namespace/rebuild/
+?? experiments/runs/2026-09-15-ingress-namespace/trace/
+
+2026/09/16 01:21:43 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/16 01:21:44 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:cc0c5357c426d50e6eab1ded9d00118623b6faba96d2528ad6726834e9f14059
+2026/09/16 01:21:58 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:cc0c5357c426d50e6eab1ded9d00118623b6faba96d2528ad6726834e9f14059
+2026/09/16 01:21:58 Adding tag latest
+2026/09/16 01:21:58 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+export-trace: lab.work_item=a3t-222141-r1-worker window 2026-09-15T21:22:09Z..2026-09-15T22:23:09Z -> 12 span(s) in experiments/runs/2026-09-15-ingress-namespace/trace/a3t-222141-r1-worker/spans.csv
+== orchestrator: one clean request, logical_work_item_id=a3t-222141-r1-orchestrator ==
+2026/09/16 01:22:10 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/16 01:22:11 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-15-ingress-namespace/checks-2.sh
+?? experiments/runs/2026-09-15-ingress-namespace/checks.sh
+?? experiments/runs/2026-09-15-ingress-namespace/clean-check/
+?? experiments/runs/2026-09-15-ingress-namespace/hops.py
+?? experiments/runs/2026-09-15-ingress-namespace/probe-cp.sh
+?? experiments/runs/2026-09-15-ingress-namespace/rebuild/
+?? experiments/runs/2026-09-15-ingress-namespace/trace/
+
+2026/09/16 01:22:11 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/16 01:22:12 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:cc0c5357c426d50e6eab1ded9d00118623b6faba96d2528ad6726834e9f14059
+2026/09/16 01:22:26 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:cc0c5357c426d50e6eab1ded9d00118623b6faba96d2528ad6726834e9f14059
+2026/09/16 01:22:26 Adding tag latest
+2026/09/16 01:22:26 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+export-trace: lab.work_item=a3t-222141-r1-orchestrator window 2026-09-15T21:22:37Z..2026-09-15T22:23:37Z -> 66 span(s) in experiments/runs/2026-09-15-ingress-namespace/trace/a3t-222141-r1-orchestrator/spans.csv
+== worker: one clean request, logical_work_item_id=a3t-222141-r2-worker ==
+2026/09/16 01:22:39 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/16 01:22:39 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-15-ingress-namespace/checks-2.sh
+?? experiments/runs/2026-09-15-ingress-namespace/checks.sh
+?? experiments/runs/2026-09-15-ingress-namespace/clean-check/
+?? experiments/runs/2026-09-15-ingress-namespace/hops.py
+?? experiments/runs/2026-09-15-ingress-namespace/probe-cp.sh
+?? experiments/runs/2026-09-15-ingress-namespace/rebuild/
+?? experiments/runs/2026-09-15-ingress-namespace/trace/
+
+2026/09/16 01:22:39 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/16 01:22:40 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:cc0c5357c426d50e6eab1ded9d00118623b6faba96d2528ad6726834e9f14059
+2026/09/16 01:22:54 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:cc0c5357c426d50e6eab1ded9d00118623b6faba96d2528ad6726834e9f14059
+2026/09/16 01:22:54 Adding tag latest
+2026/09/16 01:22:55 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+export-trace: lab.work_item=a3t-222141-r2-worker window 2026-09-15T21:23:07Z..2026-09-15T22:24:07Z -> 12 span(s) in experiments/runs/2026-09-15-ingress-namespace/trace/a3t-222141-r2-worker/spans.csv
+== orchestrator: one clean request, logical_work_item_id=a3t-222141-r2-orchestrator ==
+2026/09/16 01:23:08 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/16 01:23:08 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-15-ingress-namespace/checks-2.sh
+?? experiments/runs/2026-09-15-ingress-namespace/checks.sh
+?? experiments/runs/2026-09-15-ingress-namespace/clean-check/
+?? experiments/runs/2026-09-15-ingress-namespace/hops.py
+?? experiments/runs/2026-09-15-ingress-namespace/probe-cp.sh
+?? experiments/runs/2026-09-15-ingress-namespace/rebuild/
+?? experiments/runs/2026-09-15-ingress-namespace/trace/
+
+2026/09/16 01:23:08 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/16 01:23:09 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:cc0c5357c426d50e6eab1ded9d00118623b6faba96d2528ad6726834e9f14059
+2026/09/16 01:23:22 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:cc0c5357c426d50e6eab1ded9d00118623b6faba96d2528ad6726834e9f14059
+2026/09/16 01:23:22 Adding tag latest
+2026/09/16 01:23:22 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+export-trace: lab.work_item=a3t-222141-r2-orchestrator window 2026-09-15T21:23:34Z..2026-09-15T22:24:34Z -> 66 span(s) in experiments/runs/2026-09-15-ingress-namespace/trace/a3t-222141-r2-orchestrator/spans.csv
+== summary ==
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+orchestrator,a3t-222141-r1-orchestrator,2,66,agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2,none,no:5/66
+worker,a3t-222141-r1-worker,2,12,agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3,none,no:3/12
+orchestrator,a3t-222141-r2-orchestrator,2,66,agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2,none,no:5/66
+worker,a3t-222141-r2-worker,2,12,agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3,none,no:3/12
+## trace per work item REPS=2 (fresh RUN_ID)  finished 2026-09-15T22:23:35Z  exit=0  wall=114.114s
+
+## dangling parents  started 2026-09-15T22:23:35Z
+work_item,spans,trace_ids,roots,dangling_parents
+a3t-222141-r1-orchestrator,66,2,2,0
+a3t-222141-r1-worker,12,2,2,0
+a3t-222141-r2-orchestrator,66,2,2,0
+a3t-222141-r2-worker,12,2,2,0
+## dangling parents  finished 2026-09-15T22:23:35Z  exit=0  wall=0.034s
+
+## plaintext probe from telemetry (followups-10 probe.sh, unedited)  started 2026-09-15T22:23:35Z
+== after worker: http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json ==
+curl exit=56 http_code=000 stderr=curl: (56) Recv failure: Connection reset by peer command terminated with exit code 56
+== after orchestrator: http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json ==
+curl exit=56 http_code=000 stderr=curl: (56) Recv failure: Connection reset by peer command terminated with exit code 56
+== after phase recorded in experiments/runs/2026-09-12-mtls-enforced/../2026-09-15-ingress-namespace/mtls/plaintext-probe-after.txt and experiments/runs/2026-09-12-mtls-enforced/../2026-09-15-ingress-namespace/mtls/plaintext-probe.csv ==
+## plaintext probe from telemetry (followups-10 probe.sh, unedited)  finished 2026-09-15T22:23:35Z  exit=0  wall=0.747s
+
+## probe cleanup (telemetry)  started 2026-09-15T22:23:35Z
+pod "mtls-probe" deleted from telemetry namespace
+prober removed
+## probe cleanup (telemetry)  finished 2026-09-15T22:24:06Z  exit=0  wall=30.329s
+
+## plaintext probe from agentgateway-system  started 2026-09-15T22:24:06Z
+== after worker: http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json ==
+curl exit=56 http_code=000 stderr=curl: (56) Recv failure: Connection reset by peer command terminated with exit code 56
+== after orchestrator: http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json ==
+curl exit=56 http_code=000 stderr=curl: (56) Recv failure: Connection reset by peer command terminated with exit code 56
+== after phase recorded in experiments/runs/2026-09-15-ingress-namespace/mtls/plaintext-probe-cp-after.txt and experiments/runs/2026-09-15-ingress-namespace/mtls/plaintext-probe-cp.csv ==
+## plaintext probe from agentgateway-system  finished 2026-09-15T22:24:07Z  exit=0  wall=1.126s
+
+## probe cleanup (agentgateway-system)  started 2026-09-15T22:24:07Z
+pod "mtls-probe-cp" deleted from agentgateway-system namespace
+prober removed
+## probe cleanup (agentgateway-system)  finished 2026-09-15T22:24:38Z  exit=0  wall=31.029s
+
+## ztunnel rejections after  started 2026-09-15T22:24:38Z
+# ztunnel policy rejections on the rebuilt cluster, after the card read, the clean check, the three trace attempts and both probes. 2026-09-15T22:24:38Z
+   ztunnel-klbrz (agent-mesh-lab-worker): 'policy rejection' lines = 4
+      2026-09-15T22:23:35.893683Z	error	access	connection complete	src.addr=10.244.1.44:49888 src.workload="mtls-probe" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.21:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="worker-79f7b96cc6-8l8bc" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+      2026-09-15T22:23:35.957821Z	error	access	connection complete	src.addr=10.244.1.44:36816 src.workload="mtls-probe" src.namespace="telemetry" src.cluster="Kubernetes" dst.addr=10.244.1.20:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-7b55c448dd-4f96s" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+      2026-09-15T22:24:07.384267Z	error	access	connection complete	src.addr=10.244.1.45:43930 src.workload="mtls-probe-cp" src.namespace="agentgateway-system" src.cluster="Kubernetes" dst.addr=10.244.1.21:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="worker-79f7b96cc6-8l8bc" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+      2026-09-15T22:24:07.444559Z	error	access	connection complete	src.addr=10.244.1.45:53984 src.workload="mtls-probe-cp" src.namespace="agentgateway-system" src.cluster="Kubernetes" dst.addr=10.244.1.20:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-7b55c448dd-4f96s" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+   ztunnel-mmcnq (agent-mesh-lab-control-plane): 'policy rejection' lines = 0
+## ztunnel rejections after  finished 2026-09-15T22:24:38Z  exit=0  wall=0.129s
+
+## prometheus targets  started 2026-09-15T22:24:38Z
+# Prometheus scrape targets on the rebuilt cluster, 2026-09-15T22:24:38Z.
+# experiments/runs/2026-09-12-mtls-enforced/promq.sh targets, then the up series with the labels each job relabels in (namespace, gateway_name)
+
+-- port-forward opened at 2026-09-15T22:24:38Z: kubectl -n telemetry port-forward svc/prometheus 19090:9090
+agentgateway-controlplane  up        http://10.244.1.13:9092/metrics                        
+agentgateway-proxies       up        http://10.244.1.16:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.17:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.22:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.23:15020/metrics                       
+istiod                     up        http://10.244.1.6:15014/metrics                        
+otel-collector             up        http://otel-collector.telemetry.svc.cluster.local:8889/metrics 
+ztunnel                    up        http://10.244.0.6:15020/metrics                        
+ztunnel                    up        http://10.244.1.8:15020/metrics                        
+-- 9/9 targets up
+-- port-forward closed at 2026-09-15T22:24:38Z
+
+-- port-forward opened at 2026-09-15T22:24:39Z: kubectl -n telemetry port-forward svc/prometheus 19090:9090
+-- port-forward closed at 2026-09-15T22:24:39Z
+agentgateway-controlplane up=1 instance=10.244.1.13:9092 namespace=agentgateway-system gateway_name=-
+agentgateway-proxies up=1 instance=10.244.1.16:15020 namespace=agentgateway-egress gateway_name=agw-egress
+agentgateway-proxies up=1 instance=10.244.1.17:15020 namespace=agentgateway-ingress gateway_name=agentgateway-ingress
+agentgateway-proxies up=1 instance=10.244.1.22:15020 namespace=lab gateway_name=agentgateway-waypoint
+agentgateway-proxies up=1 instance=10.244.1.23:15020 namespace=lab gateway_name=agentgateway-waypoint-orch
+istiod up=1 instance=10.244.1.6:15014 namespace=- gateway_name=-
+otel-collector up=1 instance=otel-collector.telemetry.svc.cluster.local:8889 namespace=- gateway_name=-
+ztunnel up=1 instance=10.244.0.6:15020 namespace=- gateway_name=-
+ztunnel up=1 instance=10.244.1.8:15020 namespace=- gateway_name=-
+## prometheus targets  finished 2026-09-15T22:24:39Z  exit=0  wall=0.653s
+
+## tcp connection security raw  started 2026-09-15T22:24:39Z
+      62 experiments/runs/2026-09-15-ingress-namespace/rebuild/tcp-connection-security-raw.txt
+## tcp connection security raw  finished 2026-09-15T22:24:39Z  exit=0  wall=0.348s
+
+## hops table  started 2026-09-15T22:24:39Z
+# Legs (reporter, source_workload, destination_workload, connection_security_policy) in this rebuild's reading
+# against followups-10's rebuild table (experiments/runs/2026-09-12-current-versions/rebuild/hops-security.csv).
+# Counts are running totals and are not compared. The two runs did not send the same traffic: followups-10's
+# reading followed the Gate 1 baselines, the wire-version capture and the rest of its instruments, this one
+# only the clean check, the trace, the card read and the two probes, so a client that ran in only one of them is
+# expected in only one list.
+
+legs in both: 24
+
+legs only in followups-10: 6
+   destination | loadgen | orchestrator | mutual_tls
+   source | baseline-curl | mockllm | unknown
+   source | loadgen | orchestrator | mutual_tls
+   source | orchestrator | agw-egress | mutual_tls
+   source | wire-version-curl | mockllm | unknown
+   source | worker | mockllm | unknown
+
+legs only in this rebuild: 5
+   destination | card-read | agentgateway-ingress | mutual_tls
+   destination | mtls-probe-cp | orchestrator | unknown
+   destination | mtls-probe-cp | worker | unknown
+   source | card-read | agentgateway-ingress | mutual_tls
+   source | card-read | agentgateway-waypoint-orch | mutual_tls
+
+legs in both whose destination_service differs:
+   destination | loadgen | agentgateway-ingress | mutual_tls
+      followups-10: ['agentgateway-ingress.agentgateway-system.svc.cluster.local']
+      this rebuild: ['agentgateway-ingress.agentgateway-ingress.svc.cluster.local']
+   source | loadgen | agentgateway-ingress | mutual_tls
+      followups-10: ['agentgateway-ingress.agentgateway-system.svc.cluster.local']
+      this rebuild: ['agentgateway-ingress.agentgateway-ingress.svc.cluster.local']
+   (2)
+
+this rebuild's legs that touch the agentgateway control plane (workload `agentgateway`) or the ingress proxy,
+with destination_service and the (source, destination) workload namespaces the series carry:
+   destination | agentgateway-ingress | orchestrator.lab.svc.cluster.local | orchestrator | mutual_tls  ns=[('agentgateway-ingress', 'lab')]
+   destination | card-read | agentgateway-ingress.agentgateway-ingress.svc.cluster.local | agentgateway-ingress | mutual_tls  ns=[('lab', 'agentgateway-ingress')]
+   destination | loadgen | agentgateway-ingress.agentgateway-ingress.svc.cluster.local | agentgateway-ingress | mutual_tls  ns=[('lab', 'agentgateway-ingress')]
+   destination | prometheus | unknown | agentgateway-ingress | unknown  ns=[('telemetry', 'agentgateway-ingress')]
+   source | agentgateway-ingress | agentgateway.agentgateway-system.svc.cluster.local | agentgateway | unknown  ns=[('agentgateway-ingress', 'agentgateway-system')]
+   source | agentgateway-ingress | unknown | orchestrator | mutual_tls  ns=[('agentgateway-ingress', 'lab')]
+   source | agentgateway-ingress | unknown | otel-collector | unknown  ns=[('agentgateway-ingress', 'telemetry')]
+   source | card-read | agentgateway-ingress.agentgateway-ingress.svc.cluster.local | agentgateway-ingress | mutual_tls  ns=[('lab', 'agentgateway-ingress')]
+   source | loadgen | agentgateway-ingress.agentgateway-ingress.svc.cluster.local | agentgateway-ingress | mutual_tls  ns=[('lab', 'agentgateway-ingress')]
+
+this rebuild's legs by connection_security_policy: {'mutual_tls': 17, 'unknown': 12}
+
+## hops table  finished 2026-09-15T22:24:39Z  exit=0  wall=0.028s
+
+## versions and images readback  started 2026-09-15T22:24:39Z
+# The cluster-side fields of the Versions line, read back from the rebuilt cluster 2026-09-15T22:24:40Z. Read-only.
+
+## kind node images (k8s=)
+/agent-mesh-lab-control-plane kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+/agent-mesh-lab-worker kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+
+## Gateway API CRD bundle version and channel (gateway-api=)
+v1.6.2 experimental
+
+## agentgateway images (agentgateway=)
+agentgateway-egress/agw-egress-86466cb9fd-5llln cr.agentgateway.dev/agentgateway:v1.5.0
+agentgateway-ingress/agentgateway-ingress-84b98df499-c8m9m cr.agentgateway.dev/agentgateway:v1.5.0
+agentgateway-system/agentgateway-864d45549-2ctkc cr.agentgateway.dev/controller:v1.5.0
+lab/agentgateway-waypoint-b89486546-w8djx cr.agentgateway.dev/agentgateway:v1.5.0
+lab/agentgateway-waypoint-orch-5b56f859f9-wvpvr cr.agentgateway.dev/agentgateway:v1.5.0
+
+## istio= is in istio.txt (istioctl version and every Istio image)
+## a2a-go, a2a-python, openai-python: their sources against d28dea6 (the base of this branch):
+   go.mod                       d28dea6 a36c65bbdc6b4ad479f3e3d7edc531e3e9eb189a  HEAD a36c65bbdc6b4ad479f3e3d7edc531e3e9eb189a
+   go.sum                       d28dea6 5ac3be84f4f295a6f5b1eef5bd185eb528efcf0f  HEAD 5ac3be84f4f295a6f5b1eef5bd185eb528efcf0f
+   agents/orchestrator/uv.lock  d28dea6 328e8ef620d0e38900b4262cdb15b325438dc6e4  HEAD 328e8ef620d0e38900b4262cdb15b325438dc6e4
+# The images the rebuilt cluster runs, read 2026-09-15T22:24:40Z, against the followups-11 rebuild. Read-only.
+
+## Go images: the source stamp (lab.agent-mesh/go-sources) on the two Deployments against the checkout's hash
+   GO_SOURCES_HASH at HEAD (the Makefile's command): c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   deployment/worker annotation: c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   deployment/mockllm annotation: c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   followups-11's stamp (experiments/runs/2026-09-15-helm-only/make-n.txt): go-sources=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   image input paths against d28dea6 (git rev-parse <rev>:<path>):
+      agents                           5d0431e2d2243b834ef5e10cef53460d10c7b5c8 same
+      fixtures                         e6e6682ac210d535317f26cdb7abe305f611e27b same
+      internal                         20c9f60cc7d0b4e867af80078b6bf5be201c42f7 same
+      go.mod                           a36c65bbdc6b4ad479f3e3d7edc531e3e9eb189a same
+      go.sum                           5ac3be84f4f295a6f5b1eef5bd185eb528efcf0f same
+      .ko.yaml                         2dcd19898e03215672f4d46b546607aa73b335ce same
+      agents/orchestrator/uv.lock      328e8ef620d0e38900b4262cdb15b325438dc6e4 same
+      agents/orchestrator/Dockerfile   ae6993e3f913272d0f243e7e5a474834b47e5e79 same
+
+## the running pods' images and image IDs
+   mockllm-8d69f4d5c-8cwbf  kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:65f5f7168c64736eb7bb686cf707cabd384503de74c6501ce8c2537615a6779f  sha256:f01d2e5eb6f6a66629801003c77f1098077771366501f9ede079382063d96fb8
+   orchestrator-7b55c448dd-4f96s  docker.io/library/orchestrator:dev  docker.io/library/import-2026-09-15@sha256:d655b656a1cdeb760ec746a50ca09b3b76faf47af3bdec6caeffc734951c4f31
+   worker-79f7b96cc6-8l8bc  kind.local/worker-918a018b7a581926ead34dec2ba0fb83:32f087c8c952f30880a42d8d68c02b636fe8d53eedafa850920578c9bd60e993  sha256:0404c5a666fb931f53deb75d63436e4810b708dd9e81bef84b0770f292a4cb1d
+
+## the orchestrator image in the local Docker daemon (what make orchestrator-image built last)
+   sha256:167e5452ba1fe9a914fcce68699edac67c0cbeb184a451c3e206747b1d548025 created 2026-09-15T21:24:52.656893087Z
+   followups-11 (experiments/runs/2026-09-15-helm-only/scan/scan-context.txt): sha256:d97755c6bb96c99f87734ddfd62b4989d785fd09c27cb6c44c3e8ab1bd68d771
+## versions and images readback  finished 2026-09-15T22:24:40Z  exit=0  wall=0.769s
+
+## guard demonstration on the rebuilt cluster  started 2026-09-15T22:24:40Z
+# The Helm check with a PATH that lacks helm, 2026-09-15T22:24:45Z.
+# base Makefile:     d28dea6:Makefile blob a2a87fb69597fda4fd2b643771ec7d95b0c849c3
+# commit 1 Makefile: working tree Makefile blob c57773d0e390de3f73572ca58b3aa344953655f7 (check with git rev-parse <commit>:Makefile)
+# host make: /usr/bin/make, GNU Make 3.81
+
+## the two PATHs
+   normal:        command -v helm -> /opt/homebrew/bin/helm
+   reduced:       /usr/bin:/bin:/usr/sbin:/sbin; command -v helm -> (none, exit 1); kubectl -> (none)
+   all-but-helm:  2 PATH directories holding helm replaced by symlink farms; command -v helm -> (none, exit 1); kubectl -> <tmp>/farm1/kubectl
+
+## cluster snapshot before (sha256 of helm list -A and every Deployment, DaemonSet and Pod with uid and generation)
+   80f55ee94ef063d3f352f5f25db60bc85909e340f686da45f8493e6d7f2f95f4
+
+## base commit's Makefile: the recipe check only
+### base: env PATH=<all-but-helm> make -f <tmp>/Makefile.base -n step-1 step-2
+   if [ -n "" ]; then \
+   		echo "uncommitted changes under the Go paths the image stamp hashes; commit or stash them before a step target runs ko apply:" >&2; \
+   		printf '%s\n' "" >&2; \
+   		exit 1; \
+   	fi
+   docker build --pull --no-cache --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+   kind load docker-image orchestrator:dev --name agent-mesh-lab
+   kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+   # The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
+   kubectl -n lab rollout restart deployment/orchestrator
+   kubectl -n lab rollout status deployment/mockllm --timeout=120s
+   kubectl -n lab rollout status deployment/worker --timeout=120s
+   kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+   kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   <tmp>/Makefile.base:62: *** step-1 step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. Install helm and re-run; nothing was applied.  Stop.
+   exit=2
+
+### base: env PATH=<reduced> make -f <tmp>/Makefile.base -n step-1 step-2
+   if [ -n "" ]; then \
+   		echo "uncommitted changes under the Go paths the image stamp hashes; commit or stash them before a step target runs ko apply:" >&2; \
+   		printf '%s\n' "" >&2; \
+   		exit 1; \
+   	fi
+   make: go: Command not found
+   docker build --pull --no-cache --platform linux/ -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+   kind load docker-image orchestrator:dev --name agent-mesh-lab
+   make: go: Command not found
+   kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/ -f -
+   # The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
+   kubectl -n lab rollout restart deployment/orchestrator
+   kubectl -n lab rollout status deployment/mockllm --timeout=120s
+   kubectl -n lab rollout status deployment/worker --timeout=120s
+   kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+   kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   <tmp>/Makefile.base:62: *** step-1 step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. Install helm and re-run; nothing was applied.  Stop.
+   exit=2
+
+## commit 1's Makefile: the check while make reads the file
+### commit-1: env PATH=<all-but-helm> make -f Makefile -n step-1 step-2
+   Makefile:69: *** step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run.  Stop.
+   exit=2
+
+### commit-1: env PATH=<reduced> make -f Makefile -n step-1 step-2
+   Makefile:69: *** step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run.  Stop.
+   exit=2
+
+### commit-1: env PATH=<all-but-helm> make -f Makefile -n cluster-kind step-2b
+   Makefile:69: *** step-2b: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run.  Stop.
+   exit=2
+
+### commit-1: env PATH=<all-but-helm> make -f Makefile -n step-3
+   Makefile:69: *** step-3: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run.  Stop.
+   exit=2
+
+## control: a command line naming no Helm goal is not stopped
+### commit-1: env PATH=<all-but-helm> make -f Makefile -n step-1
+   if [ -n "" ]; then \
+   		echo "uncommitted changes under the Go paths the image stamp hashes; commit or stash them before a step target runs ko apply:" >&2; \
+   		printf '%s\n' "" >&2; \
+   		exit 1; \
+   	fi
+   docker build --pull --no-cache --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+   kind load docker-image orchestrator:dev --name agent-mesh-lab
+   kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+   # The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
+   kubectl -n lab rollout restart deployment/orchestrator
+   kubectl -n lab rollout status deployment/mockllm --timeout=120s
+   kubectl -n lab rollout status deployment/worker --timeout=120s
+   kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+   kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   exit=0
+
+## cluster snapshot after
+   80f55ee94ef063d3f352f5f25db60bc85909e340f686da45f8493e6d7f2f95f4
+   before and after: identical
+## guard demonstration on the rebuilt cluster  finished 2026-09-15T22:24:46Z  exit=0  wall=5.741s
+
+# readings finished 2026-09-15T22:24:46Z

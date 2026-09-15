@@ -1,0 +1,90 @@
+# The Helm check with a PATH that lacks helm, 2026-09-15T22:24:45Z.
+# base Makefile:     d28dea6:Makefile blob a2a87fb69597fda4fd2b643771ec7d95b0c849c3
+# commit 1 Makefile: working tree Makefile blob c57773d0e390de3f73572ca58b3aa344953655f7 (check with git rev-parse <commit>:Makefile)
+# host make: /usr/bin/make, GNU Make 3.81
+
+## the two PATHs
+   normal:        command -v helm -> /opt/homebrew/bin/helm
+   reduced:       /usr/bin:/bin:/usr/sbin:/sbin; command -v helm -> (none, exit 1); kubectl -> (none)
+   all-but-helm:  2 PATH directories holding helm replaced by symlink farms; command -v helm -> (none, exit 1); kubectl -> <tmp>/farm1/kubectl
+
+## cluster snapshot before (sha256 of helm list -A and every Deployment, DaemonSet and Pod with uid and generation)
+   80f55ee94ef063d3f352f5f25db60bc85909e340f686da45f8493e6d7f2f95f4
+
+## base commit's Makefile: the recipe check only
+### base: env PATH=<all-but-helm> make -f <tmp>/Makefile.base -n step-1 step-2
+   if [ -n "" ]; then \
+   		echo "uncommitted changes under the Go paths the image stamp hashes; commit or stash them before a step target runs ko apply:" >&2; \
+   		printf '%s\n' "" >&2; \
+   		exit 1; \
+   	fi
+   docker build --pull --no-cache --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+   kind load docker-image orchestrator:dev --name agent-mesh-lab
+   kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+   # The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
+   kubectl -n lab rollout restart deployment/orchestrator
+   kubectl -n lab rollout status deployment/mockllm --timeout=120s
+   kubectl -n lab rollout status deployment/worker --timeout=120s
+   kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+   kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   <tmp>/Makefile.base:62: *** step-1 step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. Install helm and re-run; nothing was applied.  Stop.
+   exit=2
+
+### base: env PATH=<reduced> make -f <tmp>/Makefile.base -n step-1 step-2
+   if [ -n "" ]; then \
+   		echo "uncommitted changes under the Go paths the image stamp hashes; commit or stash them before a step target runs ko apply:" >&2; \
+   		printf '%s\n' "" >&2; \
+   		exit 1; \
+   	fi
+   make: go: Command not found
+   docker build --pull --no-cache --platform linux/ -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+   kind load docker-image orchestrator:dev --name agent-mesh-lab
+   make: go: Command not found
+   kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/ -f -
+   # The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
+   kubectl -n lab rollout restart deployment/orchestrator
+   kubectl -n lab rollout status deployment/mockllm --timeout=120s
+   kubectl -n lab rollout status deployment/worker --timeout=120s
+   kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+   kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   <tmp>/Makefile.base:62: *** step-1 step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. Install helm and re-run; nothing was applied.  Stop.
+   exit=2
+
+## commit 1's Makefile: the check while make reads the file
+### commit-1: env PATH=<all-but-helm> make -f Makefile -n step-1 step-2
+   Makefile:69: *** step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run.  Stop.
+   exit=2
+
+### commit-1: env PATH=<reduced> make -f Makefile -n step-1 step-2
+   Makefile:69: *** step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run.  Stop.
+   exit=2
+
+### commit-1: env PATH=<all-but-helm> make -f Makefile -n cluster-kind step-2b
+   Makefile:69: *** step-2b: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run.  Stop.
+   exit=2
+
+### commit-1: env PATH=<all-but-helm> make -f Makefile -n step-3
+   Makefile:69: *** step-3: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run.  Stop.
+   exit=2
+
+## control: a command line naming no Helm goal is not stopped
+### commit-1: env PATH=<all-but-helm> make -f Makefile -n step-1
+   if [ -n "" ]; then \
+   		echo "uncommitted changes under the Go paths the image stamp hashes; commit or stash them before a step target runs ko apply:" >&2; \
+   		printf '%s\n' "" >&2; \
+   		exit 1; \
+   	fi
+   docker build --pull --no-cache --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+   kind load docker-image orchestrator:dev --name agent-mesh-lab
+   kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+   # The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
+   kubectl -n lab rollout restart deployment/orchestrator
+   kubectl -n lab rollout status deployment/mockllm --timeout=120s
+   kubectl -n lab rollout status deployment/worker --timeout=120s
+   kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+   kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+   exit=0
+
+## cluster snapshot after
+   80f55ee94ef063d3f352f5f25db60bc85909e340f686da45f8493e6d7f2f95f4
+   before and after: identical

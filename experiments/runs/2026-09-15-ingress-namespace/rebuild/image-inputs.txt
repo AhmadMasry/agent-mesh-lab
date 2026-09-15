@@ -1,0 +1,77 @@
+# The image inputs of this rebuild against the followups-11 rebuild, and why the scan was not re-run. Read out of the two
+# build logs with grep and out of the cluster (images.txt); nothing pulled or built for this record. 2026-09-15T22:26:24Z.
+#
+# The brief: the scan is not re-run unless an image changed. Every input of every image is the same as at followups-11's
+# rebuild of the same day, and the scan's subject -- the packages in each image -- follows from those inputs. The image
+# digests are not the same: the orchestrator is built with --no-cache at every make orchestrator-image, and ko rebuilds
+# unchanged Go sources to new digests at every apply (measured before: experiments/runs/2026-09-09-a3-pipeline/
+# replicasets.txt), so a digest cannot show 'unchanged' in this lab; the inputs can, and they are listed here.
+
+## sources (images.txt): go-sources stamp on worker and mockllm c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd, equal to the checkout's
+## hash and to followups-11's; agents, fixtures, internal, go.mod, go.sum, .ko.yaml, agents/orchestrator/uv.lock and
+## agents/orchestrator/Dockerfile have the same object IDs as at d28dea6
+
+## Using base gcr.io/distroless/static-debian13:nonroot@sha256:[0-9a-f]*
+   followups-11: Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 
+   followups-12: Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 
+## resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:[0-9a-f]*
+   followups-11: resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:155687eb8e1f156da67beda919f1ca4dab36a9f6fc7576cc514d7773b7d6a311 
+   followups-12: resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:155687eb8e1f156da67beda919f1ca4dab36a9f6fc7576cc514d7773b7d6a311 
+## resolve ghcr.io/astral-sh/uv:latest@sha256:[0-9a-f]*
+   followups-11: resolve ghcr.io/astral-sh/uv:latest@sha256:62f8c047d0a0e9ece6b53fc63df902585a67a47a7f318ddec4a37db586edc8e3 
+   followups-12: resolve ghcr.io/astral-sh/uv:latest@sha256:62f8c047d0a0e9ece6b53fc63df902585a67a47a7f318ddec4a37db586edc8e3 
+## uv [0-9]+\.[0-9]+\.[0-9]+ \(aarch64-unknown-linux-musl\)
+   followups-11: uv 0.12.15 (aarch64-unknown-linux-musl) 
+   followups-12: uv 0.12.15 (aarch64-unknown-linux-musl) 
+## 2023\.12\.[0-9]{8}
+   followups-11: 2023.12.20260914 
+   followups-12: 2023.12.20260914 
+## python3\.14-3\.14\.[0-9]+-[0-9]+\.amzn2023\.[0-9]+\.[0-9]+
+   followups-11: python3.14-3.14.7-1.amzn2023.0.1 
+   followups-12: python3.14-3.14.7-1.amzn2023.0.1 
+
+## the Amazon Linux package NEVRAs the orchestrator build logs name (sort -u of every *.amzn2023*.{aarch64,noarch} token)
+   followups-11: 51 packages; followups-12: 51 packages; diff: identical
+
+## the digests, which differ
+   orchestrator in the Docker daemon: followups-11 sha256:d97755c6bb96c99f87734ddfd62b4989d785fd09c27cb6c44c3e8ab1bd68d771, followups-12 sha256:167e5452ba1fe9a914fcce68699edac67c0cbeb184a451c3e206747b1d548025
+   worker pod imageID: followups-11 sha256:a5de0939644b85282a0f2eb724d3aab00ef91ca6d1dc797361a9913ccd6b3f6a, followups-12 sha256:0404c5a666fb931f53deb75d63436e4810b708dd9e81bef84b0770f292a4cb1d
+   mockllm pod imageID: followups-11 sha256:925326b0a7432b011a4389563fedd59127f372c2b5d272d0a73ee97ec81bb4bb, followups-12 sha256:f01d2e5eb6f6a66629801003c77f1098077771366501f9ede079382063d96fb8
+   (followups-11's values from experiments/runs/2026-09-15-helm-only/scan/scan-context.txt)
+
+## decision: the scan was not re-run; followups-11's scan (0 in every severity for all five images, Kubescape 4.0.14, DB
+## 2026-09-15) was taken on images built from these same inputs
+
+# ---------------------------------------------------------------------------------------------------------------
+# CORRECTION added 2026-09-15T22:56:36Z, on the reviewer's finding. Nothing above this line is edited.
+#
+# The header above says ko "rebuilds unchanged Go sources to new digests at every apply", and cites the 2026-09-09
+# measurement for it. This rebuild's own log does not show that. ko ran five times here (step-1, step-2, step-2b,
+# step-2c, step-3) and produced ONE digest per binary across all five:
+#   worker   kind.local/worker-918a018b7a581926ead34dec2ba0fb83:32f087c8c952f30880a42d8d68c02b636fe8d53eedafa850920578c9bd60e993
+#   mockllm  kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:65f5f7168c64736eb7bb686cf707cabd384503de74c6501ce8c2537615a6779f
+# Each appears 10 times in build.txt, twice per apply (Loading and Loaded). followups-11's rebuild has the same
+# shape, one digest per binary across its five applies (worker c2a9f7e2..., mockllm 1d856f9f...). So ko was
+# deterministic in both builds, and the reason those digests differ BETWEEN the two builds is an input the list
+# above does not name: the checkout commit, which the Go toolchain stamps into the binary.
+#
+# Read out of the running worker on 2026-09-16 (docker exec agent-mesh-lab-worker cat /proc/<pid>/exe > file;
+# go version -m file), with <pid> the worker container's /ko-app/worker:
+   worker binary: go1.27.1
+   mod	github.com/AhmadMasry/agent-mesh-lab	v0.0.0-20260915211530-1e0bb7ee004f	
+   build	-trimpath=true
+   build	vcs=git
+   build	vcs.revision=1e0bb7ee004f0e3e0d7761a7e4001d1949b86999
+   build	vcs.time=2026-09-15T21:15:30Z
+   build	vcs.modified=false
+# followups-11's images were built at that branch's commit and these at 1e0bb7ee, so the two binaries carry different
+# vcs stamps while agents/, fixtures/, internal/, go.mod, go.sum, .ko.yaml and the go-sources stamp are unchanged;
+# go1.27.1 and ko 0.19.1 built both (each build.txt's tool header).
+#
+# The orchestrator half of the header stands: `make orchestrator-image` builds with `docker build --no-cache`, and the
+# three builds inside this rebuild exported three different manifests (build.txt:667 sha256:2a773ca8..., :1270
+# sha256:10c2ff4c..., :1990 sha256:a3536292...).
+#
+# The decision not to re-run the scan is unchanged, and so are its reasons: the packages are what a scan reads, and
+# the 51 NEVRAs, the three base digests and the AL2023 release are identical to followups-11's. What is corrected is
+# the general claim: a Go image's digest here moves with the commit, not with nothing.

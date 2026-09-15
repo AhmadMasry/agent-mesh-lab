@@ -1,0 +1,27 @@
+# Every second of the rebuild's wall clock, from build.txt's first line to its last. Derived from the epoch stamps
+# rebuild.sh wrote (timings.csv and build.txt); millisecond resolution from Perl's Time::HiRes. The host's sleep and
+# DarkWake windows that overlap the build are named beside the targets they fall in (host-sleep.txt); they are part of
+# those targets' walls, not gaps between them.
+
+interval                                     seconds  what ran
+header                                         0.532  git rev-parse/status, subtree IDs, tool versions, kind get clusters, helm list -A and namespace labels of the cluster being deleted
+gap before make teardown                       0.021  git status --short over the deployed paths, one log line
+make teardown                                  1.349  the target, exit 0
+gap before make cluster-kind                   0.029  git status --short over the deployed paths, one log line
+make cluster-kind                             19.212  the target, exit 0
+gap before make step-1                         0.025  git status --short over the deployed paths, one log line
+make step-1                                   51.683  the target, exit 0
+gap before make step-2                         0.028  git status --short over the deployed paths, one log line
+make step-2                                   99.320  the target, exit 0
+gap before make step-2b                        0.026  git status --short over the deployed paths, one log line
+make step-2b                                 101.192  the target, exit 0; it includes the host's Idle Sleep of 34 s from 21:25:11Z (host-sleep.txt), inside ko's kind load
+gap before make step-2c                        0.032  git status --short over the deployed paths, one log line
+make step-2c                                  21.514  the target, exit 0; ran in the host's DarkWake of 21:25:45Z-21:28:45Z
+gap before make step-3                         0.026  git status --short over the deployed paths, one log line
+make step-3                                   95.877  the target, exit 0; ran in the same DarkWake; the Prometheus pod's first image pull failed (registry 502) and the kubelet's second pull succeeded (prometheus-pull-events.txt)
+gap after make step-3                          0.014  the closing log line
+
+sum of the seven targets' walls: 390.147 s
+sum of the header and the gaps:  0.733 s
+sum of every interval:           390.880 s
+first line to last line:         390.880 s  (equal)

@@ -1,0 +1,46 @@
+# Legs (reporter, source_workload, destination_workload, connection_security_policy) in this rebuild's reading
+# against followups-10's rebuild table (experiments/runs/2026-09-12-current-versions/rebuild/hops-security.csv).
+# Counts are running totals and are not compared. The two runs did not send the same traffic: followups-10's
+# reading followed the Gate 1 baselines, the wire-version capture and the rest of its instruments, this one
+# only the clean check, the trace, the card read and the two probes, so a client that ran in only one of them is
+# expected in only one list.
+
+legs in both: 24
+
+legs only in followups-10: 6
+   destination | loadgen | orchestrator | mutual_tls
+   source | baseline-curl | mockllm | unknown
+   source | loadgen | orchestrator | mutual_tls
+   source | orchestrator | agw-egress | mutual_tls
+   source | wire-version-curl | mockllm | unknown
+   source | worker | mockllm | unknown
+
+legs only in this rebuild: 5
+   destination | card-read | agentgateway-ingress | mutual_tls
+   destination | mtls-probe-cp | orchestrator | unknown
+   destination | mtls-probe-cp | worker | unknown
+   source | card-read | agentgateway-ingress | mutual_tls
+   source | card-read | agentgateway-waypoint-orch | mutual_tls
+
+legs in both whose destination_service differs:
+   destination | loadgen | agentgateway-ingress | mutual_tls
+      followups-10: ['agentgateway-ingress.agentgateway-system.svc.cluster.local']
+      this rebuild: ['agentgateway-ingress.agentgateway-ingress.svc.cluster.local']
+   source | loadgen | agentgateway-ingress | mutual_tls
+      followups-10: ['agentgateway-ingress.agentgateway-system.svc.cluster.local']
+      this rebuild: ['agentgateway-ingress.agentgateway-ingress.svc.cluster.local']
+   (2)
+
+this rebuild's legs that touch the agentgateway control plane (workload `agentgateway`) or the ingress proxy,
+with destination_service and the (source, destination) workload namespaces the series carry:
+   destination | agentgateway-ingress | orchestrator.lab.svc.cluster.local | orchestrator | mutual_tls  ns=[('agentgateway-ingress', 'lab')]
+   destination | card-read | agentgateway-ingress.agentgateway-ingress.svc.cluster.local | agentgateway-ingress | mutual_tls  ns=[('lab', 'agentgateway-ingress')]
+   destination | loadgen | agentgateway-ingress.agentgateway-ingress.svc.cluster.local | agentgateway-ingress | mutual_tls  ns=[('lab', 'agentgateway-ingress')]
+   destination | prometheus | unknown | agentgateway-ingress | unknown  ns=[('telemetry', 'agentgateway-ingress')]
+   source | agentgateway-ingress | agentgateway.agentgateway-system.svc.cluster.local | agentgateway | unknown  ns=[('agentgateway-ingress', 'agentgateway-system')]
+   source | agentgateway-ingress | unknown | orchestrator | mutual_tls  ns=[('agentgateway-ingress', 'lab')]
+   source | agentgateway-ingress | unknown | otel-collector | unknown  ns=[('agentgateway-ingress', 'telemetry')]
+   source | card-read | agentgateway-ingress.agentgateway-ingress.svc.cluster.local | agentgateway-ingress | mutual_tls  ns=[('lab', 'agentgateway-ingress')]
+   source | loadgen | agentgateway-ingress.agentgateway-ingress.svc.cluster.local | agentgateway-ingress | mutual_tls  ns=[('lab', 'agentgateway-ingress')]
+
+this rebuild's legs by connection_security_policy: {'mutual_tls': 17, 'unknown': 12}

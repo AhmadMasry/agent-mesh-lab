@@ -1,0 +1,85 @@
+# Istio on the rebuilt cluster, read 2026-09-15T21:18:02Z: images, the settings the retired route carried, the mesh
+# ConfigMap, and the workload certificates.
+
+## istioctl version (client, control plane, data plane)
+client version: 1.31.0
+control plane version: 1.31.0
+data plane version:  (2 proxies), 1.31.0 (2 proxies)
+
+## images, from the running workloads (spec image, then the imageID the kubelet resolved)
+   ds     ztunnel          docker.io/istio/ztunnel:1.31.0-distroless
+   ds     istio-cni-node   docker.io/istio/install-cni:1.31.0-distroless
+   deploy istiod           docker.io/istio/pilot:1.31.0-distroless
+   istio-cni-node-4ffqw  docker.io/istio/install-cni:1.31.0-distroless  docker.io/istio/install-cni@sha256:d274207c7572adaf81289fd4eb4b430f9f38eba3b3603be3af17ecefbd46ccdd
+   istio-cni-node-bcb6m  docker.io/istio/install-cni:1.31.0-distroless  docker.io/istio/install-cni@sha256:d274207c7572adaf81289fd4eb4b430f9f38eba3b3603be3af17ecefbd46ccdd
+   istiod-7d565d6dd7-shhd6  docker.io/istio/pilot:1.31.0-distroless  docker.io/istio/pilot@sha256:78b5d404521ac0337e556f6cb8f9efa8d401abe8b6e0b74930020a56eea13b8e
+   ztunnel-nk2wb  docker.io/istio/ztunnel:1.31.0-distroless  docker.io/istio/ztunnel@sha256:36632f26754ef3828f12c24d7d5f1c1573b1cfaf96ce4485539ceaaab793568b
+   ztunnel-nmbf9  docker.io/istio/ztunnel:1.31.0-distroless  docker.io/istio/ztunnel@sha256:36632f26754ef3828f12c24d7d5f1c1573b1cfaf96ce4485539ceaaab793568b
+
+## the container env the retired route's settings reach
+   ztunnel: ISTIO_META_ENABLE_HBONE=true SECRET_TTL=168h 
+   istiod:  DEFAULT_WORKLOAD_CERT_TTL=168h PILOT_ENABLE_AGENTGATEWAY=true 
+
+## mesh ConfigMap istio-system/istio, data.mesh
+defaultConfig:
+  discoveryAddress: istiod.istio-system.svc:15012
+  image:
+    imageType: distroless
+  proxyMetadata:
+    ISTIO_META_ENABLE_HBONE: "true"
+defaultProviders:
+  metrics:
+  - prometheus
+enablePrometheusMerge: true
+enableTracing: true
+extensionProviders:
+- name: otel-tracing
+  opentelemetry:
+    port: 4317
+    resource_detectors:
+      environment: {}
+    service: otel-collector.telemetry.svc.cluster.local
+rootNamespace: istio-system
+serviceScopeConfigs:
+- scope: GLOBAL
+  servicesSelector:
+    matchExpressions:
+    - key: istio.io/global
+      operator: In
+      values:
+      - "true"
+trustDomain: cluster.local
+## the provider and the flag, read out of data.mesh with yq
+{
+  "enableTracing": true,
+  "extensionProviders": [
+    {
+      "name": "otel-tracing",
+      "opentelemetry": {
+        "port": 4317,
+        "resource_detectors": {
+          "environment": {}
+        },
+        "service": "otel-collector.telemetry.svc.cluster.local"
+      }
+    }
+  ]
+}
+
+## istioctl ztunnel-config certificates --node agent-mesh-lab-worker
+CERTIFICATE NAME                                                          TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Leaf     Available     true           f10c2c799971608e5885e87f6437554f     2026-09-22T19:35:03Z     2026-09-15T19:33:03Z
+spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress     Root     Available     true           f490269d993f41d0de3723f4c878984a     2036-09-12T19:33:11Z     2026-09-15T19:33:11Z
+spiffe://cluster.local/ns/lab/sa/default                                  Leaf     Available     true           280ea89e2477b6bc4134a7c4cbb0c9ee     2026-09-22T19:33:49Z     2026-09-15T19:31:49Z
+spiffe://cluster.local/ns/lab/sa/default                                  Root     Available     true           f490269d993f41d0de3723f4c878984a     2036-09-12T19:33:11Z     2026-09-15T19:33:11Z
+
+## istioctl ztunnel-config certificates --node agent-mesh-lab-control-plane
+CERTIFICATE NAME     TYPE     STATUS     VALID CERT     SERIAL NUMBER     NOT AFTER     NOT BEFORE
+
+## leaf lifetimes, NOT AFTER minus NOT BEFORE, from the worker node's table
+   spiffe://cluster.local/ns/agentgateway-system/sa/agentgateway-ingress  VALID true NOT BEFORE 2026-09-15T19:33:03Z NOT AFTER 2026-09-22T19:35:03Z span 168h02m
+   spiffe://cluster.local/ns/lab/sa/default                               VALID true NOT BEFORE 2026-09-15T19:31:49Z NOT AFTER 2026-09-22T19:33:49Z span 168h02m
+
+## ztunnel pods' start times (issuance is read forward from these)
+ztunnel-nk2wb agent-mesh-lab-control-plane 2026-09-15T19:33:30Z
+ztunnel-nmbf9 agent-mesh-lab-worker 2026-09-15T19:33:30Z

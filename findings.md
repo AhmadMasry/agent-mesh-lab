@@ -1069,3 +1069,166 @@ One entry per gate, receiver, and mode or run. Numbers first, interpretation sec
   - checks: `clean-check/`, `trace/`, `mtls/`, `scan/`, `guard/`.
 - Interpretation: as documented, and nothing the retired route carried was lost. Istio's recommendation, re-read the same day, is Helm. Its Helm charts take every setting this lab passed to `istioctl install`, all eleven of the file and the recipe. The three telemetry charts render a counterpart for every object the manifests declared, so deleting the two inputs removed a route and no configuration; a rebuild from a deleted cluster reproduced the clean check, the 12/66 trace shape with no dangling parent, the probe's two refusals, 9/9 targets and the clean scan. What the retirement changes in practice is small, because the route it removes had not been reproducible end to end since the Helm-first entry found that agentgateway's control plane installs only by Helm. Before this task a Helm-less host got through step 2 and then stopped at step 2b. It now stops at step 2 before building anything, and `make -n` says so too. istioctl stays for what the lab actually uses it for: the certificate check, the workload table and version reads, all taken at the pinned client. One thing the brief expected did not hold. The images are not unchanged, only their sources are. The base references float by design, and in three days all three moved, which a comparison of repository object IDs cannot show. The scan and every count held on the moved bases. The new digests, the Amazon Linux release and uv's version are recorded in `versions.yaml` as observations dated 2026-09-15, beside the earlier ones, and no pin moves.
 - Follow-up: none
+
+## Gate 3 / both receivers / ingress namespace — With the ingress in its own ambient namespace and the control-plane namespace outside the mesh, do the counts, the trace shape and mTLS enforcement hold?
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.2 openai-python=3.13.0
+- Environment: kind
+- Method: the author's direction of 2026-09-12 — "why not from now to move the agentgateway ingress and egress each in its own namespace out of the control-plane namespace and in mesh?" — with the controller's qualification, which the author accepted: the egress already has its own namespace, `agentgateway-egress`, and stays outside ambient by agentgateway's documented egress shape, so only the ingress moves. No pin moves. Telemetry pins, all unmoved: collector=otel/opentelemetry-collector-contrib:0.160.0 (chart 0.173.1), jaeger=jaegertracing/jaeger:2.20.0 (chart 4.13.1), prometheus=prom/prometheus:v3.14.0 (chart 29.28.1), otel-go=v1.46.0, otel-go-contrib=v0.71.0, and the OpenTelemetry Python distro 0.65b0 with exporter 1.44.0.
+
+  **The change** (commit "refactor(deploy): the agentgateway ingress in its own ambient namespace; the control-plane namespace left out of the mesh"):
+  - The step-2b overlay creates the Namespace `agentgateway-ingress` with `istio.io/dataplane-mode: ambient`. The ingress Gateway, its `AgentgatewayParameters` and the port-15020 PERMISSIVE `PeerAuthentication` move there, the last with selector and ports unchanged.
+  - The step-3 overlay moves the ingress's tracing and access-log `AgentgatewayPolicy` objects beside the Gateway.
+  - The two HTTPRoutes in `lab` change `parentRefs[0].namespace`. The orchestrator's `PUBLIC_URL`, which its agent card advertises, becomes `http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local`.
+  - `make step-2b` no longer labels `agentgateway-system`. `agentgateway-values.yaml` loses the controller's `podLabels` opt-out and now sets nothing.
+  - `REPLAY_INGRESS_NS`, the step-2b Programmed wait, and `INGRESS_NS` and the ingress `PROXY_NS` in `gate3-matrix.sh` and `gate3-gateway-retry-mechanics.sh` name the new namespace.
+  - `versions.yaml`: `agentgateway-controlplane-ambient-optout` is marked `superseded`, and three keys are added for the documents read.
+
+  **Documents read on 2026-09-15:**
+  - Gateway API, attachment: "A Route can reference a Gateway by specifying the namespace (optional if the Route and the Gateway are in the same namespace) and name of the Gateway in a parentRef", and "All will allow Routes from all Namespaces to be attached" (concepts/api-overview).
+  - Gateway API, grants: "Cross namespace Route -> Gateway binding follows a slightly different pattern where the handshake mechanism is built into the Gateway resource" (api-types/referencegrant). So the listener keeps `from: All` and no ReferenceGrant is added.
+  - agentgateway chart v1.5.0 values: `rbac.gatewayNamespaces: []`, "An empty list preserves the default cluster-wide write access. ... Restricting this list means only Gateways in these namespaces can be used"; `discoveryNamespaceSelectors: []`.
+  - agentgateway install page: "You can limit the namespaces that agentgateway watches for gateway configuration."
+  - agentgateway's ambient-ingress page, re-read from the website repository at commit 3f96d16e: "For end-to-end ambient mTLS, both the namespace that runs the agentgateway ingress proxy and the namespace that runs the backend must be ambient-enabled." Its example then labels `agentgateway-system` and creates the Gateway there.
+
+  **Renders** (`render/summary.txt`), every overlay at d28dea6 against commit 1's deploy tree:
+  - `deploy/base`, `step-1-nomesh` and `step-2-ambient-agw` are byte-identical; step 2's diff is comments only.
+  - `step-2b-agw-ingress-egress` goes from 20 to 21 objects, `step-2c-gate2` from 22 to 23, `step-3-stress` from 32 to 33, and the two ingress retry overlays from 4 to 5. Each diff is only the new Namespace, the objects' namespace field, the parentRefs' namespace and the card URL.
+  - The egress and waypoint retry overlays are identical.
+  - `helm template` of the control-plane chart with the new values file loses exactly one line, `istio.io/dataplane-mode: none`, and equals a render with no values file.
+  - The Prometheus job `agentgateway-proxies` selects pods in every namespace by the gateway-name label, so its values are unchanged.
+  - The derive layer names no ingress service. Its fixtures carry `agentgateway-ingress` only as the span service name, which is the Gateway's name and does not change (`render/service-name-check.txt`).
+  - `make test` exited 0.
+
+  **The Makefile's Helm check** now runs while make reads the file, for any command line that names `step-2`, `step-2b` or `step-3`. `step-2b` takes the `helm-required` prerequisite in place of its own shell check. `guard/make-n-without-helm.txt` has the demonstration.
+
+  **Rebuild.** From a deleted cluster, with `rebuild/rebuild.sh`. The cluster torn down was the one the followups-11 proof built. Before the teardown, `rebuild/build.txt` recorded `git status --short` empty and these deployed object IDs, which the commit named above carries (check each with `git rev-parse <commit>:<path>`):
+  - deploy `e2b242eb594ab593a710fe168eb90cc5b361444b`, Makefile `c57773d0e390de3f73572ca58b3aa344953655f7`, agents `5d0431e2d2243b834ef5e10cef53460d10c7b5c8`, fixtures `e6e6682ac210d535317f26cdb7abe305f611e27b`, experiments/lib `0cc3db9375f0abc487d41cca90f6d5a35a6c03c8`;
+  - the 11 `experiments/*.sh` blobs:
+    - gate1-baseline.sh `f56199646533e595e7dcf724c0cf5346a0ceba23`
+    - gate1-mockllm-deterministic.sh `47846b108c4920a5ca01f85cd20456afeecec289`
+    - gate1-three-ledgers.sh `1f197f9d4786f09fb959d0cf603a537698abae6f`
+    - gate1-wire-version.sh `8ec5eed18855d8733a157f17dcf07d76d832b415`
+    - gate2-a1.sh `08b4027d33cc7decc6af42a2dee4926c35e002d7`
+    - gate2-a2.sh `4109f70cc893bf8898e499950e193c7309149ba2`
+    - gate2-single-clean.sh `8093cc82ba629e4acd5240df9393caaf166abb22`
+    - gate3-gateway-retry-mechanics.sh `2fcc3cd8f5ff21048bbb8f1b975f5760e0054e37`
+    - gate3-matrix.sh `cee360d0c8cab889a49920c7eb4cf28e13e1323b`
+    - gate3-trace-per-work-item.sh `3d8ea01d9e826cc93b9b9f7b1ed67fabff72cfa6`
+    - scan-images.sh `f531249d0450d43e914f3f3590747b5818f9f558`
+
+  It ran `make teardown`, `cluster-kind`, `step-1`, `step-2`, `step-2b`, `step-2c` and `step-3`, each timed, with the deployed paths' status read before each. There was **no manual step**: no pod deleted, no rollout restarted, no helm upgrade outside a make target.
+
+  **The host slept during the build and the readings.** Nobody touched the cluster in these windows, and no target or reading was re-issued by hand. The pmset windows, in UTC, are in `rebuild/host-sleep.txt` and in `build.txt`'s dated note:
+  - Idle Sleep 21:25:11Z (34 s) — inside make step-2b (21:24:23–21:26:04Z).
+  - DarkWake 21:25:45Z (180 s).
+  - Maintenance Sleep 21:28:45Z (43 s); DarkWake 21:29:28Z (10 s).
+  - Sleep 21:29:38Z (969 s); DarkWake 21:45:47Z (64 s).
+  - Sleep 21:46:51Z (946 s); DarkWake 22:02:37Z (16 s).
+  - Sleep 22:02:53Z (697 s); user Wake 22:14:30Z, which pmset attributes to `RTP.keyboard/UserActivity`: the author at the machine.
+
+  **Keep-awake.** No driver in this task holds the host awake, and the author's ruling of 2026-09-15 is that none may: one run of the checks driver was started under `caffeinate -i` and was stopped when that ruling arrived, and its trace attempt is kept and not counted. What the drivers do not do, the harness around them does. `pmset -g log`'s Assertions lines, appended to `rebuild/host-sleep.txt` under a dated heading that also corrects that file's description of its own selection, show `caffeinate -i -t 300` assertions whose parent is a Claude Code process, refreshed about every four minutes: they were held through the build's first 3 m 35 s, the last released at 21:25:06Z with `[System: No Assertions]` five seconds before the Idle Sleep this list opens with, and they were held continuously across the counted readings of 22:21:41–22:24:45Z. So "no keep-awake" is true of this lab's scripts and not of the session that ran them, and the counted readings ran while such an assertion was held. It changes no count: what a keep-awake prevents is an idle sleep, and the sleeps this entry records happened anyway, between those assertions.
+
+  What those windows touched:
+  - `make step-2b` is sleep-affected. ko's `kind load` of the worker and mock images ran across the 21:25:11Z sleep and took 49 s, against 16 s for the same load at followups-11.
+  - `make step-2c` and `make step-3` ran in the DarkWake of 21:25:45–21:28:45Z.
+  - In `step-3`, the Prometheus pod's first pull of `prom/prometheus:v3.14.0` failed with `unexpected status from GET request to https://registry-1.docker.io/v2/prom/prometheus/blobs/sha256:e80cad42…: 502 Bad Gateway`. The kubelet's image back-off pulled again 12 s later and succeeded, in 7.346 s (`rebuild/prometheus-pull-events.txt`). This falls in the DarkWake window and is recorded as coincident with it, not as caused by it. It is platform behaviour, recorded and not changed: the lab's no-retry rule concerns the fixtures and the traffic path.
+  - The kind VM's clock paused while the host slept, so cluster timestamps after 21:28:45Z can be behind host time until the clock is stepped forward. The clean check's `gate2-curl` pod has events stamped 21:29:06Z. The loadgen Job the same script created seconds later reads 21:46:09Z, as do the ledger lines the clean check counts (`rebuild/cluster-clock-events.txt`).
+  - What holds is stated as such: every target exited 0 on its first run, and no hand touched the cluster. The 16 pods in `lab`, `agentgateway-*`, `istio-system` and `telemetry` have the same names in the readback before the sleeps (21:28:29Z) and on resumption (22:21:41Z), each with 0 restarts. The nine Helm releases are at revision 1.
+
+  **Readings, in the order their stamps show** (logs in `logs/`):
+  - 21:28:27Z: ztunnel policy rejections, before.
+  - 21:28:27–29Z: the readback of Helm releases, Istio, certificates, mesh shape, attachment and the egress first stream.
+  - 21:28:29–35Z: the agent card read from a client in `lab`. Its pod deletion returned only after the 969 s sleep, at 21:45:51Z.
+  - 21:45:51–21:46:34Z: `gate2-single-clean.sh`, in the 64 s DarkWake.
+  - The first trace attempt (RUN_ID 004634) was interrupted by the next sleeps and is kept in `trace/attempt-1/`.
+  - A second attempt (RUN_ID 221929) was run under `caffeinate -i` and stopped by hand when the ruling arrived that no keep-awake of any kind is used. It is kept in `trace/attempt-2/`. Neither attempt is counted.
+  - 22:21:41–22:23:35Z: `REPS=2 gate3-trace-per-work-item.sh` with RUN_ID 222141, the counted trace, with dangling parents from `trace/dangling.py`.
+  - 22:23:35Z: the plaintext probe from `telemetry`, followups-10's `probe.sh` unedited.
+  - 22:24:07Z: the same probe sent from a pod in `agentgateway-system` (`probe-cp.sh`, a copy changed only in namespace, pod name, output names and the workload rows it lists).
+  - 22:24:38Z: ztunnel rejections, after.
+  - 22:24:38–39Z: the Prometheus targets and every `istio_tcp_connections_opened_total` series, tabulated by `hops.py`.
+  - 22:24:39–40Z: the versions and images readback.
+  - 22:24:40Z: the guard demonstration again, on the rebuilt cluster; the stamp inside its own record is 22:24:45Z.
+- Result: **the lab rebuilds from a deleted cluster with the ingress in its own ambient namespace, and every count and shape checked is the committed one; the control-plane pod is uncaptured with no `istio.io/dataplane-mode` label, and a request from a pod in its namespace is refused at both agents.**
+  - **Timings** (`rebuild/timings.txt`): teardown 1.349 s, cluster-kind 19.212 s, step-1 51.683 s, step-2 99.320 s, step-2b 101.192 s (sleep-affected, above), step-2c 21.514 s and step-3 95.877 s (both in DarkWake). That is 390.147 s in the seven targets, plus 0.532 s of header reads and eight gaps of 0.014–0.032 s (0.201 s together). It comes to **390.880 s** from the log's first line to its last, every interval accounted for. About 16 s of step-3 lie between the Prometheus pod's first pull and its second.
+  - **Helm:** 9 releases, all 9 deployed at their pins. Istio images `1.31.0-distroless`; ztunnel `ISTIO_META_ENABLE_HBONE=true SECRET_TTL=168h`; istiod `DEFAULT_WORKLOAD_CERT_TTL=168h PILOT_ENABLE_AGENTGATEWAY=true`; the mesh ConfigMap carries `enableTracing: true` and the `otel-tracing` provider.
+  - **Certificates:** `spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress` reads NOT BEFORE 2026-09-15T21:24:02Z and NOT AFTER 2026-09-22T21:26:02Z. `ns/lab/sa/default` reads 21:22:15Z and 2026-09-22T21:24:15Z. Both are **168h02m** and `VALID CERT true`. The ingress leaf is issued for the new namespace's identity.
+  - **Mesh membership** (`rebuild/mesh-shape.txt`), from `istioctl ztunnel-config workloads`:
+    - `agentgateway-ingress/agentgateway-ingress-84b98df499-c8m9m` **HBONE**;
+    - `agentgateway-system/agentgateway-864d45549-2ctkc` **TCP**. Its labels are `agentgateway`, `app.kubernetes.io/instance`, `app.kubernetes.io/name` and `pod-template-hash`, with **no `istio.io/dataplane-mode`**. It was labelled `none` on the cluster torn down (`rebuild/before-teardown/mesh-shape.txt`);
+    - `agentgateway-egress/agw-egress` **TCP**;
+    - `lab/orchestrator` and `lab/worker` **HBONE**;
+    - the two waypoints and the mock TCP. The waypoints and the egress carry `istio.io/dataplane-mode: none`, which no manifest of this lab sets, so their controllers set it; the mock carries the label from `deploy/base/mockllm.yaml`;
+    - `telemetry` TCP.
+
+    Namespaces labelled ambient: `agentgateway-ingress` and `lab`. Not labelled: `agentgateway-system`, `agentgateway-egress` and `telemetry`. PeerAuthentication `istio-system/default` is STRICT, and `agentgateway-ingress/agentgateway-ingress-metrics` is STRICT with 15020 PERMISSIVE, selecting the ingress pod. Both waypoint Gateways carry their `parametersRef` ConfigMaps.
+  - **Attachment** (`rebuild/attachment.txt`):
+    - Gateway `agentgateway-ingress/agentgateway-ingress` reads `Accepted=True`, `Programmed=True`, address 10.96.179.187. So the control plane in `agentgateway-system` programmed a Gateway outside its namespace, as the chart's defaults say.
+    - `lab/orchestrator-ingress` and `lab/worker-ingress` each read parent `agentgateway-ingress/agentgateway-ingress`, `Accepted=True` and `ResolvedRefs=True`, from controller `agentgateway.dev/agentgateway`.
+    - `agentgateway-ingress/tracing` and `agentgateway-ingress/access-logs` read `Accepted=True` and `Attached=True`.
+    - The Service is `agentgateway-ingress.agentgateway-ingress`.
+  - **Agent card** (`rebuild/agent-card.txt`): HTTP 200 from the orchestrator Service and HTTP 200 through the ingress. Both bodies are the same, sha256 `4b11f39c…`, and advertise `supportedInterfaces[0].url = http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local`.
+  - **Egress waypoint:** 1 `Stream established`, 0 XDS connection errors, 0 readiness failures, 0 restarts.
+  - **Clean check:** **`1/1/1/1/1` with `TASK_STATE_COMPLETED`** on both receivers (`clean-check/summary.csv`).
+  - **Trace at `REPS=2`** (`trace/summary.csv`, `trace/dangling.csv`):
+    - both worker rows exactly **12** spans, `agentgateway-waypoint=4|agw-egress=2|loadgen=2|mockllm=1|worker=3`;
+    - both orchestrator rows exactly **66**, `agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=2|mockllm=1|orchestrator=53|worker=2`;
+    - on all four: `trace_ids` 2, 2 roots, **0 dangling parents**, `hops_without_span` `none`.
+
+    These are the followups-11 figures, service by service. The ingress's spans still carry the service name `agentgateway-ingress`, so the orchestrator's SendMessage still enters through the ingress, now at its new address.
+  - **Plaintext probes** (`mtls/`):
+    - From `telemetry`: **curl exit 56, `Recv failure: Connection reset by peer`** on both receivers.
+    - From a pod in **`agentgateway-system`**: **curl exit 56**, the same reset, on both receivers. That namespace was enrolled until this change, and it is now outside the mesh the same way `telemetry` is. In the workload listing read seconds after the prober became Ready, the controller in that namespace reads TCP and the prober has no row yet.
+  - **ztunnel policy rejections:** **0** on both nodes before, **4** after, all on the worker node and each `explicitly denied by: istio-system/istio_converted_static_strict`. They are exactly the probes' four requests: `telemetry/mtls-probe` to worker and to orchestrator, and `agentgateway-system/mtls-probe-cp` to worker and to orchestrator. Nothing else was refused, including the three trace attempts, the card read and the clean check.
+  - **Prometheus:** **9/9 up**: `agentgateway-proxies` 4, `ztunnel` 2, `istiod` 1, `agentgateway-controlplane` 1, `otel-collector` 1. The `up` series names the ingress target `instance=10.244.1.17:15020 namespace=agentgateway-ingress gateway_name=agentgateway-ingress`, and the control-plane target `namespace=agentgateway-system` (`rebuild/prometheus-targets.txt`).
+  - **Hops** (`rebuild/hops-security.csv`, in the followups-10 form with `destination_workload`; `rebuild/hops-vs-followups-10.txt`):
+    - 29 legs, 17 `mutual_tls` and 12 `unknown`; 24 legs are also in followups-10's table.
+    - Six legs appear only there, from clients and paths this run did not exercise: loadgen reaching the orchestrator pod directly (from both reporters), the orchestrator's own calls through `agw-egress`, `baseline-curl` and `wire-version-curl` to the mock, and the worker dialling the mock directly. followups-10's reading came after the Gate 1 baselines, the wire-version capture and the model-client runs; this one came after only the clean check, the trace, the card read and the probes.
+    - Five legs appear only here: `card-read` (×3) and `mtls-probe-cp` (×2).
+    - The two loadgen → `agentgateway-ingress` legs, `mutual_tls` from both reporters, differ only in `destination_service`: `agentgateway-ingress.agentgateway-system.svc.cluster.local` then, `agentgateway-ingress.agentgateway-ingress.svc.cluster.local` now. Their workload namespaces read `lab` → `agentgateway-ingress`.
+    - Control-plane and ingress legs:
+      - the ingress proxy to the controller, `source | agentgateway-ingress | agentgateway.agentgateway-system.svc.cluster.local | agentgateway | unknown`, namespaces `agentgateway-ingress` → `agentgateway-system`. `unknown` is the metric's way of saying this is not mesh mTLS: the connection leaves a captured pod for an uncaptured one, so ztunnel does not tunnel it, and what rides it is agentgateway's own TLS — the live ingress Deployment carries `XDS_ADDRESS=https://agentgateway.agentgateway-system.svc.cluster.local:9978` and `XDS_ROOT_CA=/etc/xds-tls/ca.crt`. The leg reads the same in followups-10, from the other namespace;
+      - the ingress to the orchestrator, `mutual_tls` from both reporters;
+      - Prometheus's scrape of the ingress, `destination | prometheus | unknown | agentgateway-ingress | unknown`, which is the 15020 exception;
+      - the ingress to the collector, `unknown`.
+
+      No series is reported by the controller's side, and none exists at all for the egress proxy's or Prometheus's connections to it, because neither end of those is captured. The one leg above that names the controller is reported by its source, the captured ingress proxy.
+  - **Versions line:** the kind nodes run `kindest/node:v1.37.0@sha256:a1ed56cf…`, the Gateway API CRDs read bundle v1.6.2 experimental, and every agentgateway proxy runs `cr.agentgateway.dev/agentgateway:v1.5.0` beside `controller:v1.5.0`. go.mod, go.sum and uv.lock are unchanged since d28dea6, so the line above is byte-equal to the previous entry's.
+  - **Images and the scan.** The scan was not re-run, because every image input is the same as at the followups-11 rebuild of the same day (`rebuild/image-inputs.txt`):
+    - the go-sources stamp on worker and mockllm is `c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd`, equal to the checkout's hash and to followups-11's;
+    - agents, fixtures, internal, go.mod, go.sum, .ko.yaml, uv.lock and the orchestrator Dockerfile have the object IDs of d28dea6;
+    - the base digests are the same: distroless `e2e927ec…`, amazonlinux:2023 `155687eb…` at release 2023.12.20260914, uv:latest `62f8c047…` with uv 0.12.15;
+    - the build logs name the same 51 Amazon Linux package NEVRAs.
+
+    The digests read back differ from followups-11's, and the record says why, one image at a time. The orchestrator is `sha256:167e5452…` against `d97755c6…`: `make orchestrator-image` builds with `--no-cache`, and this rebuild's own three builds of it exported three different manifests (`rebuild/build.txt:667`, `:1270`, `:1990`). The worker and mock imageIDs differ for another reason, and not because ko is non-deterministic: ko ran five times in this rebuild and gave **one digest per binary** each time (worker `32f087c8…`, mockllm `65f5f716…`), as it did across followups-11's five applies. What moved them is an input this list does not name, the checkout commit: Go stamps `vcs.revision` into the binary, so followups-11's images carry that branch's commit and these carry `1e0bb7e`. The running worker reads `vcs.revision=1e0bb7ee004f0e3e0d7761a7e4001d1949b86999`, `vcs.time=2026-09-15T21:15:30Z`, `vcs.modified=false`, `-trimpath=true`. None of that touches the packages in the image, which is what a scan reads, so followups-11's scan (0 in every severity for all five images) was taken on images with these package inputs.
+  - **Guard** (`guard/make-n-without-helm.txt`, repeated on the rebuilt cluster in `guard/make-n-without-helm-rebuilt-cluster.txt` with identical output apart from the date line and the snapshot hashes). Two PATHs were used: one that holds every tool but helm, and `/usr/bin:/bin:/usr/sbin:/sbin`.
+    - With d28dea6's Makefile, `make -n step-1 step-2` printed step-1's whole plan (docker build, kind load, ko apply, rollout lines), then `*** step-1 step-2: helm is not on PATH … nothing was applied. Stop.`, exit 2.
+    - With commit 1's Makefile, it printed only `Makefile:69: *** step-2: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run. Stop.`, exit 2. `cluster-kind step-2b` and `step-3` stop the same way, naming their goal.
+    - `make -n step-1` alone exits 0.
+    - The cluster snapshot is identical before and after each demonstration.
+
+  Run outputs are under `experiments/runs/2026-09-15-ingress-namespace/`:
+  - commit-1 records: `render/`, `guard/`, `make-n.txt`, `make-n-vs-followups-11.diff`;
+  - rebuild: `rebuild/{build.txt,timings.csv,timings.txt,host-sleep.txt,cluster-clock-events.txt,prometheus-pull-events.txt,rebuild.sh,readback.sh,rejections.sh,card.sh,versions-readback.sh,helm-releases.txt,istio.txt,mesh-shape.txt,attachment.txt,agent-card.txt,egress-first-stream.txt,ztunnel-rejections-before.txt,ztunnel-rejections-after.txt,prometheus-targets.txt,tcp-connection-security-raw.txt,hops-security.csv,hops-vs-followups-10.txt,versions-readback.txt,images.txt,image-inputs.txt}` and `rebuild/before-teardown/`;
+  - checks: `clean-check/`, `trace/` (with `attempt-1/` and `attempt-2/`), `mtls/`;
+  - drivers and tools: `checks.sh`, `checks-2.sh`, `probe-cp.sh`, `hops.py`;
+  - logs: `logs/`.
+- Interpretation: the move holds on every figure checked, and mTLS enforcement does not depend on which namespace the control plane shares.
+
+  The final mesh membership, and why:
+  - **In:** the two agents, which are the traffic path.
+  - **In:** the two istiod-driven waypoints, which terminate HBONE for the agents' Services in the enrolled `lab`.
+  - **In:** the ingress proxy, whose hop to the orchestrator is HBONE because its namespace is enrolled, as agentgateway's ingress page requires.
+  - **Out:** the egress proxy, by agentgateway's documented egress shape.
+  - **Out:** the mock model, which stands in for an external provider and is reached in plaintext as the lab's external leg.
+  - **Out:** the control plane, which is infrastructure. It serves XDS over its own TLS. Two of its three clients, the egress proxy and Prometheus, are outside the mesh; the third is the ingress proxy, which since this change dials it from inside the mesh, across the namespace boundary, and whose leg the hops table records.
+  - **Out:** the telemetry namespace, because an in-mesh collector would refuse the plaintext OTLP of the uncaptured emitters.
+
+  What changed is how the control plane is out. Before, it sat in a namespace enrolled for the ingress's sake and carried a per-pod opt-out, a label against its namespace. Now its namespace is not enrolled, so Istio's default leaves it out, and a request from a pod in that namespace is refused at both agents the way one from `telemetry` is.
+
+  Against the documented shape, this is a deviation from agentgateway's ambient-ingress example, not from a requirement. The page's example creates the ingress Gateway in `agentgateway-system` and labels that namespace, while its stated requirement is only that the proxy's namespace be ambient-enabled. The lab meets the requirement with a namespace of its own. The Gateway API and the chart's defaults make that a change of namespaces and nothing more: a route's parentRef namespace, a listener already open to all namespaces, no ReferenceGrant, and a controller with cluster-wide write access. The rebuild showed the Gateway programmed, both routes accepted and both policies attached from the new namespace.
+
+  The proof is a rebuild from a deleted cluster, because a change to who is captured is the case where a connection predating a policy can hide a refusal. The record is also plain that the host slept during that rebuild and its readings. The build's figures stand because every target exited 0 first time, with no hand on the cluster and no pod replaced or restarted across the sleeps. A check that a sleep interrupted was re-taken, not counted.
+
+  Two readings in this entry are observations, not findings about the change. One is the registry 502 the kubelet recovered from. The other is what moves an image digest here: the orchestrator's because its build re-runs every layer, the Go images' because the commit is stamped into the binary. Neither changes a package, so a digest alone cannot decide whether to re-scan; the inputs a scan reads can, and they are unchanged. The Makefile item deferred from followups-11's review is closed: on a host without helm, a command line naming a Helm goal now stops before any goal runs, and README says that.
+- Follow-up: none
