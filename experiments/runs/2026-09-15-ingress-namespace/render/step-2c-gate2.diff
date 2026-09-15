@@ -1,0 +1,70 @@
+--- d28dea6 step-2c-gate2
++++ commit-1 step-2c-gate2
+@@ -8,6 +8,13 @@
+ metadata:
+   labels:
+     istio.io/dataplane-mode: ambient
++  name: agentgateway-ingress
++---
++apiVersion: v1
++kind: Namespace
++metadata:
++  labels:
++    istio.io/dataplane-mode: ambient
+   name: lab
+ ---
+ apiVersion: v1
+@@ -136,7 +143,7 @@
+         - name: MODEL_BASE_URL
+           value: http://model.lab.internal:8080/v1
+         - name: PUBLIC_URL
+-          value: http://agentgateway-ingress.agentgateway-system.svc.cluster.local
++          value: http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local
+         - name: AGENT_NAME
+           value: orchestrator
+         - name: PORT
+@@ -270,7 +277,7 @@
+ kind: AgentgatewayParameters
+ metadata:
+   name: agentgateway-ingress-params
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   service:
+     spec:
+@@ -310,7 +317,7 @@
+ kind: Gateway
+ metadata:
+   name: agentgateway-ingress
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   gatewayClassName: agentgateway
+   infrastructure:
+@@ -387,7 +394,7 @@
+ spec:
+   parentRefs:
+   - name: agentgateway-ingress
+-    namespace: agentgateway-system
++    namespace: agentgateway-ingress
+   rules:
+   - backendRefs:
+     - name: orchestrator
+@@ -419,7 +426,7 @@
+   - worker.lab.internal
+   parentRefs:
+   - name: agentgateway-ingress
+-    namespace: agentgateway-system
++    namespace: agentgateway-ingress
+   rules:
+   - backendRefs:
+     - name: worker
+@@ -449,7 +456,7 @@
+ kind: PeerAuthentication
+ metadata:
+   name: agentgateway-ingress-metrics
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   mtls:
+     mode: STRICT

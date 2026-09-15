@@ -1,0 +1,31 @@
+# Follow-ups 12: where the derive layer, its fixtures and the trace script name the ingress, 2026-09-15T21:14:40Z.
+# The spans' service name is the Gateway's name, agentgateway-ingress, which this task does not change; the namespace
+# agentgateway-system appears in none of these files. The live check is the rebuild's trace (commit 2).
+
+$ git grep -c agentgateway-system -- experiments/lib experiments/fixtures experiments/gate3-trace-per-work-item.sh
+exit=1 (1 = no match)
+
+$ git grep -c agentgateway-ingress -- experiments/lib experiments/fixtures experiments/gate3-trace-per-work-item.sh
+experiments/fixtures/derive-layer/client-http-ingress/spans.csv:4
+experiments/fixtures/derive-layer/client-http-py/spans.csv:4
+experiments/fixtures/derive-layer/expected.txt:1
+experiments/fixtures/derive-layer/gateway-ingress/spans.csv:3
+experiments/fixtures/derive-layer/none-baseline-py/spans.csv:2
+experiments/gate3-trace-per-work-item.sh:1
+
+# the column each fixture match sits in (spans.csv column 4 is "service"):
+   experiments/fixtures/derive-layer/client-http-ingress/spans.csv: agentgateway-ingress=4 
+   experiments/fixtures/derive-layer/client-http-py/spans.csv: agentgateway-ingress=4 
+   experiments/fixtures/derive-layer/gateway-ingress/spans.csv: agentgateway-ingress=3 
+   experiments/fixtures/derive-layer/none-baseline-py/spans.csv: agentgateway-ingress=2 
+
+# experiments/lib/derive-layer.sh names the egress service (EGRESS_SERVICE = "agw-egress") and no ingress service:
+112:RECEIVER_SERVICE="$2"
+119:DIR="$DIR" RECEIVER_SERVICE="$RECEIVER_SERVICE" python3 - <<'PY'
+132:CLIENT_SERVICE = "loadgen"
+133:EGRESS_SERVICE = "agw-egress"
+134:MOCK_SERVICE = "mockllm"
+
+# the trace script hop list:
+58:HOPS_WORKER="loadgen agentgateway-waypoint worker agw-egress mockllm"
+59:HOPS_ORCH="loadgen agentgateway-waypoint-orch agentgateway-ingress orchestrator agentgateway-waypoint worker agw-egress mockllm"

@@ -18,7 +18,9 @@
 # Fields, from the reference:
 #   apiVersion/kind  "apiVersion: security.istio.io/v1 / kind: PeerAuthentication".
 #   metadata.namespace
-#                    `agentgateway-system`, where the ingress pod runs. A policy outside the
+#                    `agentgateway-ingress`, where the ingress pod runs (until follow-ups 12,
+#                    2026-09-15, it ran in `agentgateway-system` and this object sat there; it
+#                    moved with the pod, selector and ports unchanged). A policy outside the
 #                    root namespace reaches only its own namespace -- "If it is in any other
 #                    namespace, it will target only that namespace" (ambient L4) -- which is
 #                    the containment wanted here.
@@ -62,7 +64,7 @@ apiVersion: security.istio.io/v1
 kind: PeerAuthentication
 metadata:
   name: agentgateway-ingress-metrics
-  namespace: agentgateway-system
+  namespace: agentgateway-ingress
 spec:
   selector:
     matchLabels:

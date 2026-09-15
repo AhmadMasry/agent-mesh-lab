@@ -10,7 +10,9 @@
 # resolves the card through the ingress but reads back the orchestrator's own Service
 # address would send the request straight to the agent. Advertising the gateway is how
 # A2A addresses an agent that sits behind one. The value matches the Service the
-# agentgateway controller provisions for the `agentgateway-ingress` Gateway.
+# agentgateway controller provisions for the `agentgateway-ingress` Gateway, in that
+# Gateway's namespace, `agentgateway-ingress` since follow-ups 12 (2026-09-15; before
+# it the Service was agentgateway-ingress.agentgateway-system).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -24,4 +26,4 @@ spec:
             - name: MODEL_BASE_URL
               value: "http://model.lab.internal:8080/v1"
             - name: PUBLIC_URL
-              value: "http://agentgateway-ingress.agentgateway-system.svc.cluster.local"
+              value: "http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local"

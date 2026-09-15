@@ -72,10 +72,13 @@ it is committed.
 
 Istio, the agentgateway control plane and the three telemetry components are
 installed by Helm and by no other route. Helm is a requirement: without `helm` on
-PATH, `make step-2` and `make step-3` stop through their `helm-required`
-prerequisite before anything is built or applied, `make -n` included, and
-`make step-2b` stops with its own message. `make -n step-2 step-2b step-3` with helm
-on PATH is committed as `experiments/runs/2026-09-15-helm-only/make-n.txt`.
+PATH, a `make` command line that names `step-2`, `step-2b` or `step-3` stops while
+make reads the Makefile, with a message naming those goals, so no goal on that line
+runs — `make step-1 step-2` runs neither, and `make -n` stops the same way. The
+demonstration, before and after the check moved there, is
+`experiments/runs/2026-09-15-ingress-namespace/guard/`, and `make -n step-2 step-2b
+step-3` with helm on PATH is committed as
+`experiments/runs/2026-09-15-ingress-namespace/make-n.txt`.
 
 | Component | Route |
 | --- | --- |
@@ -127,18 +130,24 @@ containers, not only in the values ConfigMap.
 `versions.yaml` key `istio-workload-cert-ttl` carries the quotes. The separate
 non-renewal quirk this lab has recorded is not addressed by this.
 
-The agentgateway **controller** pod leaves the mesh. `make step-2b` labels the whole
-`agentgateway-system` namespace ambient for the ingress *proxy*'s sake, which also
-captured the controller — and two plaintext clients must reach it: the egress waypoint's
-XDS on 9978, and Prometheus's scrape of 9092. On the from-scratch rebuild of 2026-09-12
-ztunnel refused the scrape under mesh-wide STRICT, naming the policy, and the egress
-waypoint's XDS dial was reset, so it never became ready; opting the controller out cured
-both. The older cluster had masked it because that XDS stream predated the policy and
-ztunnel enforces per connection. The remedy is the per-pod opt-out `istio.io/dataplane-mode: none`, through
-the chart's `podLabels` — the same treatment the mock model gets, and the lab's posture
-for anything off the traffic path that must be reachable in plaintext, rather than
-poking port holes in the mesh-wide policy. The proxy pods are unaffected. `versions.yaml`
-key `agentgateway-controlplane-ambient-optout`.
+The agentgateway **controller** is outside the mesh because its namespace is.
+`agentgateway-system` holds the control plane only and is not labelled ambient; the
+ingress Gateway and its proxy run in a namespace of their own, `agentgateway-ingress`,
+which the step-2b overlay creates with the ambient label. Two plaintext clients must
+reach the controller: the egress waypoint's XDS on 9978, and Prometheus's scrape of 9092.
+Until follow-ups 12 (2026-09-15) the ingress ran in `agentgateway-system`, as in the
+example on agentgateway's ambient-ingress page, and `make step-2b` labelled that whole
+namespace for the ingress *proxy*'s sake, which captured the controller too. On the
+from-scratch rebuild of 2026-09-12 ztunnel refused the scrape under mesh-wide STRICT,
+naming the policy, and the egress waypoint's XDS dial was reset, so it never became
+ready; the older cluster had masked it because that XDS stream predated the policy and
+ztunnel enforces per connection. The remedy then was a per-pod opt-out,
+`istio.io/dataplane-mode: none` through the chart's `podLabels`; the namespace of its
+own replaced it, and the controller pod carries no label of this lab's. The page's
+requirement — "both the namespace that runs the agentgateway ingress
+proxy and the namespace that runs the backend must be ambient-enabled" — still holds.
+`versions.yaml` keys `agentgateway-controlplane-ambient-optout` (superseded) and
+`agentgateway-ingress-namespace`.
 
 The worker and mock Deployments do not rebuild themselves: a change under
 `agents/worker/`, `fixtures/mockllm/`, or `internal/` reaches them only
@@ -340,7 +349,7 @@ the model, and counts the same four run types through them (`RUN4_URL` sends run
 
 ```
 make step-2b && STEP=2b REPS=5 RUNS="1 2 3 4" \
-  RUN4_URL=http://agentgateway-ingress.agentgateway-system.svc.cluster.local \
+  RUN4_URL=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local \
   experiments/gate1-baseline.sh
 ```
 
@@ -389,30 +398,31 @@ document sentence behind each of its fields, and from step 2 on a plaintext
 request from a pod outside the mesh is refused: measured at HTTP 200 before the
 policy and `Recv failure: Connection reset by peer` under it, for both agents.
 
-Three other files make that hold for the lab's own traffic, and all three are
+Three other choices make that hold for the lab's own traffic, and all three are
 deliberate rather than incidental. The mock model **opts out of ambient**
 (`istio.io/dataplane-mode: none` in `deploy/base/mockllm.yaml`): it stands in for
 an external provider, so the egress waypoint's call to it is this lab's external
 plaintext leg, and a captured mock refused that call when STRICT was first
 applied. The agentgateway ingress pod's metrics port gets one port-level
 exception (`deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metrics.yaml`,
-`portLevelMtls: {15020: PERMISSIVE}`), because Prometheus runs outside the mesh
-and its scrape is plaintext into a captured pod; without it that scrape target
-went down. Whether ztunnel honours a port-level mode is not stated by any current
-Istio page — it is measured here, and the file says so. And the agentgateway
-**control plane opts out of ambient** too
-(`deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml`, the chart's
-`podLabels`): it is infrastructure, not the traffic path — it serves XDS over its
-own TLS, its two clients (the egress proxy, outside the mesh by agentgateway's
-documented egress shape, and Prometheus) speak plaintext to it, and it carries no
-agentgateway traffic. The ingress *proxy* in the same namespace stays captured
-and keeps its 15020 exception. This one was found late, on a from-scratch rebuild
-on 2026-09-12: ztunnel refused Prometheus's scrape of the controller under STRICT,
-naming the policy, and the egress proxy's XDS dial was reset, so it never became
-ready. The earlier cluster had hidden it, because the egress proxy's XDS stream
-there had been opened before the policy — on 2026-09-12 itself, after the
-controller's last restart — and ztunnel enforces per connection; so a rebuild from
-a deleted cluster is the test for any change to who is captured.
+`portLevelMtls: {15020: PERMISSIVE}`, in the ingress's namespace), because Prometheus
+runs outside the mesh and its scrape is plaintext into a captured pod; without it that
+scrape target went down. Whether ztunnel honours a port-level mode is not stated by any
+current Istio page — it is measured here, and the file says so. And the agentgateway
+**control plane is outside the mesh**, by its namespace: the ingress proxy runs in
+`agentgateway-ingress`, which is enrolled, and `agentgateway-system`, which holds only
+the controller, is not. The controller is infrastructure, not the traffic path — it
+serves XDS over its own TLS, its two clients (the egress proxy, outside the mesh by
+agentgateway's documented egress shape, and Prometheus) speak plaintext to it, and it
+carries no agentgateway traffic. This was found late, on a from-scratch rebuild on
+2026-09-12, when the ingress still shared the controller's namespace and that namespace
+was enrolled: ztunnel refused Prometheus's scrape of the controller under STRICT, naming
+the policy, and the egress proxy's XDS dial was reset, so it never became ready. The
+earlier cluster had hidden it, because the egress proxy's XDS stream there had been
+opened before the policy — on 2026-09-12 itself, after the controller's last restart —
+and ztunnel enforces per connection; so a rebuild from a deleted cluster is the test for
+any change to who is captured. The fix then was a per-pod opt-out on the controller; on
+2026-09-15 (follow-ups 12) the ingress moved to its own namespace and the opt-out went.
 
 The `telemetry` namespace stays **out** of the mesh on purpose. An in-mesh
 collector would enforce mTLS on inbound OTLP and so refuse the spans of every

@@ -1,0 +1,88 @@
+--- d28dea6 step-3-stress
++++ commit-1 step-3-stress
+@@ -8,6 +8,13 @@
+ metadata:
+   labels:
+     istio.io/dataplane-mode: ambient
++  name: agentgateway-ingress
++---
++apiVersion: v1
++kind: Namespace
++metadata:
++  labels:
++    istio.io/dataplane-mode: ambient
+   name: lab
+ ---
+ apiVersion: v1
+@@ -197,7 +204,7 @@
+         - name: MODEL_BASE_URL
+           value: http://model.lab.internal:8080/v1
+         - name: PUBLIC_URL
+-          value: http://agentgateway-ingress.agentgateway-system.svc.cluster.local
++          value: http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local
+         - name: AGENT_NAME
+           value: orchestrator
+         - name: PORT
+@@ -335,7 +342,7 @@
+ kind: AgentgatewayParameters
+ metadata:
+   name: agentgateway-ingress-params
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   service:
+     spec:
+@@ -384,7 +391,7 @@
+ kind: AgentgatewayPolicy
+ metadata:
+   name: access-logs
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   frontend:
+     accessLog:
+@@ -403,7 +410,7 @@
+ kind: AgentgatewayPolicy
+ metadata:
+   name: tracing
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   frontend:
+     tracing:
+@@ -453,7 +460,7 @@
+ kind: Gateway
+ metadata:
+   name: agentgateway-ingress
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   gatewayClassName: agentgateway
+   infrastructure:
+@@ -540,7 +547,7 @@
+ spec:
+   parentRefs:
+   - name: agentgateway-ingress
+-    namespace: agentgateway-system
++    namespace: agentgateway-ingress
+   rules:
+   - backendRefs:
+     - name: orchestrator
+@@ -572,7 +579,7 @@
+   - worker.lab.internal
+   parentRefs:
+   - name: agentgateway-ingress
+-    namespace: agentgateway-system
++    namespace: agentgateway-ingress
+   rules:
+   - backendRefs:
+     - name: worker
+@@ -602,7 +609,7 @@
+ kind: PeerAuthentication
+ metadata:
+   name: agentgateway-ingress-metrics
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   mtls:
+     mode: STRICT

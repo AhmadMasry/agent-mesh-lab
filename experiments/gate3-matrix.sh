@@ -110,7 +110,7 @@ CURL_IMAGE="curlimages/curl:8.22.0"
 MOCK_URL="http://mockllm.lab.svc.cluster.local:8080"
 WORKER_URL="http://worker.lab.svc.cluster.local:8080"
 ORCH_URL="http://orchestrator.lab.svc.cluster.local:8080"
-INGRESS_NS="agentgateway-system"
+INGRESS_NS="agentgateway-ingress"
 INGRESS_PORT=18080
 JOB_TEMPLATE="deploy/base/loadgen-a2-job.yaml"
 

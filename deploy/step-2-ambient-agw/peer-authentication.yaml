@@ -10,20 +10,24 @@
 #   deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metrics.yaml gives the
 #     agentgateway ingress pod's scrape port one port-level PERMISSIVE exception, because
 #     Prometheus runs outside the mesh.
-#   deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml (added 2026-09-12) opts the
-#     agentgateway CONTROL PLANE pod out of ambient through its chart's `podLabels`. It is
-#     infrastructure, not the traffic path: it serves XDS over its own TLS, its clients -- the
-#     egress proxy by agentgateway's documented egress shape and Prometheus -- are outside the
-#     mesh and speak plaintext to it, and it carries no agentgateway traffic. A from-scratch
-#     rebuild on 2026-09-12, with the controller still captured, recorded ztunnel refusing
-#     Prometheus's scrape of it under this policy, naming the policy, and the egress proxy's
-#     XDS dial being reset, so the egress proxy never became ready; opting the controller out
-#     cured both. The attempt-2 result below had stood on an egress XDS stream opened before
-#     this policy was applied -- on 2026-09-12, after the controller's last container restart
-#     at about 14:36Z and before the 15:52:50Z apply -- which ztunnel, enforcing per
-#     connection, never re-examined. The ingress PROXY stays captured and keeps its port
-#     exception above.
-#     findings.md `## Gate 3 / both receivers / Helm-first installation` has the counts.
+#   deploy/step-2b-agw-ingress-egress/ingress.yaml (since follow-ups 12, 2026-09-15) puts the
+#     agentgateway ingress Gateway and its proxy in a namespace of their own,
+#     `agentgateway-ingress`, labelled ambient, and leaves the CONTROL PLANE's namespace
+#     `agentgateway-system` unlabelled, so the controller is outside the mesh by its namespace.
+#     It is infrastructure, not the traffic path: it serves XDS over its own TLS, its clients --
+#     the egress proxy by agentgateway's documented egress shape and Prometheus -- are outside
+#     the mesh and speak plaintext to it, and it carries no agentgateway traffic. From
+#     2026-09-12 to 2026-09-15 the ingress shared that namespace, the namespace was labelled,
+#     and the controller was opted out pod by pod instead (agentgateway-values.yaml says why
+#     and what the 2026-09-12 rebuild recorded: ztunnel refusing Prometheus's scrape of the
+#     captured controller under this policy, naming the policy, and the egress proxy's XDS dial
+#     being reset, so the egress proxy never became ready). The attempt-2 result below had
+#     stood on an egress XDS stream opened before this policy was applied -- on 2026-09-12,
+#     after the controller's last container restart at about 14:36Z and before the 15:52:50Z
+#     apply -- which ztunnel, enforcing per connection, never re-examined. The ingress PROXY
+#     stays captured and keeps its port exception above.
+#     findings.md `## Gate 3 / both receivers / Helm-first installation` and
+#     `## Gate 3 / both receivers / ingress namespace` have the counts.
 # The `telemetry` namespace is deliberately NOT enrolled in ambient: an in-mesh collector would
 # enforce mTLS on inbound OTLP and so refuse the spans of every emitter that is not
 # ztunnel-captured -- the mock, the egress proxy and both istiod-driven waypoints, all of which
@@ -62,9 +66,9 @@
 # `selector` in the `spec`. If the policy is in the Istio root namespace (traditionally
 # `istio-system`), then it will target all namespaces. If it is in any other namespace,
 # it will target only that namespace." So a root-namespace object reaches the enrolled
-# namespaces (`lab`, `agentgateway-system`) and no per-namespace copy is written. The
-# reference agrees for the mesh level: "For mesh level, put the policy in
-# root-namespace according to your Istio installation."
+# namespaces (`lab`, and `agentgateway-ingress` from step 2b) and no per-namespace copy
+# is written. The reference agrees for the mesh level: "For mesh level, put the policy
+# in root-namespace according to your Istio installation."
 #
 # Fields, each from the reference:
 #   apiVersion/kind  "apiVersion: security.istio.io/v1 / kind: PeerAuthentication", the

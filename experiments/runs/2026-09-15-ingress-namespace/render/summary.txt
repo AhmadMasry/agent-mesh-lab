@@ -1,0 +1,60 @@
+# Follow-ups 12: overlay renders at the base commit and at commit 1's deploy tree, 2026-09-15T21:12:21Z.
+# base:   d28dea6 (d28dea6e19d2aa1988d0f5e4ab59404507b12da1) deploy 1abb50913e9352df00f6cee1c53050fd80d186e8
+# target: deploy tree e2b242eb594ab593a710fe168eb90cc5b361444b
+# Client Version: v1.37.0 (kubectl kustomize)
+
+## base
+   render exit: base 0, target 0; objects: base 7, target 7; sha256 base 5d29a987052ccb7f target 5d29a987052ccb7f
+   renders identical
+## step-1-nomesh
+   render exit: base 0, target 0; objects: base 7, target 7; sha256 base 5d29a987052ccb7f target 5d29a987052ccb7f
+   renders identical
+## step-2-ambient-agw
+   render exit: base 0, target 0; objects: base 10, target 10; sha256 base 55eafe8ff525f11a target 55eafe8ff525f11a
+   renders identical
+## step-2b-agw-ingress-egress
+   render exit: base 0, target 0; objects: base 20, target 21; sha256 base cb6faafcc0d976e8 target 39e2c06fdb3fcec0
+   diff: 5 line(s) removed, 12 added -> step-2b-agw-ingress-egress.diff
+   objects only at base:   AgentgatewayParameters agentgateway-system/agentgateway-ingress-params; Gateway agentgateway-system/agentgateway-ingress; PeerAuthentication agentgateway-system/agentgateway-ingress-metrics
+   objects only at target: AgentgatewayParameters agentgateway-ingress/agentgateway-ingress-params; Gateway agentgateway-ingress/agentgateway-ingress; Namespace -/agentgateway-ingress; PeerAuthentication agentgateway-ingress/agentgateway-ingress-metrics
+## step-2c-gate2
+   render exit: base 0, target 0; objects: base 22, target 23; sha256 base 02c33fe5b54768b6 target 8b395d05bab84a45
+   diff: 6 line(s) removed, 13 added -> step-2c-gate2.diff
+   objects only at base:   AgentgatewayParameters agentgateway-system/agentgateway-ingress-params; Gateway agentgateway-system/agentgateway-ingress; PeerAuthentication agentgateway-system/agentgateway-ingress-metrics
+   objects only at target: AgentgatewayParameters agentgateway-ingress/agentgateway-ingress-params; Gateway agentgateway-ingress/agentgateway-ingress; Namespace -/agentgateway-ingress; PeerAuthentication agentgateway-ingress/agentgateway-ingress-metrics
+## step-3-stress
+   render exit: base 0, target 0; objects: base 32, target 33; sha256 base 9da55bbc6d0afd83 target 46dc0df28e6e0898
+   diff: 8 line(s) removed, 15 added -> step-3-stress.diff
+   objects only at base:   AgentgatewayParameters agentgateway-system/agentgateway-ingress-params; AgentgatewayPolicy agentgateway-system/access-logs; AgentgatewayPolicy agentgateway-system/tracing; Gateway agentgateway-system/agentgateway-ingress; PeerAuthentication agentgateway-system/agentgateway-ingress-metrics
+   objects only at target: AgentgatewayParameters agentgateway-ingress/agentgateway-ingress-params; AgentgatewayPolicy agentgateway-ingress/access-logs; AgentgatewayPolicy agentgateway-ingress/tracing; Gateway agentgateway-ingress/agentgateway-ingress; Namespace -/agentgateway-ingress; PeerAuthentication agentgateway-ingress/agentgateway-ingress-metrics
+## step-3-stress/retry/waypoint/off
+   render exit: base 0, target 0; objects: base 1, target 1; sha256 base 81bd68e04c444a8f target 81bd68e04c444a8f
+   renders identical
+## step-3-stress/retry/waypoint/on
+   render exit: base 0, target 0; objects: base 1, target 1; sha256 base 575ce64a2ba2f6fa target 575ce64a2ba2f6fa
+   renders identical
+## step-3-stress/retry/ingress/off
+   render exit: base 0, target 0; objects: base 4, target 5; sha256 base 91ab39be9518bda9 target d2af8dfc689d6295
+   diff: 4 line(s) removed, 11 added -> step-3-stress_retry_ingress_off.diff
+   objects only at base:   AgentgatewayParameters agentgateway-system/agentgateway-ingress-params; Gateway agentgateway-system/agentgateway-ingress
+   objects only at target: AgentgatewayParameters agentgateway-ingress/agentgateway-ingress-params; Gateway agentgateway-ingress/agentgateway-ingress; Namespace -/agentgateway-ingress
+## step-3-stress/retry/ingress/on
+   render exit: base 0, target 0; objects: base 4, target 5; sha256 base 33cc2004e57cdd8d target 529d04b4c6798ed7
+   diff: 4 line(s) removed, 11 added -> step-3-stress_retry_ingress_on.diff
+   objects only at base:   AgentgatewayParameters agentgateway-system/agentgateway-ingress-params; Gateway agentgateway-system/agentgateway-ingress
+   objects only at target: AgentgatewayParameters agentgateway-ingress/agentgateway-ingress-params; Gateway agentgateway-ingress/agentgateway-ingress; Namespace -/agentgateway-ingress
+## step-3-stress/retry/egress/off
+   render exit: base 0, target 0; objects: base 6, target 6; sha256 base bc9c6226befdedc5 target bc9c6226befdedc5
+   renders identical
+## step-3-stress/retry/egress/on
+   render exit: base 0, target 0; objects: base 6, target 6; sha256 base b8149e380fa44386 target b8149e380fa44386
+   renders identical
+
+## the agentgateway control-plane chart, which the overlays do not carry: helm template of
+## oci://cr.agentgateway.dev/charts/agentgateway v1.5.0 with each tree's agentgateway-values.yaml, as make step-2b passes it
+   helm: v4.3.0+gbec5b06; render exit: base 0, target 0; chart pulled: Digest: sha256:9216ce83965ad2ce0888014d14aac5e71333fd9d4057cd167da92b37630fbee1
+   objects: base 9, target 9
+   diff: 1 line(s) removed, 0 added -> agentgateway-chart.diff
+      -        istio.io/dataplane-mode: none
+   target render vs a render with no values file: identical
+   the label istio.io/dataplane-mode in the render: base 1, target 0

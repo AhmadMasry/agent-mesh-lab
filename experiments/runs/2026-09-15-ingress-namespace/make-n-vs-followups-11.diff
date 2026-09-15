@@ -1,0 +1,45 @@
+--- followups-11 make-n.txt (body)
++++ followups-12 make-n.txt (body)
+@@ -48,31 +48,24 @@
+ kubectl -n lab rollout status deployment/worker --timeout=120s
+ kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+ kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=c2ed4e9bce9619a6252d7b263711cdf4ab87d2bd
+-# One route only, and the target says so rather than failing obscurely: the
+-# agentgateway documentation installs its control plane by Helm from two OCI charts
+-# and documents no other way, which is a fact about the project's install surface
+-# and is recorded as one in findings.md.
+-if [ -z "/opt/homebrew/bin/helm" ]; then \
+-		echo "step-2b: helm is not on PATH, and the agentgateway control plane has no other documented install: the project's Istio ambient ingress and egress pages install charts agentgateway-crds and agentgateway from oci://cr.agentgateway.dev/charts (versions.yaml, agentgateway-controlplane). Install helm and re-run; nothing was applied." >&2; \
+-		exit 1; \
+-	fi
+ echo "step-2b: agentgateway control plane via Helm (/opt/homebrew/bin/helm), charts pinned to v1.5.0"
+ helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
+ 		--create-namespace --namespace agentgateway-system --version v1.5.0
+-# -f opts the controller pod out of ambient. The namespace label below is for the
+-# ingress proxy; the controller is not on the traffic path and two plaintext clients
+-# must reach it, so it leaves the mesh the way the mock model does. Measured on the
+-# 2026-09-12 rebuild: without it, ztunnel refuses Prometheus's scrape of 9092 under
+-# mesh-wide STRICT and the egress waypoint's XDS dial is reset, so the egress never
+-# becomes ready. The file carries the readings and the documents.
++# agentgateway-system holds the control plane only and is not labelled ambient, so the
++# controller is outside the mesh by its namespace: it is not on the traffic path, and
++# its two clients, the egress waypoint's XDS and Prometheus, speak plaintext to it.
++# The values file sets nothing since follow-ups 12 and its header says what it set
++# before and why that is gone.
+ helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
+ 		--namespace agentgateway-system --version v1.5.0 \
+ 		-f deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml --wait
+-# The ingress page labels the proxy namespace ambient so the hop from the
+-# gateway pod to the backend pod is HBONE like every other hop in the mesh.
+-kubectl label ns agentgateway-system istio.io/dataplane-mode=ambient --overwrite
++# The ingress proxy's namespace, agentgateway-ingress, is created by the overlay with
++# the ambient label the ingress page asks for, so the hop from the gateway pod to the
++# backend pod is HBONE like every other hop in the mesh and the proxy pod is captured
++# from its creation. Until follow-ups 12 the ingress ran in agentgateway-system and
++# this target labelled that namespace here.
+ kubectl kustomize deploy/step-2b-agw-ingress-egress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+-kubectl -n agentgateway-system wait --for=condition=Programmed gateway/agentgateway-ingress --timeout=180s
++kubectl -n agentgateway-ingress wait --for=condition=Programmed gateway/agentgateway-ingress --timeout=180s
+ kubectl -n agentgateway-egress wait --for=condition=Programmed gateway/agw-egress --timeout=180s
+ # ko rebuilds the Go images, so the mock can rotate on this apply too.
+ kubectl -n lab rollout status deployment/mockllm --timeout=120s

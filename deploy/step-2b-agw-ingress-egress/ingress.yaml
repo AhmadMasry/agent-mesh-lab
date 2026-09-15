@@ -1,13 +1,48 @@
 # agentgateway as an ingress gateway in front of Agent A (the orchestrator), under
 # agentgateway's own control plane. Shape from the agentgateway documentation's Istio
 # ambient ingress page (agentgateway.dev/docs/kubernetes/latest/integrations/istio/
-# ambient/ambient-ingress/, read 2026-09-08 from the site source at
+# ambient/ambient-ingress/, read 2026-09-08 and again 2026-09-15 from the site source at
 # github.com/agentgateway/website, assets/agw-docs/pages/integrations/istio/ambient/
-# ambient-ingress.md): a Gateway of class `agentgateway` in the ambient-labelled
-# `agentgateway-system` namespace with an HTTP listener on 80 and
-# allowedRoutes.namespaces.from: All, and an HTTPRoute in the backend namespace with
-# a cross-namespace parentRef. The controller provisions a Deployment and a Service
-# named after the Gateway.
+# ambient-ingress.md, last changed in commit 3f96d16e of 2026-08-31): a Gateway of class
+# `agentgateway` in an ambient-labelled namespace with an HTTP listener on 80 and
+# allowedRoutes.namespaces.from: All, and an HTTPRoute in the backend namespace with a
+# cross-namespace parentRef. The controller provisions a Deployment and a Service named
+# after the Gateway, in the Gateway's namespace.
+#
+# The namespace. Since follow-ups 12 (2026-09-15) the Gateway, its parameters and its
+# proxy live in their own namespace, `agentgateway-ingress`, created and labelled
+# ambient below, and the control plane's namespace `agentgateway-system` is not
+# labelled at all. What the page requires is that the proxy's namespace is enrolled:
+# "For end-to-end ambient mTLS, both the namespace that runs the agentgateway ingress
+# proxy and the namespace that runs the backend must be ambient-enabled." Its example
+# then labels `agentgateway-system` and creates the Gateway there, which is the
+# namespace the control plane is installed into. Enrolling that namespace also captured
+# the controller, which the lab then had to opt out pod by pod (follow-ups 9); a
+# namespace of its own enrols the proxy and nothing else. This departs from the page's
+# example, not from its requirement.
+#
+# The control plane programs a Gateway in any namespace at this chart's defaults. The
+# chart's own values (`helm show values oci://cr.agentgateway.dev/charts/agentgateway
+# --version v1.5.0`, read 2026-09-15) say of `rbac.gatewayNamespaces: []`: "An empty
+# list preserves the default cluster-wide write access. ... Restricting this list means
+# only Gateways in these namespaces can be used", and `discoveryNamespaceSelectors: []`
+# is empty; the install page's namespace-discovery section describes that setting as a
+# way to "limit the namespaces that agentgateway watches for gateway configuration". The
+# egress Gateway in `agentgateway-egress` was already programmed from outside the
+# control plane's namespace, and this one is observed programmed by `make step-2b`'s
+# wait on its Programmed condition.
+#
+# Cross-namespace attachment, from the Gateway API documentation (read 2026-09-15). A
+# route names a Gateway in another namespace in its parentRef -- "A Route can reference a
+# Gateway by specifying the namespace (optional if the Route and the Gateway are in the
+# same namespace) and name of the Gateway in a parentRef" -- and the listener must accept
+# it: "All will allow Routes from all Namespaces to be attached"
+# (https://gateway-api.sigs.k8s.io/docs/concepts/api-overview/). No ReferenceGrant is
+# involved in that direction: "Cross namespace Route -> Gateway binding follows a
+# slightly different pattern where the handshake mechanism is built into the Gateway
+# resource" (https://gateway-api.sigs.k8s.io/reference/api-types/referencegrant/). So
+# the two routes in `lab` change their parentRef's namespace and nothing else, and the
+# listener keeps `from: All`.
 #
 # Two departures from the page, both recorded in the findings entry. The page's
 # generated Service is a LoadBalancer and the page reaches it with `kubectl
@@ -15,11 +50,21 @@
 # inside the cluster, so AgentgatewayParameters forces the Service to ClusterIP. And
 # the page pins a listener hostname (www.example.com); this listener matches any
 # host, because the clients here address the gateway by its in-cluster Service name.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agentgateway-ingress
+  labels:
+    # The ingress page labels the proxy's namespace ambient so the hop from the gateway
+    # pod to the backend pod is HBONE like every other hop in the mesh. Set on the object
+    # rather than by `kubectl label`, so the proxy pod is created captured.
+    istio.io/dataplane-mode: ambient
+---
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayParameters
 metadata:
   name: agentgateway-ingress-params
-  namespace: agentgateway-system
+  namespace: agentgateway-ingress
 spec:
   service:
     spec:
@@ -29,7 +74,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: agentgateway-ingress
-  namespace: agentgateway-system
+  namespace: agentgateway-ingress
 spec:
   gatewayClassName: agentgateway
   infrastructure:
@@ -55,7 +100,7 @@ metadata:
 spec:
   parentRefs:
     - name: agentgateway-ingress
-      namespace: agentgateway-system
+      namespace: agentgateway-ingress
   rules:
     - backendRefs:
         - name: orchestrator

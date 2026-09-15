@@ -48,18 +48,37 @@ check-go-sources-clean:
 #     only `kubectl apply -f <release>/experimental-install.yaml`), so step-2 applies
 #     them that way.
 #   - the agentgateway control plane (step-2b): the project documents only a Helm
-#     install of its two OCI charts, and that target says so and stops without helm.
+#     install of its two OCI charts, so step-2b needs helm as step-2 and step-3 do.
 HELM := $(shell command -v helm 2>/dev/null)
 
-# helm-required: the first prerequisite of step-2 and step-3, so that on a host without
-# helm those targets stop before anything is built, loaded or applied. It stops through
-# $(error), which make raises while expanding this recipe, so `make -n step-2` stops
-# with the same message and a non-zero status instead of printing a plan the host
-# cannot carry out. `make -n step-2 step-2b step-3` with helm on PATH is committed in
-# experiments/runs/2026-09-15-helm-only/make-n.txt.
+# The Helm requirement is checked while make reads this file, before any goal runs.
+# HELM_GOALS are the goals whose recipes call helm. When the command line names any of
+# them and helm is not on PATH, make stops here through $(error), so no goal on that
+# command line runs -- not the goals that need helm, and not the ones before them
+# either: `make step-1 step-2` runs neither. `make -n` reads the file the same way, so
+# it stops with the same message and a non-zero status instead of printing a plan the
+# host cannot carry out. Until follow-ups 12 (2026-09-15) the check sat only in
+# helm-required's recipe, which make expands when it reaches step-2 or step-3, so on a
+# host without helm `make step-1 step-2` ran step-1 in full before stopping. The
+# demonstration with a PATH that lacks helm, before and after this change, is committed
+# in experiments/runs/2026-09-15-ingress-namespace/guard/.
+HELM_GOALS           := step-2 step-2b step-3
+HELM_GOALS_REQUESTED := $(filter $(HELM_GOALS),$(MAKECMDGOALS))
+ifneq ($(HELM_GOALS_REQUESTED),)
+ifeq ($(HELM),)
+$(error $(HELM_GOALS_REQUESTED): helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. make stopped while reading the Makefile, so no goal on this command line ran; install helm and re-run)
+endif
+endif
+
+# helm-required: the first prerequisite of step-2, step-2b and step-3. It names the helm that
+# runs, so a run record carries it. The check above has already stopped any command line
+# that names those goals without helm; the $(error) here is kept for a goal that reaches
+# them without naming them, and it says only what is then true. `make -n step-2 step-2b
+# step-3` with helm on PATH is committed in
+# experiments/runs/2026-09-15-ingress-namespace/make-n.txt.
 .PHONY: helm-required
 helm-required:
-	$(if $(HELM),@echo "helm: $(HELM)",$(error $(or $(MAKECMDGOALS),helm-required): helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route. Install helm and re-run; nothing was applied))
+	$(if $(HELM),@echo "helm: $(HELM)",$(error helm-required: helm is not on PATH. Istio and agentgateway install through Helm in this lab and there is no other route; install helm and re-run))
 
 # Chart versions. Every one of these, and every values key the values files use, was
 # read from a document in the session that added it and is recorded in versions.yaml
@@ -224,8 +243,8 @@ step-2: helm-required check-go-sources-clean orchestrator-image
 # step-2b: two more agentgateway proxies, an ingress in front of Agent A and an
 # egress waypoint between Agent B and the model, both under agentgateway's own
 # control plane. The waypoint from step 2 is untouched and stays driven by istiod.
-# The two Helm installs and the namespace label follow the agentgateway
-# documentation's Istio ambient ingress and egress pages; the chart version is
+# The two Helm installs follow the agentgateway documentation's Istio ambient
+# ingress and egress pages; the chart version is
 # pinned in versions.yaml under agentgateway-controlplane. The documented install
 # adds --set controller.image.pullPolicy=Always, which is omitted here because a
 # pinned tag is not re-pulled; the omission is recorded in the findings entry.
@@ -234,33 +253,35 @@ step-2: helm-required check-go-sources-clean orchestrator-image
 # as well, so do not run it against a baseline in progress. The overlay pulls in
 # step-2, whose orchestrator Deployment needs the Python image, so
 # orchestrator-image is a prerequisite here for the same reason it is on step-2.
+#
+# helm-required is its first prerequisite, as on step-2 and step-3, and the check at
+# the top of this file stops a command line naming step-2b without helm before any goal
+# runs. One route only: the agentgateway documentation installs its control plane by
+# Helm from two OCI charts, agentgateway-crds and agentgateway from
+# oci://cr.agentgateway.dev/charts, and documents no other way, which is a fact about
+# the project's install surface and is recorded as one in findings.md (versions.yaml,
+# agentgateway-controlplane). Until follow-ups 12 this target carried its own shell
+# check with that message.
 AGENTGATEWAY_CHART_VERSION := v1.5.0
-step-2b: check-go-sources-clean orchestrator-image
-	# One route only, and the target says so rather than failing obscurely: the
-	# agentgateway documentation installs its control plane by Helm from two OCI charts
-	# and documents no other way, which is a fact about the project's install surface
-	# and is recorded as one in findings.md.
-	@if [ -z "$(HELM)" ]; then \
-		echo "step-2b: helm is not on PATH, and the agentgateway control plane has no other documented install: the project's Istio ambient ingress and egress pages install charts agentgateway-crds and agentgateway from oci://cr.agentgateway.dev/charts (versions.yaml, agentgateway-controlplane). Install helm and re-run; nothing was applied." >&2; \
-		exit 1; \
-	fi
+step-2b: helm-required check-go-sources-clean orchestrator-image
 	@echo "step-2b: agentgateway control plane via Helm ($(HELM)), charts pinned to $(AGENTGATEWAY_CHART_VERSION)"
 	helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
 		--create-namespace --namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION)
-	# -f opts the controller pod out of ambient. The namespace label below is for the
-	# ingress proxy; the controller is not on the traffic path and two plaintext clients
-	# must reach it, so it leaves the mesh the way the mock model does. Measured on the
-	# 2026-09-12 rebuild: without it, ztunnel refuses Prometheus's scrape of 9092 under
-	# mesh-wide STRICT and the egress waypoint's XDS dial is reset, so the egress never
-	# becomes ready. The file carries the readings and the documents.
+	# agentgateway-system holds the control plane only and is not labelled ambient, so the
+	# controller is outside the mesh by its namespace: it is not on the traffic path, and
+	# its two clients, the egress waypoint's XDS and Prometheus, speak plaintext to it.
+	# The values file sets nothing since follow-ups 12 and its header says what it set
+	# before and why that is gone.
 	helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
 		--namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION) \
 		-f deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml --wait
-	# The ingress page labels the proxy namespace ambient so the hop from the
-	# gateway pod to the backend pod is HBONE like every other hop in the mesh.
-	kubectl label ns agentgateway-system istio.io/dataplane-mode=ambient --overwrite
+	# The ingress proxy's namespace, agentgateway-ingress, is created by the overlay with
+	# the ambient label the ingress page asks for, so the hop from the gateway pod to the
+	# backend pod is HBONE like every other hop in the mesh and the proxy pod is captured
+	# from its creation. Until follow-ups 12 the ingress ran in agentgateway-system and
+	# this target labelled that namespace here.
 	kubectl kustomize deploy/step-2b-agw-ingress-egress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
-	kubectl -n agentgateway-system wait --for=condition=Programmed gateway/agentgateway-ingress --timeout=180s
+	kubectl -n agentgateway-ingress wait --for=condition=Programmed gateway/agentgateway-ingress --timeout=180s
 	kubectl -n agentgateway-egress wait --for=condition=Programmed gateway/agw-egress --timeout=180s
 	# ko rebuilds the Go images, so the mock can rotate on this apply too.
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
@@ -576,7 +597,7 @@ retry-off:
 #
 # The name is VIA, not PATH: a command-line `PATH=` assignment is exported into
 # every recipe's shell, which leaves kubectl, go, ko and jq unresolvable.
-REPLAY_INGRESS_NS   := agentgateway-system
+REPLAY_INGRESS_NS   := agentgateway-ingress
 REPLAY_INGRESS_PORT := 18080
 REPLAY_TARGET_URL    = $(if $(filter py,$(RECEIVER)),http://orchestrator.lab.svc.cluster.local:8080,http://worker.lab.svc.cluster.local:8080)
 REPLAY_INGRESS_HOST  = $(if $(filter py,$(RECEIVER)),,worker.lab.internal)

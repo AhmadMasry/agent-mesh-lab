@@ -1,0 +1,46 @@
+--- d28dea6 step-3-stress/retry/ingress/on
++++ commit-1 step-3-stress/retry/ingress/on
+@@ -1,8 +1,15 @@
++apiVersion: v1
++kind: Namespace
++metadata:
++  labels:
++    istio.io/dataplane-mode: ambient
++  name: agentgateway-ingress
++---
+ apiVersion: agentgateway.dev/v1alpha1
+ kind: AgentgatewayParameters
+ metadata:
+   name: agentgateway-ingress-params
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   service:
+     spec:
+@@ -12,7 +19,7 @@
+ kind: Gateway
+ metadata:
+   name: agentgateway-ingress
+-  namespace: agentgateway-system
++  namespace: agentgateway-ingress
+ spec:
+   gatewayClassName: agentgateway
+   infrastructure:
+@@ -36,7 +43,7 @@
+ spec:
+   parentRefs:
+   - name: agentgateway-ingress
+-    namespace: agentgateway-system
++    namespace: agentgateway-ingress
+   rules:
+   - backendRefs:
+     - name: orchestrator
+@@ -57,7 +64,7 @@
+   - worker.lab.internal
+   parentRefs:
+   - name: agentgateway-ingress
+-    namespace: agentgateway-system
++    namespace: agentgateway-ingress
+   rules:
+   - backendRefs:
+     - name: worker

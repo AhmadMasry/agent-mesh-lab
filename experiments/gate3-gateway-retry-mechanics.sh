@@ -85,7 +85,7 @@ CURL_IMAGE="curlimages/curl:8.22.0"
 MOCK_URL="http://mockllm.lab.svc.cluster.local:8080"
 WORKER_URL="http://worker.lab.svc.cluster.local:8080"
 ORCH_URL="http://orchestrator.lab.svc.cluster.local:8080"
-INGRESS_NS="agentgateway-system"
+INGRESS_NS="agentgateway-ingress"
 INGRESS_PORT=18080
 ADMIN_PORT=15002
 
@@ -294,7 +294,7 @@ reset_all
 # trusted: `ingress` patches two routes, the other two patch one each.
 case "$ROUTE" in
 waypoint) PROXY_NS="lab" PROXY_DEPLOY="agentgateway-waypoint" EXPECTED_STANZAS=1 ;;
-ingress) PROXY_NS="agentgateway-system" PROXY_DEPLOY="agentgateway-ingress" EXPECTED_STANZAS=2 ;;
+ingress) PROXY_NS="agentgateway-ingress" PROXY_DEPLOY="agentgateway-ingress" EXPECTED_STANZAS=2 ;;
 egress) PROXY_NS="agentgateway-egress" PROXY_DEPLOY="agw-egress" EXPECTED_STANZAS=1 ;;
 esac
 
