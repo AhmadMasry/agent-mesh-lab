@@ -1,0 +1,100 @@
+# The mTLS shape, the mesh membership and the waypoint tracing route on the rebuilt cluster, read 2026-09-16T00:43:14Z. Read-only.
+
+## PeerAuthentication
+ns: agentgateway-ingress
+name: agentgateway-ingress-metrics
+spec:
+  mtls:
+    mode: STRICT
+  portLevelMtls:
+    "15020":
+      mode: PERMISSIVE
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: agentgateway-ingress
+ns: istio-system
+name: default
+spec:
+  mtls:
+    mode: STRICT
+
+## namespace dataplane labels
+NAME                   STATUS   AGE     DATAPLANE-MODE
+agentgateway-egress    Active   7m45s   
+agentgateway-ingress   Active   7m45s   ambient
+agentgateway-system    Active   8m13s   
+default                Active   11m     
+istio-system           Active   9m51s   
+kube-node-lease        Active   11m     
+kube-public            Active   11m     
+kube-system            Active   11m     
+lab                    Active   10m     ambient
+local-path-storage     Active   11m     
+telemetry              Active   7m2s    
+
+## pods carrying the label istio.io/dataplane-mode (namespace, pod, value; pods without the label are not listed)
+agentgateway-egress  agw-egress-5f85cd64b-4zvls                   none
+istio-system         istio-cni-node-hm4qb                         none
+istio-system         istio-cni-node-rr7vc                         none
+istio-system         istiod-7d565d6dd7-f8g4v                      none
+istio-system         ztunnel-nm4nl                                none
+istio-system         ztunnel-qb6vk                                none
+lab                  agentgateway-waypoint-b89486546-6vhk5        none
+lab                  agentgateway-waypoint-orch-5b56f859f9-4vcf7  none
+lab                  mockllm-59cbc8df69-cr22s                     none
+
+## istioctl ztunnel-config workloads
+NAMESPACE            POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+agentgateway-egress  agw-egress-5f85cd64b-4zvls                           10.244.1.16                   agent-mesh-lab-worker        None     TCP
+agentgateway-ingress agentgateway-ingress-6b4677ff45-z2lk5                10.244.1.17                   agent-mesh-lab-worker        None     HBONE
+agentgateway-system  agentgateway-864d45549-zpnvs                         10.244.1.13                   agent-mesh-lab-worker        None     TCP
+default              kubernetes                                           172.18.0.2                                                 None     TCP
+istio-system         istio-cni-node-hm4qb                                 10.244.0.5                    agent-mesh-lab-control-plane None     TCP
+istio-system         istio-cni-node-rr7vc                                 10.244.1.7                    agent-mesh-lab-worker        None     TCP
+istio-system         istiod-7d565d6dd7-f8g4v                              10.244.1.6                    agent-mesh-lab-worker        None     TCP
+istio-system         ztunnel-nm4nl                                        10.244.1.8                    agent-mesh-lab-worker        None     TCP
+istio-system         ztunnel-qb6vk                                        10.244.0.6                    agent-mesh-lab-control-plane None     TCP
+kube-system          coredns-559f6c778d-k7rbd                             10.244.0.2                    agent-mesh-lab-control-plane None     TCP
+kube-system          coredns-559f6c778d-nhh4q                             10.244.0.4                    agent-mesh-lab-control-plane None     TCP
+kube-system          etcd-agent-mesh-lab-control-plane                    172.18.0.2                    agent-mesh-lab-control-plane None     TCP
+kube-system          kindnet-g4lzh                                        172.18.0.2                    agent-mesh-lab-control-plane None     TCP
+kube-system          kindnet-lwkgb                                        172.18.0.3                    agent-mesh-lab-worker        None     TCP
+kube-system          kube-apiserver-agent-mesh-lab-control-plane          172.18.0.2                    agent-mesh-lab-control-plane None     TCP
+kube-system          kube-controller-manager-agent-mesh-lab-control-plane 172.18.0.2                    agent-mesh-lab-control-plane None     TCP
+kube-system          kube-proxy-rzjm5                                     172.18.0.2                    agent-mesh-lab-control-plane None     TCP
+kube-system          kube-proxy-z2prh                                     172.18.0.3                    agent-mesh-lab-worker        None     TCP
+kube-system          kube-scheduler-agent-mesh-lab-control-plane          172.18.0.2                    agent-mesh-lab-control-plane None     TCP
+lab                  agentgateway-waypoint-b89486546-6vhk5                10.244.1.22                   agent-mesh-lab-worker        None     TCP
+lab                  agentgateway-waypoint-orch-5b56f859f9-4vcf7          10.244.1.23                   agent-mesh-lab-worker        None     TCP
+lab                  mockllm-59cbc8df69-cr22s                             10.244.1.19                   agent-mesh-lab-worker        None     TCP
+lab                  model-external                                       mockllm.lab.svc.cluster.local                              None     TCP
+lab                  orchestrator-c95f887f7-llmjl                         10.244.1.20                   agent-mesh-lab-worker        None     HBONE
+lab                  worker-747c4b7766-bsxv7                              10.244.1.21                   agent-mesh-lab-worker        None     HBONE
+local-path-storage   local-path-provisioner-75f7fc7dc5-nmcnn              10.244.0.3                    agent-mesh-lab-control-plane None     TCP
+telemetry            jaeger-656f58f4c7-25bv5                              10.244.1.25                   agent-mesh-lab-worker        None     TCP
+telemetry            otel-collector-7c6665959f-c4h4s                      10.244.1.24                   agent-mesh-lab-worker        None     TCP
+telemetry            prometheus-566c455884-lbcfp                          10.244.1.26                   agent-mesh-lab-worker        None     TCP
+
+## the ztunnel workload table, the rows this task names (namespace, pod, protocol)
+agentgateway-egress   agw-egress-5f85cd64b-4zvls                   TCP
+agentgateway-ingress  agentgateway-ingress-6b4677ff45-z2lk5        HBONE
+agentgateway-system   agentgateway-864d45549-zpnvs                 TCP
+lab                   agentgateway-waypoint-b89486546-6vhk5        TCP
+lab                   agentgateway-waypoint-orch-5b56f859f9-4vcf7  TCP
+lab                   mockllm-59cbc8df69-cr22s                     TCP
+lab                   model-external                               TCP
+lab                   orchestrator-c95f887f7-llmjl                 HBONE
+lab                   worker-747c4b7766-bsxv7                      HBONE
+telemetry             jaeger-656f58f4c7-25bv5                      TCP
+telemetry             otel-collector-7c6665959f-c4h4s              TCP
+telemetry             prometheus-566c455884-lbcfp                  TCP
+
+## every pod in agentgateway-system and agentgateway-ingress with all its labels
+   agentgateway-system/agentgateway-864d45549-zpnvs restarts=0 labels={"agentgateway":"agentgateway","app.kubernetes.io/instance":"agentgateway","app.kubernetes.io/name":"agentgateway","pod-template-hash":"864d45549"}
+   agentgateway-ingress/agentgateway-ingress-6b4677ff45-z2lk5 restarts=0 labels={"app.kubernetes.io/instance":"agentgateway-ingress","app.kubernetes.io/name":"agentgateway-ingress","gateway.networking.k8s.io/gateway-class-name":"agentgateway","gateway.networking.k8s.io/gateway-name":"agentgateway-ingress","pod-template-hash":"6b4677ff45"}
+
+## the waypoint Gateways' parametersRef
+agentgateway-egress/agw-egress class=agentgateway parametersRef={"group":"agentgateway.dev","kind":"AgentgatewayParameters","name":"agw-egress-params"}
+agentgateway-ingress/agentgateway-ingress class=agentgateway parametersRef={"group":"agentgateway.dev","kind":"AgentgatewayParameters","name":"agentgateway-ingress-params"}
+lab/agentgateway-waypoint class=istio-agentgateway-waypoint parametersRef={"group":"","kind":"ConfigMap","name":"waypoint-tracing-config"}
+lab/agentgateway-waypoint-orch class=istio-agentgateway-waypoint parametersRef={"group":"","kind":"ConfigMap","name":"waypoint-orch-tracing-config"}

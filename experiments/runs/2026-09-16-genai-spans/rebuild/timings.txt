@@ -1,0 +1,30 @@
+# Follow-ups 14: every second of the counted rebuild accounted for, from rebuild/timings.csv and the
+# epoch stamps in rebuild/build.txt. The build ran 2026-09-16T00:43:28Z .. 00:49:26Z. The host did not
+# sleep in that window, nor in the readings that followed (rebuild/host-sleep.txt); rebuild/attempts.txt
+# lists the three earlier builds of this round, none of them counted.
+
+   target        started_utc            wall_s   exit
+   teardown      2026-09-16T00:43:28Z    1.471   0
+   cluster-kind  2026-09-16T00:43:29Z   18.774   0
+   step-1        2026-09-16T00:43:48Z   54.517   0
+   step-2        2026-09-16T00:44:43Z  106.421   0
+   step-2b       2026-09-16T00:46:29Z   63.068   0
+   step-2c       2026-09-16T00:47:32Z   20.064   0
+   step-3        2026-09-16T00:47:52Z   93.288   0
+
+   seven targets                        357.603
+   header and cluster-being-deleted reads, before the first target
+                                          0.501
+   six gaps between targets (0.025 .. 0.044 s each); each holds only the
+   deployed-paths `git status --short` read and the log lines
+                                          0.177
+   after the last target, the closing log line
+                                          0.014
+   ------------------------------------------------
+   first line of build.txt to its last  358.295
+
+Against the follow-ups 12 rebuild of 2026-09-15 (390.147 s in its seven targets) this one is 32.5 s
+shorter; that build was interrupted by host sleeps and this one was not. Against the three uncounted
+builds of this round (342.7 s, 342.6 s and 336.6 s in their targets) it is 15 to 21 s longer, all of it
+in step-2 and step-3, which is variation between runs on the same host and not a change in what is built:
+the deployed subtree IDs are the same objects in the last two of them.

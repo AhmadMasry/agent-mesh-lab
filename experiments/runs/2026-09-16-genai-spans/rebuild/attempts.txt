@@ -1,0 +1,33 @@
+# Every build this round ran, counted and uncounted, because build.txt can only describe the run that
+# wrote it and three others exist. All four tore the cluster down first and built from nothing; none left
+# anything of an earlier one behind, and every count the later ones re-took matched the earlier ones.
+
+1. 2026-09-16T00:22:58Z .. 00:24:09Z  ABANDONED after `make step-1`, uncounted.
+   A run-directory file (checks-2.sh) was edited while the build ran, so the checkout was not clean:
+   ko logged `git is in a dirty state` and stamped vcs.modified=true into the worker and mock binaries.
+   No deployed path was touched and the driver deployed-paths guard passed, but a build whose record
+   cannot say the tree was clean is not a proof. Stopped by hand; log kept outside the repository.
+
+2. 2026-09-16T00:24:38Z .. 00:30:20Z  COMPLETE but SUPERSEDED, uncounted.
+   All seven targets exit 0 from a clean checkout in 342.596 s. Its build.txt was unusable: apostrophes
+   in the dated note the driver echoes broke the driver own quoting, so the note came out garbled and
+   several `echo` lines leaked into the log. Nothing measured was wrong -- the mangling is in the header
+   comment -- but a record is the script output and this one could not be read, so rather than edit a
+   build log by hand the quoting was fixed and the build re-run. Log kept outside the repository.
+
+3. 2026-09-16T00:31:36Z .. 00:37:13Z  COMPLETE but SUPERSEDED, uncounted.
+   All seven targets exit 0 from a clean checkout in 336.6 s, and its readings were taken: the clean check
+   1/1/1/1/1 on both receivers, 14 and 69 spans, 0 dangling parents, 2 roots, lab.work_item on 5/14 and
+   8/69, and every GenAI span carrying every attribute its set asks for. Those readings are what showed
+   that a comment added earlier in this round was wrong about the lab own topology -- it said the model
+   call URL names the mock behind the egress waypoint, where the span read
+   server.address=model.lab.internal, the host that waypoint fronts. Correcting the comment changed the
+   `internal` subtree (c5f57e8477029bb530d972bf582b8e1222633a05 -> fc36ca6027a30a5e8c9b622b4e38d84bf6d19208),
+   so the tree this run directory records had moved and the proof was taken again. Nothing else differed.
+
+4. 2026-09-16T00:43:28Z .. 00:49:26Z  COUNTED. This is build.txt and timings.csv, and every reading in
+   this run directory is from the cluster it built. Seven targets, each exit 0 on its first run, from a
+   checkout whose `git status --short` was empty and stayed empty for the whole build.
+
+The proof this ROUND supersedes is a different thing again: the first follow-ups 14 proof, taken before
+this task review at the tree commit 1 had then. The dated note at the top of build.txt is about that one.

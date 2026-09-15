@@ -1,0 +1,27 @@
+# Prometheus scrape targets on the rebuilt cluster, 2026-09-16T01:02:27Z.
+# experiments/runs/2026-09-12-mtls-enforced/promq.sh targets, then the up series with the labels each job relabels in (namespace, gateway_name)
+
+-- port-forward opened at 2026-09-16T01:02:27Z: kubectl -n telemetry port-forward svc/prometheus 19090:9090
+agentgateway-controlplane  up        http://10.244.1.13:9092/metrics                        
+agentgateway-proxies       up        http://10.244.1.16:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.17:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.22:15020/metrics                       
+agentgateway-proxies       up        http://10.244.1.23:15020/metrics                       
+istiod                     up        http://10.244.1.6:15014/metrics                        
+otel-collector             up        http://otel-collector.telemetry.svc.cluster.local:8889/metrics 
+ztunnel                    up        http://10.244.0.6:15020/metrics                        
+ztunnel                    up        http://10.244.1.8:15020/metrics                        
+-- 9/9 targets up
+-- port-forward closed at 2026-09-16T01:02:27Z
+
+-- port-forward opened at 2026-09-16T01:02:27Z: kubectl -n telemetry port-forward svc/prometheus 19090:9090
+-- port-forward closed at 2026-09-16T01:02:28Z
+agentgateway-controlplane up=1 instance=10.244.1.13:9092 namespace=agentgateway-system gateway_name=-
+agentgateway-proxies up=1 instance=10.244.1.16:15020 namespace=agentgateway-egress gateway_name=agw-egress
+agentgateway-proxies up=1 instance=10.244.1.17:15020 namespace=agentgateway-ingress gateway_name=agentgateway-ingress
+agentgateway-proxies up=1 instance=10.244.1.22:15020 namespace=lab gateway_name=agentgateway-waypoint
+agentgateway-proxies up=1 instance=10.244.1.23:15020 namespace=lab gateway_name=agentgateway-waypoint-orch
+istiod up=1 instance=10.244.1.6:15014 namespace=- gateway_name=-
+otel-collector up=1 instance=otel-collector.telemetry.svc.cluster.local:8889 namespace=- gateway_name=-
+ztunnel up=1 instance=10.244.0.6:15020 namespace=- gateway_name=-
+ztunnel up=1 instance=10.244.1.8:15020 namespace=- gateway_name=-
