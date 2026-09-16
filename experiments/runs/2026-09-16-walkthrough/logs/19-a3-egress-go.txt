@@ -1,0 +1,35 @@
+== certificate check ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           41c8f176ae971ed628ad145393a0b432     2026-09-23T01:33:28Z     2026-09-16T01:31:28Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           3502a10422c83dc7e9a336e0b5bbf714     2036-09-13T01:29:04Z     2026-09-16T01:29:04Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           a844a45631a9d6865260662f5042453c     2026-09-23T01:29:41Z     2026-09-16T01:27:41Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           3502a10422c83dc7e9a336e0b5bbf714     2036-09-13T01:29:04Z     2026-09-16T01:29:04Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+2026-09-16T01:49:44Z image freshness: deployment/worker checkout-go-sources-hash=94aedf890e462ee35120eeac796db06ec759cb30 annotation=94aedf890e462ee35120eeac796db06ec759cb30 pod-imageIDs: worker-cc8f54b88-crgnt=sha256:0683d2514724c919af982b58a0dc742a5fa9294a91160ac8f18ccdc7b712c133 
+2026-09-16T01:49:44Z image freshness: deployment/mockllm checkout-go-sources-hash=94aedf890e462ee35120eeac796db06ec759cb30 annotation=94aedf890e462ee35120eeac796db06ec759cb30 pod-imageIDs: mockllm-69c576dffc-pb68s=sha256:b4ae61bb9421fda0bc4f5a5dc134ba4803324d5f1d19d72e2f923ee7cff19d4b 
+pre-run retry stanzas across every HTTPRoute: 0
+2026-09-16T01:49:44Z pre-run knob assertion passed for RUN=egress: stanzas=0 MODEL_RETRIES=<unset> (this row sets it: no) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport
+== starting the control pod ==
+2026-09-16T01:50:06Z run wta3e: RUN=egress RECEIVER=go SUB=none REPS=1 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport MODEL_RETRIES=<left as deployed> route-retry=egress
+2026-09-16T01:50:07Z deployment/worker replicas: spec=1 ready=1
+2026-09-16T01:50:07Z deployment/mockllm replicas: spec=1 ready=1
+== switching the retry stanza on for the egress route ==
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-16-walkthrough/a3-egress-go/routes.txt
+retry stanzas on agentgateway-egress/model-via-agw: 1
+retry stanzas with ROUTE=egress on: 1 on the egress routes, 1 cluster-wide (expected 1 each)
+== dry run: one repetition, its directory deleted afterwards ==
+== egress go: logical_work_item_id=a3m-egress-go-wta3e-dry ==
+  go,egress,none,a3m-egress-go-wta3e-dry,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== dry run done; experiments/runs/2026-09-16-walkthrough/a3-egress-go/a3m-egress-go-wta3e-dry removed ==
+== egress go: 1 repetitions ==
+== egress go: logical_work_item_id=a3m-egress-go-wta3e-01 ==
+  go,egress,none,a3m-egress-go-wta3e-01,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== summary ==
+receiver,run,sub,work_item,deliveries,dispatched,distinct_messageIds,tasks,invocations,client_result,trace_spans,spans_by_service,second_delivery_layer,notes
+go,egress,none,a3m-egress-go-wta3e-01,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== restoring the egress route: removing the retry stanza ==
+restored: retry stanzas across every HTTPRoute: 0
+== a3-egress-go finished 2026-09-16T01:51:15Z wall=90.896s exit=0 ==

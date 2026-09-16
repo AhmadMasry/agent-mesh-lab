@@ -1,0 +1,17 @@
+# The 14 spans of one worker work item, a3t-wt3-r1-worker, in start order within each of its two traces.
+# Columns: service, operation, http_status. From spans.csv in that work item directory.
+
+  loadgen                  invoke_agent worker                          
+  loadgen                  HTTP POST                                    200
+  agentgateway-waypoint    POST /*                                      
+  agentgateway-waypoint    POST worker.lab.svc.cluster.local:8080       
+  worker                   POST /                                       200
+  worker                   chat mock                                    
+  worker                   HTTP POST                                    200
+  agw-egress               POST /*                                      
+  agw-egress               POST mockllm.lab.svc.cluster.local:8080      
+  mockllm                  POST /v1/chat/completions                    200
+  loadgen                  HTTP GET                                     200
+  agentgateway-waypoint    GET /*                                       
+  agentgateway-waypoint    GET worker.lab.svc.cluster.local:8080        
+  worker                   GET /.well-known/agent-card.json             200

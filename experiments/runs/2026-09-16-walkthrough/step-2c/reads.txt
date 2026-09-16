@@ -1,0 +1,20 @@
+# Step 2c: one waypoint per Service, and the worker's own hostname on the ingress. 2026-09-16T01:37:22Z
+
+## kubectl -n lab get gateway
+NAME                         CLASS                         ADDRESS         PROGRAMMED   AGE
+agentgateway-waypoint        istio-agentgateway-waypoint   10.96.93.229    True         7m41s
+agentgateway-waypoint-orch   istio-agentgateway-waypoint   10.96.248.159   True         10s
+
+## each Service and the waypoint it names
+  agentgateway-waypoint  istio.io/use-waypoint=-
+  agentgateway-waypoint-orch  istio.io/use-waypoint=-
+  mockllm  istio.io/use-waypoint=-
+  orchestrator  istio.io/use-waypoint=agentgateway-waypoint-orch
+  worker  istio.io/use-waypoint=agentgateway-waypoint
+
+## kubectl get httproute -A
+NAMESPACE             NAME                   HOSTNAMES                 AGE
+agentgateway-egress   model-via-agw          ["model.lab.internal"]    3m54s
+lab                   orchestrator-ingress                             3m54s
+lab                   worker                                           7m41s
+lab                   worker-ingress         ["worker.lab.internal"]   10s

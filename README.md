@@ -12,6 +12,7 @@ An experiment lab that produces counted, traced findings about how A2A agent tra
 2. `docs/experiment-a-checklist.md` — the working checklist for Experiment A, gate by gate. Every box ends with something recorded, not something built.
 3. `findings.md` — one entry per gate, receiver, and mode or run. Numbers first, interpretation second. No entry without a run.
 4. `versions.yaml` — every pin with the URL it was verified from. No value without a source.
+5. `docs/walkthrough.md` — the step-by-step lab: from a deleted cluster to five Experiment A rows, every command runnable as written and every output taken from one run.
 
 Progress is read from the checklist and `findings.md`, not from this file.
 

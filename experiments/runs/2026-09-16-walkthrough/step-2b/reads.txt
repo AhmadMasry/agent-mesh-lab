@@ -1,0 +1,47 @@
+## kubectl get gateway -A
+NAMESPACE              NAME                    CLASS                         ADDRESS        PROGRAMMED   AGE
+agentgateway-egress    agw-egress              agentgateway                  10.96.40.152   True         12s
+agentgateway-ingress   agentgateway-ingress    agentgateway                  10.96.231.46   True         12s
+lab                    agentgateway-waypoint   istio-agentgateway-waypoint   10.96.93.229   True         3m59s
+
+## kubectl get httproute -A
+NAMESPACE             NAME                   HOSTNAMES                AGE
+agentgateway-egress   model-via-agw          ["model.lab.internal"]   12s
+lab                   orchestrator-ingress                            12s
+lab                   worker                                          3m59s
+
+## kubectl get ns -L istio.io/dataplane-mode
+NAME                   STATUS   AGE     DATAPLANE-MODE
+agentgateway-egress    Active   12s     
+agentgateway-ingress   Active   12s     ambient
+agentgateway-system    Active   39s     
+default                Active   9m13s   
+istio-system           Active   4m44s   
+kube-node-lease        Active   9m13s   
+kube-public            Active   9m13s   
+kube-system            Active   9m13s   
+lab                    Active   7m43s   ambient
+local-path-storage     Active   9m9s    
+
+## the agents' MODEL_BASE_URL and the orchestrator's PUBLIC_URL
+orchestrator: MODEL_BASE_URL=http://model.lab.internal:8080/v1 PUBLIC_URL=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+worker: MODEL_BASE_URL=http://model.lab.internal:8080/v1 PUBLIC_URL=http://worker.lab.svc.cluster.local:8080
+
+## helm list -A
+NAME             	NAMESPACE          	REVISION	UPDATED                              	STATUS  	CHART                   	APP VERSION
+agentgateway     	agentgateway-system	1       	2026-09-16 04:33:03.504529 +0300 EEST	deployed	agentgateway-v1.5.0     	v1.5.0     
+agentgateway-crds	agentgateway-system	1       	2026-09-16 04:33:01.269689 +0300 EEST	deployed	agentgateway-crds-v1.5.0	v1.5.0     
+istio-base       	istio-system       	1       	2026-09-16 04:28:56.795194 +0300 EEST	deployed	base-1.31.0             	1.31.0     
+istio-cni        	istio-system       	1       	2026-09-16 04:29:09.379534 +0300 EEST	deployed	cni-1.31.0              	1.31.0     
+istiod           	istio-system       	1       	2026-09-16 04:28:58.890431 +0300 EEST	deployed	istiod-1.31.0           	1.31.0     
+ztunnel          	istio-system       	1       	2026-09-16 04:29:18.849356 +0300 EEST	deployed	ztunnel-1.31.0          	1.31.0     
+
+## the pods of the three agentgateway namespaces
+NAME                                    READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+agentgateway-ingress-85475bcff7-rbs9v   1/1     Running   0          12s   10.244.1.25   agent-mesh-lab-worker   <none>           <none>
+NAME                           READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+agentgateway-864d45549-9p78j   1/1     Running   0          37s   10.244.1.21   agent-mesh-lab-worker   <none>           <none>
+NAME                                    READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+agentgateway-ingress-85475bcff7-rbs9v   1/1     Running   0          12s   10.244.1.25   agent-mesh-lab-worker   <none>           <none>
+NAME                          READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+agw-egress-84577f5fff-phmj8   1/1     Running   0          12s   10.244.1.24   agent-mesh-lab-worker   <none>           <none>

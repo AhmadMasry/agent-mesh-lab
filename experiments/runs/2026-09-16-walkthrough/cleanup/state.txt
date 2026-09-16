@@ -1,0 +1,11 @@
+# The state the walkthrough leaves behind, 2026-09-16T01:51Z, after the five Experiment A demonstrations.
+
+## retry stanzas across every HTTPRoute (the state every run that is not measuring a gateway retry starts and ends in)
+  kubectl get httproute -A -o yaml | grep -c 'retry:'  ->  0
+
+## the retry knobs on the lab Deployments, read off the live objects
+  orchestrator: MODEL_MAX_RETRIES=0
+  (no CLIENT_* on any Deployment; MODEL_MAX_RETRIES=0 is the orchestrator's declared default and MODEL_RETRIES is unset on the worker)
+
+## the orchestrator DOWNSTREAM_A2A_URL, which the matrix rows unset for a Python row and restore on exit
+  DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080

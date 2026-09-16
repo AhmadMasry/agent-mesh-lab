@@ -1,0 +1,59 @@
+## istioctl ztunnel-config workloads
+NAMESPACE          POD NAME                                             ADDRESS     NODE                         WAYPOINT PROTOCOL
+default            kubernetes                                           172.18.0.3                               None     TCP
+istio-system       istio-cni-node-m5v7d                                 10.244.0.5  agent-mesh-lab-control-plane None     TCP
+istio-system       istio-cni-node-xq5jr                                 10.244.1.11 agent-mesh-lab-worker        None     TCP
+istio-system       istiod-7d565d6dd7-vtq9d                              10.244.1.10 agent-mesh-lab-worker        None     TCP
+istio-system       ztunnel-9bz96                                        10.244.0.6  agent-mesh-lab-control-plane None     TCP
+istio-system       ztunnel-d2w6p                                        10.244.1.12 agent-mesh-lab-worker        None     TCP
+kube-system        coredns-559f6c778d-8mb4x                             10.244.0.4  agent-mesh-lab-control-plane None     TCP
+kube-system        coredns-559f6c778d-mcpvr                             10.244.0.2  agent-mesh-lab-control-plane None     TCP
+kube-system        etcd-agent-mesh-lab-control-plane                    172.18.0.3  agent-mesh-lab-control-plane None     TCP
+kube-system        kindnet-pwd4p                                        172.18.0.3  agent-mesh-lab-control-plane None     TCP
+kube-system        kindnet-qnkcb                                        172.18.0.2  agent-mesh-lab-worker        None     TCP
+kube-system        kube-apiserver-agent-mesh-lab-control-plane          172.18.0.3  agent-mesh-lab-control-plane None     TCP
+kube-system        kube-controller-manager-agent-mesh-lab-control-plane 172.18.0.3  agent-mesh-lab-control-plane None     TCP
+kube-system        kube-proxy-7cb69                                     172.18.0.2  agent-mesh-lab-worker        None     TCP
+kube-system        kube-proxy-hx9cc                                     172.18.0.3  agent-mesh-lab-control-plane None     TCP
+kube-system        kube-scheduler-agent-mesh-lab-control-plane          172.18.0.3  agent-mesh-lab-control-plane None     TCP
+lab                agentgateway-waypoint-6dd7855fcd-r6b2s               10.244.1.16 agent-mesh-lab-worker        None     TCP
+lab                mockllm-85459dff86-6b6fd                             10.244.1.13 agent-mesh-lab-worker        None     TCP
+lab                orchestrator-76f6b6d666-9q2dr                        10.244.1.15 agent-mesh-lab-worker        None     HBONE
+lab                worker-f9bd68cf8-64n26                               10.244.1.14 agent-mesh-lab-worker        None     HBONE
+local-path-storage local-path-provisioner-75f7fc7dc5-lg4rv              10.244.0.3  agent-mesh-lab-control-plane None     TCP
+
+## istioctl ztunnel-config certificates --node agent-mesh-lab-worker
+CERTIFICATE NAME                             TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/lab/sa/default     Leaf     Available     true           a844a45631a9d6865260662f5042453c     2026-09-23T01:29:41Z     2026-09-16T01:27:41Z
+spiffe://cluster.local/ns/lab/sa/default     Root     Available     true           3502a10422c83dc7e9a336e0b5bbf714     2036-09-13T01:29:04Z     2026-09-16T01:29:04Z
+
+## kubectl -n lab get gateway,httproute
+NAME                                                      CLASS                         ADDRESS        PROGRAMMED   AGE
+gateway.gateway.networking.k8s.io/agentgateway-waypoint   istio-agentgateway-waypoint   10.96.93.229   True         17s
+
+NAME                                         HOSTNAMES   AGE
+httproute.gateway.networking.k8s.io/worker               17s
+
+## the worker Service's waypoint label
+{"app":"worker","istio.io/use-waypoint":"agentgateway-waypoint"}
+
+## kubectl get ns -L istio.io/dataplane-mode
+NAME                 STATUS   AGE     DATAPLANE-MODE
+default              Active   5m31s   
+istio-system         Active   62s     
+kube-node-lease      Active   5m31s   
+kube-public          Active   5m31s   
+kube-system          Active   5m31s   
+lab                  Active   4m1s    ambient
+local-path-storage   Active   5m27s   
+
+## kubectl -n istio-system get peerauthentication default -o yaml | yq .spec
+mtls:
+  mode: STRICT
+
+## helm list -A
+NAME      	NAMESPACE   	REVISION	UPDATED                              	STATUS  	CHART         	APP VERSION
+istio-base	istio-system	1       	2026-09-16 04:28:56.795194 +0300 EEST	deployed	base-1.31.0   	1.31.0     
+istio-cni 	istio-system	1       	2026-09-16 04:29:09.379534 +0300 EEST	deployed	cni-1.31.0    	1.31.0     
+istiod    	istio-system	1       	2026-09-16 04:28:58.890431 +0300 EEST	deployed	istiod-1.31.0 	1.31.0     
+ztunnel   	istio-system	1       	2026-09-16 04:29:18.849356 +0300 EEST	deployed	ztunnel-1.31.0	1.31.0     

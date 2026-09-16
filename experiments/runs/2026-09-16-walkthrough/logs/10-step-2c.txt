@@ -1,0 +1,61 @@
+kubectl kustomize deploy/step-2c-gate2 | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/16 04:36:55 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+2026/09/16 04:36:55 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+2026/09/16 04:36:55 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-16-walkthrough/
+
+2026/09/16 04:36:55 Building github.com/AhmadMasry/agent-mesh-lab/agents/worker for linux/arm64/v8
+2026/09/16 04:36:56 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-16-walkthrough/
+
+2026/09/16 04:36:56 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm for linux/arm64/v8
+2026/09/16 04:36:56 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:9b9ff14c9c8d3b694cdbb31002673d285fc964af470d3942099aa1dcafa2c202
+2026/09/16 04:36:56 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:99fcfa8b0d364538f4c8371e1a2e8270b5e609492ae916ddf414295b34df7203
+2026/09/16 04:37:11 Loaded kind.local/worker-918a018b7a581926ead34dec2ba0fb83:9b9ff14c9c8d3b694cdbb31002673d285fc964af470d3942099aa1dcafa2c202
+2026/09/16 04:37:11 Adding tag latest
+2026/09/16 04:37:11 Added tag latest
+2026/09/16 04:37:12 Loaded kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:99fcfa8b0d364538f4c8371e1a2e8270b5e609492ae916ddf414295b34df7203
+2026/09/16 04:37:12 Adding tag latest
+2026/09/16 04:37:12 Added tag latest
+namespace/agentgateway-egress unchanged
+namespace/agentgateway-ingress unchanged
+namespace/lab unchanged
+service/mockllm unchanged
+service/orchestrator configured
+service/worker unchanged
+deployment.apps/mockllm unchanged
+deployment.apps/orchestrator unchanged
+deployment.apps/worker unchanged
+agentgatewaybackend.agentgateway.dev/mockllm unchanged
+agentgatewayparameters.agentgateway.dev/agw-egress-params unchanged
+agentgatewayparameters.agentgateway.dev/agentgateway-ingress-params unchanged
+gateway.gateway.networking.k8s.io/agw-egress unchanged
+gateway.gateway.networking.k8s.io/agentgateway-ingress unchanged
+gateway.gateway.networking.k8s.io/agentgateway-waypoint configured
+gateway.gateway.networking.k8s.io/agentgateway-waypoint-orch created
+httproute.gateway.networking.k8s.io/model-via-agw configured
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker configured
+httproute.gateway.networking.k8s.io/worker-ingress created
+serviceentry.networking.istio.io/model-external unchanged
+peerauthentication.security.istio.io/agentgateway-ingress-metrics unchanged
+peerauthentication.security.istio.io/default unchanged
+# Programmed says istiod accepted the Gateway and provisioned for it; the
+# rollout wait after it says the proxy pod is ready to carry traffic.
+kubectl -n lab wait --for=condition=Programmed gateway/agentgateway-waypoint-orch --timeout=180s
+gateway.gateway.networking.k8s.io/agentgateway-waypoint-orch condition met
+kubectl -n lab rollout status deployment/agentgateway-waypoint-orch --timeout=180s
+Waiting for deployment "agentgateway-waypoint-orch" rollout to finish: 0 of 1 updated replicas are available...
+deployment "agentgateway-waypoint-orch" successfully rolled out
+kubectl -n lab rollout status deployment/worker --timeout=180s
+deployment "worker" successfully rolled out
+kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+deployment "orchestrator" successfully rolled out
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=94aedf890e462ee35120eeac796db06ec759cb30
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+== step-2c finished 2026-09-16T01:37:15Z wall=21.032s exit=0 ==

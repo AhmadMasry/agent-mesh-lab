@@ -1,0 +1,17 @@
+# The plaintext probe from an unenrolled namespace (default), under the mesh-wide STRICT PeerAuthentication.
+# Taken 2026-09-16T01:31:51Z on the step-2 cluster. curl is given --retry 0; each URL is requested once.
+
+$ kubectl -n default exec mtls-probe -- curl -sS -o /dev/null -w "http=%{http_code} exit=%{exitcode}
+" --retry 0 --connect-timeout 5 --max-time 10 http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json
+  curl: (56) Recv failure: Connection reset by peer
+  http=000 exit=56
+  command terminated with exit code 56
+
+$ kubectl -n default exec mtls-probe -- curl ... http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json
+  curl: (56) Recv failure: Connection reset by peer
+  http=000 exit=56
+  command terminated with exit code 56
+
+$ kubectl -n istio-system logs -l app=ztunnel --tail=-1 | grep "policy rejection" | tail -2
+  2026-09-16T01:31:51.532041Z	error	access	connection complete	src.addr=10.244.1.20:54268 src.workload="mtls-probe" src.namespace="default" src.cluster="Kubernetes" dst.addr=10.244.1.14:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="worker-f9bd68cf8-64n26" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+  2026-09-16T01:31:51.581758Z	error	access	connection complete	src.addr=10.244.1.20:51940 src.workload="mtls-probe" src.namespace="default" src.cluster="Kubernetes" dst.addr=10.244.1.15:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-76f6b6d666-9q2dr" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"

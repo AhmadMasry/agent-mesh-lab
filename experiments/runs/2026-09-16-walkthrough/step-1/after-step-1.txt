@@ -1,0 +1,25 @@
+## the four Go images ko resolved its base to, and the digests it built
+   2026/09/16 04:25:40 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+   2026/09/16 04:25:40 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+   2026/09/16 04:25:42 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:9b9ff14c9c8d3b694cdbb31002673d285fc964af470d3942099aa1dcafa2c202
+   2026/09/16 04:25:42 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:99fcfa8b0d364538f4c8371e1a2e8270b5e609492ae916ddf414295b34df7203
+
+## kubectl -n lab get deploy,svc,pods -o wide
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS     IMAGES                                                                                                                 SELECTOR
+deployment.apps/mockllm        1/1     1            1           19s   mockllm        kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:99fcfa8b0d364538f4c8371e1a2e8270b5e609492ae916ddf414295b34df7203   app=mockllm
+deployment.apps/orchestrator   1/1     1            1           19s   orchestrator   orchestrator:dev                                                                                                       app=orchestrator
+deployment.apps/worker         1/1     1            1           19s   worker         kind.local/worker-918a018b7a581926ead34dec2ba0fb83:9b9ff14c9c8d3b694cdbb31002673d285fc964af470d3942099aa1dcafa2c202    app=worker
+
+NAME                   TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+service/mockllm        ClusterIP   10.96.28.57    <none>        8080/TCP   19s   app=mockllm
+service/orchestrator   ClusterIP   10.96.82.78    <none>        8080/TCP   19s   app=orchestrator
+service/worker         ClusterIP   10.96.190.84   <none>        8080/TCP   19s   app=worker
+
+NAME                               READY   STATUS    RESTARTS   AGE   IP           NODE                    NOMINATED NODE   READINESS GATES
+pod/mockllm-595787b959-79r6b       1/1     Running   0          19s   10.244.1.2   agent-mesh-lab-worker   <none>           <none>
+pod/orchestrator-b7fdff677-jnl98   1/1     Running   0          19s   10.244.1.5   agent-mesh-lab-worker   <none>           <none>
+pod/worker-64744bdb85-xxdc4        1/1     Running   0          19s   10.244.1.4   agent-mesh-lab-worker   <none>           <none>
+
+## the go-sources stamp
+worker  94aedf890e462ee35120eeac796db06ec759cb30
+mockllm  94aedf890e462ee35120eeac796db06ec759cb30

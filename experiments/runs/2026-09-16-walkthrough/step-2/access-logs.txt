@@ -1,0 +1,7 @@
+# Step 2 access logs for the clean message g2c-wt2-worker (loadgen -> worker).
+
+## kubectl -n lab logs deploy/agentgateway-waypoint | grep 'http.path=/ '
+2026-09-16T01:30:34.261694Z	info	request gateway=lab/agentgateway-waypoint listener=mesh route=lab/worker endpoint=10.244.1.14:8080 src.addr=10.244.1.18:51064 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=worker.lab.svc.cluster.local http.path=/ http.version=HTTP/1.1 http.status=200 trace.id=bea68df5f9ed2b250ad54658811dec4b span.id=4b31ec1ad658b2ff protocol=http duration=210ms
+
+## kubectl -n istio-system logs -l app=ztunnel --tail=-1 | grep 'loadgen-g2c-wt2-worker' | grep access
+2026-09-16T01:30:34.265362Z	info	access	connection complete	src.addr=10.244.1.18:54858 src.workload="loadgen-g2c-wt2-worker-fgmqb" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.16:15008 dst.hbone_addr=10.96.190.84:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="agentgateway-waypoint-6dd7855fcd-r6b2s" dst.namespace="lab" dst.identity="spiffe://cluster.local/ns/lab/sa/agentgateway-waypoint" dst.cluster="Kubernetes" direction="outbound" bytes_sent=861 bytes_recv=1259 duration="216ms"

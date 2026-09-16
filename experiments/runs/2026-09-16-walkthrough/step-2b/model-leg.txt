@@ -1,0 +1,8 @@
+# The model leg through the egress waypoint, for the step-2b clean message.
+
+$ kubectl -n agentgateway-egress logs deploy/agw-egress | grep chat/completions | tail -2
+  2026-09-16T01:34:06.968430Z	info	request gateway=agentgateway-egress/agw-egress listener=inner-http route=agentgateway-egress/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.23:47580 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 http.status=200 protocol=http duration=202ms
+  2026-09-16T01:34:28.522703Z	info	request gateway=agentgateway-egress/agw-egress listener=inner-http route=agentgateway-egress/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.23:47580 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 http.status=200 protocol=http duration=201ms
+
+$ make ledgers LWI=g2c-wt2b-worker  (the invocation line)
+  {"ledger":"invocation","ts":"2026-09-16T01:34:06.968085718Z","logical_work_item_id":"g2c-wt2b-worker","messageId":"01a0a7d9-89ab-7b4f-8d03-0877ce721b44","taskId":"01a0a7d9-89ac-72ed-84ff-312f8ced41b9","caller":"worker","body_sha256":"f18bfd0627f99e89b4f91c23f0e7a9402d854a765ee0b5fb3aa65c83e74663ab","stream":false,"injection":"none","outcome":"ok","latency_ms":200.861,"source":"mockllm"}
