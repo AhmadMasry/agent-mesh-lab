@@ -1,0 +1,40 @@
+# the build (build.txt)
+  header reads                           0.378 s  from epoch 1789765736.755
+  gap                                    0.073 s  (status read and log lines)
+  make teardown                          0.110 s  exit=0
+  gap                                    0.078 s  (status read and log lines)
+  make cluster-kind                     14.647 s  exit=0
+  gap                                    0.082 s  (status read and log lines)
+  make step-1                           80.570 s  exit=0
+  gap                                    0.081 s  (status read and log lines)
+  make step-2                          122.302 s  exit=0
+  gap                                    0.080 s  (status read and log lines)
+  make step-2b                          79.992 s  exit=0
+  gap                                    0.080 s  (status read and log lines)
+  make step-2c                          20.050 s  exit=0
+  gap                                    0.081 s  (status read and log lines)
+  make step-3                          100.178 s  exit=0
+  close                                  0.078 s  (after-status read and last line)
+  sum                                  418.860 s  against first-line-to-last 418.860 s
+
+# between the build and the readings
+  gap                                   12.697 s  build end -> first reading
+
+# the proof readings (checks.txt)
+  clean check                           46.956 s  exit=0
+  gap                                    0.015 s
+  trace per work item REPS=2           114.904 s  exit=0
+  gap                                    0.015 s
+  dangling parents (follow-ups 14 da     0.035 s  exit=0
+  gap                                    0.014 s
+  GenAI spans per operation (follow-     0.037 s  exit=0
+  gap                                    0.017 s
+  prometheus targets                     0.347 s  exit=0
+  readings, first start to last end    162.340 s
+
+# What the one gap no log stamps held, stated by hand (2026-09-18, follow-ups 15):
+#   12.697 s build end -> first reading: this agent's own turn between two tool calls. The wait on the driver
+#   ended by reading the last lines of build.txt and timings.csv in the scratchpad; the next call started
+#   checks.sh. No command reached the cluster in that interval and no file in the repository was written.
+# make teardown took 0.110 s because there was no cluster to delete: `kind get clusters` in the header answered
+# "No kind clusters found.", and kind's delete printed its usual "Deleting cluster ..." line and exited 0.

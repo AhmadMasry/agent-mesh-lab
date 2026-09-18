@@ -1,0 +1,75 @@
+# The two trees commit 1 has had, over the deployed paths, as they were proved:
+#   pre-review  tree 97f335947eeb4c2ae40dc352861c1660ca33d4ba  (rebuild/build.txt; agents 453b44890e50fcd473e94e9e8eb2b96df24cecf2, internal d40bf5e5565de69c225e153a23351ddc10913f83)
+#   final       tree 57bd67ac98e3138dc2e85687d00b63e38cabfe73  (rebuild-2/build.txt; agents 401cd6dcceb659a9fc1f43c94841743b4bafd687, internal 6a06ffdc2ad99943864e5f7b23f4bfd71627f6f7)
+# Every other deployed path is the same object in both: deploy, Makefile, fixtures, experiments/lib, .ko.yaml, go.mod,
+# go.sum, kind-config.yaml and the 11 experiments/*.sh blobs.
+#
+# $ git diff --stat 97f335947eeb4c2ae40dc352861c1660ca33d4ba 57bd67ac98e3138dc2e85687d00b63e38cabfe73 -- deploy Makefile agents fixtures internal experiments/lib .ko.yaml go.mod go.sum kind-config.yaml 'experiments/*.sh'
+ agents/orchestrator/orchestrator/forward.py   | 16 ++++++++---
+ agents/orchestrator/tests/test_genai_spans.py | 38 ++++++++++++++++++++++++++-
+ internal/otel/otel.go                         |  9 ++++---
+ internal/otel/otel_test.go                    | 10 ++++---
+ 4 files changed, 62 insertions(+), 11 deletions(-)
+
+# The two non-test files in full (the tests are listed above and add cases only):
+diff --git a/agents/orchestrator/orchestrator/forward.py b/agents/orchestrator/orchestrator/forward.py
+index 581a7dfe..bc69ad50 100644
+--- a/agents/orchestrator/orchestrator/forward.py
++++ b/agents/orchestrator/orchestrator/forward.py
+@@ -134,8 +134,16 @@ def _server_attributes(raw_url: str) -> dict[str, object]:
+     read of the URL that can refuse it is covered. Under Python 3.14.7, the
+     interpreter the tests run on, a malformed IPv6 literal such as ``http://[::1/``
+     is refused by ``urlsplit`` itself and ``.hostname`` has no raising path; the
+-    guard does not depend on either staying true. A port that does not read as one
+-    leaves ``server.address`` set and ``server.port`` unset.
++    guard does not depend on either staying true.
++
++    A port that is not a TCP server port leaves ``server.address`` set and
++    ``server.port`` unset, rather than filled with the scheme's default, which would
++    be a guess: one that does not read as a number, one above 65535 however long
++    (both refused by ``.port`` with ``ValueError``), and 0, which no server listens
++    on. These are internal/otel serverAttributes' answers on the same inputs, with
++    one difference that belongs to the parsers: Go's ``url.Parse`` refuses a port
++    that is not all digits, so Go sets neither attribute there, while ``urlsplit``
++    accepts the URL and keeps its host.
+     """
+     try:
+         parsed = urlsplit(raw_url)
+@@ -147,7 +155,9 @@ def _server_attributes(raw_url: str) -> dict[str, object]:
+     try:
+         port = parsed.port
+     except ValueError:
+-        port = None
++        return {_SERVER_ADDRESS: hostname}
++    if port == 0:
++        return {_SERVER_ADDRESS: hostname}
+     if port is None:
+         port = {"http": 80, "https": 443}.get(parsed.scheme)
+     if port is None:
+diff --git a/internal/otel/otel.go b/internal/otel/otel.go
+index 3b57486c..b7fb5eb6 100644
+--- a/internal/otel/otel.go
++++ b/internal/otel/otel.go
+@@ -235,9 +235,10 @@ func (id Identity) attributes() []attribute.KeyValue {
+ //
+ // server.address alone, with no server.port, is what two cases leave: a scheme
+ // with no default port and no port in the URL, and a port that is not a TCP
+-// port. url.Parse has already refused a port that is not all digits, so the
+-// second case is a string of digits above 65535, however long; reading it as a
+-// 16-bit unsigned number is what refuses it.
++// server port. url.Parse has already refused a port that is not all digits, so
++// the second case is a string of digits above 65535, however long, which reading
++// it as a 16-bit unsigned number refuses, or 0, which no server listens on. The
++// Python agent's forward.py _server_attributes gives the same answers.
+ func serverAttributes(rawURL string) []attribute.KeyValue {
+ 	parsed, err := url.Parse(rawURL)
+ 	if err != nil || parsed.Hostname() == "" {
+@@ -254,7 +255,7 @@ func serverAttributes(rawURL string) []attribute.KeyValue {
+ 		}
+ 	}
+ 	n, err := strconv.ParseUint(port, 10, 16)
+-	if err != nil {
++	if err != nil || n == 0 {
+ 		return []attribute.KeyValue{address}
+ 	}
+ 	return []attribute.KeyValue{address, attribute.Int(serverPort, int(n))}

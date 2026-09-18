@@ -1,0 +1,17 @@
+== 2026-09-18T21:22:28Z | RUN_ID=fmcb2 | work item fmc-http500-go-fmcb2-01 ==
+retry stanzas across every HTTPRoute: 0
+worker env (names starting MODEL_ or CLIENT_):
+MODEL_BASE_URL=http://model.lab.internal:8080/v1
+MODEL_NAME=mock
+MODEL_API_KEY=unused
+CLIENT_* on any Deployment in lab, by the jq test gate3-matrix.sh uses (empty means none): 
+2026-09-18T21:22:29Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before)
+2026-09-18T21:22:29Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before)
+2026-09-18T21:22:29Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before)
+2026-09-18T21:22:29Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"fmc-http500-go-fmcb2-01"} -> 204
+2026-09-18T21:22:45Z job loadgen-fmc-http500-go-fmcb2-01 applied
+2026-09-18T21:22:49Z job loadgen-fmc-http500-go-fmcb2-01: complete after 4s
+2026-09-18T21:22:51Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after)
+2026-09-18T21:22:51Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after)
+2026-09-18T21:23:00Z done: experiments/runs/2026-09-19-failed-model-call/mock-http500-go/fmc-http500-go-fmcb2-01
+2026-09-18T21:23:00Z cleanup: mock reset attempted, control pod deleted

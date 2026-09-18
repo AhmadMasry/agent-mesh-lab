@@ -1,0 +1,177 @@
+# Host sleep and keep-awake during the follow-ups 15 rebuild and readings. Written 2026-09-18T21:24:49Z.
+#
+# The selection, verbatim, per local day listed (the event kind is field $4):
+#   pmset -g log | awk -v d=<day> '$1==d && ($4=="Sleep" || $4=="Wake" || $4=="DarkWake" || $4=="Maintenance")'
+#   pmset -g log | awk -v d=<day> '$1==d && $4=="Assertions"'
+# pmset stamps in the host local zone (shown per line); the windows are given in UTC and compared after
+# converting each stamp with its own offset.
+#
+# 1. EVERY COUNTED WINDOW, and the lines of each kind whose stamp falls inside it:
+
+   window task-so-far: 2026-09-18T21:08:56Z .. 2026-09-18T21:23:01Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Assertions=30  Wake Requests=0
+
+   window rebuild: 2026-09-18T21:08:56Z .. 2026-09-18T21:15:56Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Assertions=13  Wake Requests=0
+
+   window proof-readings: 2026-09-18T21:16:08Z .. 2026-09-18T21:18:51Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Assertions=3  Wake Requests=0
+
+   window a3-baseline-go: 2026-09-18T21:19:26Z .. 2026-09-18T21:21:05Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Assertions=13  Wake Requests=0
+
+   window mock-http500-go-attempt-1-uncounted: 2026-09-18T21:21:55Z .. 2026-09-18T21:21:56Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Assertions=0  Wake Requests=0
+
+   window mock-http500-go: 2026-09-18T21:22:28Z .. 2026-09-18T21:23:01Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Assertions=0  Wake Requests=0
+
+# 2. SLEEP, WAKE, DARKWAKE AND MAINTENANCE, every line pmset holds for 2026-09-18:
+
+
+#    last Sleep: 
+#    last Wake:  
+#    Sleep lines: 0; Wake: 0; DarkWake: 0
+
+# 2. SLEEP, WAKE, DARKWAKE AND MAINTENANCE, every line pmset holds for 2026-09-19:
+
+
+#    last Sleep: 
+#    last Wake:  
+#    Sleep lines: 0; Wake: 0; DarkWake: 0
+
+# The last Sleep and the last Wake pmset holds on any day, by the same column:
+#    last Sleep: 2026-09-16 01:02:53 +0300 Sleep               	Entering Sleep state due to 'Maintenance Sleep':TCPKeepAlive=active Using AC (Charge:80%) 697 secs  
+#    last Wake:  2026-09-16 01:14:30 +0300 Wake                	Wake from Deep Idle [CDNVA] : due to MTP.DOCK.CHANNELS.AP0.IRQ RTP.keyboard/UserActivity Assertion Using AC (Charge:80%)           
+#    first line pmset holds: PM ASL data store: /var/log/powermanagement
+
+# 3. KEEP-AWAKE. No driver, script or command of this task starts a keep-awake. What pmset shows held is
+#    below in full. The recurring caffeinate -i -t 300 has, as its parent, the Claude Code process that
+#    runs this task agent (ps read during the task: caffeinate pid 32557, parent 24494, the claude binary
+#    started with --agent-name fu15-impl); it is the harness own, started by no command of this task,
+#    and it is recorded here rather than claimed absent. A keep-awake prevents an idle sleep; whether one
+#    mattered in a counted window is answered by section 1, not by this list.
+
+#    Assertions lines for 2026-09-18: 2703
+#    Assertions lines for 2026-09-19: 100
+
+#    Assertions lines for 2026-09-19, in full:
+   2026-09-19 00:00:28 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask FC27986E-0506-4462-848A-33848E960D4A" 00:00:00  id:0x0xc0000905f [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:28 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask D080606D-21FE-4FF3-9BC8-AED143E0AFD8" 00:00:00  id:0x0xc00009062 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:28 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 0E62DA3E-30D6-4B5D-B146-B7461C843BFB" 00:00:00  id:0x0xc00009063 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:29 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask A0279207-7262-4448-9B3A-94310062B477" 00:00:00  id:0x0xc00009082 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:30 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 02F8694D-1205-4BD7-9D17-DA2C8144E057" 00:00:00  id:0x0xc00009083 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:30 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask E38CE5E9-B5B8-4A14-A2D4-3E59092311C1" 00:00:00  id:0x0xc00009084 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:31 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask FC27986E-0506-4462-848A-33848E960D4A" 00:00:03  id:0x0xc0000905f [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:31 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask D080606D-21FE-4FF3-9BC8-AED143E0AFD8" 00:00:03  id:0x0xc00009062 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:31 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 0E62DA3E-30D6-4B5D-B146-B7461C843BFB" 00:00:03  id:0x0xc00009063 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:33 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask A0279207-7262-4448-9B3A-94310062B477" 00:00:03  id:0x0xc00009082 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:33 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 02F8694D-1205-4BD7-9D17-DA2C8144E057" 00:00:03  id:0x0xc00009083 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:33 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask E38CE5E9-B5B8-4A14-A2D4-3E59092311C1" 00:00:03  id:0x0xc00009084 [System: PrevIdle DeclUser kDisp]          
+   2026-09-19 00:00:41 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 07A5460F-916C-4BC6-BEE7-6603E7B6B82B" 00:00:00  id:0x0xc0000908a [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:42 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask D750389C-A26D-4C69-B72A-01667B7BE5C8" 00:00:00  id:0x0xc0000908b [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:42 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 8E08B704-1AD3-4C71-B279-1889F5F79F0C" 00:00:00  id:0x0xc0000908c [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:45 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 07A5460F-916C-4BC6-BEE7-6603E7B6B82B" 00:00:03  id:0x0xc0000908a [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:45 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask D750389C-A26D-4C69-B72A-01667B7BE5C8" 00:00:03  id:0x0xc0000908b [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:00:45 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 8E08B704-1AD3-4C71-B279-1889F5F79F0C" 00:00:03  id:0x0xc0000908c [System: PrevIdle DeclUser kDisp]          
+   2026-09-19 00:01:17 +0300 Assertions          	PID 22643(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:04:00  id:0x0x100009035 [System: PrevIdle DeclUser kDisp]          
+   2026-09-19 00:02:04 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 1131201B-61C9-4241-89AB-2C6E0D2E9CF4" 00:00:00  id:0x0xc00009095 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:02:04 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 1C94611F-48CA-48FC-843C-FCF7AC440317" 00:00:00  id:0x0xc00009096 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:02:05 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 75605926-AD37-4597-B145-419C7594CB03" 00:00:00  id:0x0xc00009099 [System: PrevIdle DeclUser SysAct kDisp]          
+   2026-09-19 00:02:06 +0300 Assertions          	PID 24279(Safari) Created PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:00  id:0x0x50000909f [System: PrevIdle PrevDisp DeclUser SysAct kDisp]          
+   2026-09-19 00:02:08 +0300 Assertions          	PID 372(powerd) TurnedOn InternalPreventDisplaySleep "com.apple.powermanagement.delayDisplayOff" 00:00:00  id:0x0x10000085ee [System: PrevIdle PrevDisp DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:02:08 +0300 Assertions          	PID 24279(Safari) Released PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:01  id:0x0x50000909f [System: PrevIdle DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:02:08 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 1131201B-61C9-4241-89AB-2C6E0D2E9CF4" 00:00:03  id:0x0xc00009095 [System: PrevIdle DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:02:08 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 1C94611F-48CA-48FC-843C-FCF7AC440317" 00:00:03  id:0x0xc00009096 [System: PrevIdle DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:02:08 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 75605926-AD37-4597-B145-419C7594CB03" 00:00:03  id:0x0xc00009099 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:02:09 +0300 Assertions          	PID 24279(Safari) Created PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:00  id:0x0x5000090a1 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:02:11 +0300 Assertions          	PID 746(sharingd) Released PreventUserIdleSystemSleep "Handoff" 00:01:36  id:0x0x100009089 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:02:17 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 621A128B-B8E5-45BF-B5BD-FEF3369FD520" 00:00:00  id:0x0xc000090a4 [System: PrevIdle PrevDisp DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:02:18 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask F76D008C-4347-4057-B92A-6C6FB7898980" 00:00:00  id:0x0xc000090a5 [System: PrevIdle PrevDisp DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:02:21 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 621A128B-B8E5-45BF-B5BD-FEF3369FD520" 00:00:03  id:0x0xc000090a4 [System: PrevIdle PrevDisp DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:02:21 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask F76D008C-4347-4057-B92A-6C6FB7898980" 00:00:03  id:0x0xc000090a5 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:02:39 +0300 Assertions          	PID 24279(Safari) Released PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:29  id:0x0x5000090a1 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:02:39 +0300 Assertions          	PID 24279(Safari) Created PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:00  id:0x0x5000090aa [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:02:59 +0300 Assertions          	PID 24279(Safari) Released PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:19  id:0x0x5000090aa [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:03:06 +0300 Assertions          	PID 547(coreaudiod) TurnedOff PreventUserIdleSystemSleep "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" 00:01:00  id:0x0x100009071 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:03:09 +0300 Assertions          	PID 547(coreaudiod) TurnedOff PreventUserIdleSystemSleep "com.apple.audio.AudioTap-318652E7-4B25-4E61-90DC-153DC90BDCF4.context.preventuseridlesleep" 00:01:03  id:0x0x10000816d [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:03:37 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask BD0A8AC7-6EC8-4859-94B8-0C18B560288A" 00:00:00  id:0x0xc000090b2 [System: PrevIdle DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:03:41 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask BD0A8AC7-6EC8-4859-94B8-0C18B560288A" 00:00:03  id:0x0xc000090b2 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:03:56 +0300 Assertions          	PID 24279(Safari) Created PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:00  id:0x0x5000090b9 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:03:57 +0300 Assertions          	PID 24279(Safari) Released PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:01  id:0x0x5000090b9 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:03:58 +0300 Assertions          	PID 24279(Safari) Created PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:00  id:0x0x5000090bb [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 24562(caffeinate) Summary PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:36  id:0x0x100009090 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 25165(caffeinate) Summary PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:26  id:0x0x100009091 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 26851(caffeinate) Summary PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:14  id:0x0x100009092 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 443(runningboardd) Summary PreventUserIdleSystemSleep  00:00:33  id:0x0x1000090ba [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 547(coreaudiod) Summary PreventUserIdleSystemSleep "com.apple.audio.AudioTap-318652E7-4B25-4E61-90DC-153DC90BDCF4.context.preventuseridlesleep" 00:00:35  id:0x0x10000816d [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 547(coreaudiod) Summary PreventUserIdleSystemSleep "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" 00:00:35  id:0x0x100009071 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 443(runningboardd) Summary PreventUserIdleSystemSleep  00:00:35  id:0x0x1000090b8 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 443(runningboardd) Summary PreventUserIdleSystemSleep "app<application.com.apple.Safari.827783.828449(501)>443-24279-10989:WebKit Media Playback" 00:00:35  id:0x0x1000090b7 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 746(sharingd) Summary PreventUserIdleSystemSleep "Handoff" 00:01:39  id:0x0x1000090ac [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 372(powerd) Summary PreventUserIdleSystemSleep "Powerd - Prevent sleep while display is on" 00:12:14  id:0x0x100009019 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 24279(Safari) Summary PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:33  id:0x0x5000090bb [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 428(WindowServer) Summary UserIsActive "com.apple.iohideventsystem.queue.tickle serviceID:1000013dc service:AppleUserHIDEventService product:<cut> eventType:3" 00:00:00  id:0x0x900009018 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:31 +0300 Assertions          	PID 372(powerd) Summary InternalPreventDisplaySleep "com.apple.powermanagement.delayDisplayOff" 00:00:34  id:0x0x10000085ee [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:04:54 +0300 Assertions          	PID 24562(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x100009090 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:05:04 +0300 Assertions          	PID 25165(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x100009091 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:05:06 +0300 Assertions          	PID 746(sharingd) Released PreventUserIdleSystemSleep "Handoff" 00:02:15  id:0x0x1000090ac [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:05:17 +0300 Assertions          	PID 26851(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x100009092 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:08:03 +0300 Assertions          	PID 24279(Safari) Released PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:04:05  id:0x0x5000090bb [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:08:03 +0300 Assertions          	PID 443(runningboardd) Released PreventUserIdleSystemSleep  00:04:05  id:0x0x1000090ba [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:08:06 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 483381DA-025E-4131-8F92-60052472A486" 00:00:00  id:0x0xc000090d3 [System: PrevIdle DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:08:08 +0300 Assertions          	PID 443(runningboardd) Released PreventUserIdleSystemSleep "app<application.com.apple.Safari.827783.828449(501)>443-24279-10989:WebKit Media Playback" 00:04:12  id:0x0x1000090b7 [System: PrevIdle DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:08:08 +0300 Assertions          	PID 443(runningboardd) Released PreventUserIdleSystemSleep  00:04:12  id:0x0x1000090b8 [System: PrevIdle DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:08:10 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 483381DA-025E-4131-8F92-60052472A486" 00:00:03  id:0x0xc000090d3 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:08:11 +0300 Assertions          	PID 547(coreaudiod) TurnedOff PreventUserIdleSystemSleep "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" 00:04:15  id:0x0x100009071 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:08:14 +0300 Assertions          	PID 547(coreaudiod) TurnedOff PreventUserIdleSystemSleep "com.apple.audio.AudioTap-318652E7-4B25-4E61-90DC-153DC90BDCF4.context.preventuseridlesleep" 00:04:18  id:0x0x10000816d [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:08:54 +0300 Assertions          	PID 32557(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x1000090c1 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:09:04 +0300 Assertions          	PID 32775(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x1000090c2 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:09:17 +0300 Assertions          	PID 32928(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x1000090c4 [System: PrevIdle DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:09:48 +0300 Assertions          	PID 24279(Safari) Created PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:00:00  id:0x0x5000090e1 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:10:11 +0300 Assertions          	PID 746(sharingd) Released PreventUserIdleSystemSleep "Handoff" 00:02:28  id:0x0x1000090cd [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:11:54 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 93C852A6-2C3E-49DF-AA2D-787937FBA2C7" 00:00:00  id:0x0xc000090f0 [System: PrevIdle PrevDisp DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:11:58 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 93C852A6-2C3E-49DF-AA2D-787937FBA2C7" 00:00:04  id:0x0xc000090f0 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:12:03 +0300 Assertions          	PID 748(cloudd) Created SystemIsActive "NSURLSessionTask 949BB08D-F70C-476E-ADCF-4A11B508FF73" 00:00:00  id:0x0xc000090f2 [System: PrevIdle PrevDisp DeclUser SysAct IntPrevDisp kDisp]          
+   2026-09-19 00:12:07 +0300 Assertions          	PID 748(cloudd) Released SystemIsActive "NSURLSessionTask 949BB08D-F70C-476E-ADCF-4A11B508FF73" 00:00:03  id:0x0xc000090f2 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:12:54 +0300 Assertions          	PID 38557(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x1000090d7 [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:13:03 +0300 Assertions          	PID 372(powerd) TimedOut InternalPreventDisplaySleep "com.apple.powermanagement.delayDisplayOff" 00:05:00  id:0x0x10000085ee [System: PrevIdle PrevDisp DeclUser IntPrevDisp kDisp]          
+   2026-09-19 00:13:04 +0300 Assertions          	PID 38998(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x1000090d8 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:13:17 +0300 Assertions          	PID 39319(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x1000090da [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:13:40 +0300 Assertions          	PID 746(sharingd) Released PreventUserIdleSystemSleep "Handoff" 00:02:25  id:0x0x1000090ea [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:16:54 +0300 Assertions          	PID 44533(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x100009102 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:17:04 +0300 Assertions          	PID 44707(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x100009104 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:17:17 +0300 Assertions          	PID 45047(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x100009105 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 49440(caffeinate) Summary PreventUserIdleSystemSleep "caffeinate command-line tool" 00:02:36  id:0x0x100009110 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 49652(caffeinate) Summary PreventUserIdleSystemSleep "caffeinate command-line tool" 00:02:26  id:0x0x100009113 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 49986(caffeinate) Summary PreventUserIdleSystemSleep "caffeinate command-line tool" 00:02:14  id:0x0x100009114 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 547(coreaudiod) Summary PreventUserIdleSystemSleep "com.apple.audio.AudioTap-318652E7-4B25-4E61-90DC-153DC90BDCF4.context.preventuseridlesleep" 00:09:42  id:0x0x10000816d [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 547(coreaudiod) Summary PreventUserIdleSystemSleep "com.apple.audio.BuiltInSpeakerDevice.context.preventuseridlesleep" 00:09:42  id:0x0x100009071 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 443(runningboardd) Summary PreventUserIdleSystemSleep  00:09:42  id:0x0x1000090e0 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 443(runningboardd) Summary PreventUserIdleSystemSleep "app<application.com.apple.Safari.827783.828449(501)>443-24279-11447:WebKit Media Playback" 00:09:42  id:0x0x1000090df [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 443(runningboardd) Summary PreventUserIdleSystemSleep  00:09:42  id:0x0x1000090de [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 372(powerd) Summary PreventUserIdleSystemSleep "Powerd - Prevent sleep while display is on" 00:27:14  id:0x0x100009019 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 24279(Safari) Summary PreventUserIdleDisplaySleep "com.apple.WebCore: HTMLMediaElement playback" 00:09:42  id:0x0x5000090e1 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:19:31 +0300 Assertions          	PID 428(WindowServer) Summary UserIsActive "com.apple.iohideventsystem.queue.tickle serviceID:1000013dc service:AppleUserHIDEventService product:<cut> eventType:3" 00:00:00  id:0x0x900009018 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:20:54 +0300 Assertions          	PID 49440(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x100009110 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:21:04 +0300 Assertions          	PID 49652(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x100009113 [System: PrevIdle PrevDisp DeclUser kDisp]          
+   2026-09-19 00:21:17 +0300 Assertions          	PID 49986(caffeinate) ClientDied PreventUserIdleSystemSleep "caffeinate command-line tool" 00:03:59  id:0x0x100009114 [System: PrevIdle PrevDisp DeclUser kDisp]          
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# 2026-09-19 note (follow-ups 15 review round, finding M2), appended; nothing above it was changed.
+# Section 3 names one caffeinate stream. The Assertions lines above hold three. pmset's ClientDied lines show
+# three rolling `caffeinate -i -t 300` streams through the counted windows, one ending at :54, one at :04 and one
+# at :17 of each four-minute cycle. The :04 stream ends at 00:32:44 local, and after that only :54 and :17 remain.
+# Sources: the lines above, and ../2026-09-19-failed-model-call/caffeinate-ps.txt (ps and pmset, read in the
+# review round). Attributed as far as known:
+#   :54  this task's agent. At 00:08 local, ps read caffeinate pid 32557 with parent pid 24494, the Claude Code
+#        process started with --agent-name fu15-impl. Its later pids were not read one by one.
+#   :17  the controller's session. The stream's current process read by ps (pid 10216, started 01:29:17 local)
+#        has parent pid 22403, `claude --resume`, started 2026-09-18 23:55:58 local. The cycle is unbroken from
+#        00:01:17 local on.
+#   :04  NOT attributed. pmset records pids, not parents, and the stream ended at 00:32:44 local (21:32:44Z)
+#        before its parent was read.
+# This task started none of them. No Sleep, Wake, DarkWake or Maintenance line falls in any counted window
+# (section 1), whether or not any of them was holding.
+# 2026-09-19, history rewrite: the product: value of 2 WindowServer UserIsActive line(s) above was cut (names of the host's peripherals; no reading uses them).

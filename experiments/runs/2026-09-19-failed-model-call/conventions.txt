@@ -1,0 +1,57 @@
+# The sentences this entry is read against, each fetched in this session with curl, HTTP 200:
+#   gen-ai-spans.md      2026-09-18T21:09:06Z  120737 bytes  sha256 f245b706b6da3c396dfe37a0c8c0b903d35b53d72a4608546a014a7ffb90edfd
+#   recording-errors.md  2026-09-18T21:09:14Z    6005 bytes  sha256 aaf051ba31802602d526df35f50828ebf96e079896305da8cd90b33a13ba9d03
+#
+# 1. https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/0c87594975195608dc91b3f702e250a7b240c151/docs/gen-ai/gen-ai-spans.md
+#    (the pinned commit, versions.yaml genai-semantic-conventions; Status: Development), section '### Inference':
+
+
+## Spans
+
+GenAI spans represent logical operations as observed by the caller.
+They SHOULD cover the duration of the operation, starting when it is
+initiated and ending when the response is fully received or the operation
+is terminated due to an error or cancellation.
+
+If a transient issue happened and the request was retried automatically, the
+corresponding span SHOULD cover the duration of the logical operation with all
+retries.
+   ...
+**Span status** SHOULD follow the [Recording Errors](https://github.com/open-telemetry/semantic-conventions/blob/v1.44.0/docs/general/recording-errors.md) document.
+   ...
+| [`error.type`](https://github.com/open-telemetry/semantic-conventions/blob/v1.44.0/docs/registry/attributes/error.md) | ![Stable](https://img.shields.io/badge/-stable-lightgreen) | `Conditionally Required` If the operation ended in an error. | string | Describes a class of error the operation ended with. [3] | `timeout`; `java.net.UnknownHostException`; `server_certificate_invalid`; `500` |
+   ...
+**[3] `error.type`:** The `error.type` SHOULD match the error code returned by the Generative AI provider or the client library,
+the canonical name of exception that occurred, or another low-cardinality error identifier.
+Instrumentations SHOULD document the list of errors they report.
+   ...
+`error.type` has the following list of well-known values. If one of them applies, then the respective value MUST be used; otherwise, a custom value MAY be used.
+
+| Value | Description | Stability |
+| --- | --- | --- |
+| `_OTHER` | A fallback error value to be used when the instrumentation doesn't define a custom value. | ![Stable](https://img.shields.io/badge/-stable-lightgreen) |
+
+# 2. https://raw.githubusercontent.com/open-telemetry/semantic-conventions/v1.44.0/docs/general/recording-errors.md
+#    (the document the Inference section's 'Span status SHOULD follow' links to, at the tag it links), '## Recording errors on spans':
+
+## Recording errors on spans
+
+[Span Status Code][SpanStatus] MUST be left unset if the instrumented operation has
+ended without any errors.
+
+When the operation ends with an error, instrumentation:
+
+- SHOULD set the span status code to `Error`
+- SHOULD set the [`error.type`](/docs/registry/attributes/error.md#error-type) attribute
+- SHOULD set the span status description when it has additional information
+  about the error which is not expected to contain sensitive details and aligns
+  with [Span Status Description][SpanStatus] definition.
+
+  It's NOT RECOMMENDED to duplicate status code or `error.type` in span status description.
+
+  When the operation fails with an exception, the span status description SHOULD be set to
+  the exception message.
+
+Refer to the [recording exceptions](#recording-exceptions) on capturing exception
+details.
+

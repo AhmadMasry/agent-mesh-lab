@@ -1325,3 +1325,113 @@ One entry per gate, receiver, and mode or run. Numbers first, interpretation sec
 
   What this round cost is worth recording beside what it found. Four builds ran and three were thrown away: one for a checkout that was not clean, one for a record that could not be read, and one because its own readings showed a comment wrong about the lab's topology. None of the three was discarded for a count — every count they took is the count this entry reports — and the decision each time was that a proof is the record as much as the numbers. The `server.address` correction is the useful one: it took a measurement to notice that this lab's clients are told an intermediary's address on three of their four legs, which is exactly the kind of thing a comment written from expectation gets wrong.
 - Follow-up: none
+
+## Gate 3 / go receiver / chat span on a failed model call — What does the GenAI span record when the model call fails, and does it agree with the ledgers?
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.2 openai-python=3.13.0
+- Environment: kind
+- Method: the fourth nit of the follow-ups 14 review. `error.type` on the Go worker's `chat` span, the status a failed model call carries, had been asserted by unit tests and read by no entry. Here it is read from the exported trace for two kinds of failure, with the same work items' ledgers beside it. The telemetry pins have not moved: collector 0.160.0 (chart 0.173.1), jaeger 2.20.0 (chart 4.13.1), prometheus v3.14.0 (chart 29.28.1), otel-go v1.46.0, otel-go-contrib v0.71.0, and the GenAI conventions at `open-telemetry/semantic-conventions-genai@0c87594975195608dc91b3f702e250a7b240c151` (Status: Development).
+
+  **Rebuild.** From no cluster, with `rebuild/rebuild.sh`, at the tree of the commit "fix(telemetry): the four nits from the follow-ups 14 review". Before the teardown, `rebuild/build.txt` recorded HEAD, the tree ID, `git status --short` empty, and these deployed object IDs:
+  - deploy `1189c3b8519189ce02471494c1b79e850fc02a09`, Makefile `731f5f3982982fd387b9b2571a3a0e1cff489273`, agents `453b44890e50fcd473e94e9e8eb2b96df24cecf2`, fixtures `79117c17704f3e7ad8e8538eabbbf342eb2aaed2`, internal `d40bf5e5565de69c225e153a23351ddc10913f83`, experiments/lib `0cc3db9375f0abc487d41cca90f6d5a35a6c03c8`.
+  - `agents` and `internal` are the two that moved against the follow-ups 14 proof; they carry the forward.py guard and the `server.port` restructuring. `.ko.yaml`, `go.mod`, `go.sum`, `kind-config.yaml` and all 11 `experiments/*.sh` blobs are the objects follow-ups 14 built.
+  - The seven targets ran in order, each timed, with the whole checkout's status read before each and after the last. There was **no manual step**.
+  - The `lab.agent-mesh/go-sources` stamp on the worker and the mock is `e237d2bb77752e089a3965a0b6e0cf6c752e1c77`, and the matrix script's image-freshness check read the same value off the checkout.
+
+  **Which tree the readings were taken at, and which tree commit 1 ended at.** The review of this task found two ways the port parsing was still wrong (review findings I1 and M10). The Python agent filled a port that `.port` refuses with the scheme's default, where the Go agent left `server.port` unset. Both agents recorded port 0. A fixup squashed into commit 1 fixed both. The two languages' tests read the same inputs but one: Go's bad-port test also has `http://[::1]:x/v1`, which the Python test lacks. Go's `url.Parse` refuses that URL, so Go sets neither attribute. The fixed Python, re-run from a one-liner in the review round, returns `{'server.address': '::1'}`. That is the same parser difference as `:abc`, and adding the case to the Python test is carried to the next code branch. So commit 1's final tree is not the tree the readings in this entry were taken at.
+  - The readings and the first rebuild (`rebuild/`) are at the pre-review tree: agents `453b44890e50fcd473e94e9e8eb2b96df24cecf2`, internal `d40bf5e5565de69c225e153a23351ddc10913f83`, tree `97f335947eeb4c2ae40dc352861c1660ca33d4ba`.
+  - Commit 1 as it stands: agents `401cd6dcceb659a9fc1f43c94841743b4bafd687`, internal `6a06ffdc2ad99943864e5f7b23f4bfd71627f6f7`, tree `57bd67ac98e3138dc2e85687d00b63e38cabfe73`. Every other deployed path is the same object in both.
+  - Between the two trees, `git diff --stat` over the deployed paths lists four files and 62 insertions and 11 deletions: `forward.py` (+13/−3), `otel.go` (+5/−4) and their two test files (`rebuild-2/tree-diff.txt`). The code change is two branches:
+    - in `forward.py`, a port `.port` refuses returns `server.address` alone, where it used to fall through to the scheme's default, and port 0 does the same;
+    - in `otel.go`, `err != nil` became `err != nil || n == 0`.
+  - **No URL the lab's server-attribute code parses has such a port** (`rebuild-2/ports-in-lab.txt`). That code, `internal/otel` in the worker and the load client and `forward.py` in the orchestrator, parses three URLs:
+    - the worker's `MODEL_BASE_URL`, `http://model.lab.internal:8080/v1`;
+    - the worker card's interface URL, `http://worker.lab.svc.cluster.local:8080`, called by the load client and the orchestrator;
+    - the orchestrator card's interface URL, `http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local`, with no port, called by the load client.
+
+    Every other URL with a port in the deployed paths names 8080, 4317, 4318, 9978, 15020 or 16686, or is a host-side `127.0.0.1` port-forward URL in a script or the Makefile whose port a variable sets (`${INGRESS_PORT}`, `${ADMIN_PORT}`, `$(JAEGER_QUERY_PORT)`, `$(REPLAY_INGRESS_PORT)`, `${PORT}`). Neither agent parses those. The only bad ports are the tests' own inputs. The spans in this entry read `server.port` 8080 on the model leg and 8080 or 80 on the agent leg, which the fix does not change.
+  - **The standard proof was re-taken at the final tree**, from a deleted cluster. Its record is `rebuild-2/`, beside the first rebuild's.
+    - Build: seven targets, each exit 0 on its first run: teardown 1.426 s, cluster-kind 18.955 s, step-1 62.571 s, step-2 103.284 s, step-2b 79.113 s, step-2c 20.053 s, step-3 104.210 s. That is 390.814 s from the log's first line to its last, every interval stamped; the 13.272 s before the readings is stated by hand in `rebuild-2/accounting.txt`. No manual step, and `git status` was empty before each target and after the last.
+    - `build.txt` records HEAD, the tree ID, and commit 1 named by subject with its tree. It compares every deployed subtree and `experiments/*.sh` blob with commit 1's, all "same". It also records the controller's worktree-isolated agent under `.claude/worktrees/`, which a local `.git/info/exclude` line keeps out of `git status`.
+    - The go-sources stamp moved to `175f777969afc0f0ce8df0ff0ca7ab2ed6e22db2` with the Go change. The lab leaf is 168 h, `VALID CERT true`.
+    - Clean check **1/1/1/1/1** COMPLETED on both receivers; trace at `REPS=2` **14/69** on both repetitions, 2 roots, **0 dangling**, `hops_without_span` none; GenAI roll-up **0/0/0**; Prometheus **9/9**. All equal the first proof.
+    - Host: 0 Sleep, Wake, DarkWake or Maintenance lines in either window (`rebuild-2/host-sleep.txt`). Its keep-awake section reads each caffeinate's parent with ps when it runs, and names three: the controller's session, this task's agent, and `fu16-impl`.
+
+  **Reading (a): the failure the committed A.3 baseline row makes.** `RUN=baseline RECEIVER=go REPS=2 experiments/gate3-matrix.sh`, unedited, run after its own one-repetition dry run, which it discards.
+  - The row injects the mock's `close`, keyed by work item: the mock reads the whole request, hijacks the connection and closes it without writing a response.
+  - The script asserted the retry knobs off before the run and again after it (`knobs.txt`): 0 retry stanzas on any HTTPRoute, no `CLIENT_*` on any Deployment, `MODEL_RETRIES` unset on the worker, and the Job rendered with `CLIENT_RETRIES=0`.
+
+  **Reading (b): a status answered by the mock itself, with no retry on the path.**
+  - The brief asked for an HTTP 503 answered by the mock. **The mock has no 503 mode.** Its modes are `http500`, `close`, `delay-then-close` and `stale` (`fixtures/mockllm/injection.go`), and `http500` is the only one in which it answers with a status. No fixture was changed to add a mode, so the status read here is **500**.
+  - No committed row makes the mock answer a status with no gateway retry on the path: the egress row arms the same `http500` with the egress route's retry switched on. So one work item was sent by a run-directory helper, `mock-http500-go/send-mock-http500.sh`. It is not a new `experiments/*.sh`, and each primitive it uses is named in its header beside the committed script it comes from:
+    - the retry-stanza count and the `CLIENT_*` test from `gate3-matrix.sh`;
+    - the control pod, the three resets and the arming `{"mode":"http500","lwi":<id>}`;
+    - one `deploy/base/loadgen-job.yaml` Job through `ko apply`, then `make ledgers` and `make export-trace`.
+  - The helper's first invocation stopped at its own pre-check and sent nothing. Two bugs in the helper caused it: the stanza count was taken inside a piped block, so it was unset where it was tested, and the `CLIENT_*` test matched a substring of `OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST`. That attempt is uncounted and its lines are kept in `attempt-1-control.txt`. The second invocation, with a fresh `RUN_ID`, is the one counted.
+
+  **The reading tools.** `chat-span.py` reads the `chat mock` span out of `trace.json`, together with its child HTTP span, everything under that child, and the work item's ledgers. In the review round it was changed to also print the span's `lab.message_id` and `lab.task_id` beside the ledgers' `messageId` and `taskId`, and `chat-spans.csv` was regenerated from the same traces and ledgers by that script (`span_ids_equal_ledgers`: yes on all three). `error-text.py` compares, byte for byte, the error text the worker records with the text it recorded before follow-ups 14 made the status failure a typed error. The conventions' sentences are quoted in `conventions.txt` with each fetch's time and sha256.
+- Result: **the `chat` span records the failure on both readings, and agrees with the ledgers.** Its `error.type` is the status the worker's client received, and its status description is the ledger's error text, byte for byte.
+
+  | | (a) A.3 baseline, 2 work items | (b) mock `http500`, 1 work item |
+  | --- | --- | --- |
+  | `chat mock` span | kind **CLIENT**, status **ERROR**, description `model call: status 503` | kind **CLIENT**, status **ERROR**, description `model call: status 500` |
+  | `error.type` on it | **`503`** | **`500`** |
+  | child HTTP client span (otelhttp) | `HTTP POST`, ERROR, `http.response.status_code=503`, `error.type=503` | `HTTP POST`, ERROR, `http.response.status_code=500`, `error.type=500` |
+  | egress waypoint, server span `POST /*` | **ERROR**, "upstream call failed: SendRequest: connection closed before message completed", `http.status=503`, `reason=UpstreamFailure` | **UNSET**, `http.status=500` |
+  | egress waypoint, client span `POST mockllm.lab.svc.cluster.local:8080` | **ERROR**, the same message, `error.type=UpstreamFailure` | **UNSET**, `http.status=500` |
+  | mock server span | UNSET, `http.response.status_code=200` | ERROR, `http.response.status_code=500` |
+  | ledgers: arrivals / dispatches / Tasks / invocations | **1 / 1 / 1 / 1**, each item | **1 / 1 / 1 / 1** |
+  | invocation ledger `injection/outcome` | `close/closed` | `http500/http500` |
+  | Task / client | `TASK_STATE_FAILED` / `task/TASK_STATE_FAILED` | `TASK_STATE_FAILED` / `task/TASK_STATE_FAILED` |
+  | execution ledger `error` | `model call: status 503` | `model call: status 500` |
+  | trace | 14 spans, layer `none` (summary.csv as committed) | 14 spans |
+
+  - **What the span carries on a failed call** is the same on all three work items:
+    - `gen_ai.operation.name=chat`, `gen_ai.provider.name=openai` and `gen_ai.request.model=mock`;
+    - `server.address=model.lab.internal` and `server.port=8080`;
+    - all four `lab.*` attributes, whose `lab.message_id` and `lab.task_id` equal the invocation ledger's `messageId` and `taskId` and the execution ledger's `taskId`.
+  - **What it does not carry**, and none was expected: `gen_ai.response.id`, `gen_ai.response.model`, `gen_ai.response.finish_reasons`, `gen_ai.usage.input_tokens` and `gen_ai.usage.output_tokens`. There is no answer to read them from.
+  - Each chat span has exactly one child, the HTTP client span, as on a clean call.
+  - **Byte-identical error text** (`error-text.txt`). `model call: status 503` (22 bytes, sha256 `d825ac41…`) equals the 20 lines of the 2026-09-09 A.3 baseline. `model call: status 500` (sha256 `910473b4…`) equals the 20 lines of the 2026-09-10 egress row. Both rows were committed before the typed-error change. In either run the worker writes this text in one place only, the `error` field of its execution ledger's failed-state line; its pod log names the work item nowhere else.
+  - The A.3 baseline's counts equal the committed ones: `1 1 1 1 1 task/TASK_STATE_FAILED none` with 14 spans, the figures `docs/walkthrough.md` re-took.
+  - **That trace already held `error.type=503`.** The committed walkthrough row `2026-09-16-walkthrough/a3-baseline-go` carries the same value on its `chat mock` span, but no entry read it out. This is the first.
+  - **Proof** (`clean-check/`, `trace/`, `rebuild/prometheus-targets.txt`):
+    - clean check **`1/1/1/1/1` with `TASK_STATE_COMPLETED`** on both receivers;
+    - trace at `REPS=2`: worker **14** and orchestrator **69** on both repetitions, `trace_ids` 2, **2 roots**, **0 dangling parents**, `hops_without_span` none, `lab_work_item_on_all` 5/14 and 8/69;
+    - GenAI roll-up **`spans_missing_required=0`, `spans_missing_expected=0`, `spans_with_agent_id=0`** on all four work items;
+    - **Prometheus 9/9 up**.
+    - All of these equal the follow-ups 14 entry.
+  - **Timings** (`rebuild/accounting.txt`), each target exit 0 on its first run:
+    - teardown 0.110 s (there was no cluster to delete), cluster-kind 14.647 s, step-1 80.570 s, step-2 122.302 s, step-2b 79.992 s, step-2c 20.050 s, step-3 100.178 s;
+    - with 0.378 s of header reads, seven status-read gaps of 0.073–0.082 s and a 0.078 s close, that is **418.860 s** from the log's first line to its last, every interval stamped;
+    - between the build's end and the first reading, 12.697 s passed with no stamp: this agent's own turn between two tool calls, which reached no cluster and wrote no file in the repository. `accounting.txt` says so by hand;
+    - the readings then run 162.340 s, stamped throughout.
+  - **Certificates:** the leaf for `ns/lab/sa/default` runs from 2026-09-18T21:10:24Z to 2026-09-25T21:12:24Z, 168 h. `make step-3`'s check read `VALID CERT true` and did not restart ztunnel.
+  - **Host** (`host-sleep.txt`, selected by pmset's event-kind field `$4`, with every counted window named in `windows.csv`):
+    - 0 Sleep, 0 Wake, 0 DarkWake and 0 Maintenance lines inside any window, and none on the host's 2026-09-18 or 2026-09-19. The last Sleep pmset holds is 2026-09-16 01:02:53 +0300.
+    - Keep-awake is **not** claimed absent. The Assertions lines of the task's local day (2026-09-19) are listed in full. They show **three** rolling `caffeinate -i -t 300` streams through the windows, each replaced about every four minutes; this task started none of them.
+      - The one ending at :54 of each cycle belongs to the Claude Code process that runs this task's agent (pid 32557, parent pid 24494, read at 00:08 local).
+      - The one ending at :17 belongs to the controller's session: its current process's parent is `claude --resume` (pid 22403, started 2026-09-18 23:55:58 local), and its cycle is unbroken since 00:01:17.
+      - The one ending at :04 is **not attributed**: pmset records pids, not parents, and it ended at 00:32:44 local (21:32:44Z), before anyone read its parent.
+      - The review round added this attribution as a dated note to `host-sleep.txt`, with its source in `caffeinate-ps.txt`.
+
+  Run outputs are under `experiments/runs/2026-09-19-failed-model-call/`, named by the host's local date; the UTC stamps are on 2026-09-18, from 21:08:56Z to 21:23:01Z:
+  - `a3-baseline-go/`, `mock-http500-go/` (with the helper and `attempt-1-control.txt`);
+  - `chat-spans.csv`, `chat-span.py`, `error-text.txt`, `error-text.py`, `conventions.txt`;
+  - `clean-check/`, `trace/` (with `trace/genai/`);
+  - `rebuild/`: `rebuild.sh`, `build.txt`, `timings.csv`, `accounting.py`, `accounting.txt`, `checks.sh`, `checks.txt`, `host-sleep.sh`, `prometheus-targets.txt`;
+  - `host-sleep.txt`, `windows.csv`, `logs/`;
+  - the review round's: `rebuild-2/` (the second rebuild and its proof, with `tree-diff.txt` and `ports-in-lab.txt`), `caffeinate-ps.txt`, the regenerated `chat-spans.csv`.
+- Interpretation: on this binding the span does what the conventions ask of a failed operation, and the numbers agree with the ledgers. The pinned inference span makes `error.type` Conditionally Required "If the operation ended in an error." and says it "SHOULD match the error code returned by the Generative AI provider or the client library, the canonical name of exception that occurred, or another low-cardinality error identifier", with `500` among its examples. Both readings carry a status code, the span status is ERROR as `recording-errors.md` (v1.44.0) says it SHOULD be, and the text the worker has always written is unchanged to the byte.
+
+  What the attribute cannot say is **who made the status**, and the two readings differ exactly there.
+  - In (b) the mock answered 500. The egress passed it through, and every span from the mock up to the chat span says 500.
+  - In (a) the mock answered nothing. The egress waypoint synthesised the 503 when the mock's connection closed (`error.type=UpstreamFailure` on its own span), and the worker's client, which dials `model.lab.internal` and never sees the mock, records the 503 it received.
+  - So `error.type=503` on a chat span means "the model leg answered 503 to this client", not "the provider said 503". The conventions' "error code returned by the Generative AI provider" is, to a client behind a proxy, the proxy's code. The ledger is what separates the two cases: `close/closed` in the invocation ledger against `http500/http500`.
+
+  Two readings below the chat span disagree with the ledgers, and both are the instrumentation's defaults rather than faults in the lab.
+  - The mock's server span reads `http.response.status_code=200` for a call its ledger records as closed with no response. otelhttp v0.71.0's response-writer wrapper starts at `http.StatusOK` as the "default status code in case the Handler doesn't write anything", and a hijacked connection writes nothing.
+  - The egress waypoint marks its own synthesised 503 as an error but leaves a passed-through 500 UNSET.
+  - Neither touches a count, and both are why the gate's rule holds: the ledgers count and the trace explains, and a span's status is evidence only after the ledger has said what happened.
+
+  One small tension with the conventions is recorded rather than resolved. `recording-errors.md` says "It's NOT RECOMMENDED to duplicate status code or `error.type` in span status description", and the lab's description, the Go error's message, contains the code. The same document says "When the operation fails with an exception, the span status description SHOULD be set to the exception message", and the Go error's message is the nearest thing Go has to one. The lab keeps it for a reason of its own: the description is the execution ledger's error text, byte for byte, so a reader can join the span to its ledger line on that text. Changing it would take a code change in `internal/otel`, which this entry does not make. It is not an upstream gap, and whether to drop the code from the description is queued for the next code branch.
+- Follow-up: none. There is no upstream gap. The span-description question above concerns the lab's own code and is queued for the next code branch.
