@@ -232,11 +232,19 @@ func (id Identity) attributes() []attribute.KeyValue {
 // A URL that does not parse, or that names no host, sets neither attribute
 // rather than a guess. A port absent from the URL is the scheme's default,
 // which is what the client itself will dial.
+//
+// server.address alone, with no server.port, is what two cases leave: a scheme
+// with no default port and no port in the URL, and a port that is not a TCP
+// server port. url.Parse has already refused a port that is not all digits, so
+// the second case is a string of digits above 65535, however long, which reading
+// it as a 16-bit unsigned number refuses, or 0, which no server listens on. The
+// Python agent's forward.py _server_attributes gives the same answers.
 func serverAttributes(rawURL string) []attribute.KeyValue {
 	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.Hostname() == "" {
 		return nil
 	}
+	address := attribute.String(serverAddress, parsed.Hostname())
 	port := parsed.Port()
 	if port == "" {
 		switch parsed.Scheme {
@@ -244,18 +252,13 @@ func serverAttributes(rawURL string) []attribute.KeyValue {
 			port = "80"
 		case "https":
 			port = "443"
-		default:
-			return []attribute.KeyValue{attribute.String(serverAddress, parsed.Hostname())}
 		}
 	}
-	n, err := strconv.Atoi(port)
-	if err != nil {
-		return []attribute.KeyValue{attribute.String(serverAddress, parsed.Hostname())}
+	n, err := strconv.ParseUint(port, 10, 16)
+	if err != nil || n == 0 {
+		return []attribute.KeyValue{address}
 	}
-	return []attribute.KeyValue{
-		attribute.String(serverAddress, parsed.Hostname()),
-		attribute.Int(serverPort, n),
-	}
+	return []attribute.KeyValue{address, attribute.Int(serverPort, int(n))}
 }
 
 // httpStatusError is implemented by an error that knows the HTTP status a server

@@ -27,7 +27,7 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 from google.protobuf.json_format import MessageToJson
 from opentelemetry.trace import SpanKind, StatusCode
 
-from orchestrator.forward import Forwarder
+from orchestrator.forward import Forwarder, _server_attributes
 from orchestrator.model import Identity
 
 from test_forward import FakeClient
@@ -106,12 +106,12 @@ async def test_model_call_with_max_retries_zero_still_reaches_the_endpoint_once(
 AGENT_URL = "http://worker.lab.svc.cluster.local:8080"
 
 
-def a_card(name: str = "worker", version: str = "0.1.0") -> AgentCard:
+def a_card(name: str = "worker", version: str = "0.1.0", url: str = AGENT_URL) -> AgentCard:
     return AgentCard(
         name=name,
         version=version,
         description="the downstream agent",
-        supported_interfaces=[AgentInterface(url=AGENT_URL, protocol_binding="JSONRPC", protocol_version="1.0")],
+        supported_interfaces=[AgentInterface(url=url, protocol_binding="JSONRPC", protocol_version="1.0")],
     )
 
 
@@ -188,6 +188,63 @@ async def test_forward_without_a_card_names_the_span_for_the_operation_alone(spa
         assert absent not in attributes
     # The downstream answered with a Message, which carries no contextId of its own.
     assert "gen_ai.conversation.id" not in attributes
+
+
+async def test_a_card_url_with_a_malformed_ipv6_literal_still_starts_the_span(spans):
+    """A card URL the parser refuses sets no server attribute and raises nothing.
+
+    ``http://[::1/`` opens an IPv6 literal and never closes it. The span is still
+    started and ended around the send, with its other attributes, and the forward
+    returns the downstream's answer: the URL is only read for attributes.
+    """
+    client = TaskClient()
+
+    text = await a_forwarder(client, a_card(url="http://[::1/")).forward("hello", "w1")
+
+    assert text == "the fixed answer"
+    invoke = by_name(spans, "invoke_agent worker")
+    assert len(invoke) == 1, [s.name for s in spans.get_finished_spans()]
+    attributes = dict(invoke[0].attributes)
+    assert "server.address" not in attributes
+    assert "server.port" not in attributes
+    assert attributes["gen_ai.agent.name"] == "worker"
+    assert attributes["lab.work_item"] == "w1"
+
+
+# The same inputs internal/otel's TestServerAttributes_AURLWithABadPort and
+# TestServerAttributes_AURLWithoutAPort use, so the two agents are held to the same
+# answers. A port that does not read as a TCP server port -- above 65535, however
+# long, or 0 -- leaves server.port unset rather than filled with the scheme's
+# default, which would be a guess. One input differs by parser, not by rule: Go's
+# url.Parse refuses a port that is not all digits and so sets neither attribute,
+# while urlsplit accepts the URL and only .port refuses it, so server.address stays.
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("http://h:99999/", {"server.address": "h"}),
+        ("https://h:70000/", {"server.address": "h"}),
+        ("http://example.test:65536/v1", {"server.address": "example.test"}),
+        ("http://example.test:99999999999999999999999/v1", {"server.address": "example.test"}),
+        ("http://example.test:0/v1", {"server.address": "example.test"}),
+        ("http://example.test:abc/v1", {"server.address": "example.test"}),
+        ("http://example.test:65535/v1", {"server.address": "example.test", "server.port": 65535}),
+    ],
+)
+def test_a_bad_port_leaves_server_port_unset(url, expected):
+    assert _server_attributes(url) == expected
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("http://worker.lab.svc.cluster.local/", {"server.address": "worker.lab.svc.cluster.local", "server.port": 80}),
+        ("https://example.test", {"server.address": "example.test", "server.port": 443}),
+        ("http://example.test:/v1", {"server.address": "example.test", "server.port": 80}),
+        ("grpc://example.test/v1", {"server.address": "example.test"}),
+    ],
+)
+def test_a_url_without_a_port_records_the_scheme_default_or_the_address_alone(url, expected):
+    assert _server_attributes(url) == expected
 
 
 async def test_a_failed_forward_records_the_error_on_the_span(spans):

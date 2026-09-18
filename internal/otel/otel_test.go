@@ -286,6 +286,62 @@ func TestServerAttributes_ReadTheEndpointTheClientDials(t *testing.T) {
 	}
 }
 
+// serverAttrs reads serverAttributes' result as strings, keyed by attribute.
+func serverAttrs(rawURL string) map[string]string {
+	got := map[string]string{}
+	for _, kv := range serverAttributes(rawURL) {
+		got[string(kv.Key)] = kv.Value.Emit()
+	}
+	return got
+}
+
+// A URL without a port is dialled on its scheme's default, so that is the port
+// recorded; a scheme with no default leaves server.address alone rather than a
+// guessed number. A colon with nothing after it names no port either.
+func TestServerAttributes_AURLWithoutAPort(t *testing.T) {
+	for _, tc := range []struct{ url, address, port string }{
+		{"http://worker.lab.svc.cluster.local/", "worker.lab.svc.cluster.local", "80"},
+		{"https://example.test", "example.test", "443"},
+		{"http://example.test:/v1", "example.test", "80"},
+		{"grpc://example.test/v1", "example.test", ""},
+	} {
+		got := serverAttrs(tc.url)
+		if got["server.address"] != tc.address || got["server.port"] != tc.port {
+			t.Errorf("serverAttributes(%q): got address=%q port=%q, want %q and %q",
+				tc.url, got["server.address"], got["server.port"], tc.address, tc.port)
+		}
+	}
+}
+
+// A bad port never becomes server.port, and nothing panics (a panic fails the
+// test). url.Parse refuses a port that is not all digits, so such a URL sets no
+// attribute at all; what it lets through is any string of digits, and one that is
+// not a TCP server port -- above 65535, however long, or 0 -- sets server.address
+// alone. 65535 is the last port that is recorded. The Python agent's
+// test_a_bad_port_leaves_server_port_unset reads the same inputs.
+func TestServerAttributes_AURLWithABadPort(t *testing.T) {
+	for _, tc := range []struct{ url, address string }{
+		{"http://example.test:abc/v1", ""},
+		{"http://[::1]:x/v1", ""},
+		{"http://h:99999/", "h"},
+		{"https://h:70000/", "h"},
+		{"http://example.test:65536/v1", "example.test"},
+		{"http://example.test:99999999999999999999999/v1", "example.test"},
+		{"http://example.test:0/v1", "example.test"},
+	} {
+		got := serverAttrs(tc.url)
+		if port, ok := got["server.port"]; ok {
+			t.Errorf("serverAttributes(%q) set server.port=%q, want it unset", tc.url, port)
+		}
+		if got["server.address"] != tc.address {
+			t.Errorf("serverAttributes(%q): got address=%q, want %q", tc.url, got["server.address"], tc.address)
+		}
+	}
+	if got := serverAttrs("http://example.test:65535/v1"); got["server.port"] != "65535" {
+		t.Errorf("serverAttributes with port 65535: got server.port=%q, want 65535", got["server.port"])
+	}
+}
+
 func TestModelCall_HTTPClientSpanIsItsChild(t *testing.T) {
 	otelapi.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	sr := recorder(t)

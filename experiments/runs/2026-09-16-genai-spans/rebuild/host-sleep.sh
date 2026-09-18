@@ -18,6 +18,7 @@ DAY="${DAY:-$(date +%Y-%m-%d)}"
 #   pmset -g log | awk -v d=<day> '$1==d && $3=="Assertions"'
 # ($1 is the date, $2 the time, $3 the zone offset... so the kind is $4; the awk below uses $4 and
 #  prints the whole line.)
+# 2026-09-19 correction (follow-ups 15): the predicate is $4 throughout; the $3 in the two selection lines above is a slip of this comment, and nothing else in this file was touched.
 kinds() { pmset -g log | awk -v d="$DAY" '$1==d && ($4=="Sleep" || $4=="Wake" || $4=="DarkWake" || $4=="Maintenance")'; }
 assertions() { pmset -g log | awk -v d="$DAY" '$1==d && $4=="Assertions"'; }
 

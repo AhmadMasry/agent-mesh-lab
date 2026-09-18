@@ -129,22 +129,40 @@ def _server_attributes(raw_url: str) -> dict[str, object]:
     card advertised and nothing more. A URL that does not parse, or that names no
     host, sets neither attribute; a port the URL omits is the scheme's default,
     which is what this client will dial.
+
+    The host is read inside the same ``ValueError`` guard as the split, so every
+    read of the URL that can refuse it is covered. Under Python 3.14.7, the
+    interpreter the tests run on, a malformed IPv6 literal such as ``http://[::1/``
+    is refused by ``urlsplit`` itself and ``.hostname`` has no raising path; the
+    guard does not depend on either staying true.
+
+    A port that is not a TCP server port leaves ``server.address`` set and
+    ``server.port`` unset, rather than filled with the scheme's default, which would
+    be a guess: one that does not read as a number, one above 65535 however long
+    (both refused by ``.port`` with ``ValueError``), and 0, which no server listens
+    on. These are internal/otel serverAttributes' answers on the same inputs, with
+    one difference that belongs to the parsers: Go's ``url.Parse`` refuses a port
+    that is not all digits, so Go sets neither attribute there, while ``urlsplit``
+    accepts the URL and keeps its host.
     """
     try:
         parsed = urlsplit(raw_url)
+        hostname = parsed.hostname
     except ValueError:
         return {}
-    if not parsed.hostname:
+    if not hostname:
         return {}
     try:
         port = parsed.port
     except ValueError:
-        port = None
+        return {_SERVER_ADDRESS: hostname}
+    if port == 0:
+        return {_SERVER_ADDRESS: hostname}
     if port is None:
         port = {"http": 80, "https": 443}.get(parsed.scheme)
     if port is None:
-        return {_SERVER_ADDRESS: parsed.hostname}
-    return {_SERVER_ADDRESS: parsed.hostname, _SERVER_PORT: port}
+        return {_SERVER_ADDRESS: hostname}
+    return {_SERVER_ADDRESS: hostname, _SERVER_PORT: port}
 
 
 def _agent_url(card) -> str:
