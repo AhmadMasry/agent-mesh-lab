@@ -1,0 +1,71 @@
+# counted run 'egress', started 2026-09-18T21:50:22Z; HEAD 61e1b3e5c71a2113eaa476f514369e25b931b44e; stimulus: env RUN=egress RECEIVER=go REPS=5 RUN_ID=fu15eg RUN_ITEM=2026-09-19-metrics-per-hop/egress-go experiments/gate3-matrix.sh
+## quiet 35 s  started 2026-09-18T21:50:22Z  epoch 1789768222.398
+## quiet 35 s  finished 2026-09-18T21:50:57Z  epoch 1789768257.639  exit=0  wall=35.241s
+
+## read egress-before  started 2026-09-18T21:50:57Z  epoch 1789768257.654
+-- port-forward opened at 2026-09-18T21:50:57Z: kubectl -n telemetry port-forward svc/prometheus 19093:9090
+-- port-forward closed at 2026-09-18T21:50:58Z
+-- reading egress-before at eval 2026-09-18T21:50:57.974000Z: downstream_connections=4 downstream_received_bytes=1 downstream_sent_bytes=1 gen_ai_token_usage_count=0 istio_requests=0 last_scrape=9 otelcol_accepted_spans=0 otelcol_sent_spans=0 request_duration_count=9 requests=9 response_bytes=7 retries=1 tcp_closed=120 tcp_opened=122 tcp_opened_series=122 up=9 upstream_call_duration_count=4 upstream_connect_duration_count=6
+-- last scrape of the 9 targets: oldest 13.8 s before eval, newest 2.1 s before eval; up=9/9
+## read egress-before  finished 2026-09-18T21:50:58Z  epoch 1789768258.094  exit=0  wall=0.440s
+
+## stimulus  started 2026-09-18T21:50:58Z  epoch 1789768258.109
+== certificate check ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           13f793721bdc1ad99019adb483be9788     2026-09-25T21:13:53Z     2026-09-18T21:11:53Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           964673b5aa983b5041f69f6b8346a3d1     2036-09-15T21:11:28Z     2026-09-18T21:11:28Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           5137e1fc367dd00bc3909c201dbae552     2026-09-25T21:12:24Z     2026-09-18T21:10:24Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           964673b5aa983b5041f69f6b8346a3d1     2036-09-15T21:11:28Z     2026-09-18T21:11:28Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+2026-09-18T21:50:58Z image freshness: deployment/worker checkout-go-sources-hash=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 annotation=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 pod-imageIDs: worker-b9df68d97-bw6cg=sha256:37a654e5d6c03a63da6a3d4e8b264f328d840653580a6b56fcdc083777067cba 
+2026-09-18T21:50:58Z image freshness: deployment/mockllm checkout-go-sources-hash=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 annotation=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 pod-imageIDs: mockllm-6bbb85875-v7rh5=sha256:a10504abc8bdbd595efee5174a6c3a1cdaa7c3fe305b5de01d6007fd038e5b4b 
+pre-run retry stanzas across every HTTPRoute: 0
+2026-09-18T21:50:58Z pre-run knob assertion passed for RUN=egress: stanzas=0 MODEL_RETRIES=<unset> (this row sets it: no) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport
+== starting the control pod ==
+2026-09-18T21:50:59Z run fu15eg: RUN=egress RECEIVER=go SUB=none REPS=5 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport MODEL_RETRIES=<left as deployed> route-retry=egress
+2026-09-18T21:50:59Z deployment/worker replicas: spec=1 ready=1
+2026-09-18T21:50:59Z deployment/mockllm replicas: spec=1 ready=1
+== switching the retry stanza on for the egress route ==
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-19-metrics-per-hop/egress-go/routes.txt
+retry stanzas on agentgateway-egress/model-via-agw: 1
+retry stanzas with ROUTE=egress on: 1 on the egress routes, 1 cluster-wide (expected 1 each)
+== dry run: one repetition, its directory deleted afterwards ==
+== egress go: logical_work_item_id=a3m-egress-go-fu15eg-dry ==
+  go,egress,none,a3m-egress-go-fu15eg-dry,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== dry run done; experiments/runs/2026-09-19-metrics-per-hop/egress-go/a3m-egress-go-fu15eg-dry removed ==
+== egress go: 5 repetitions ==
+== egress go: logical_work_item_id=a3m-egress-go-fu15eg-01 ==
+  go,egress,none,a3m-egress-go-fu15eg-01,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== egress go: logical_work_item_id=a3m-egress-go-fu15eg-02 ==
+  go,egress,none,a3m-egress-go-fu15eg-02,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== egress go: logical_work_item_id=a3m-egress-go-fu15eg-03 ==
+  go,egress,none,a3m-egress-go-fu15eg-03,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== egress go: logical_work_item_id=a3m-egress-go-fu15eg-04 ==
+  go,egress,none,a3m-egress-go-fu15eg-04,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== egress go: logical_work_item_id=a3m-egress-go-fu15eg-05 ==
+  go,egress,none,a3m-egress-go-fu15eg-05,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== summary ==
+receiver,run,sub,work_item,deliveries,dispatched,distinct_messageIds,tasks,invocations,client_result,trace_spans,spans_by_service,second_delivery_layer,notes
+go,egress,none,a3m-egress-go-fu15eg-01,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+go,egress,none,a3m-egress-go-fu15eg-02,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+go,egress,none,a3m-egress-go-fu15eg-03,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+go,egress,none,a3m-egress-go-fu15eg-04,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+go,egress,none,a3m-egress-go-fu15eg-05,1,1,1,1,2,task/TASK_STATE_FAILED,16,agentgateway-waypoint=4|agw-egress=3|loadgen=3|mockllm=2|worker=4,gateway,client_lines=1;layer_reason=one call entered the egress waypoint and it made 2 upstream attempts / so the proxy re-sent it;
+== restoring the egress route: removing the retry stanza ==
+restored: retry stanzas across every HTTPRoute: 0
+## stimulus  finished 2026-09-18T21:54:16Z  epoch 1789768456.635  exit=0  wall=198.526s
+
+## wait 45 s (at least two scrape intervals)  started 2026-09-18T21:54:16Z  epoch 1789768456.650
+## wait 45 s (at least two scrape intervals)  finished 2026-09-18T21:55:01Z  epoch 1789768501.984  exit=0  wall=45.334s
+
+## read egress-after  started 2026-09-18T21:55:02Z  epoch 1789768502.007
+-- port-forward opened at 2026-09-18T21:55:02Z: kubectl -n telemetry port-forward svc/prometheus 19093:9090
+-- port-forward closed at 2026-09-18T21:55:02Z
+-- reading egress-after at eval 2026-09-18T21:55:02.326000Z: downstream_connections=4 downstream_received_bytes=1 downstream_sent_bytes=1 gen_ai_token_usage_count=0 istio_requests=0 last_scrape=9 otelcol_accepted_spans=0 otelcol_sent_spans=0 request_duration_count=9 requests=9 response_bytes=7 retries=2 tcp_closed=134 tcp_opened=134 tcp_opened_series=134 up=9 upstream_call_duration_count=4 upstream_connect_duration_count=6
+-- last scrape of the 9 targets: oldest 13.1 s before eval, newest 0.6 s before eval; up=9/9
+## read egress-after  finished 2026-09-18T21:55:02Z  epoch 1789768502.451  exit=0  wall=0.444s
+
+# counted run 'egress' finished 2026-09-18T21:55:02Z

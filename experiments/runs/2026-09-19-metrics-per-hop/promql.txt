@@ -1,0 +1,33 @@
+# Follow-ups 15, commit 3: every PromQL expression this run directory reads, one per line as name<TAB>expression.
+# read-hops.sh evaluates each as an instant query and keeps the full answer; delta.py takes after minus before for
+# each series, matched on its whole label set. Names are those of the live exposition (families-start.csv), with the
+# suffix the samples carry. The agentgateway families are read as scraped, every series and every label. The ztunnel
+# families are summed by the labels that name a hop, because each of their series carries 27 labels and a raw
+# answer is about 57 KB per family per reading. The dropped labels (app, canonical service and revision, version,
+# principal, cluster, region, zone) are fixed per workload, and a count of the raw series under the same `by` clause
+# is read beside each sum, so a sum that merged series would show a count above 1. The ztunnel byte counters are
+# not read; the inventory lists them.
+#
+# the four agentgateway proxies (the two waypoints, the ingress, the egress), port 15020
+requests	agentgateway_requests_total
+retries	agentgateway_retries_total
+request_duration_count	agentgateway_request_duration_seconds_count
+upstream_call_duration_count	agentgateway_upstream_call_duration_seconds_count
+upstream_connect_duration_count	agentgateway_upstream_connect_duration_seconds_count
+downstream_connections	agentgateway_downstream_connections_total
+downstream_received_bytes	agentgateway_downstream_received_bytes_total
+downstream_sent_bytes	agentgateway_downstream_sent_bytes_total
+response_bytes	agentgateway_response_bytes_total
+gen_ai_token_usage_count	agentgateway_gen_ai_client_token_usage_count
+# the two ztunnels, port 15020
+tcp_opened	sum by (instance, reporter, source_workload, source_workload_namespace, destination_workload, destination_workload_namespace, destination_service, connection_security_policy, request_protocol, response_flags) (istio_tcp_connections_opened_total)
+tcp_opened_series	count by (instance, reporter, source_workload, source_workload_namespace, destination_workload, destination_workload_namespace, destination_service, connection_security_policy, request_protocol, response_flags) (istio_tcp_connections_opened_total)
+tcp_closed	sum by (instance, reporter, source_workload, source_workload_namespace, destination_workload, destination_workload_namespace, destination_service, connection_security_policy, request_protocol, response_flags) (istio_tcp_connections_closed_total)
+# Istio's HTTP request count, read to record whether any target exposes it
+istio_requests	istio_requests_total
+# the collector's own span counters, read to record whether any target exposes them
+otelcol_accepted_spans	otelcol_receiver_accepted_spans_total
+otelcol_sent_spans	otelcol_exporter_sent_spans_total
+# when each target was last scraped, so a reading can say its samples postdate the traffic before it
+last_scrape	timestamp(up)
+up	up

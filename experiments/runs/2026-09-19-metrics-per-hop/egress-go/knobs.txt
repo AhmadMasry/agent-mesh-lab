@@ -1,0 +1,28 @@
+2026-09-18T21:50:58Z image freshness: deployment/worker checkout-go-sources-hash=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 annotation=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 pod-imageIDs: worker-b9df68d97-bw6cg=sha256:37a654e5d6c03a63da6a3d4e8b264f328d840653580a6b56fcdc083777067cba 
+2026-09-18T21:50:58Z image freshness: deployment/mockllm checkout-go-sources-hash=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 annotation=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 pod-imageIDs: mockllm-6bbb85875-v7rh5=sha256:a10504abc8bdbd595efee5174a6c3a1cdaa7c3fe305b5de01d6007fd038e5b4b 
+== 2026-09-18T21:50:58Z | RUN=egress RECEIVER=go | RUN_ID=fu15eg | REPS=5 ==
+row knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport MODEL_RETRIES=<left as deployed> route-retry=egress
+receiver injection per repetition: none
+mock injection per repetition: {"mode":"http500","lwi":"__LWI__"}
+stimulus: loadgen-job
+-- before --
+deployment/worker MODEL_RETRIES=
+deployment/orchestrator MODEL_MAX_RETRIES=0
+deployment/orchestrator DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+deployment/orchestrator PLAN_MODEL_CALL=off
+CLIENT_* on any Deployment in lab (empty means none):
+the Job this run renders: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport
+2026-09-18T21:50:58Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-18T21:50:58Z pre-run knob assertion passed for RUN=egress: stanzas=0 MODEL_RETRIES=<unset> (this row sets it: no) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport
+2026-09-18T21:50:59Z retry stanzas on agentgateway-egress/model-via-agw: 1
+2026-09-18T21:50:59Z retry stanzas with ROUTE=egress on: 1 on the egress routes and 1 across every HTTPRoute (expected 1 each)
+2026-09-18T21:54:16Z retry-off ROUTE=egress restored; retry stanzas across every HTTPRoute: 0
+2026-09-18T21:54:16Z -- after (normal end) --
+retry stanzas across every HTTPRoute: 0
+retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-egress/model-via-agw=0
+deployment/worker MODEL_RETRIES=
+deployment/orchestrator MODEL_MAX_RETRIES=0
+deployment/orchestrator DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+deployment/orchestrator PLAN_MODEL_CALL=off
+CLIENT_* on any Deployment in lab (empty means none):
+injector resets on this exit path: mockllm.lab.svc.cluster.local:8080/control/reset=204 worker.lab.svc.cluster.local:8080/control/reset=204 orchestrator.lab.svc.cluster.local:8080/control/reset=204

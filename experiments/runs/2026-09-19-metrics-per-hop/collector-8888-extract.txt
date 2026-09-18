@@ -1,0 +1,44 @@
+# The collector's own internal telemetry, read once through a port-forward to the pod's 127.0.0.1:8888 at
+# 2026-09-18T21:59:26Z (not a Prometheus scrape target). The full exposition, 108 lines, sha256 89c9d5abdb5ab269837dd613a36b40af2a3e930c913876cdfb4bb056db689d0c,
+# stays under the git-ignored raw/end/; these are its span-flow lines, verbatim, selected with
+#   grep -E '^otelcol_(receiver_(accepted|refused)_spans|processor_(incoming|outgoing)_items|processor_filter_spans_filtered|exporter_sent_spans)' plus their HELP lines.
+
+# HELP otelcol_exporter_sent_spans Number of spans successfully sent to destination. [Alpha]
+# HELP otelcol_processor_filter_spans_filtered Number of spans dropped by the filter processor [Development]
+# HELP otelcol_processor_incoming_items Number of items passed to the processor. [Alpha]
+# HELP otelcol_processor_outgoing_items Number of items emitted from the processor. [Alpha]
+# HELP otelcol_receiver_accepted_spans Number of spans successfully pushed into the pipeline. [Alpha]
+# HELP otelcol_receiver_refused_spans Number of spans that could not be pushed into the pipeline. [Alpha]
+
+otelcol_exporter_sent_spans{exporter="debug"} 1865
+otelcol_exporter_sent_spans{exporter="otlp_grpc",server_address="jaeger.telemetry.svc.cluster.local",server_port="4317"} 1865
+otelcol_processor_filter_spans_filtered{filter="filter"} 6699
+otelcol_processor_incoming_items{otel_signal="traces",processor="filter"} 8564
+otelcol_processor_incoming_items{otel_signal="traces",processor="transform"} 1865
+otelcol_processor_outgoing_items{otel_signal="traces",processor="filter"} 1865
+otelcol_processor_outgoing_items{otel_signal="traces",processor="transform"} 1865
+otelcol_receiver_accepted_spans{receiver="otlp",transport="grpc"} 532
+otelcol_receiver_accepted_spans{receiver="otlp",transport="http"} 8032
+otelcol_receiver_refused_spans{receiver="otlp",transport="grpc"} 0
+otelcol_receiver_refused_spans{receiver="otlp",transport="http"} 0
+
+# Arithmetic: accepted 532 (grpc) + 8032 (http) = 8564 = the filter processor's incoming items; 8564 - 6699 filtered
+# = 1865 = the filter's outgoing = the transform's incoming and outgoing = sent by each exporter.
+# The filter's conditions, from the committed deploy/step-3-stress/otel-collector-values.yaml (lines 149-155) and the
+# traces pipeline that runs it first (line 194), verbatim:
+    filter:
+      error_mode: ignore
+      trace_conditions:
+        - span.attributes["url.path"] == "/healthz"
+        - span.attributes["http.route"] == "/healthz"
+        - span.attributes["http.target"] == "/healthz"
+        - IsMatch(span.name, "^GET /healthz")
+        processors: [filter, transform, batch]
+# The live ConfigMap otel-collector (key relay), read 2026-09-18T22:30:23Z, carries the same four conditions:
+  filter:
+    error_mode: ignore
+    trace_conditions:
+    - span.attributes["url.path"] == "/healthz"
+    - span.attributes["http.route"] == "/healthz"
+    - span.attributes["http.target"] == "/healthz"
+    - IsMatch(span.name, "^GET /healthz")

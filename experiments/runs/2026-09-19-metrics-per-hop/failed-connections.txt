@@ -1,0 +1,21 @@
+# read 2026-09-18T22:01:22Z; since the rebuild's first line, 2026-09-18T21:08:56Z
+
+## ztunnel access-log lines at level error, both ztunnel pods (identities trimmed)
+# ztunnel-8vgw9
+# ztunnel-qfzdv
+2026-09-18T21:31:41.084903Z	error	access	connection complete	src.addr=10.244.1.20:37200 src.workload="orchestrator-745f6fffb8-xqhvb" src.namespace="lab" src.cluster="Kubernetes" dst.addr=10.244.1.22:15008 dst.hbone_addr=10.96.66.216:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="agentgateway-waypoint-b89486546-xmvbv" dst.namespace="lab" dst.cluster="Kubernetes" direction="outbound" bytes_sent=751 bytes_recv=703 duration="782715ms" error="while closing connection: send: io error: broken pipe"
+2026-09-18T21:50:59.421365Z	error	access	connection complete	src.addr=10.244.1.22:54810 src.workload="agentgateway-waypoint-b89486546-xmvbv" src.namespace="lab" src.cluster="Kubernetes" dst.addr=10.244.1.21:15008 dst.hbone_addr=10.244.1.21:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="worker-b9df68d97-bw6cg" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=9874 bytes_recv=13792 duration="293674ms" error="while closing connection: receive: io error: broken pipe"
+2026-09-18T21:50:59.472492Z	error	access	connection complete	src.addr=10.244.1.23:36144 src.workload="agentgateway-waypoint-orch-5b56f859f9-fkqnx" src.namespace="lab" src.cluster="Kubernetes" dst.addr=10.244.1.20:15008 dst.hbone_addr=10.244.1.20:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-745f6fffb8-xqhvb" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=648 bytes_recv=1496 duration="293675ms" error="while closing connection: receive: io error: broken pipe"
+2026-09-18T21:56:52.510799Z	error	access	connection complete	src.addr=10.244.1.20:55356 src.workload="orchestrator-745f6fffb8-xqhvb" src.namespace="lab" src.cluster="Kubernetes" dst.addr=10.244.1.22:15008 dst.hbone_addr=10.96.66.216:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="agentgateway-waypoint-b89486546-xmvbv" dst.namespace="lab" dst.cluster="Kubernetes" direction="outbound" bytes_sent=754 bytes_recv=705 duration="782577ms" error="while closing connection: send: io error: broken pipe"
+
+## Prometheus range answers, 2026-09-18T21:08:56Z to now, step 15 s: each series, and every time its value changed
+# sum by (instance, reporter, source_workload, destination_workload, destination_service, response_flags) (istio_tcp_connections_failed_total)
+   {'destination_service': 'orchestrator.lab.svc.cluster.local', 'destination_workload': 'orchestrator', 'instance': '10.244.1.8:15020', 'reporter': 'destination', 'response_flags': 'CONNECT', 'source_workload': 'agentgateway-waypoint-orch'} changes: 21:51:11Z=1
+   {'destination_service': 'worker.lab.svc.cluster.local', 'destination_workload': 'agentgateway-waypoint', 'instance': '10.244.1.8:15020', 'reporter': 'source', 'response_flags': 'CONNECT', 'source_workload': 'orchestrator'} changes: 21:31:56Z=1 21:57:11Z=2
+   {'destination_service': 'worker.lab.svc.cluster.local', 'destination_workload': 'worker', 'instance': '10.244.1.8:15020', 'reporter': 'destination', 'response_flags': 'CONNECT', 'source_workload': 'agentgateway-waypoint'} changes: 21:51:11Z=1
+# agentgateway_xds_connection_terminations_total
+   {'gateway_name': 'agentgateway-waypoint', 'instance': '10.244.1.22:15020', 'reason': 'Error'} changes: 21:42:26Z=1
+   {'gateway_name': 'agentgateway-waypoint-orch', 'instance': '10.244.1.23:15020', 'reason': 'Error'} changes: 21:43:26Z=1
+# istio_xds_connection_terminations_total
+   {'instance': '10.244.0.6:15020', 'reason': 'Reconnect'} changes: 21:42:56Z=1
+   {'instance': '10.244.1.8:15020', 'reason': 'Reconnect'} changes: 21:43:56Z=1

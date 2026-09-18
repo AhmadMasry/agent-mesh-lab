@@ -1,0 +1,57 @@
+2026-09-18T21:50:58Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-18T21:50:59Z run fu15eg: RUN=egress RECEIVER=go SUB=none REPS=5 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport MODEL_RETRIES=<left as deployed> route-retry=egress
+2026-09-18T21:50:59Z deployment/worker replicas: spec=1 ready=1
+2026-09-18T21:50:59Z deployment/mockllm replicas: spec=1 ready=1
+2026-09-18T21:50:59Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-18T21:50:59Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-18T21:50:59Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-19-metrics-per-hop/egress-go/routes.txt
+2026-09-18T21:50:59Z retry stanzas on agentgateway-egress/model-via-agw: 1
+2026-09-18T21:50:59Z retry stanzas with ROUTE=egress on: 1 on the egress routes and 1 across every HTTPRoute (expected 1 each)
+2026-09-18T21:50:59Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:50:59Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:50:59Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:50:59Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"a3m-egress-go-fu15eg-dry"} -> 204
+2026-09-18T21:51:23Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-dry)
+2026-09-18T21:51:23Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-dry)
+2026-09-18T21:51:32Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:51:32Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:51:32Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:51:32Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"a3m-egress-go-fu15eg-01"} -> 204
+2026-09-18T21:51:55Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-01)
+2026-09-18T21:51:55Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-01)
+2026-09-18T21:52:04Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:52:04Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:52:04Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:52:04Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"a3m-egress-go-fu15eg-02"} -> 204
+2026-09-18T21:52:29Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-02)
+2026-09-18T21:52:29Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-02)
+2026-09-18T21:52:37Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:52:37Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:52:38Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:52:38Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"a3m-egress-go-fu15eg-03"} -> 204
+2026-09-18T21:53:01Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-03)
+2026-09-18T21:53:01Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-03)
+2026-09-18T21:53:10Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:53:10Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:53:10Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:53:10Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"a3m-egress-go-fu15eg-04"} -> 204
+2026-09-18T21:53:34Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-04)
+2026-09-18T21:53:34Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-04)
+2026-09-18T21:53:43Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:53:43Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:53:43Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-18T21:53:43Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"a3m-egress-go-fu15eg-05"} -> 204
+2026-09-18T21:54:07Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-05)
+2026-09-18T21:54:07Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-fu15eg-05)
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/2026-09-19-metrics-per-hop/egress-go/routes-off/routes.txt
+2026-09-18T21:54:16Z retry-off ROUTE=egress restored; retry stanzas across every HTTPRoute: 0
+2026-09-18T21:54:16Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-18T21:54:16Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-18T21:54:16Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)

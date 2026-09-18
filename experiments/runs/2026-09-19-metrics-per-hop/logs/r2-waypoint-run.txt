@@ -1,0 +1,71 @@
+# counted run 'r2-waypoint', started 2026-09-18T21:45:28Z; HEAD 61e1b3e5c71a2113eaa476f514369e25b931b44e; stimulus: env RUN=R2 RECEIVER=go SUB=waypoint REPS=5 RUN_ID=fu15r2 RUN_ITEM=2026-09-19-metrics-per-hop/r2-waypoint-go experiments/gate3-matrix.sh
+## quiet 35 s  started 2026-09-18T21:45:28Z  epoch 1789767928.670
+## quiet 35 s  finished 2026-09-18T21:46:03Z  epoch 1789767963.963  exit=0  wall=35.293s
+
+## read r2-waypoint-before  started 2026-09-18T21:46:03Z  epoch 1789767963.983
+-- port-forward opened at 2026-09-18T21:46:03Z: kubectl -n telemetry port-forward svc/prometheus 19093:9090
+-- port-forward closed at 2026-09-18T21:46:04Z
+-- reading r2-waypoint-before at eval 2026-09-18T21:46:04.303000Z: downstream_connections=4 downstream_received_bytes=1 downstream_sent_bytes=1 gen_ai_token_usage_count=0 istio_requests=0 last_scrape=9 otelcol_accepted_spans=0 otelcol_sent_spans=0 request_duration_count=9 requests=9 response_bytes=7 retries=0 tcp_closed=108 tcp_opened=110 tcp_opened_series=110 up=9 upstream_call_duration_count=4 upstream_connect_duration_count=6
+-- last scrape of the 9 targets: oldest 13.5 s before eval, newest 0.0 s before eval; up=9/9
+## read r2-waypoint-before  finished 2026-09-18T21:46:04Z  epoch 1789767964.426  exit=0  wall=0.443s
+
+## stimulus  started 2026-09-18T21:46:04Z  epoch 1789767964.440
+== certificate check ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           13f793721bdc1ad99019adb483be9788     2026-09-25T21:13:53Z     2026-09-18T21:11:53Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           964673b5aa983b5041f69f6b8346a3d1     2036-09-15T21:11:28Z     2026-09-18T21:11:28Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           5137e1fc367dd00bc3909c201dbae552     2026-09-25T21:12:24Z     2026-09-18T21:10:24Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           964673b5aa983b5041f69f6b8346a3d1     2036-09-15T21:11:28Z     2026-09-18T21:11:28Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+2026-09-18T21:46:04Z image freshness: deployment/worker checkout-go-sources-hash=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 annotation=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 pod-imageIDs: worker-b9df68d97-bw6cg=sha256:37a654e5d6c03a63da6a3d4e8b264f328d840653580a6b56fcdc083777067cba 
+2026-09-18T21:46:04Z image freshness: deployment/mockllm checkout-go-sources-hash=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 annotation=e237d2bb77752e089a3965a0b6e0cf6c752e1c77 pod-imageIDs: mockllm-6bbb85875-v7rh5=sha256:a10504abc8bdbd595efee5174a6c3a1cdaa7c3fe305b5de01d6007fd038e5b4b 
+pre-run retry stanzas across every HTTPRoute: 0
+2026-09-18T21:46:05Z pre-run knob assertion passed for RUN=R2: stanzas=0 MODEL_RETRIES=<unset> (this row sets it: no) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport
+== starting the control pod ==
+2026-09-18T21:46:05Z run fu15r2: RUN=R2 RECEIVER=go SUB=waypoint REPS=5 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport MODEL_RETRIES=<left as deployed> route-retry=waypoint
+2026-09-18T21:46:05Z deployment/worker replicas: spec=1 ready=1
+2026-09-18T21:46:05Z deployment/mockllm replicas: spec=1 ready=1
+== switching the retry stanza on for the waypoint route ==
+httproute.gateway.networking.k8s.io/worker configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-19-metrics-per-hop/r2-waypoint-go/routes.txt
+retry stanzas on lab/worker: 1
+retry stanzas with ROUTE=waypoint on: 1 on the waypoint routes, 1 cluster-wide (expected 1 each)
+== dry run: one repetition, its directory deleted afterwards ==
+== R2/waypoint go: logical_work_item_id=a3m-r2-go-waypoint-fu15r2-dry ==
+  go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-dry,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents a92eae7e4e5e765a and 49837d48547506d4 / both agentgateway-waypoint spans under one agentgateway-waypoint span c0d15263c6b76371 / so one proxy made both attempts;
+== dry run done; experiments/runs/2026-09-19-metrics-per-hop/r2-waypoint-go/a3m-r2-go-waypoint-fu15r2-dry removed ==
+== R2/waypoint go: 5 repetitions ==
+== R2/waypoint go: logical_work_item_id=a3m-r2-go-waypoint-fu15r2-01 ==
+  go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-01,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents cd43d0120d37aed4 and 3e5d1e1bff07c6a5 / both agentgateway-waypoint spans under one agentgateway-waypoint span 36b42731ab61cc4f / so one proxy made both attempts;
+== R2/waypoint go: logical_work_item_id=a3m-r2-go-waypoint-fu15r2-02 ==
+  go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-02,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents 46e6195d295377a5 and 4174992377540548 / both agentgateway-waypoint spans under one agentgateway-waypoint span 3aa19003bde86183 / so one proxy made both attempts;
+== R2/waypoint go: logical_work_item_id=a3m-r2-go-waypoint-fu15r2-03 ==
+  go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-03,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents a5b1f49dfea3ab90 and ee49545a3f6f975e / both agentgateway-waypoint spans under one agentgateway-waypoint span 7c5ffed38db6f5f1 / so one proxy made both attempts;
+== R2/waypoint go: logical_work_item_id=a3m-r2-go-waypoint-fu15r2-04 ==
+  go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-04,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents 5d2d7be8cc235380 and 36e350214fa1796a / both agentgateway-waypoint spans under one agentgateway-waypoint span 1af3354256850c58 / so one proxy made both attempts;
+== R2/waypoint go: logical_work_item_id=a3m-r2-go-waypoint-fu15r2-05 ==
+  go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-05,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents a8fc5cc447d264e8 and 8a0f7e53182c6d4c / both agentgateway-waypoint spans under one agentgateway-waypoint span 6c3753ea9f026883 / so one proxy made both attempts;
+== summary ==
+receiver,run,sub,work_item,deliveries,dispatched,distinct_messageIds,tasks,invocations,client_result,trace_spans,spans_by_service,second_delivery_layer,notes
+go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-01,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents cd43d0120d37aed4 and 3e5d1e1bff07c6a5 / both agentgateway-waypoint spans under one agentgateway-waypoint span 36b42731ab61cc4f / so one proxy made both attempts;
+go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-02,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents 46e6195d295377a5 and 4174992377540548 / both agentgateway-waypoint spans under one agentgateway-waypoint span 3aa19003bde86183 / so one proxy made both attempts;
+go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-03,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents a5b1f49dfea3ab90 and ee49545a3f6f975e / both agentgateway-waypoint spans under one agentgateway-waypoint span 7c5ffed38db6f5f1 / so one proxy made both attempts;
+go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-04,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents 5d2d7be8cc235380 and 36e350214fa1796a / both agentgateway-waypoint spans under one agentgateway-waypoint span 1af3354256850c58 / so one proxy made both attempts;
+go,R2,waypoint,a3m-r2-go-waypoint-fu15r2-05,2,1,1,1,1,task/TASK_STATE_COMPLETED,16,agentgateway-waypoint=5|agw-egress=2|loadgen=3|mockllm=1|worker=5,gateway,client_lines=1;layer_reason=the two worker server spans have distinct parents a8fc5cc447d264e8 and 8a0f7e53182c6d4c / both agentgateway-waypoint spans under one agentgateway-waypoint span 6c3753ea9f026883 / so one proxy made both attempts;
+== restoring the waypoint route: removing the retry stanza ==
+restored: retry stanzas across every HTTPRoute: 0
+## stimulus  finished 2026-09-18T21:49:22Z  epoch 1789768162.418  exit=0  wall=197.978s
+
+## wait 45 s (at least two scrape intervals)  started 2026-09-18T21:49:22Z  epoch 1789768162.435
+## wait 45 s (at least two scrape intervals)  finished 2026-09-18T21:50:07Z  epoch 1789768207.731  exit=0  wall=45.296s
+
+## read r2-waypoint-after  started 2026-09-18T21:50:07Z  epoch 1789768207.747
+-- port-forward opened at 2026-09-18T21:50:07Z: kubectl -n telemetry port-forward svc/prometheus 19093:9090
+-- port-forward closed at 2026-09-18T21:50:08Z
+-- reading r2-waypoint-after at eval 2026-09-18T21:50:08.071000Z: downstream_connections=4 downstream_received_bytes=1 downstream_sent_bytes=1 gen_ai_token_usage_count=0 istio_requests=0 last_scrape=9 otelcol_accepted_spans=0 otelcol_sent_spans=0 request_duration_count=9 requests=9 response_bytes=7 retries=1 tcp_closed=120 tcp_opened=122 tcp_opened_series=122 up=9 upstream_call_duration_count=4 upstream_connect_duration_count=6
+-- last scrape of the 9 targets: oldest 14.0 s before eval, newest 1.8 s before eval; up=9/9
+## read r2-waypoint-after  finished 2026-09-18T21:50:08Z  epoch 1789768208.189  exit=0  wall=0.442s
+
+# counted run 'r2-waypoint' finished 2026-09-18T21:50:08Z

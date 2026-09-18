@@ -1435,3 +1435,135 @@ One entry per gate, receiver, and mode or run. Numbers first, interpretation sec
 
   One small tension with the conventions is recorded rather than resolved. `recording-errors.md` says "It's NOT RECOMMENDED to duplicate status code or `error.type` in span status description", and the lab's description, the Go error's message, contains the code. The same document says "When the operation fails with an exception, the span status description SHOULD be set to the exception message", and the Go error's message is the nearest thing Go has to one. The lab keeps it for a reason of its own: the description is the execution ledger's error text, byte for byte, so a reader can join the span to its ledger line on that text. Changing it would take a code change in `internal/otel`, which this entry does not make. It is not an upstream gap, and whether to drop the code from the description is queued for the next code branch.
 - Follow-up: none. There is no upstream gap. The span-description question above concerns the lab's own code and is queued for the next code branch.
+
+## Gate 3 / both receivers / metrics per hop — What does Prometheus count on each hop of a work item's path, and do the hop counters agree with the ledgers?
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.2 openai-python=3.13.0
+- Environment: kind
+- Method: on the cluster rebuilt for the previous entry, at the same deployed subtrees. No component was added: Prometheus and the proxies' own metrics only. Telemetry pins unmoved: prometheus v3.14.0 (chart 29.28.1), collector 0.160.0 (chart 0.173.1).
+
+  **Tree.** These readings were taken at the pre-review tree of commit 1, as the previous entry's were: agents `453b4489…` and internal `d40bf5e5…`. Commit 1's final tree (agents `401cd6dc…`, internal `6a06ffdc…`) differs from it only in the port-parsing branches of `forward.py` and `otel.go` and in their tests. No URL in the lab has such a port. The standard proof was re-taken at the final tree. All three facts are recorded in the previous entry and in `../2026-09-19-failed-model-call/rebuild-2/` (`tree-diff.txt`, `ports-in-lab.txt`, `build.txt`). The review round's readings of this cluster (`pairs.txt`, `waypoint-connections.txt`) were taken before that rebuild deleted it.
+
+  **Scrape settings, read live** (`prometheus-config.txt`, from `/api/v1/status/config`): every one of the five jobs, and the global default, scrapes every **15 s** with a 10 s timeout.
+
+  **Inventory.** Every active target's `/metrics` was read through the Kubernetes API server's proxy, twice: before any counted run (21:31:23Z) and after the last (21:55:25Z). The target list is the one Prometheus reports. `exposition.sh` parses each exposition into one row per family, with its type and label names (`families-start.csv`, `families-end.csv`; the raw expositions stay under the ignored `raw/`).
+  - `inventory.py` keeps the families that describe request flow. Where a project documents a family, the row carries the page's URL and sentence; otherwise it reads "exposition only" with the family's own HELP line.
+  - Documented families that no target exposed are listed as absent (`inventory.csv`). Every page is in `documents.txt`, with fetch time and sha256: agentgateway's data-plane metrics page (1.5.x, the pinned line), Istio's standard-metrics reference and its ambient ztunnel troubleshooting and agentgateway pages ("v1.31 (Current)"), and the collector's internal-telemetry page.
+
+  **Counted runs.** Each ran under `counted-run.sh`, with every step stamped (`logs/`):
+  1. 35 s of quiet (more than two intervals);
+  2. `read-hops.sh <run>-before`, which evaluates every expression in `promql.txt` as an instant query at one evaluation time, through a port-forward the script opens and closes, and keeps each target's last-scrape time;
+  3. the stimulus, a committed script, unedited;
+  4. 45 s (three intervals);
+  5. `read-hops.sh <run>-after`.
+  - The agentgateway families are read as scraped. The ztunnel families are summed by the labels that name a hop, with a count of raw series under the same clause read alongside; every count read 1, so no sum merged series.
+  - `delta.py` takes after minus before per series. A series absent before counts from 0, since agentgateway's page says counters "only appear after the first request of that type".
+  - The three stimuli:
+    - **clean**: `REPS=10 experiments/gate3-trace-per-work-item.sh`, 10 work items per receiver;
+    - **R2 waypoint**: `RUN=R2 RECEIVER=go SUB=waypoint REPS=5 experiments/gate3-matrix.sh`;
+    - **egress**: `RUN=egress RECEIVER=go REPS=5 experiments/gate3-matrix.sh`.
+  - Each matrix invocation also runs its one-repetition dry run inside the window, so its work item is counted too. Its ledgers were collected afterwards by `make ledgers` into `dry-runs/`; its client line is gone with the Job the matrix deletes.
+  - Ledger counts come from `ledger-summary.py`, the way `gate3-matrix.sh` counts. The tables come from `hop-table.py` and `retry-table.py`, which read every number from these files. In the review round `retry-table.py` was changed to read the egress row's "other requests" from the delta too, where it had written 0; the value is unchanged. `hop-table.py` was changed to add the orchestrator waypoint → orchestrator leg, and both tables were regenerated.
+- Result: **on a retried request the proxy's request counter counts the downstream request once, at its final status.**
+  - The retry shows only as +1 on `agentgateway_retries_total` and +1 on the upstream-call histogram, and no series records the first attempt's 503.
+  - Requests plus retries equal the ledgers: 6 + 6 = **12** deliveries at the worker on the R2 waypoint row, and 6 + 6 = **12** invocations at the mock on the egress row, where `agentgateway_requests_total` alone reads **6** on each.
+  - On the clean run, the series chosen by method and status equal the ledgers (**20 / 10 / 20**). The worker waypoint's total over all its series (**50**) also counts card GETs and control resets that no ledger records.
+  - **For an operator: a dashboard built on the request counter alone reads a retried delivery as one request.**
+
+  **Inventory** (`inventory.csv`, 91 rows):
+
+  | target | families on a work item's path | labels that locate a hop | documented, not exposed |
+  | --- | --- | --- | --- |
+  | 4 agentgateway proxies: both waypoints, the ingress, the egress (`:15020`) | `agentgateway_requests_total` (counter); `_request_duration_seconds`, `_request_processing_seconds`, `_response_processing_seconds`, `_upstream_call_duration_seconds`, `_upstream_connect_duration_seconds` (histograms); `_response_bytes_total`, `_downstream_connections_total`, `_requests_shed_total`, `_downstream_connections_shed_total` (counters); `_downstream_received/sent_bytes_total` on the ingress only; `_retries_total` on a proxy only after its first retry | `gateway`, `route`, `backend`, `method`, `status`, `reason`, `listener`, `bind`, `protocol`, `route_rule`; no path and no source; the upstream histograms carry only `kind`/`subtype` or `transport` | `agentgateway_gen_ai_*` and `agentgateway_mcp_requests_total` on all four (no AI or MCP backend on any route); **`istio_requests_total` on both waypoints** |
+  | ztunnel, worker node | `istio_tcp_connections_opened_total`, `_closed_total`, `istio_tcp_sent/received_bytes_total` (27 labels: `reporter`, `source_*`/`destination_*` workload, service and principal, `connection_security_policy`, `response_flags`), `istio_tcp_sockets_open`; `istio_tcp_connections_failed_total` appeared between the two reads | as listed | `istio_requests_total`, which is L4 only, as the ztunnel page says |
+  | ztunnel, control-plane node | none: no mesh workload runs there | | |
+  | istiod `:15014`; agentgateway control plane `:9092` | none of 82 and 44 families is on a work item's path (xDS and reconcile) | | |
+  | otel-collector `:8889` | **an empty exposition**: the `prometheus` exporter of a metrics pipeline nothing sends to | | the collector's own `otelcol_*` span counters are not on 8889. They are served on the pod's `127.0.0.1:8888`, and no job scrapes them. Read once by port-forward (`collector-8888-extract.txt`): 8564 spans accepted, 6699 dropped by the `filter` processor (`otelcol_processor_filter_spans_filtered`), 1865 sent per exporter. The filter's `/healthz` span conditions sit ahead of `batch` in the traces pipeline (`deploy/step-3-stress/otel-collector-values.yaml`:149–155, pipeline :194) |
+  | worker, orchestrator, mock, load client | **no metrics at all**: no `/metrics` route and no meter provider in the Go binaries (`go.opentelemetry.io/otel/metric` is only indirect, so otelhttp's instruments go to the no-op global meter); the orchestrator runs with `OTEL_METRICS_EXPORTER=none` | | |
+
+  **Clean run: 20 work items, 10 per receiver** (`clean-hop-table.csv`, `clean-delta-*.csv`, `clean-ledgers.csv`). Before and after were read at 21:34:16.770Z and 21:44:47.766Z; every target was scraped within the 15 s before each reading, and all 9 were up both times.
+
+  | hop | counter series (delta) | ledger, same 20 work items | spans in the same traces (requests) |
+  | --- | --- | --- | --- |
+  | → worker waypoint, SendMessage (both flows) | `requests_total{agentgateway-waypoint, lab/worker, POST, 200}` **20** | worker arrivals **20** | |
+  | load Job → worker waypoint, agent card | `{…, GET, 200}` **10** | none (not a SendMessage) | |
+  | control pod → worker waypoint, injector reset | `{…, POST, 204}` **20** | none (`/control/*` is excluded from the ledger) | |
+  | worker waypoint, every series | **50** | worker arrivals 20 | 60 (30) |
+  | load Job → orchestrator waypoint, agent card | `{agentgateway-waypoint-orch, GET, 200}` **10**, plus `{POST, 204}` 20 resets | none | 20 (10) |
+  | load Job → ingress, SendMessage | `{agentgateway-ingress, lab/orchestrator-ingress, POST, 200}` **10** | orchestrator arrivals **10** | 20 (10) |
+  | worker → egress, model call | `{agw-egress, POST, 200}` **20** | invocations **20** | 40 (20) |
+  | egress → mock | `upstream_call_duration_seconds_count{agw-egress}` **20** | invocations **20** | mock 20 |
+  | worker; orchestrator; mock | no counter | arrivals / dispatches 20 / 20; 10 / 10; invocations 20 | 70; 540; 20 |
+
+  - At L4, ztunnel counted **connections, not requests**:
+    - load Job → worker waypoint 10, load Job → orchestrator waypoint 10, load Job → ingress 10 (reported by both ends), orchestrator → worker waypoint 10;
+    - waypoint → worker **1**, orchestrator waypoint → orchestrator **1**, ingress → orchestrator **1**, worker → egress **1**: pooled connections, whatever the request count;
+    - nothing on egress → mock, because neither end is captured.
+  - The agentgateway downstream-connection counters agree with ztunnel's source reports, hop for hop: worker waypoint 40 = 10 load Jobs + 20 control-pod connections + 10 orchestrator; orchestrator waypoint 30; ingress 10; egress 1.
+  - **Every trace was the committed shape**: 14 and 69 spans on all 20 work items, `hops_without_span` none.
+
+  **With a retry on the path** (`r2-waypoint-table.csv`, `egress-table.csv`), 6 work items each, the dry run included:
+
+  | row | proxy | `requests_total` | `retries_total` | requests + retries | `upstream_call_duration_seconds_count`, less the proxy's other requests | ledger |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | R2 waypoint | worker waypoint | **6** (`POST 200`) | **6** (`status="200"`) | 12 | 38 − 26 = **12** | deliveries at the worker **12**; dispatches 6; Tasks 6; invocations 6 |
+  | egress | egress | **6** (`POST 500`) | **6** (`status="500"`) | 12 | 12 − 0 = **12** | invocations **12**; deliveries 6; dispatches 6; Tasks 6 |
+
+  - **A hop counter that disagrees with the ledgers, with both numbers.** `agentgateway_requests_total` counts **6** on each row, where the worker counted **12** deliveries (R2) and the mock **12** invocations (egress). The counter records one request per downstream request, at its **final** status: R2 has no 503 series for the refused first attempt, and egress has one 500 per model call, not two.
+  - **The proxy does expose a retry counter.** `agentgateway_retries_total` was absent from every proxy until its first retry. It appeared at 6 on the worker's waypoint and at 6 on the egress, carrying the retried request's **final** status (`200` and `500`), not the status that triggered the retry.
+  - The second attempt is also a second sample of `agentgateway_upstream_call_duration_seconds_count`. That histogram has no route or status label, so the proxy's other requests have to be subtracted by hand: 20 control POSTs and 6 card GETs on the waypoint, which the matrix's own `control.txt` confirms (20 POSTs to the worker, all answered 204).
+  - ztunnel shows nothing of either retry. It counted one waypoint → worker connection opened in the R2 window, and its access log shows that connection was the only one open for the whole stimulus, so it carried all 12 deliveries (`waypoint-connections.txt`, from the committed `waypoint-connections.sh`, read in the review round before the second rebuild deleted that cluster). The previous one closed at 21:45:50.177Z; this one opened at 21:46:05.747Z and closed at 21:50:59.421Z; the stimulus ran from 21:46:04Z to 21:49:22Z.
+  - **What agentgateway's data-plane page says the two counters count** (1.5.x, `documents.txt`). The page opens: "Metrics are collected automatically for every request that passes through the gateway". Its table reads `agentgateway_requests_total` "The total number of HTTP requests sent." and `agentgateway_retries_total` "The total number of request retries."
+    - The retry counter is **as documented**: 6 retries, and 6 counted, on each row.
+    - The request counter's description is **ambiguous**, not silent. On a proxy whose series carry `backend` and `reason="Upstream"`, "requests sent" reads naturally as sent to the backend. On R2, 12 requests were sent to the backend and 6 were counted. The opening sentence ("every request that passes through the gateway") supports the other reading.
+    - The measurement and the v1.5.0 source settle it the same way: one increment per downstream request, at its final status. Every HTTP metric is recorded in the request log's `drop()` (`crates/agentgateway/src/telemetry/log.rs`:1214), with labels that carry the final response status (:1261). `requests` gets `.inc()` (:1330) and `retries` gets `.inc_by(retry_count)` (:1346–1351) under the same labels. The HELP strings are at `metrics.rs`:420–421 and :561–562 (fetched in this session, sha256 in `documents.txt`).
+    - Which `status` a retry's series carries is not on the page: measured, and in the source, it is the final status.
+    - The page's own example "Error rate" query, `rate(agentgateway_requests_total{status=~"5.."}[5m]) / rate(agentgateway_requests_total[5m])`, therefore counts only final statuses. A 503 that a route retry turned into a 200 never appears in it, as R2 shows.
+    - A minimal draft asks the page to say so: `docs/upstream/agentgateway-requests-total-under-retry.md`.
+  - Every row reproduced its committed values: R2 5 of 5 `2 1 1 1 1 task/TASK_STATE_COMPLETED gateway`; egress 5 of 5 `1 1 1 1 2 task/TASK_STATE_FAILED gateway`; each dry run the same.
+
+  **What the counters cannot say**, as measured here:
+  - **No family on any target carries a work-item, message or task identity.** Counts are per route, per status and per workload, never per work item. Which of the 20 deliveries belonged to which work item, and whether a second delivery was a replay of the first, only the ledgers (body hash, `messageId`, JSON-RPC `id`) and the trace can say.
+  - **The agentgateway request counter has no path and no source label.** On the worker's waypoint a SendMessage, an agent-card GET and a control reset share one route. They were told apart here only because they differ in method or status (`POST 200`, `GET 200`, `POST 204`), and a failed SendMessage answered 204 would not be.
+  - It also cannot tell the two flows' deliveries apart: the load Job's and the orchestrator's both arrive as `route=lab/worker`. ztunnel's source labels can split them, but only as connections, which pooling decouples from requests (one connection for 20 model calls).
+  - **The receivers and the mock have no counter at all.** Dispatches, Tasks and invocations exist only in the ledgers, and the egress → mock leg only as the egress's upstream histogram.
+  - **A retried request is one request with a retry on the side.** Anyone summing `requests_total` for "how many times did the model get called" gets half the answer under a route retry, and the retry counter's `status` label names the outcome, not the trigger.
+
+  **Three families appeared that are not request flow**, and each was traced to its events rather than left unexplained (`failed-connections.txt`, from the committed `failed-connections.sh`):
+  - `agentgateway_xds_connection_terminations_total{reason="Error"}` on both waypoints (21:42:26Z and 21:43:26Z) and `istio_xds_connection_terminations_total{reason="Reconnect"}` on both ztunnels (21:42:56Z and 21:43:56Z), each 1. They fell inside the clean window, 31–33 minutes after istiod started (pod start 21:11:21Z). They are control-plane connections, and no work item's count moved.
+  - `istio_tcp_connections_failed_total{response_flags="CONNECT"}`, HELP "The total number of TCP connections that failed to establish (unstable)", rose four times. Each rise matches one ztunnel access-log line at level `error`, "connection complete … while closing connection: … broken pipe", and those are the only error lines either ztunnel logged since the rebuild.
+    - The connections had been established for 293–782 s and had carried 648–13 792 bytes each way (`waypoint-connections.txt` and `failed-connections.txt`). The two orchestrator → waypoint ones carried about 750 bytes each, about one request's worth, and lingered: they had opened at 21:18:38Z and 21:43:50Z.
+    - Two were orchestrator → worker waypoint, at 21:31:41Z and 21:56:52Z, both outside the counted windows.
+    - Two were waypoint → worker and waypoint-orch → orchestrator, 51 ms apart at 21:50:59Z, inside the egress window, in the same second the egress row applied its route retry. That timing is observed, not attributed.
+    - ztunnel 1.31.0's `src/proxy/metrics.rs` maps any error it does not recognise to `ConnectionFailure` (`CONNECT`), and counts every such connection as failed.
+  - No delivery was lost to those closes, and the records show it two ways.
+    - The committed ledgers of this task's two run directories hold 60 SendMessage arrivals, each with its response line: 12 in the previous entry's directory and 48 in this one.
+    - The receivers' own logs over the whole period, 21:08:56Z to 22:01:22Z, hold **61** arrivals and **61** responses (worker 48, orchestrator 13), and 43 agent-card GETs, each paired (`pairs.txt`, from the committed `pairs.sh`, read in the review round before the second rebuild deleted that cluster). The 61st is `a3m-baseline-go-fmca-dry`, the previous entry's A.3 baseline dry run, whose directory `gate3-matrix.sh` deletes. None is unpaired.
+
+  **Host** (`host-sleep.txt`, by pmset's event-kind field `$4`, windows in `windows.csv`): 0 Sleep, 0 Wake, 0 DarkWake and 0 Maintenance lines in any window, from 21:31:23Z to 21:59:27Z. The Assertions lines are listed in full, and a dated note of the review round attributes the `caffeinate -i -t 300` streams in them:
+  - the one ending at :54 of each cycle is this task's agent;
+  - the one ending at :17 is the controller's session;
+  - the one ending at :04, which ended at 21:32:44Z, before the first counted run, is not attributed.
+
+  Run outputs are under `experiments/runs/2026-09-19-metrics-per-hop/`:
+  - `promql.txt`, `samples/*.json` (six readings);
+  - `clean-delta-series.csv`, `clean-delta-hops.csv`, `clean-hop-table.csv`, `clean-ledgers.csv`, and the same four for `r2-waypoint` and `egress`, with `*-table.csv`;
+  - `inventory.csv`, `families-start.csv`, `families-end.csv`, `documents.txt`, `prometheus-config.txt`, `failed-connections.txt`;
+  - `clean/`, `r2-waypoint-go/`, `egress-go/`, `dry-runs/`, `logs/`, `host-sleep.txt`, `windows.csv`;
+  - the tools `exposition.sh`, `read-hops.sh`, `counted-run.sh`, `delta.py`, `ledger-summary.py`, `inventory.py`, `hop-table.py`, `retry-table.py`, `failed-connections.sh`, `host-sleep.sh`;
+  - the review round's: `pairs.txt` with `pairs.sh` and `pairs.py`, `waypoint-connections.txt` with its `.sh` and `.py`, and `collector-8888-extract.txt`.
+- Interpretation: under this configuration Prometheus sees a work item's path only where agentgateway sits on it. The two waypoints, the ingress and the egress each count requests by route, method and status, and on a clean run those counts equal the ledgers', to the request, once the right series is chosen. Everywhere else the answer is no request-level count at all:
+  - the receivers, the mock and the load client export nothing;
+  - ztunnel counts connections, and connection pooling decouples those from requests;
+  - the collector's metrics endpoint is empty, and its own span counters are served but not scraped;
+  - istiod and the agentgateway control plane count configuration.
+
+  On a clean path the ledger and the metric are two views of the same number.
+
+  Under a retry they are not, and the difference is structural, not a miscount. `agentgateway_requests_total` counts what the proxy was asked to do, one request at its final status; the ledgers count what arrived at each end. A route retry doubled the deliveries at the worker and the invocations at the mock, and the request counter did not move beyond one per request. The retry is visible to Prometheus only through a counter that exists after the first retry, and whose `status` label names how the request ended, not why it was retried. Reading "how many deliveries did the receiver get" off the proxy therefore needs `requests_total + retries_total`. That sum matched the ledgers on both rows here, but it is still not a per-work-item count, and nothing in the metrics says which work item was delivered twice. That question belongs to the ledgers and to the trace, which shows the second attempt as its own span under the proxy's.
+
+  Two of the lab's pages are wrong about what a reader will find, and both are drafted upstream.
+  - Istio's ambient troubleshooting page says a waypoint brings "the full set of Istio and Envoy metrics". An agentgateway waypoint brings agentgateway's metrics and no `istio_requests_total`, and no Istio page says so.
+  - ztunnel's `istio_tcp_connections_failed_total` says it counts connections that failed to establish. Here it counted four established connections that closed with an error.
+
+  Neither affected a count in this entry. Both would mislead anyone building on these metrics without the ledgers beside them.
+- Follow-up: three drafts, not filed: docs/upstream/agentgateway-requests-total-under-retry.md, docs/upstream/istio-agentgateway-waypoint-metrics-undocumented.md, docs/upstream/ztunnel-tcp-connections-failed-counts-closed-connections.md
