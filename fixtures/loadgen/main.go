@@ -21,12 +21,30 @@
 //
 // The A.2 run script sets one of them for one measured repetition. Nothing else
 // in the lab sets either, so every other run sends exactly once.
+//
+// One more knob says WHERE the one send goes, and is not a retry knob:
+//
+//   - CLIENT_DIAL=target     the SendMessage POST is sent to TARGET_URL, the
+//     address the card was resolved at, instead of the URL the card advertises.
+//     The card is still resolved, and still recorded; the client is built from
+//     a copy of it whose interface entries carry TARGET_URL and are otherwise
+//     what the card advertised. Unset or empty, the client dials the advertised
+//     URL, as an A2A client does and as every run before 2026-09-19 did. Any
+//     other value is refused before anything is sent: see dialFromEnv.
+//
+// It exists for the A.3 rows that address the Python receiver's Service. That
+// receiver's card advertises the agentgateway ingress, so without the knob only
+// the card GET crosses the Service's own route and the POST enters through the
+// ingress (docs/proposal-notes.md, the second note of 2026-09-19). It adds no
+// send, no re-send and no transport: the HTTP client and the factory options are
+// the ones every other run uses.
 package main
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -79,6 +97,11 @@ func instrument(hc *http.Client, workItem string) *http.Client {
 // when the card advertises exactly one interface -- a lab card does -- because
 // with several the client's own choice of interface, not this function's, is the
 // one being dialled.
+//
+// It is given the card the client is BUILT from, which with CLIENT_DIAL=target is
+// the copy whose entries carry TARGET_URL: the span has to say what the wire did,
+// and a span that named the advertised ingress on a request sent to the Service
+// would say the opposite.
 func agentFromCard(card *a2a.AgentCard) labotel.Agent {
 	agent := labotel.Agent{Name: card.Name, Version: card.Version, Description: card.Description}
 	if len(card.SupportedInterfaces) == 1 {
@@ -101,6 +124,16 @@ type clientLine struct {
 	A2AVersion           string   `json:"a2a_version"`
 	CardProtocolVersions []string `json:"card_protocol_versions"`
 	Error                string   `json:"error,omitempty"`
+	// Appended on 2026-09-19, after every key the line already had, so the
+	// earlier line is a byte-for-byte prefix of this one
+	// (TestClientLine_ExistingKeysAreUnchangedByteForByte). AdvertisedURLs is the
+	// URL of each interface entry as the resolved card gave it, in the card's
+	// order, beside CardProtocolVersions. DialledURL is the URL the client was
+	// built to send to, the same value the invoke_agent span takes its address
+	// from: the advertised one unless CLIENT_DIAL=target, and empty when the card
+	// advertises several interfaces, where the choice is the SDK's.
+	AdvertisedURLs []string `json:"advertised_urls"`
+	DialledURL     string   `json:"dialled_url"`
 }
 
 func getenv(k, def string) string {
@@ -138,6 +171,63 @@ func (k knobs) httpClient(timeout time.Duration) *http.Client {
 	return httpclient.New(timeout)
 }
 
+// dialMode is where the SendMessage POST is sent.
+type dialMode string
+
+const (
+	// dialAdvertised is the URL the resolved card advertises.
+	dialAdvertised dialMode = ""
+	// dialTarget is TARGET_URL, the address the card was resolved at.
+	dialTarget dialMode = "target"
+)
+
+// dialFromEnv reads CLIENT_DIAL. Unlike the retry knobs above, a value it does
+// not know is an error and not "off". Those fall back to the state every other
+// run is in, so a typo costs one row its retry and the counts show it. This one
+// would fall back to the ingress: the row would run, complete, and be recorded
+// as a row that addressed the Service when no request did.
+func dialFromEnv() (dialMode, error) {
+	switch v := os.Getenv("CLIENT_DIAL"); v {
+	case "":
+		return dialAdvertised, nil
+	case string(dialTarget):
+		return dialTarget, nil
+	default:
+		return "", fmt.Errorf("CLIENT_DIAL=%q is not a value this client knows; it is %q or unset, and nothing was sent", v, string(dialTarget))
+	}
+}
+
+// cardToDial returns the card the client is built from. With the knob unset that
+// is the resolved card itself, as it always was. With CLIENT_DIAL=target it is a
+// copy whose interface entries carry the target URL. The entries are pointers, so
+// each is copied before its URL is written: the resolved card keeps what it
+// advertised, which the ledger line records. Binding, tenant and protocol version
+// stay as advertised. a2a.NewAgentInterface is not used: it stamps the SDK's own
+// protocol version on the entry, and a card advertising 0.x would then be sent to
+// as if it advertised 1.0 (rule 7; TestDial_ACardAdvertising0xIsRefusedEitherWay).
+func cardToDial(card *a2a.AgentCard, dial dialMode, target string) *a2a.AgentCard {
+	if dial != dialTarget {
+		return card
+	}
+	dialled := *card
+	dialled.SupportedInterfaces = make([]*a2a.AgentInterface, len(card.SupportedInterfaces))
+	for i, iface := range card.SupportedInterfaces {
+		entry := *iface
+		entry.URL = target
+		dialled.SupportedInterfaces[i] = &entry
+	}
+	return &dialled
+}
+
+// sendConfig is what one send needs to know. One Job sends one work item.
+type sendConfig struct {
+	target    string
+	workItem  string
+	text      string
+	sdkResend bool
+	dial      dialMode
+}
+
 func main() {
 	target := os.Getenv("TARGET_URL")
 	lwi := os.Getenv("LWI")
@@ -145,18 +235,17 @@ func main() {
 		fmt.Fprintln(os.Stderr, "loadgen: TARGET_URL and LWI are required")
 		os.Exit(2)
 	}
+	dial, err := dialFromEnv()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "loadgen:", err)
+		os.Exit(2)
+	}
 	text := getenv("TEXT", "hello")
 	k := knobsFromEnv()
-	line := clientLine{Ledger: "client", Attempt: 1, LogicalWorkItemID: lwi, A2AVersion: string(a2a.Version)}
-	emit := func() {
-		line.TS = time.Now().UTC().Format(time.RFC3339Nano)
-		b, _ := json.Marshal(line)
-		fmt.Println(string(b))
-	}
 
 	// Tracing, if OTEL_EXPORTER_OTLP_ENDPOINT names a collector; nothing at all
 	// otherwise. This process is a Job that exits as soon as its one send is
-	// done, and a batch span processor flushes on a timer, so every exit path
+	// done, and a batch span processor flushes on a timer, so the one way out
 	// below goes through done(), which shuts the provider down first.
 	otelShutdown, err := labotel.Setup(context.Background())
 	if err != nil {
@@ -176,31 +265,58 @@ func main() {
 	defer cancel()
 	hc := instrument(k.httpClient(90*time.Second), lwi)
 
-	card, err := agentcard.NewResolver(hc).Resolve(ctx, target)
+	done(send(ctx, hc, sendConfig{target: target, workItem: lwi, text: text, sdkResend: k.sdkResend, dial: dial}, os.Stdout))
+}
+
+// send resolves the card, makes the one send and prints the client ledger
+// line(s) to out. It returns the process's exit status: 0 when a result came
+// back, 3 when the card, the client or the send failed. It is main's body from
+// the card on, moved here unchanged on 2026-09-19 so that a test can run it
+// against two servers and count where the GET and the POST land; the only
+// statements it gained are the ones CLIENT_DIAL needs.
+func send(ctx context.Context, hc *http.Client, c sendConfig, out io.Writer) int {
+	lwi := c.workItem
+	line := clientLine{Ledger: "client", Attempt: 1, LogicalWorkItemID: lwi, A2AVersion: string(a2a.Version)}
+	emit := func() {
+		line.TS = time.Now().UTC().Format(time.RFC3339Nano)
+		b, _ := json.Marshal(line)
+		fmt.Fprintln(out, string(b))
+	}
+
+	card, err := agentcard.NewResolver(hc).Resolve(ctx, c.target)
 	if err != nil {
 		line.Error = "resolve card: " + err.Error()
 		emit()
-		done(3)
+		return 3
 	}
 	for _, iface := range card.SupportedInterfaces {
 		line.CardProtocolVersions = append(line.CardProtocolVersions, string(iface.ProtocolVersion))
+		line.AdvertisedURLs = append(line.AdvertisedURLs, iface.URL)
 	}
-	client, err := a2aclient.NewFromCard(ctx, card, a2aclient.WithDefaultsDisabled(), a2aclient.WithJSONRPCTransport(hc))
+	// The card the client is built from, and what the span and the line say was
+	// dialled. Same factory options either way: no default transports, the one
+	// JSON-RPC transport over the lab's HTTP client, whose retry settings are
+	// the ones internal/httpclient recorded.
+	dialled := cardToDial(card, c.dial, c.target)
+	agent := agentFromCard(dialled)
+	line.DialledURL = agent.URL
+	client, err := a2aclient.NewFromCard(ctx, dialled, a2aclient.WithDefaultsDisabled(), a2aclient.WithJSONRPCTransport(hc))
 	if err != nil {
 		line.Error = "create client: " + err.Error()
 		emit()
-		done(3)
+		return 3
 	}
 
-	req := a2areq.Build(lwi, text)
+	req := a2areq.Build(lwi, c.text)
 	line.MessageID = req.Message.ID
 
 	// The GenAI `invoke_agent <name>` client span. It wraps the send, not the
 	// card fetch above and not the knob branches below: one span is one logical
 	// invocation, whatever CLIENT_SDK_RESEND then puts on the wire, and the
 	// resend code is untouched. What it says about the agent is what the
-	// resolved card said, and the identity is what this Job exists to send.
-	sendCtx, invoke := labotel.InvokeAgent(ctx, agentFromCard(card),
+	// resolved card said, its address is the one the client dials, and the
+	// identity is what this Job exists to send.
+	sendCtx, invoke := labotel.InvokeAgent(ctx, agent,
 		labotel.Identity{WorkItem: lwi, MessageID: req.Message.ID, Caller: "loadgen"})
 
 	res, err := client.SendMessage(sendCtx, req)
@@ -209,11 +325,11 @@ func main() {
 		// happens, so the line exists whatever the next attempt does.
 		line.Error = err.Error()
 		emit()
-		if !k.sdkResend {
+		if !c.sdkResend {
 			// The process exits non-zero only because no result object exists
 			// to describe.
 			invoke.End(err)
-			done(3)
+			return 3
 		}
 		// The SDK-layer resend asked for by CLIENT_SDK_RESEND: the same request
 		// object, handed to SendMessage a second time. What the SDK then puts on
@@ -225,7 +341,7 @@ func main() {
 			line.Error = err.Error()
 			invoke.End(err)
 			emit()
-			done(3)
+			return 3
 		}
 	}
 	switch r := res.(type) {
@@ -245,5 +361,5 @@ func main() {
 	}
 	invoke.End(nil)
 	emit()
-	done(0)
+	return 0
 }
