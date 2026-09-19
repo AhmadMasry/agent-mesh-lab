@@ -39,11 +39,20 @@
 #                   `lab/orchestrator-ingress` for the Python receiver, whose
 #                   card advertises the ingress). Rule (b)'s fallback reads it.
 #
-# A TRACE WITH NO `route` COLUMN is a record exported before that day. Where a
-# rule needs the route -- rule (c), and rule (b)'s fallback -- the answer is then
-# `not-attributable`, with that reason: the hop is never guessed from a service
-# name. Rules (a) and (b)'s two span-id shapes, and `none`, read no route and
-# answer on such a record as they did when it was taken.
+# A TRACE WITH NO `route` COLUMN is a record exported before the exporter wrote
+# that column, which the follow-ups 18 exporter of 2026-09-19 is the first to do.
+# That is a statement about the EXPORTER and not about the day: fourteen committed
+# work items dated 2026-09-19 were still exported by the older one, and six of them
+# reach this reason (the probe row a3m-egress-go-fu18p-01 of
+# 2026-09-19-route-keyed-attribution, and a3m-egress-go-fu15eg-01..05 of
+# 2026-09-19-metrics-per-hop). Until the fix round of follow-ups 19 the reason
+# called each "a record from before 2026-09-19", which those six are not. The
+# attribution.txt files recorded before that fix
+# round keep the earlier words; they are records. Where a rule needs the route --
+# rule (c), and rule (b)'s fallback -- the answer is then `not-attributable`, with
+# that reason: the hop is never guessed from a service name. Rules (a) and (b)'s
+# two span-id shapes, and `none`, read no route and answer on such a record as
+# they did when it was taken.
 #
 # NO USABLE spans.csv AT ALL is a different cause and the reason says so: the
 # file is absent, or has no header. That is an export that failed or was never
@@ -126,6 +135,11 @@
 #           `lab/orchestrator-ingress` on 2026-09-19)
 #         anything else, no exporting proxy entry above the receiver (a dangling
 #         parent), or a trace with no `route` column           -> not-attributable
+#         a parent chain above the receiver span that loops    -> not-attributable
+#           (no tracer produces one; a damaged or hand-assembled spans.csv can.
+#           Until 2026-09-19, follow-ups 19, the walk up the parents did not
+#           return on such a file; it now keeps the span ids it has visited, and
+#           the reason says the trace is malformed. Fixture: synthetic-parent-cycle)
 #
 #       The ledger-first rule (a) is checked before this fallback is ever
 #       reached, so a second delivery under a new JSON-RPC id is still
@@ -158,6 +172,16 @@
 #         two entry spans on the model route                   -> model-client
 #         one entry span on it with two upstream attempts      -> gateway
 #         a trace with no `route` column                       -> not-attributable
+#         no entry on it, and the route's NAME under another namespace
+#                                                              -> not-attributable
+#           (MODEL_ROUTE is ONE constant, dated MODEL_ROUTE_SINCE: a run taken on
+#           the topology before that day's change is never re-derived, its labels
+#           are read from its committed summary.csv. Its trace, re-exported with
+#           today's exporter, carries `agentgateway-egress/model-via-agw`; the
+#           label is the same not-attributable as any trace with no entry on the
+#           model route, and the reason names the route that WAS found and says
+#           the record was taken on the topology before that change, so it cannot
+#           be read as a regression. Fixture: older-record-model-hop-reexported)
 #
 #       Until 2026-09-19 the hop was "spans of service agw-egress". Run against
 #       this topology that reading finds 0 entries on every row and answers
@@ -203,6 +227,21 @@ MOCK_SERVICE = "mockllm"
 # service name, "agw-egress"; that proxy is retired, and the proxy that serves
 # this route now serves the agent routes under the same service name.
 MODEL_ROUTE = "agentgateway-waypoint/model-via-agw"
+# The day the lab's topology changed and took that route. ONE constant, dated, and
+# no set of earlier ones (the author's decision of 2026-09-19): a run taken on the
+# topology before that change is never re-derived or re-exported, its labels are
+# read from its committed summary.csv. "Before the change", not "before the day":
+# of the committed work items that hold an attribution.txt, twelve dated
+# 2026-09-19 were taken that day on the earlier topology (ten of
+# 2026-09-19-metrics-per-hop, two of 2026-09-19-failed-model-call; their spans name
+# the services agw-egress and agentgateway-waypoint), and one of them,
+# a3m-egress-go-fu15eg-01, re-exported in a scratch directory, is what showed the
+# first wording of this reason ("a record taken before 2026-09-19") to be untrue
+# of it. A trace of such a run that IS re-exported carries the model route
+# under the name it had then, `agentgateway-egress/model-via-agw`; rule (c) then
+# finds no entry on MODEL_ROUTE, and says which route it found instead so that the
+# answer cannot be read as a regression (same_name_model_routes below).
+MODEL_ROUTE_SINCE = "2026-09-19"
 
 
 def jsonl(name):
@@ -227,7 +266,8 @@ def spans():
       "route"            a spans.csv whose header has a `route` column. The column
                          was appended to the export on 2026-09-19.
       "no-route-column"  a spans.csv with a header and no such column: a record
-                         taken before that day. Not the same thing as a record
+                         exported before the exporter wrote it, whatever day
+                         the record is dated. Not the same thing as a record
                          whose spans carry no route: the first cannot say which
                          leg a proxy span belongs to, the second says no proxy
                          span was exported.
@@ -263,6 +303,10 @@ has_route_column = export == "route"
 # Said once, used by both places a rule needs the route and finds none to read.
 NO_EXPORT = ("this repetition holds no usable spans.csv (the file is absent or has no header: the trace "
              "export failed or was never taken)")
+# Said once as well, for the same two places. It speaks of the exporter, not of the
+# day the record is dated: the header of this file says why.
+NO_ROUTE_COLUMN = ("the exported trace has no route column (exported before the exporter wrote that column: the "
+                   "follow-ups 18 exporter of 2026-09-19 is the first that does)")
 
 arrivals = [x for x in ingress
             if x.get("source") == receiver and x.get("phase") == "arrival" and x.get("method") == "SendMessage"]
@@ -356,6 +400,23 @@ def route_entries(route, service=None):
     return out
 
 
+def same_name_model_routes():
+    """(route, POST entries) for every route in this trace that has the model
+    route's NAME under another namespace: `model-via-agw` anywhere but in
+    MODEL_ROUTE's own namespace. The same full route on another proxy is not one of
+    these, because route_entries reads MODEL_ROUTE across every service. Counted
+    and named, never used to pick a label."""
+    name = MODEL_ROUTE.rsplit("/", 1)[-1]
+    found = collections.Counter()
+    for row in rows:
+        route = row.get("route") or ""
+        if route == MODEL_ROUTE or route.rsplit("/", 1)[-1] != name:
+            continue
+        if row["operation"].upper().startswith("POST"):
+            found[route] += 1
+    return sorted(found.items())
+
+
 def upstream_of(entry):
     """The proxy's own child spans directly under one entry span: its upstream
     attempts for that one request. Per entry, which is the actual discriminator
@@ -384,6 +445,10 @@ def service_of(span_id):
     return parent["service"] if parent else ""
 
 
+class ParentCycle(Exception):
+    """The walk up a span's parents came back to a span it had already visited."""
+
+
 def forwarding_entry(row):
     """The proxy entry span that forwarded the request this receiver span served:
     the nearest ancestor that carries a `route`, reached through spans of one
@@ -391,10 +456,21 @@ def forwarding_entry(row):
     when the parent is dangling, or when the walk leaves that service without
     meeting a route. Read from the span's own ancestry, never assumed or
     hardcoded per receiver: which proxy and which route front a receiver differs
-    by stimulus path."""
+    by stimulus path.
+
+    Raises ParentCycle when the parents loop. No tracer produces that: a span is
+    given its parent when it starts, from a span that already exists. A damaged or
+    hand-assembled spans.csv can, and until 2026-09-19 (follow-ups 19) this walk
+    did not return on one. The set of visited span ids is what ends it; the caller
+    answers not-attributable and says why, rather than reading a hop off a file
+    that cannot be a trace."""
     cur = by_id.get(row.get("parent_span_id") or "")
     service = cur["service"] if cur else ""
+    seen = set()
     while cur is not None and cur["service"] == service:
+        if cur["span_id"] in seen:
+            raise ParentCycle(cur["span_id"])
+        seen.add(cur["span_id"])
         if cur.get("route"):
             return cur
         cur = by_id.get(cur.get("parent_span_id") or "")
@@ -428,11 +504,17 @@ def proxy_fallback():
                                     "no span to attribute the second delivery from")
     if not has_route_column:
         return "not-attributable", (f"{deliveries} deliveries on the ledger but {len(receiver_entries)} "
-                                    f"{receiver} server spans in the trace / and the exported trace has no "
-                                    "route column (a record from before 2026-09-19) / so the entries of the "
-                                    "proxy in front of the receiver cannot be told from its other legs and "
-                                    "are not guessed from its service name")
-    hop = agent_hop()
+                                    f"{receiver} server spans in the trace / and {NO_ROUTE_COLUMN} / so the "
+                                    "entries of the proxy in front of the receiver cannot be told from its "
+                                    "other legs and are not guessed from its service name")
+    try:
+        hop = agent_hop()
+    except ParentCycle:
+        return "not-attributable", (f"{deliveries} deliveries on the ledger but {len(receiver_entries)} "
+                                    f"{receiver} server spans in the trace / and the parent chain above the "
+                                    f"{receiver} server span loops back on a span already visited / which no "
+                                    "tracer produces / so the exported trace is malformed and no proxy entry is "
+                                    "read from it")
     if hop is None:
         return "not-attributable", (f"{deliveries} deliveries on the ledger but {len(receiver_entries)} "
                                     f"{receiver} server spans in the trace and no receiver entry has an "
@@ -489,16 +571,25 @@ def decide():
             return "not-attributable", (f"{invocations} model invocations on the ledger / and {NO_EXPORT} / so "
                                         "the calls that entered the model route cannot be counted")
         if not has_route_column:
-            return "not-attributable", (f"{invocations} model invocations on the ledger / and the exported "
-                                        "trace has no route column (a record from before 2026-09-19) / so the "
-                                        "calls that entered the model route cannot be counted and are not "
-                                        "guessed from a service name")
+            return "not-attributable", (f"{invocations} model invocations on the ledger / and {NO_ROUTE_COLUMN} / "
+                                        "so the calls that entered the model route cannot be counted and are "
+                                        "not guessed from a service name")
         if len(model_entries) >= 2:
             return "model-client", (f"{len(model_entries)} calls entered route {MODEL_ROUTE} for one delivery / "
                                     "so the receiver's model client made both")
         if len(model_entries) == 1 and len(model_upstream) >= 2:
             return "gateway", (f"one call entered route {MODEL_ROUTE} and the proxy made {len(model_upstream)} "
                                "upstream attempts under it / so the proxy re-sent it")
+        elsewhere = same_name_model_routes()
+        if not model_entries and elsewhere:
+            named = " and ".join(f"{n} call{'' if n == 1 else 's'} on route {route}" for route, n in elsewhere)
+            return "not-attributable", (f"{invocations} model invocations on the ledger but no call entered route "
+                                        f"{MODEL_ROUTE} / the trace carries {named} instead / the same route name "
+                                        "under another namespace / which is how a record taken on the topology "
+                                        f"before the change of {MODEL_ROUTE_SINCE} names its model route / this "
+                                        "tool is keyed on the model route of the topology since that change and "
+                                        "does not re-derive an earlier record's model hop / so read that record's "
+                                        "label from its own summary.csv / this is not a regression")
         return "not-attributable", (f"{invocations} model invocations on the ledger but the trace shows "
                                     f"{len(model_entries)} calls entering route {MODEL_ROUTE} and "
                                     f"{len(model_upstream)} upstream attempts / which names no layer")
@@ -517,7 +608,14 @@ def ids(rowlist, key):
     return " ".join((r.get(key) or "(none)") for r in rowlist) or "(none)"
 
 
-def hop_label(entry):
+def hop_label(row):
+    """The evidence line's words for the proxy entry above one receiver span. The
+    span id a looping parent chain came back to is printed here, as evidence, and
+    kept out of the reason."""
+    try:
+        entry = forwarding_entry(row)
+    except ParentCycle as cycle:
+        return "(parent chain loops at span %s)" % cycle
     if entry is None:
         return "(none)"
     return "%s %s retry.attempt=%s" % (entry["service"], entry["route"], entry.get("retry_attempt") or "(none)")
@@ -535,8 +633,14 @@ print("parents of the model endpoint POST spans, in start order: %s"
 # attribution keeps its text; the third value is the export that is not there.
 print("route column in the exported trace: %s"
       % {"route": "yes", "no-route-column": "no", "no-export": "no usable spans.csv"}[export])
-print("proxy entry above each receiver POST span, in start order: %s" % (" + ".join(hop_label(forwarding_entry(r)) for r in receiver_entries) or "none"))
+print("proxy entry above each receiver POST span, in start order: %s" % (" + ".join(hop_label(r) for r in receiver_entries) or "none"))
 print("calls that entered the model route %s: %d" % (MODEL_ROUTE, len(model_entries)))
+# Printed on every work item, "(none)" on a trace of this topology: the routes that
+# carry the model route's name under another namespace, which is how a re-exported
+# trace taken on the topology before the change of MODEL_ROUTE_SINCE shows its
+# model hop. Evidence, never a label.
+print("routes named like the model route under another namespace, with their POST entries: %s"
+      % (" ".join(f"{route}={n}" for route, n in same_name_model_routes()) or "(none)"))
 print("upstream attempts the proxy made under those calls: %d" % len(model_upstream))
 # What the proxy itself says about re-sending, printed beside the structural count
 # above and not used to decide: agentgateway writes retry.attempt on the entry

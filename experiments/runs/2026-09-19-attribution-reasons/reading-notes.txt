@@ -1,0 +1,129 @@
+Reading notes for experiments/runs/2026-09-19-attribution-reasons/ (follow-ups 19, task 2, the third commit).
+No cluster was touched and no record was opened by a tool other than the one that wrote it: everything here ran
+on the committed fixtures or on COPIES of committed records. Nothing here is a findings entry; the rebuild that
+follows this task carries that. Stamps are UTC from the clock; the two `diff -u` header lines inside
+make-test/1-... are the local wall clock's, as diff prints them.
+
+WHAT CHANGED, four things, each with its expectation written before the change:
+
+ (e) experiments/lib/jaeger-spans.jq: `http_status` also reads `http.status`, the name agentgateway v1.5.0 writes
+     the response status under. Until now the column was empty on every proxy row. Names read from recorded
+     traces of 2026-09-19: Go binaries `http.response.status_code`, the Python orchestrator `http.status_code`,
+     both agentgateway proxies `http.status`.
+ (d) experiments/lib/derive-layer.sh `forwarding_entry`: a set of visited span ids. A parent chain that loops is
+     answered not-attributable with a reason that says the trace is malformed. Before: the tool did not return.
+ (f) the same tool, rule (c): when no call entered MODEL_ROUTE and the trace carries the model route's NAME under
+     another namespace, the reason names that route and says what it means. The label does not change. One
+     constant (the author's decision of 2026-09-19); an old run is never re-derived.
+ (g) the Makefile's fixture recipe compares `reason=` as well as `layer=`; expected.txt carries the reasons.
+
+THE ORDER THINGS RAN IN:
+
+ expected-spans.py            the independent reading of a query response, in another language than the exporter,
+                              so that the expectation `make test` holds the exporter to is not the exporter's own
+                              output. A copy of experiments/runs/2026-09-19-route-keyed-attribution/expected-spans.py
+                              (a record, untouched; checked first that it still reproduces the committed
+                              expectation byte for byte) with ONE change: the third attribute name.
+ make-test/1-exporter-expectation-first    expected rows rewritten by expected-spans.py, exporter unchanged:
+                              FAIL, 7 rows differ, all 7 of service agw-central, all in http_status only. make
+                              stops at the first failing recipe line, so the derive-layer loop did not run.
+ make-test/2-exporter-changed              ok; 24 ok lines, as before this task (7 Go, 1 exporter, 16 fixtures).
+ make-fixtures.py             writes the two new fixtures from committed files; its docstring says what each is.
+ make-test/3-fixtures-first-tool-unchanged 18 fixtures, reasons in expected.txt, recipe comparing both lines,
+                              derive-layer.sh UNCHANGED. The 16 older fixtures pass WITH their reasons compared.
+                              older-record-model-hop-reexported: the label as expected and FAIL on the reason --
+                              the case a label-only comparison passed. synthetic-parent-cycle: no return; `make
+                              test` was run in its own process group with a 60 s cap and the group stopped, which
+                              the file's last line says. (A first attempt, the tool alone under a 20 s alarm,
+                              stopped the shell and left its Python child running at 100% CPU; it was found and
+                              stopped by its pid. The process-group cap is why the recorded run left nothing.)
+ make-test/4-tool-changed                  ok; 26 ok lines (7 Go, 1 exporter, 18 fixtures), 0 FAIL.
+
+DID THE TOOL CHANGE MOVE ANY COMMITTED RECORD'S LABEL OR REASON? No: 0 of 1358.
+ copy-records.sh              copies of all 679 committed work items that hold an attribution.txt.
+ before-after.py / .csv       each copy derived by the tool as it was at the branch's pushed tip and by the tool as
+                              it is, as receiver worker AND as receiver orchestrator (which one a work item was
+                              recorded for is not in its files, and a regression check should not rest on a guess):
+                              1358 derivations per tool, every exit 0, layer differs on 0, reason differs on 0, the
+                              rest of the attribution block differs on 0 once the ONE line the tool now adds
+                              ("routes named like the model route under another namespace ...") is set aside.
+                              READ THE LAYER COLUMNS OF THAT CSV AS A REGRESSION CHECK AND NOTHING ELSE: half its
+                              rows derive a work item as the receiver it was not, and most of its records predate
+                              the route key, so its many not-attributable rows are not a result about any run.
+
+WHICH RECORDED reason= STRINGS WOULD DIFFER TODAY, AND WHY. They are records; they stay.
+ From THIS task's change: none in any committed record (the 0 above). The new reason can only appear on a trace
+   that has a `route` column AND a model route under another namespace, which is a pre-2026-09-19 trace
+   RE-EXPORTED with the exporter of 2026-09-19 or later. No committed record is one; the one committed instance
+   is the new fixture. reexported-older-rows.txt shows three more real ones made in a scratch directory (R3 go,
+   R3 py, egress py): same label under both tool versions, and the reason now names
+   agentgateway-egress/model-via-agw with 2 calls, 2 calls and 1 call.
+ From BEFORE this task (follow-ups 18's change of key, service name -> route), seen again here and not caused
+   here: recorded-vs-today.txt, the 17 work items of 2026-09-19-route-keyed-attribution. proof-rows 3 of 3: label
+   and reason as recorded. fixture-rows (12) and probe (2) were recorded by the service-name-keyed tool ON
+   PURPOSE, so that the fixture list could fail first: 4 labels differ (egress go/py, R3 go/py: not-attributable
+   then, gateway / model-client by the route key; that run's both-tools.csv already says "8 same, 4 differ"), and
+   4 more reasons differ under an unchanged label, each diffed clause by clause: r1-py-http and
+   r2-py-ingress-incluster by the words "route lab/orchestrator-ingress on" (the fallback names its route since
+   follow-ups 18); r1-go-http by the words "(retired 2026-09-19)" after "the istiod-driven waypoint" and nothing
+   else; probe egress-go because its spans.csv has no route column, which the route-keyed tool says.
+
+REASONS AND RUN-SPECIFIC IDS. The recipe compares the reason whole, with nothing masked. 4 of the 18 recorded
+ reasons carry span ids (gateway-waypoint, gateway-ingress, client-http-waypoint, older-record-shared-parent):
+ rule (b) names the spans it compared, and has since Gate 3. They are the fixture's own ids, fixed by its
+ committed spans.csv, so the comparison is exact and repeatable; a re-taken fixture needs its reason re-recorded.
+ The two reasons added by this task carry none: the span a looping chain came back to is printed on the evidence
+ line ("proxy entry above each receiver POST span"), not in the reason.
+
+READERS OF http_status. Outside run records the column is written by the exporter and read by nothing: the
+ Makefile and the two gate3 scripts that open spans.csv count its rows, gate3-trace-per-work-item.sh reads
+ service, trace_id and lab_work_item, derive-layer.sh reads neither this column nor any position. So no tool
+ behaves differently; a spans.csv exported from now on carries the proxy's status where one before did not, and
+ the twelve live fixtures, exported before, keep their empty cells (they are copies of a record).
+
+FIX ROUND 1, appended 2026-09-19T17:57:36Z after the review of this range (2026-09-19). Nothing above this line was changed; where
+this section and the text above disagree, this section is the later word.
+
+CORRECTION TO "READERS OF http_status" ABOVE. "Read by nothing" was wrong by one reader. It holds for every TOOL (no
+ script, no Makefile line, no positional reader of spans.csv). It does not hold for one DOCUMENT: a step of
+ docs/walkthrough.md (l.804 at this tree) reads and prints http_status for every span, and the listing under it
+ (l.808-822), taken before this change, shows the proxy rows' cell empty where an export taken since fills it (200, or
+ 503 on a closed upstream). The search that missed it looked at script file types only (.sh .py .jq .awk .go and the
+ Makefile) and not at .md. The comment in experiments/lib/jaeger-spans.jq and this commit's message now say so. The
+ walkthrough is not changed here: it is re-taken whole in follow-ups 20, whose brief carries those lines.
+
+THE NO-ROUTE-COLUMN REASON WAS REWORDED (review M3). It called such a record "a record from before 2026-09-19". Of
+ the committed work items that hold an attribution.txt, 14 dated 2026-09-19 have a spans.csv with no route column,
+ and 6 of them reach that reason: the probe row a3m-egress-go-fu18p-01 of 2026-09-19-route-keyed-attribution and
+ a3m-egress-go-fu15eg-01..05 of 2026-09-19-metrics-per-hop. They are not from before that day; they were exported by
+ the exporter as it was before follow-ups 18. The reason now says what is true of every such record: "exported before
+ the exporter wrote that column: the follow-ups 18 exporter of 2026-09-19 is the first that does".
+ ONE MORE WORDING, found by the implementer while applying M3 and of the same kind, in the reason this task itself
+ added for a model route under another namespace: it said "a record taken before 2026-09-19". 12 committed work items
+ dated 2026-09-19 were taken that day on the EARLIER topology (10 of 2026-09-19-metrics-per-hop, 2 of
+ 2026-09-19-failed-model-call: their spans name agw-egress and agentgateway-waypoint), and one of them,
+ a3m-egress-go-fu15eg-01, re-exported in a scratch directory, got that reason, untrue of it. It now speaks of the
+ change of topology, not of the day: "a record taken on the topology before the change of 2026-09-19". No committed
+ record reaches that reason (0 of 1358, below as above), so no recorded string is affected by this second rewording.
+ make-test/5-fix-round-wording-first    the three reasons reworded in expected.txt FIRST, tool as the first round
+                              left it: 23 ok, 3 FAIL, each "the label as expected, but not for the recorded reason".
+ make-test/6-fix-round-tool-reworded    ok; 26 ok lines, 0 FAIL.
+ make-test/3-... above shows the FIRST wording of the added reason in its "recorded reason=" line. It is a record of
+ the first round and stays.
+
+RECORDED attribution.txt FILES KEEP THE EARLIER WORDS. They are records, written before this rewording, and none was
+ touched. A reader who derives an older work item today and compares it with its attribution.txt will see the reason
+ differ in that parenthesis and in nothing else:
+ wording-check.py / before-after-fix-round-1.csv   the same 679 copies and the same four derivations per work item as
+                              before-after.py, tool at the branch's pushed tip against the tool as it is now: 1358
+                              derivations per tool, non-zero exits 0, LAYER DIFFERS ON 0, the rest of the block differs
+                              on 0, REASON DIFFERS ON 584. Every one of the 584 carried the earlier wording and equals
+                              today's reason once that ONE wording is replaced by the present one (584 of 584,
+                              unexplained 0). They are all 584 of the not-attributable derivations and nothing else (0
+                              not-attributable rows unmoved, 0 moved rows under another label), over 372 work items,
+                              every one of which has a spans.csv WITHOUT a route column (372 of 372; with one: 0). The
+                              6 same-day work items named above are among them.
+ This supersedes the sentence above "From THIS task's change: none in any committed record": true of the first round's
+ tool (before-after.csv stays as its record), and after the rewording it is 0 LABELS and 584 reasons, in that wording
+ alone. The layer columns of the new CSV are a regression check and nothing else, for the reasons given above.
+ reexported-same-day-row.txt  that work item under the first round's tool and under the tool now: the same label, and the two wordings side by side.

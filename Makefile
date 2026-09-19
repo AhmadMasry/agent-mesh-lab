@@ -841,16 +841,27 @@ test:
 	@# synthetic, because a derivation with a
 	@# label no test can reach is a derivation nobody has read. The expected
 	@# labels are in experiments/fixtures/derive-layer/expected.txt.
+	@# Both lines a caller reads are compared, `layer=` and `reason=`, the reason
+	@# whole and unmasked: it is the rest of the fixture's line in expected.txt. A
+	@# right label reached by the wrong branch fails here, and so does a line that
+	@# records no reason.
 	@fail=0; \
-	while read -r name receiver expected; do \
+	while read -r name receiver expected reason; do \
 		[ -n "$$name" ] || continue; \
 		case "$$name" in \#*) continue ;; esac; \
-		got=$$(experiments/lib/derive-layer.sh experiments/fixtures/derive-layer/$$name $$receiver | sed -n 's/^layer=//p'); \
-		if [ "$$got" = "$$expected" ]; then \
-			echo "ok  derive-layer: $$name -> $$got"; \
-		else \
+		out=$$(experiments/lib/derive-layer.sh experiments/fixtures/derive-layer/$$name $$receiver); \
+		got=$$(printf '%s\n' "$$out" | sed -n 's/^layer=//p'); \
+		got_reason=$$(printf '%s\n' "$$out" | sed -n 's/^reason=//p'); \
+		if [ "$$got" != "$$expected" ]; then \
 			echo "FAIL derive-layer: $$name -> $$got, expected $$expected" >&2; \
 			fail=1; \
+		elif [ -z "$$reason" ] || [ "$$got_reason" != "$$reason" ]; then \
+			echo "FAIL derive-layer: $$name -> $$got as expected, but not for the recorded reason" >&2; \
+			echo "  recorded reason=$$reason" >&2; \
+			echo "  derived  reason=$$got_reason" >&2; \
+			fail=1; \
+		else \
+			echo "ok  derive-layer: $$name -> $$got, for the recorded reason"; \
 		fi; \
 	done < experiments/fixtures/derive-layer/expected.txt; \
 	[ "$$fail" = "0" ] || exit 1

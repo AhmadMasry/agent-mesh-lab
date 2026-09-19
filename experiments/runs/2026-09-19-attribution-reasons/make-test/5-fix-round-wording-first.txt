@@ -1,0 +1,36 @@
+# 2026-09-19T17:52:33Z FIX ROUND 1 (review of 2026-09-19, M3): make test -- three reasons REWORDED in expected.txt first (the two no-route-column ones, and the one for a model route under another namespace), experiments/lib/derive-layer.sh still as the first round left it
+go test ./...
+ok  	github.com/AhmadMasry/agent-mesh-lab/agents/worker	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm	0.654s
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/replay	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/a2areq	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/httpclient	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/otel	(cached)
+ok  jaeger-spans.jq: fixture rows unchanged
+ok  derive-layer: gateway-waypoint -> gateway, for the recorded reason
+ok  derive-layer: gateway-ingress -> gateway, for the recorded reason
+ok  derive-layer: gateway-ingress-py -> gateway, for the recorded reason
+ok  derive-layer: gateway-egress -> gateway, for the recorded reason
+ok  derive-layer: gateway-egress-py -> gateway, for the recorded reason
+ok  derive-layer: none-baseline -> none, for the recorded reason
+ok  derive-layer: none-baseline-py -> none, for the recorded reason
+ok  derive-layer: client-http-waypoint -> client-http, for the recorded reason
+ok  derive-layer: client-http-py -> client-http, for the recorded reason
+ok  derive-layer: client-sdk -> client-sdk, for the recorded reason
+ok  derive-layer: model-client -> model-client, for the recorded reason
+ok  derive-layer: model-client-py -> model-client, for the recorded reason
+ok  derive-layer: older-record-shared-parent -> gateway, for the recorded reason
+FAIL derive-layer: older-record-model-hop -> not-attributable as expected, but not for the recorded reason
+  recorded reason=2 model invocations on the ledger / and the exported trace has no route column (exported before the exporter wrote that column: the follow-ups 18 exporter of 2026-09-19 is the first that does) / so the calls that entered the model route cannot be counted and are not guessed from a service name
+  derived  reason=2 model invocations on the ledger / and the exported trace has no route column (a record from before 2026-09-19) / so the calls that entered the model route cannot be counted and are not guessed from a service name
+FAIL derive-layer: older-record-fallback -> not-attributable as expected, but not for the recorded reason
+  recorded reason=2 deliveries on the ledger but 1 orchestrator server spans in the trace / and the exported trace has no route column (exported before the exporter wrote that column: the follow-ups 18 exporter of 2026-09-19 is the first that does) / so the entries of the proxy in front of the receiver cannot be told from its other legs and are not guessed from its service name
+  derived  reason=2 deliveries on the ledger but 1 orchestrator server spans in the trace / and the exported trace has no route column (a record from before 2026-09-19) / so the entries of the proxy in front of the receiver cannot be told from its other legs and are not guessed from its service name
+FAIL derive-layer: older-record-model-hop-reexported -> not-attributable as expected, but not for the recorded reason
+  recorded reason=2 model invocations on the ledger but no call entered route agentgateway-waypoint/model-via-agw / the trace carries 1 call on route agentgateway-egress/model-via-agw instead / the same route name under another namespace / which is how a record taken on the topology before the change of 2026-09-19 names its model route / this tool is keyed on the model route of the topology since that change and does not re-derive an earlier record's model hop / so read that record's label from its own summary.csv / this is not a regression
+  derived  reason=2 model invocations on the ledger but no call entered route agentgateway-waypoint/model-via-agw / the trace carries 1 call on route agentgateway-egress/model-via-agw instead / the same route name under another namespace / which is what a record taken before 2026-09-19 carries / this tool is keyed on the model route the topology has had since that day and does not re-derive an older record's model hop / so read that record's label from its own summary.csv / this is not a regression
+ok  derive-layer: not-attributable -> not-attributable, for the recorded reason
+ok  derive-layer: synthetic-parent-cycle -> not-attributable, for the recorded reason
+make: *** [test] Error 1
+make test exit status: 2

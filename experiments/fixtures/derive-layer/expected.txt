@@ -1,11 +1,33 @@
 # Fixtures for experiments/lib/derive-layer.sh, exercised by `make test`.
-# Columns: fixture directory, receiver service, the layer the derivation must name.
+# Columns: fixture directory, receiver service, the layer the derivation must name,
+# and then, to the end of the line, the reason it must give for it.
+#
+# THE REASON IS COMPARED TOO, whole and unmasked, since 2026-09-19 (follow-ups 19).
+# Until then `make test` compared `layer=` and nothing else, so a derivation that
+# reached the right label by the wrong branch passed. For fourteen of the sixteen
+# fixtures that existed that day the reason below is what the derivation printed
+# before anything in it changed (spliced in by a script, not retyped). The other two,
+# older-record-model-hop and older-record-fallback, were spliced in the same way and
+# then REWORDED in the fix round of the same day, and so was one of the two fixtures
+# added that day: their reasons called a record "from before 2026-09-19" or "taken
+# before 2026-09-19", which is untrue of committed records dated that day, and now
+# speak of the exporter and of the change of topology instead (derive-layer.sh's
+# header has the counts). Every reworded or added reason was written here first and
+# the derivation changed until it said so:
+# experiments/runs/2026-09-19-attribution-reasons/make-test/ holds each failing and
+# passing output. Four reasons carry span ids (gateway-waypoint, gateway-ingress,
+# client-http-waypoint, older-record-shared-parent): rule (b) names the spans it
+# compared. They are the ids in that fixture's own spans.csv, so they are fixed for as
+# long as the fixture is, and a fixture that is ever re-taken needs its reason
+# re-recorded. No reason carries a work item id, a timestamp or a count that is not
+# read from the fixture. A line with no reason fails; it does not pass.
 #
 # Re-taken on 2026-09-19 (follow-ups 18, task 3), the day the derivation's key for a
 # proxy span's hop changed from the span's service name to its `route`: one proxy,
 # `agw-central`, now serves the agent routes and the model route under one service
 # name. Each directory holds the five files the derivation reads -- the three ledgers,
-# the client lines and spans.csv -- and nothing in any of them was edited.
+# the client lines and spans.csv -- and nothing in any of them was edited, the one
+# fixture that says otherwise below excepted.
 #
 # TWELVE ARE LIVE ROWS of `experiments/gate3-matrix.sh` at REPS=1 on the kind cluster
 # at the topology of that day, copied byte for byte (checked with cmp) from
@@ -14,18 +36,18 @@
 # columns. They were recorded with the service-name-keyed derivation still in place,
 # so that this list could fail against it first: that run directory's make-test/
 # holds the failing and the passing output.
-gateway-waypoint worker gateway
-gateway-ingress worker gateway
-gateway-ingress-py orchestrator gateway
-gateway-egress worker gateway
-gateway-egress-py orchestrator gateway
-none-baseline worker none
-none-baseline-py orchestrator none
-client-http-waypoint worker client-http
-client-http-py orchestrator client-http
-client-sdk worker client-sdk
-model-client worker model-client
-model-client-py orchestrator model-client
+gateway-waypoint worker gateway the two worker server spans have distinct parents dc2335103e49d4bb and db0b8d9a2c9b35b6 / both agw-central spans under one agw-central span 3f2c5e1bacba1868 / so one proxy made both attempts
+gateway-ingress worker gateway the two worker server spans have distinct parents 952349d08deeb3b4 and 4133681ae4153637 / both agentgateway-ingress spans under one agentgateway-ingress span 449ecbba5250ee3f / so one proxy made both attempts
+gateway-ingress-py orchestrator gateway route lab/orchestrator-ingress on the agentgateway-ingress in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received
+gateway-egress worker gateway one call entered route agentgateway-waypoint/model-via-agw and the proxy made 2 upstream attempts under it / so the proxy re-sent it
+gateway-egress-py orchestrator gateway one call entered route agentgateway-waypoint/model-via-agw and the proxy made 2 upstream attempts under it / so the proxy re-sent it
+none-baseline worker none no second delivery and no second model invocation
+none-baseline-py orchestrator none no second delivery and no second model invocation
+client-http-waypoint worker client-http the two worker server spans have distinct parent span ids cd6bd54303bbb4a2 and 5f5f91e64a8c8418 that do not converge on one proxy span / so each attempt crossed the proxy separately / client lines 1 which does not separate the two layers because the lab's HTTP retry loops below the line the client prints / a proxy that exports nothing leaves both parents dangling and is caught by the shared-parent rule instead because Task 2 measured the istiod-driven waypoint (retired 2026-09-19) issuing one span id for both of its own attempts
+client-http-py orchestrator client-http route lab/orchestrator-ingress on the agentgateway-ingress in front of orchestrator shows 2 inbound spans with one upstream attempt each / one per delivery / regardless of whether they share one client-side parent / so the client sent this delivery 2 times and the orchestrator span for the refused one never opened
+client-sdk worker client-sdk the second arrival carries a new JSON-RPC id under the same messageId which is the SDK-layer resend's signature
+model-client worker model-client 2 calls entered route agentgateway-waypoint/model-via-agw for one delivery / so the receiver's model client made both
+model-client-py orchestrator model-client 2 calls entered route agentgateway-waypoint/model-via-agw for one delivery / so the receiver's model client made both
 #   gateway-waypoint      R2 go waypoint: retry on `lab/worker` of agw-central; two worker
 #                         spans under two attempts of ONE proxy entry (rule b, converging)
 #   gateway-ingress       R2 go ingress, stimulus from outside the cluster: the same shape
@@ -49,14 +71,16 @@ model-client-py orchestrator model-client
 # real repetitions of Gate 3 Tasks 2 and 4 on the topology this lab ran until
 # 2026-09-19, whose spans.csv has NO `route` column and whose proxy rows carry the
 # service names of proxies that no longer exist. They are what "an older record"
-# means to the derivation, and they pin the LABEL it gives one. Not the reason:
-# `make test` compares `layer=` and nothing else, so a derivation that reached
-# `not-attributable` on them by another branch would pass here too. What they do
-# catch is the thing that matters: a derivation that answers from the service name
-# (the one before this day) names `gateway` and `client-http` on the last two and fails.
-older-record-shared-parent worker gateway
-older-record-model-hop worker not-attributable
-older-record-fallback orchestrator not-attributable
+# means to the derivation. When they were added they pinned the LABEL it gives one and
+# not the reason, because `make test` compared `layer=` and nothing else: a derivation
+# that reached `not-attributable` on them by another branch passed. It compares the
+# reason too since follow-ups 19, so the branch is pinned as well. What they caught
+# from the start is the thing that matters: a derivation that answers from the service
+# name (the one before this day) names `gateway` and `client-http` on the last two and
+# fails.
+older-record-shared-parent worker gateway the two worker server spans share one parent span id 99f794f8f0039527 / so one proxy span sent the request twice
+older-record-model-hop worker not-attributable 2 model invocations on the ledger / and the exported trace has no route column (exported before the exporter wrote that column: the follow-ups 18 exporter of 2026-09-19 is the first that does) / so the calls that entered the model route cannot be counted and are not guessed from a service name
+older-record-fallback orchestrator not-attributable 2 deliveries on the ledger but 1 orchestrator server spans in the trace / and the exported trace has no route column (exported before the exporter wrote that column: the follow-ups 18 exporter of 2026-09-19 is the first that does) / so the entries of the proxy in front of the receiver cannot be told from its other legs and are not guessed from its service name
 #   older-record-shared-parent  was `gateway-waypoint`: two worker spans naming ONE
 #                               dangling parent, the istiod-driven waypoint's shape.
 #                               Rule (b) compares span ids and reads no route, so the
@@ -70,14 +94,50 @@ older-record-fallback orchestrator not-attributable
 #                               it `client-http`. Rule (b)'s fallback needs the route
 #                               for the same reason: not-attributable.
 #
-# ONE IS SYNTHETIC, and says so: two byte-identical arrivals and a trace that matched
+# ONE IS AN OLDER RECORD RE-EXPORTED (follow-ups 19), and it is REAL: the same work item
+# as `older-record-model-hop`, a3r-egress-171458-01 of
+# experiments/runs/2026-09-09-a3-gateway-retry-mechanics/. Its four ledger files are that
+# run's, byte for byte. Its spans.csv is NOT the run's own: it is what today's exporter
+# writes from that run's committed trace.json, so it has the `route` column the record's
+# own export lacks, and the route in it is the old topology's,
+# `agentgateway-egress/model-via-agw`. Written by
+# experiments/runs/2026-09-19-attribution-reasons/make-fixtures.py, not by hand.
+# This is the shape a trace taken on the topology before the change of 2026-09-19
+# takes when someone re-exports it (twelve committed work items were taken ON that
+# day, before the change, so "pre-2026-09-19" would not be the whole of them), and
+# until this fixture existed the derivation answered it "0 calls entering route
+# agentgateway-waypoint/model-via-agw ... which names no layer": the right label and a
+# reason that reads like a regression of the tool or of the run. It is neither. The
+# tool has ONE model-route constant, dated to the topology (the author's decision of
+# 2026-09-19: an old run is never re-derived, its labels are read from its committed
+# summary.csv), so the label stays not-attributable and the reason now names the route
+# the trace does carry and says what that means.
+older-record-model-hop-reexported worker not-attributable 2 model invocations on the ledger but no call entered route agentgateway-waypoint/model-via-agw / the trace carries 1 call on route agentgateway-egress/model-via-agw instead / the same route name under another namespace / which is how a record taken on the topology before the change of 2026-09-19 names its model route / this tool is keyed on the model route of the topology since that change and does not re-derive an earlier record's model hop / so read that record's label from its own summary.csv / this is not a regression
+#
+# TWO ARE SYNTHETIC, and say so. The first: two byte-identical arrivals and a trace that matched
 # no span, which no row produces. Its four ledger files are unchanged (the blob ids the
 # previous commit holds); its spans.csv is what today's exporter writes for a response
 # with no span (`echo '{"result":{"resourceSpans":[]}}' | jq -r -s -f
 # experiments/lib/jaeger-spans.jq`), header only. It reaches the fallback's "no proxy
 # entry above the receiver" answer, which a derivation should not be able to return
 # untested.
-not-attributable worker not-attributable
+not-attributable worker not-attributable 2 deliveries on the ledger but 0 worker server spans in the trace and no receiver entry has an exported proxy entry carrying a route above it to fall back to / so the second delivery has no span to be attributed from
+#
+# The second (follow-ups 19) is a parent chain that loops, and it is synthetic because it
+# cannot be anything else: a tracer gives a span its parent when the span starts, from a
+# span that already exists, so no recorded trace holds a span that is its own ancestor.
+# A damaged or hand-assembled spans.csv can. It is the live fixture `gateway-ingress-py`
+# with TWO CELLS of spans.csv changed by make-fixtures.py (same run directory as above):
+# the proxy's two upstream attempt spans, 9188880051321e5e and 64a9b7070fc08e9f, both
+# children of the one entry span on `lab/orchestrator-ingress`, name each other as
+# parent instead. The four ledger files are that fixture's, byte for byte. The walk from
+# the orchestrator's server span up through the proxy's spans then never meets a route
+# and never leaves the proxy's service. Until this fixture existed the derivation did
+# not return on such a file at all (measured: no output in 20 s, the process stopped by
+# a signal); it now keeps the set of spans it has visited and answers not-attributable,
+# saying why. It is last in this list so that a derivation that hangs on it does so
+# after every other fixture has reported.
+synthetic-parent-cycle orchestrator not-attributable 2 deliveries on the ledger but 1 orchestrator server spans in the trace / and the parent chain above the orchestrator server span loops back on a span already visited / which no tracer produces / so the exported trace is malformed and no proxy entry is read from it
 #
 # NOT HERE ANY MORE. Three synthetic fixtures were replaced by the live rows of the
 # same name or label above: `client-http-waypoint` (it imitated a proxy that exports

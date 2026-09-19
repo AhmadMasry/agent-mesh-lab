@@ -1,0 +1,12 @@
+# 2026-09-19T17:57:54Z FIX ROUND 1: why the reason this task added was reworded too. A REAL work item dated 2026-09-19 and taken that day on the
+# EARLIER topology (its spans name agw-egress and agentgateway-waypoint), re-exported with today's exporter into a scratch directory
+# (ledgers copied, spans.csv = jq -r -s -f experiments/lib/jaeger-spans.jq <its committed trace.json>); no record was touched.
+# The first round's tool calls it "a record taken before 2026-09-19", which it is not. Label the same under both.
+=== experiments/runs/2026-09-19-metrics-per-hop/egress-go/a3m-egress-go-fu15eg-01 as worker (the run's own recorded layer: gateway)
+services in its own spans.csv: agentgateway-waypoint agw-egress loadgen mockllm worker 
+tool of the first round (this range's third commit before the fix round):
+  layer=not-attributable
+  reason=2 model invocations on the ledger but no call entered route agentgateway-waypoint/model-via-agw / the trace carries 1 call on route agentgateway-egress/model-via-agw instead / the same route name under another namespace / which is what a record taken before 2026-09-19 carries / this tool is keyed on the model route the topology has had since that day and does not re-derive an older record's model hop / so read that record's label from its own summary.csv / this is not a regression
+tool now:
+  layer=not-attributable
+  reason=2 model invocations on the ledger but no call entered route agentgateway-waypoint/model-via-agw / the trace carries 1 call on route agentgateway-egress/model-via-agw instead / the same route name under another namespace / which is how a record taken on the topology before the change of 2026-09-19 names its model route / this tool is keyed on the model route of the topology since that change and does not re-derive an earlier record's model hop / so read that record's label from its own summary.csv / this is not a regression

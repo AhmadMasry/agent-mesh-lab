@@ -1,0 +1,39 @@
+# 2026-09-19T17:03:46Z make test -- expected rows rewritten by expected-spans.py (http_status also from http.status), experiments/lib/jaeger-spans.jq UNCHANGED
+go test ./...
+ok  	github.com/AhmadMasry/agent-mesh-lab/agents/worker	0.389s
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/replay	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/a2areq	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/httpclient	(cached)
+ok  	github.com/AhmadMasry/agent-mesh-lab/internal/otel	(cached)
+FAIL jaeger-spans.jq: output differs from experiments/fixtures/jaeger-trace-sample.spans.csv
+--- experiments/fixtures/jaeger-trace-sample.spans.csv	2026-09-19 20:03:46
++++ -	2026-09-19 20:03:48
+@@ -1,17 +1,17 @@
+ trace_id,span_id,parent_span_id,service,operation,start_us,duration_us,lab_work_item,lab_message_id,http_status,route,retry_attempt
+ 4ec8f521c913e1b29140db0e99878aab,6b0c724680f92abd,,loadgen,HTTP GET,1789822532593037,107020,,,200,,
+-4ec8f521c913e1b29140db0e99878aab,c279c50480a93fc8,6b0c724680f92abd,agw-central,GET /*,1789822532699422,463,,,200,lab/worker,
+-4ec8f521c913e1b29140db0e99878aab,95cdd70d94509ba9,c279c50480a93fc8,agw-central,GET worker.lab.svc.cluster.local:8080,1789822532699493,374,,,200,,
++4ec8f521c913e1b29140db0e99878aab,c279c50480a93fc8,6b0c724680f92abd,agw-central,GET /*,1789822532699422,463,,,,lab/worker,
++4ec8f521c913e1b29140db0e99878aab,95cdd70d94509ba9,c279c50480a93fc8,agw-central,GET worker.lab.svc.cluster.local:8080,1789822532699493,374,,,,,
+ 4ec8f521c913e1b29140db0e99878aab,bebcc87821092b1c,95cdd70d94509ba9,worker,GET /.well-known/agent-card.json,1789822532699692,83,a3m-r2-go-waypoint-fu18p-01,,200,,
+ ea1b53501dad2e7910abba31f4e84c16,a53337b67c3c8d92,,loadgen,invoke_agent worker,1789822532700168,313794,a3m-r2-go-waypoint-fu18p-01,01a0b9bc-7c5c-7269-93a2-4ed617441884,,,
+ ea1b53501dad2e7910abba31f4e84c16,3a74979361422a91,a53337b67c3c8d92,loadgen,HTTP POST,1789822532700243,313533,,,200,,
+-ea1b53501dad2e7910abba31f4e84c16,f4b37c98c1e261af,3a74979361422a91,agw-central,POST /*,1789822532700368,312901,,,200,lab/worker,1
+-ea1b53501dad2e7910abba31f4e84c16,d8921642c4f6f2d0,f4b37c98c1e261af,agw-central,POST worker.lab.svc.cluster.local:8080,1789822532700400,239,,,503,,
++ea1b53501dad2e7910abba31f4e84c16,f4b37c98c1e261af,3a74979361422a91,agw-central,POST /*,1789822532700368,312901,,,,lab/worker,1
++ea1b53501dad2e7910abba31f4e84c16,d8921642c4f6f2d0,f4b37c98c1e261af,agw-central,POST worker.lab.svc.cluster.local:8080,1789822532700400,239,,,,,
+ ea1b53501dad2e7910abba31f4e84c16,8aef2496634cdc97,d8921642c4f6f2d0,worker,POST /,1789822532700511,51,a3m-r2-go-waypoint-fu18p-01,,503,,
+-ea1b53501dad2e7910abba31f4e84c16,239e34a04b847ffa,f4b37c98c1e261af,agw-central,POST worker.lab.svc.cluster.local:8080,1789822532805113,208126,,,200,,
++ea1b53501dad2e7910abba31f4e84c16,239e34a04b847ffa,f4b37c98c1e261af,agw-central,POST worker.lab.svc.cluster.local:8080,1789822532805113,208126,,,,,
+ ea1b53501dad2e7910abba31f4e84c16,4b365e2f90e1f121,239e34a04b847ffa,worker,POST /,1789822532805503,207492,a3m-r2-go-waypoint-fu18p-01,,200,,
+ ea1b53501dad2e7910abba31f4e84c16,6406c9d692b856ad,4b365e2f90e1f121,worker,chat mock,1789822532805770,206346,a3m-r2-go-waypoint-fu18p-01,01a0b9bc-7c5c-7269-93a2-4ed617441884,,,
+ ea1b53501dad2e7910abba31f4e84c16,377ba14878ee3432,6406c9d692b856ad,worker,HTTP POST,1789822532805792,206286,,,200,,
+-ea1b53501dad2e7910abba31f4e84c16,f93b38775c1c5bff,377ba14878ee3432,agw-central,POST /*,1789822532807973,203663,,,200,agentgateway-waypoint/model-via-agw,
+-ea1b53501dad2e7910abba31f4e84c16,e456060d1b97b925,f93b38775c1c5bff,agw-central,POST mockllm.lab.svc.cluster.local:8080,1789822532808120,203476,,,200,,
++ea1b53501dad2e7910abba31f4e84c16,f93b38775c1c5bff,377ba14878ee3432,agw-central,POST /*,1789822532807973,203663,,,,agentgateway-waypoint/model-via-agw,
++ea1b53501dad2e7910abba31f4e84c16,e456060d1b97b925,f93b38775c1c5bff,agw-central,POST mockllm.lab.svc.cluster.local:8080,1789822532808120,203476,,,,,
+ ea1b53501dad2e7910abba31f4e84c16,60c9c011c511ad04,e456060d1b97b925,mockllm,POST /v1/chat/completions,1789822532810309,201078,a3m-r2-go-waypoint-fu18p-01,01a0b9bc-7c5c-7269-93a2-4ed617441884,200,,
+make: *** [test] Error 1
+make test exit status: 2

@@ -28,6 +28,23 @@
 # longer says which leg of a work item a proxy span belongs to; `route` does, and
 # experiments/lib/derive-layer.sh keys on it.
 #
+# `http_status` is the response status under whichever name the span's writer
+# uses, first match in this order: `http.response.status_code` and
+# `http.status_code`, the two names the HTTP semantic conventions have used (read
+# from recorded traces of 2026-09-19: the lab's Go binaries write the first, the
+# Python orchestrator the second), then `http.status`, the name agentgateway
+# v1.5.0 writes it under on both of its proxies. The third was added on 2026-09-19
+# (follow-ups 19): until then the column was empty on every proxy row, so a
+# spans.csv exported before that day says nothing about what a proxy answered,
+# and one exported since does -- a proxy's 503 for an upstream that closed its
+# connection now shows beside the 200 that upstream's own span may carry. No
+# lab TOOL reads this column: no script, no Makefile line and no positional reader
+# of spans.csv. One DOCUMENT does: a step of docs/walkthrough.md reads and prints
+# it for every span, and the listing under that step, taken before this change,
+# shows the proxy rows' cell empty where an export taken since fills it (`200`, or
+# `503` on a closed upstream). That document is re-taken whole in follow-ups 20 and
+# was left as it is here.
+#
 # Two shapes are handled deliberately. Identifiers arrive from this binding as
 # lowercase hex; anything else is passed through unchanged rather than guessed at,
 # so a change in the backend's encoding shows up in the file instead of being
@@ -87,7 +104,7 @@ def rows:
         duration_us:    (($s.endTimeUnixNano | us) - ($s.startTimeUnixNano | us)),
         lab_work_item:  (firstattr($sa; ["lab.work_item"])),
         lab_message_id: (firstattr($sa; ["lab.message_id"])),
-        http_status:    (firstattr($sa; ["http.response.status_code", "http.status_code"])),
+        http_status:    (firstattr($sa; ["http.response.status_code", "http.status_code", "http.status"])),
         route:          (firstattr($sa; ["route"])),
         retry_attempt:  (firstattr($sa; ["retry.attempt"]))
       }
