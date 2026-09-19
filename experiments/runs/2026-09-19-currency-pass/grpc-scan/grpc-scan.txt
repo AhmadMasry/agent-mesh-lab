@@ -1,0 +1,56 @@
+# grpc hold, added evidence: what the lab's own instrument counts at each version (follow-ups 19 task 1, controller's word of 2026-09-19)
+# Kubescape 4.0.14 (build commit 031cd40cc8de696fa30a648001853443019ec97a), host CLI, no cluster. Vulnerability DB built: 2026-09-19 (every one of the eight scans reports the same date).
+# v1.83.2 images: the lab's ko.local :latest images, built from the committed tree (local/ko-build.txt).
+# v1.84.0 images: built with ko from a scratch copy of the Go module OUTSIDE the repository (made with cp), where the only change is
+#   `go get google.golang.org/grpc@v1.84.0 && go mod tidy` -- go.mod differs from the committed one in that one line; go build, go vet and
+#   go test (7 packages ok) pass there. They were published under ko.local/fu19-grpc184/ so the lab's own ko.local tags were not moved.
+# Command per image, the one experiments/scan-images.sh runs: kubescape scan image <image> --format json --output <name>.json
+# <name>-findings.csv is derived from <name>.json with experiments/lib/kubescape-findings.jq, as the lab's scan derives it.
+
+## does the binary link grpc at all?  ($ go list -deps <pkg> | grep -c '^google.golang.org/grpc')
+  ./agents/worker: 66 grpc packages among its dependencies
+  ./fixtures/mockllm: 66 grpc packages among its dependencies
+  ./fixtures/loadgen: 66 grpc packages among its dependencies
+  ./fixtures/replay: 0 grpc packages among its dependencies
+
+## per image and grpc version
+  image    grpc     findings  critical  high  medium  low  advisory_GHSA-2v4p-qf9q-27wj_rows  advisory_severity  advisory_fixed_in
+  worker   v1.83.2  0         0         0     0       0    0
+  worker   v1.84.0  1         0         1     0       0    1                                  High               1.85.0-dev.0.20260825072537-93e31b48545e
+  mockllm  v1.83.2  0         0         0     0       0    0
+  mockllm  v1.84.0  1         0         1     0       0    1                                  High               1.85.0-dev.0.20260825072537-93e31b48545e
+  loadgen  v1.83.2  0         0         0     0       0    0
+  loadgen  v1.84.0  1         0         1     0       0    1                                  High               1.85.0-dev.0.20260825072537-93e31b48545e
+  replay   v1.83.2  0         0         0     0       0    0
+  replay   v1.84.0  0         0         0     0       0    0
+
+## the finding rows at v1.84.0 (id,severity,package,version,fixed_in,type)
+  worker: GHSA-2v4p-qf9q-27wj,High,google.golang.org/grpc,v1.84.0,1.85.0-dev.0.20260825072537-93e31b48545e,go-module
+  mockllm: GHSA-2v4p-qf9q-27wj,High,google.golang.org/grpc,v1.84.0,1.85.0-dev.0.20260825072537-93e31b48545e,go-module
+  loadgen: GHSA-2v4p-qf9q-27wj,High,google.golang.org/grpc,v1.84.0,1.85.0-dev.0.20260825072537-93e31b48545e,go-module
+
+## reading
+  At v1.83.2 the scan counts 0 findings in all four images. At v1.84.0 it counts 1 High, GHSA-2v4p-qf9q-27wj against google.golang.org/grpc v1.84.0 with
+  fixed_in 1.85.0-dev.0.20260825072537-93e31b48545e, in each of the three images whose binary links grpc (worker, mockllm, loadgen), and 0 in replay, which
+  links none. That is the advisory's third range read literally, which is what grpc-hold.txt records the documents as saying. The scan does not settle
+  whether v1.84.0 carries the fix -- the release branch's commit list says it does -- it says what this lab's instrument would count: 3 High findings that
+  the tree at v1.83.2 does not have. The hold stands on the documents; this is what moving would have cost in the lab's own scan record.
+
+# started 2026-09-19T15:59:20Z
+$ kubescape scan image ko.local/worker-918a018b7a581926ead34dec2ba0fb83:latest --format json --output worker-grpc-1.83.2.json   (2026-09-19T15:59:21Z)
+   exit=0  image id sha256:80419b46bfb503689946d8a826c8346793c7a4d709d1abbaa475158b0e4b3843
+$ kubescape scan image ko.local/fu19-grpc184/worker-918a018b7a581926ead34dec2ba0fb83:96ca446a0a281734e2477150ddcef3e7b0dcf098cf4611b27ec2f9d7a7ef1b9e --format json --output worker-grpc-1.84.0.json   (2026-09-19T15:59:22Z)
+   exit=0  image id sha256:b61032bc2e758c90fa0132f39f87e9ce0848653783ca5dfe573d59ac05eb4bdb
+$ kubescape scan image ko.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:latest --format json --output mockllm-grpc-1.83.2.json   (2026-09-19T15:59:24Z)
+   exit=0  image id sha256:3b5ad87d4ce769416f31d72e3d06f5dce047a2812853cef959ffc4b3e14738b3
+$ kubescape scan image ko.local/fu19-grpc184/mockllm-d7e8f9e58ff4838298fc2d1892c03051:211853558a10db145100147de68fc31418610be3348f2492d11107ecc4214c43 --format json --output mockllm-grpc-1.84.0.json   (2026-09-19T15:59:26Z)
+   exit=0  image id sha256:79fc539251cafe3102bdd881cf694cee4c585d9d359577716a6454efdbda1ae8
+$ kubescape scan image ko.local/loadgen-3213c6ac35f3a712608a51068f91d823:latest --format json --output loadgen-grpc-1.83.2.json   (2026-09-19T15:59:28Z)
+   exit=0  image id sha256:542df988305c41f6defda2daf0a6d2f09b52bd4150e23c4d6d95abbeb2e0d41e
+$ kubescape scan image ko.local/fu19-grpc184/loadgen-3213c6ac35f3a712608a51068f91d823:6b66be80b93e496396ed645c7ff750fb82e5c23d4080e3ce415d1d05718f8eee --format json --output loadgen-grpc-1.84.0.json   (2026-09-19T15:59:31Z)
+   exit=0  image id sha256:769122e87e5a292afb2853c9cbd231efd602462d809059d619ca22c99419c9b8
+$ kubescape scan image ko.local/replay-693f7c26c04c2e161a535fb994879193:latest --format json --output replay-grpc-1.83.2.json   (2026-09-19T15:59:33Z)
+   exit=0  image id sha256:86b5bb96afdea5ff3b36b8f19eef2535e62ca507df42dbc0db7baa04ddb2f434
+$ kubescape scan image ko.local/fu19-grpc184/replay-693f7c26c04c2e161a535fb994879193:6dddc16722d82accf35586e1e04d8f7e92baafbcdb937bd22906357c942705c7 --format json --output replay-grpc-1.84.0.json   (2026-09-19T15:59:36Z)
+   exit=0  image id sha256:a479ee338d574d3f0ffd9dd8a3646aa6ab929cd70b182431bb28f5a0d46cfc01
+# finished 2026-09-19T15:59:38Z

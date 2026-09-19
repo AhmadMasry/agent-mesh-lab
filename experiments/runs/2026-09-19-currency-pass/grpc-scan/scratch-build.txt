@@ -1,0 +1,27 @@
+# 2026-09-19T15:55:45Z scratch copy of the Go module outside the repository; go version go1.27.1 darwin/arm64
+$ grep grpc go.mod   (as copied: the committed tree)
+33:	google.golang.org/grpc v1.83.2 // indirect
+$ go get google.golang.org/grpc@v1.84.0 && go mod tidy
+go: downloading google.golang.org/grpc v1.84.0
+go: upgraded google.golang.org/grpc v1.83.2 => v1.84.0
+$ diff <committed go.mod> <scratch go.mod>
+33c33
+< 	google.golang.org/grpc v1.83.2 // indirect
+---
+> 	google.golang.org/grpc v1.84.0 // indirect
+$ go list -m all | grep -E 'google.golang.org/(grpc|genproto)'
+go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0
+google.golang.org/genproto/googleapis/api v0.0.0-20260918162117-cecb64721679
+google.golang.org/genproto/googleapis/rpc v0.0.0-20260918162117-cecb64721679
+google.golang.org/grpc v1.84.0
+$ go build ./... ; go vet ./... ; go test ./... -count=1
+build exit=0
+vet exit=0
+ok   github.com/AhmadMasry/agent-mesh-lab/agents/worker 0.546s
+ok   github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen 0.521s
+ok   github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm 0.683s
+ok   github.com/AhmadMasry/agent-mesh-lab/fixtures/replay 0.476s
+ok   github.com/AhmadMasry/agent-mesh-lab/internal/a2areq 0.689s
+ok   github.com/AhmadMasry/agent-mesh-lab/internal/httpclient 0.721s
+ok   github.com/AhmadMasry/agent-mesh-lab/internal/otel 0.784s
+test exit=0

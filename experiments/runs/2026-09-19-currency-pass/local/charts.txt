@@ -1,0 +1,109 @@
+# 2026-09-19T15:45:45Z v4.3.0+gbec5b06 -- the three telemetry charts, read and rendered locally. No cluster is involved: helm show, helm pull and helm template only.
+# 'HEAD values' = the values file as committed before this task (git show HEAD:<file>); 'tree values' = the file as this task leaves it.
+
+## chart prometheus 29.28.1
+$ helm show chart prometheus --repo https://prometheus-community.github.io/helm-charts --version 29.28.1
+appVersion: v3.14.0
+kubeVersion: '>=1.19.0-0'
+name: prometheus
+version: 29.28.1
+$ helm pull ... ; shasum -a 256 prometheus-29.28.1.tgz -> 201dd52448a79e955c7b210c1cec824fc6c642aee0c8769c1bca06d9f3588e0c
+
+## chart prometheus 29.31.1
+$ helm show chart prometheus --repo https://prometheus-community.github.io/helm-charts --version 29.31.1
+appVersion: v3.14.0
+kubeVersion: '>=1.19.0-0'
+name: prometheus
+version: 29.31.1
+$ helm pull ... ; shasum -a 256 prometheus-29.31.1.tgz -> a2925c9c0677dbc2ccf9b9f7b75dd1de44b1ee0b8f58a7f061d1ee1b47617984
+
+## chart opentelemetry-collector 0.173.1
+$ helm show chart opentelemetry-collector --repo https://open-telemetry.github.io/opentelemetry-helm-charts --version 0.173.1
+appVersion: 0.160.0
+name: opentelemetry-collector
+version: 0.173.1
+$ helm pull ... ; shasum -a 256 opentelemetry-collector-0.173.1.tgz -> 66897a36e9eeda71ce227236fb952c0501ce7d7f6387e0318ca15046950ee04d
+
+## chart jaeger 4.13.1
+$ helm show chart jaeger --repo https://jaegertracing.github.io/helm-charts --version 4.13.1
+appVersion: 2.20.0
+kubeVersion: '>= 1.21-0'
+name: jaeger
+version: 4.13.1
+$ helm pull ... ; shasum -a 256 jaeger-4.13.1.tgz -> fc16f5b68572ccd0f9164219759f1102834cee6145d754ba5718596f81a5170b
+
+## prometheus: 29.28.1 against 29.31.1, both rendered with the tree's deploy/step-3-stress/prometheus-values.yaml
+render 29.28.1: exit=0 objects=6 kinds=ClusterRole,ClusterRoleBinding,ConfigMap,Deployment,Service,ServiceAccount, scrape_jobs=5 images= image: "prom/prometheus:v3.14.0";
+render 29.31.1: exit=0 objects=6 kinds=ClusterRole,ClusterRoleBinding,ConfigMap,Deployment,Service,ServiceAccount, scrape_jobs=5 images= image: "prom/prometheus:v3.14.0";
+$ diff prom-29.28.1.yaml prom-29.31.1.yaml
+11c11
+<     helm.sh/chart: prometheus-29.28.1
+---
+>     helm.sh/chart: prometheus-29.31.1
+28c28
+<     helm.sh/chart: prometheus-29.28.1
+---
+>     helm.sh/chart: prometheus-29.31.1
+130c130
+<     helm.sh/chart: prometheus-29.28.1
+---
+>     helm.sh/chart: prometheus-29.31.1
+180c180
+<     helm.sh/chart: prometheus-29.28.1
+---
+>     helm.sh/chart: prometheus-29.31.1
+202c202
+<     helm.sh/chart: prometheus-29.28.1
+---
+>     helm.sh/chart: prometheus-29.31.1
+228c228
+<     helm.sh/chart: prometheus-29.28.1
+---
+>     helm.sh/chart: prometheus-29.31.1
+244a245,246
+>       annotations:
+>         kubectl.kubernetes.io/default-container: prometheus-server
+250c252
+<         helm.sh/chart: prometheus-29.28.1
+---
+>         helm.sh/chart: prometheus-29.31.1
+chart defaults at 29.31.1 that the values file turns off (helm show values):
+  .alertmanager.enabled = true
+  ."kube-state-metrics".enabled = true
+  ."prometheus-node-exporter".enabled = true
+  ."prometheus-pushgateway".enabled = true
+  .configmapReload.prometheus.enabled = true
+  .configmapReload.prometheus.image.repository = quay.io/prometheus-operator/prometheus-config-reloader
+  .configmapReload.prometheus.image.tag = v0.94.0
+  .server.image.repository = quay.io/prometheus/prometheus
+  built-in scrapeConfigs: 10 (prometheus, kubernetes-api-servers, kubernetes-nodes, kubernetes-nodes-cadvisor, kubernetes-service-endpoints, kubernetes-service-endpoints-slow, prometheus-pushgateway, kubernetes-services, kubernetes-pods, kubernetes-pods-slow)
+  subcharts declared by Chart.yaml at 29.31.1:
+    alertmanager 1.43.3 condition=alertmanager.enabled
+    kube-state-metrics 8.5.0 condition=kube-state-metrics.enabled
+    prometheus-node-exporter 4.57.0 condition=prometheus-node-exporter.enabled
+    prometheus-pushgateway 3.8.0 condition=prometheus-pushgateway.enabled
+
+## opentelemetry-collector 0.173.1: HEAD values (image tag 0.160.0) against tree values (0.161.0)
+render HEAD values: exit=0 objects=4
+render tree values: exit=0 objects=4
+$ diff otelcol-HEAD.yaml otelcol-tree.yaml
+205c205
+<           image: "otel/opentelemetry-collector-contrib:0.160.0"
+---
+>           image: "otel/opentelemetry-collector-contrib:0.161.0"
+the chart's own words for the value (helm show values at 0.173.1):
+330-  # Overrides the image tag whose default is the chart appVersion.
+331:  tag: ""
+
+## jaeger 4.13.1: HEAD values (image tag 2.20.0) against tree values (2.21.0)
+render HEAD values: exit=0 objects=3
+render tree values: exit=0 objects=3
+$ diff jaeger-HEAD.yaml jaeger-tree.yaml
+136c136
+<           image: jaegertracing/jaeger:2.20.0
+---
+>           image: jaegertracing/jaeger:2.21.0
+the chart's own words for the value (helm show values at 4.13.1):
+139:# Overrides the image tag where default is the chart appVersion.
+140-tag: ""
+# finished 2026-09-19T15:46:20Z

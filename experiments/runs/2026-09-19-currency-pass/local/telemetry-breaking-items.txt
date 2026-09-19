@@ -1,0 +1,59 @@
+# Every breaking item of the two moved telemetry images, read against what this lab renders and configures. Written 2026-09-19T16:25:21Z (fix round 1).
+# Release notes: the GitHub release bodies fetched 2026-09-19 (sources.tsv: rel-jaeger, rel-otelcol-contrib, rel-otelcol-core). Renderings: local/charts.txt.
+
+## Jaeger v2.21.0 -- "Breaking Changes", all 4 items, verbatim (author handles removed)
+  * Feat(query)!: remove v1 http endpoints the ui no longer calls (#9260)
+  * Replace ai.enable_mcp with an optional ai.mcp config block (#9194)
+  * Fix(es): reject five unsupported elasticsearch config keys at startup (#9076)
+  * Feat(clickhouse): promote clickhouse storage feature gate to stable (#9058)
+
+What the lab gives the image (chart jaeger 4.13.1 with the tree's deploy/step-3-stress/jaeger-values.yaml):
+  objects rendered: ServiceAccount Service Deployment 
+  the container: args items 0, command null, env items 0, volumeMounts items 0; pod volumes items 0; ConfigMap objects 0
+  (the chart writes the keys args, env, volumeMounts and volumes with nothing under them)
+  So the image runs on its built-in all-in-one configuration with in-memory storage, and nothing in the lab sets a Jaeger configuration key.
+  occurrences, any case, in the rendered objects / the lab's values file / the files of the chart archive:
+    mcp: 0 / 0 / 0 file(s)
+    elasticsearch: 0 / 3 / 8 file(s)
+    clickhouse: 0 / 0 / 0 file(s)
+  #9260 removed query endpoints: the lab's tools read /api/v3/traces only, and the walkthrough's one legacy call is replaced (../jaeger-endpoints/).
+  #9194 ai.enable_mcp -> ai.mcp: a configuration key; the lab passes no configuration, and 'mcp' occurs 0 times in the rendering, the values and the chart.
+  #9076 five Elasticsearch keys rejected at startup: the running backend is memory; the rendering names elasticsearch 0 times. (The chart's values mention
+        Elasticsearch for its maintenance jobs, which the lab's values file keeps disabled: esIndexCleaner, esRollover, esLookback.)
+  #9058 ClickHouse storage gate to stable: the lab configures no ClickHouse storage; the rendering names it 0 times.
+  Observed, not only read: the 2.21.0 image reached ready on its built-in configuration (local/telemetry-images.txt).
+
+## OpenTelemetry Collector contrib v0.161.0 -- End User Changelog, "Breaking changes": the pkg/ottl items, all 3, verbatim
+  - `pkg/ottl`: Promote the `ottl.PanicDuplicateName` feature gate to stable. (#50873)
+  - `pkg/ottl`: Remove the deprecated `Base64Decode` converter. Use the `Decode` converter with the `base64` encoding instead. (#50875)
+  - `pkg/ottl`: Promote the `ottl.set.allowNil` feature gate to beta, enabling it by default. (#49741)
+  OTTL functions the rendered configuration calls: IsMatch( x1  set( x4  
+  ottl.PanicDuplicateName to stable: about registering two OTTL functions under one name in a collector BUILD; it is not a configuration matter, and the
+        published image validates and starts (local/telemetry-images.txt).
+  Base64Decode removed: uses in the rendered configuration 0, in the values file 0.
+  ottl.set.allowNil on by default: the 4 set statements each test the list they index for != nil (4 of 4, local/telemetry-images.txt).
+  The other 11 breaking items of that list name components this pipeline does not use:
+    `all` x1
+    `cmd/opampsupervisor` x1
+    `extension/azure_encoding` x1
+    `extension/google_cloud_logentry_encoding` x1
+    `pkg/coreinternal` x1
+    `pkg/faro` x1
+    `pkg/kafka/configkafka` x1
+    `processor/k8s_attributes` x1
+    `processor/signing` x1
+    `receiver/kubelet_stats` x1
+    `receiver/sqlserver` x1
+  the pipeline's components: otlp, batch, filter, transform, debug, debug/logs, otlp_grpc, prometheus, health_check
+
+## OpenTelemetry Collector core v0.161.0 -- breaking items (the contrib image is built on it)
+  - `pkg/pprofile`: Remove deprecated AggregationTemporality, Duration, SetDuration (#15855)
+  - `pkg/scraperhelper/controller`: Remove deprecated AddScraper func (#15934)
+  - `pkg/service`: Remove deprecated ZapOptions (#15935)
+  - `pkg/xconfmap`: Remove deprecated WithForceUnmarshaler func (#15932)
+  - `cmd/mdatagen`: remove deprecated func DefaultMetricsBuilderConfig (#15854)
+  - `pkg/service`: Remove the deprecated `extensioncapabilities.ConfigWatcher` interface, `Extensions.NotifyConfig`, and `service.Settings.CollectorConf`. (#15399)
+  - `pkg/service`: Remove deprecated config option LoggingOptions (#15919)
+  Every one removes something deprecated from the collector's Go packages (pprofile, scraperhelper, service, xconfmap, mdatagen). One is worded as a "config
+  option", pkg/service's LoggingOptions; whatever its form, the rendered configuration's service block holds: extensions, pipelines, telemetry; telemetry keys: logs
+  validate at 0.161.0 accepts the rendered configuration (exit 0), which is the check that a removed option is not in it.

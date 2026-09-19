@@ -91,14 +91,22 @@ helm-required:
 # read from a document in the session that added it and is recorded in versions.yaml
 # with that URL. They are not the component versions: each chart's appVersion is the
 # component version this lab already counted against, which is why these four chart
-# versions and no others.
+# versions and no others. Since 2026-09-19 (follow-ups 19) that sentence holds for Istio
+# and Prometheus only: the collector image (0.161.0) and the Jaeger image (2.21.0) are
+# each one release ahead of the appVersion of the newest chart that exists (0.173.1 ->
+# 0.160.0, 4.13.1 -> 2.20.0), set through each chart's own image tag value in the values
+# files; versions.yaml records the chart index reads under opentelemetry-collector-chart
+# and trace-backend-chart. No chart release names either image yet. If either pairing
+# fails on the rebuilt cluster, the fallback is to set that image's tag back to its
+# chart's appVersion in the values file until a chart names the newer release; these
+# chart versions stay either way.
 ISTIO_CHART_VERSION          := 1.31.0
 ISTIO_CHART_REPO             := https://blob.istio.io/istio-release/charts
 OTEL_COLLECTOR_CHART_VERSION := 0.173.1
 OTEL_COLLECTOR_CHART_REPO    := https://open-telemetry.github.io/opentelemetry-helm-charts
 JAEGER_CHART_VERSION         := 4.13.1
 JAEGER_CHART_REPO            := https://jaegertracing.github.io/helm-charts
-PROMETHEUS_CHART_VERSION     := 29.28.1
+PROMETHEUS_CHART_VERSION     := 29.31.1
 PROMETHEUS_CHART_REPO        := https://prometheus-community.github.io/helm-charts
 
 .PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers matrix replay replay-waypoint replay-ingress export-trace retry-on retry-off test orchestrator-image scan-images

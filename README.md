@@ -90,7 +90,7 @@ step-3` with helm on PATH is committed as
 | agentgateway control plane | two OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts`, with `deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml` — the project documents no other install |
 | Collector | chart `opentelemetry-collector` `0.173.1` with `deploy/step-3-stress/otel-collector-values.yaml` |
 | Trace backend | chart `jaeger` `4.13.1` with `deploy/step-3-stress/jaeger-values.yaml` |
-| Prometheus | chart `prometheus` `29.28.1` with `deploy/step-3-stress/prometheus-values.yaml` |
+| Prometheus | chart `prometheus` `29.31.1` with `deploy/step-3-stress/prometheus-values.yaml` |
 
 istioctl remains a prerequisite, as this lab's debugging client and not its
 installer: the certificate check in `make step-3` and in the experiment scripts reads

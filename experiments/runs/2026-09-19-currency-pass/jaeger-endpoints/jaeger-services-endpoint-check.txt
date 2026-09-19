@@ -1,0 +1,30 @@
+## jaegertracing/jaeger:2.21.0   started 2026-09-19T15:31:27Z
+$ docker run -d --name fu19-jaeger-2-21-0 --read-only -p 127.0.0.1:26686:16686 -p 127.0.0.1:24318:4318 jaegertracing/jaeger:2.21.0
+image id: sha256:3d0ac795ff98aa04d1be04311d2dac6c25b4bfc8322dc02e53bc5b170c5018c3
+POST /v1/traces (service.name=worker) -> HTTP 200
+POST /v1/traces (service.name=orchestrator) -> HTTP 200
+$ curl -s http://127.0.0.1:26686/api/services    -> HTTP 404
+raw response: 404 page not found 
+$ curl -s http://127.0.0.1:26686/api/v3/services    -> HTTP 200
+raw response: {"services":["worker","orchestrator"]}
+$ curl -s http://127.0.0.1:26686/api/v3/services | jq -r '.services[]' | sort
+orchestrator
+worker
+shape: {"keys":["services"],"services_type":"array","element_type":"string"}
+container fu19-jaeger-2-21-0 stopped and removed 2026-09-19T15:31:30Z
+
+## jaegertracing/jaeger:2.20.0   started 2026-09-19T15:31:30Z
+$ docker run -d --name fu19-jaeger-2-20-0 --read-only -p 127.0.0.1:26686:16686 -p 127.0.0.1:24318:4318 jaegertracing/jaeger:2.20.0
+image id: sha256:46a886260e04002d8f45e213fc39063fa11a50446048fdaa64786fc0840cb9f8
+POST /v1/traces (service.name=worker) -> HTTP 200
+POST /v1/traces (service.name=orchestrator) -> HTTP 200
+$ curl -s http://127.0.0.1:26686/api/services    -> HTTP 200
+raw response: {"data":["worker","orchestrator"],"total":2,"limit":0,"offset":0,"errors":null}
+$ curl -s http://127.0.0.1:26686/api/v3/services    -> HTTP 200
+raw response: {"services":["worker","orchestrator"]}
+$ curl -s http://127.0.0.1:26686/api/v3/services | jq -r '.services[]' | sort
+orchestrator
+worker
+shape: {"keys":["services"],"services_type":"array","element_type":"string"}
+container fu19-jaeger-2-20-0 stopped and removed 2026-09-19T15:31:33Z
+

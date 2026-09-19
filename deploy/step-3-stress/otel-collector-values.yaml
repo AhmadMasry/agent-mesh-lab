@@ -11,11 +11,22 @@
 # Chart: open-telemetry/opentelemetry-collector 0.173.1, appVersion 0.160.0, from
 # https://open-telemetry.github.io/opentelemetry-helm-charts. Pinned in
 # versions.yaml under opentelemetry-collector-chart with the URLs read in this
-# session. appVersion 0.160.0 is the collector version this lab already counted
-# against, so the chart route does not move the collector.
+# session. Until 2026-09-19 appVersion 0.160.0 was also the collector version this
+# lab ran, so the chart route did not move the collector.
 #
-# The image is pinned rather than left to the chart's appVersion default, so the
-# tag in the tree is the tag the scan record and every earlier findings entry name.
+# The image is pinned rather than left to the chart's appVersion default. Since
+# 2026-09-19 (follow-ups 19, every pin at its latest stable release) the tag is
+# 0.161.0, one release ahead of the appVersion of the newest chart: the chart index
+# read that day lists 0.173.1 as its newest entry and no chart names 0.161.0.
+# `image.tag` is the chart's own value for this ("Overrides the image tag whose
+# default is the chart appVersion"). Rendered with this file, the chart's output at
+# the two tags differs in the image line alone, and `otelcol-contrib validate` at
+# 0.161.0 accepts the rendered configuration
+# (experiments/runs/2026-09-19-currency-pass/local/telemetry-images.txt). Findings
+# entries and scan records up to 2026-09-19 name 0.160.0. If the pairing of image
+# 0.161.0 with chart 0.173.1 fails on the rebuilt cluster, the fallback is to set this
+# tag back to 0.160.0, the chart's appVersion, until a chart names 0.161.0, and the
+# findings entry says so.
 mode: deployment
 
 # Without this the Service would be named otel-collector-opentelemetry-collector.
@@ -27,7 +38,7 @@ fullnameOverride: otel-collector
 
 image:
   repository: otel/opentelemetry-collector-contrib
-  tag: "0.160.0"
+  tag: "0.161.0"
 
 # The chart's default port set opens jaeger (three ports) and zipkin, which nothing
 # in this lab speaks, and leaves the collector's internal-metrics port closed. The
@@ -168,12 +179,14 @@ config:
     # off, because at the collector version this lab pins the rewritten name is the
     # component's current name and the manifest's is its alias: exporter/otlpexporter
     # at tag exporter/otlpexporter/v0.160.0 declares `type: otlp_grpc` with
-    # `deprecated_type: otlp` in metadata.yaml, and its factory registers the second
-    # with `xexporter.WithDeprecatedTypeAlias`. So the two routes configure the same
+    # `deprecated_type: otlp` in metadata.yaml (the same two lines at tag
+    # exporter/otlpexporter/v0.161.0, read 2026-09-19), and its factory registers the
+    # second with `xexporter.WithDeprecatedTypeAlias`. So the two routes configure the same
     # exporter under two names it answers to, which is the one textual difference
     # between the rendered ConfigMap and the manifest's collector.yaml. The chart's
     # own note on the value -- "Set to false if using older Collector images that do
-    # not recognize the new names" -- does not apply to 0.160.0.
+    # not recognize the new names" -- does not apply to 0.160.0, nor to 0.161.0, whose
+    # own `components` output lists the exporter as otlp_grpc.
     otlp:
       endpoint: jaeger.telemetry.svc.cluster.local:4317
       tls:

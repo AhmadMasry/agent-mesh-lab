@@ -1,0 +1,24 @@
+# Prometheus v3.14.0 stays the pin (latest stable release); v3.13.3, on the older line, is a SECURITY patch published after it. Read 2026-09-19T16:24:38Z (fix round 1).
+2026-09-19T15:07:50Z  HTTP 200  816505 bytes  sha256 7cb442a4c03f1baf3eeadf6e5361f5eff737b93a3989e025b699f8ce9698f2a5  https://api.github.com/repos/prometheus/prometheus/releases?per_page=12
+  v3.15.0-rc.0 prerelease=true published 2026-09-14T19:17:49Z
+  v3.13.3 prerelease=false published 2026-09-07T14:18:03Z
+  v3.14.0 prerelease=false published 2026-08-18T08:49:40Z
+v3.13.3 release notes, first line, verbatim:
+  - [SECURITY] Bump github.com/klauspost/compress to v1.18.7 (GO-2026-5841) and golang.org/x/crypto to v0.55.0 (GO-2026-6303).
+2026-09-19T16:22:03Z  HTTP 200  13296 bytes  sha256 d2efa2be592076ab829375b2fb7eb3bf2267d174bc3b6478fd6c1c1735a1adbc  https://raw.githubusercontent.com/prometheus/prometheus/v3.14.0/go.mod
+  go.mod at v3.14.0:  github.com/klauspost/compress v1.19.1; golang.org/x/crypto v0.54.0 // indirect;
+2026-09-19T16:22:03Z  HTTP 200  13056 bytes  sha256 c152e0b317ed0e299c1e92cdccdcbf420fbde66df41cf92335d6f4ff935ecb86  https://raw.githubusercontent.com/prometheus/prometheus/v3.13.3/go.mod
+  go.mod at v3.13.3:  github.com/klauspost/compress v1.18.7; golang.org/x/crypto v0.55.0 // indirect;
+2026-09-19T16:22:04Z  HTTP 200  1386 bytes  sha256 55275661179f83a58b740dd4e3100bfcb56d29d511cc55d68ad9fa80461d4b5a  https://vuln.go.dev/ID/GO-2026-6303.json
+  GO-2026-6303 (CVE-2026-56854) published 2026-08-28T14:47:45Z: Source-address critical option not enforced for non-public-key auth callbacks in golang.org/x/crypto/ssh
+  golang.org/x/crypto: [{"introduced":"0"},{"fixed":"0.55.0"}]
+2026-09-19T16:22:04Z  HTTP 200  933 bytes  sha256 73f13c3cc3bfb456dca05e42a3443a9b39d294ee58a69037c12595fba805e00c  https://vuln.go.dev/ID/GO-2026-5841.json
+  GO-2026-5841 (GHSA-259r-337f-4rfw) published 2026-07-27T16:16:22Z: OOB read in github.com/klauspost/compress/s2
+  github.com/klauspost/compress: [{"introduced":"1.16.0"},{"fixed":"1.18.7"}]
+
+Reading: v3.14.0 (2026-08-18) carries klauspost/compress v1.19.1, at or above GO-2026-5841's fixed 1.18.7, and golang.org/x/crypto v0.54.0, INSIDE GO-2026-6303's
+range (fixed 0.55.0). v3.13.3 (2026-09-07), published after v3.14.0 on the older 3.13 line, moves x/crypto to v0.55.0. No newer stable release exists: v3.15.0 is
+rc.0. The report is about golang.org/x/crypto/ssh (the source-address option of an SSH server's auth callbacks); whether a Prometheus server reaches that package
+was not examined here. `make scan-images` reads the lab's five images (four Go images and the orchestrator), not the telemetry images, so no count of the lab's
+scan record is touched. Controller's ruling of 2026-09-19: the pin stays at v3.14.0, the latest stable release, recorded as current with this advisory named.
+What lifts the note: a v3.14.1, or a stable v3.15.0, that carries x/crypto v0.55.0 or later.

@@ -1,0 +1,41 @@
+# Fix round 1 proofs, at the tree the amended commit holds. Started 2026-09-19T16:31:55Z. No cluster action; nothing pushed.
+
+$ go build ./... ; go vet ./... ; gofmt -l . ; go test ./... -count=1   (go version go1.27.1 darwin/arm64)
+build exit=0
+vet exit=0
+gofmt lists: 0 file(s)
+ok   github.com/AhmadMasry/agent-mesh-lab/agents/worker 0.924s
+ok   github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen 0.662s
+ok   github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm 0.834s
+ok   github.com/AhmadMasry/agent-mesh-lab/fixtures/replay 0.617s
+ok   github.com/AhmadMasry/agent-mesh-lab/internal/a2areq 0.583s
+ok   github.com/AhmadMasry/agent-mesh-lab/internal/httpclient 0.861s
+ok   github.com/AhmadMasry/agent-mesh-lab/internal/otel 0.915s
+test exit=0
+
+$ make test
+exit=0 ; ok lines: Go packages 7, tool lines 17 ; FAIL lines 0
+
+$ (cd agents/orchestrator && uv lock --check && uv run pytest -q)   (uv 0.12.17 (Homebrew 2026-09-18 aarch64-apple-darwin))
+Resolved 66 packages in 2ms
+lock check exit=0
+62 passed in 1.90s
+
+$ kubectl kustomize <dir> | grep -c '^kind:'   -- against the record of the first commit (local/kustomize-renders.txt)
+deploy/base: objects=7 sha256 equal to the record
+deploy/step-1-nomesh: objects=7 sha256 equal to the record
+deploy/step-2-ambient-agw: objects=12 sha256 equal to the record
+deploy/step-2b-agw-ingress-egress: objects=20 sha256 equal to the record
+deploy/step-2c-gate2: objects=22 sha256 equal to the record
+deploy/step-3-stress: objects=27 sha256 equal to the record
+
+$ helm template with the comment-edited values files -- against the renderings of the first commit's values
+jaeger 4.13.1: objects=3 byte-identical to the rendering before the comment edit
+opentelemetry-collector 0.173.1: objects=4 byte-identical to the rendering before the comment edit
+
+$ make -n step-1 step-2 step-2b step-2c step-3
+exit=0 ; 152 lines. Against the first commit's record (local/make-n.txt, its header and exit lines aside) 14 lines differ, 7 on each side, and every one is explained by
+  that record having been taken on the tree BEFORE it was committed: 2 are the check-go-sources-clean guard, which then listed ' M go.mod  M go.sum  M internal/otel/otel.go'
+  (a real step target would have refused to run on that tree) and is empty at the committed tree; 5 are the lab.agent-mesh/go-sources stamp, a hash of the git index, which
+  changed when those files were committed. Every version-bearing line is identical: --version 1.31.0 x4, v1.5.0 x2, 0.173.1, 4.13.1, 29.31.1 and Gateway API v1.6.2.
+# finished 2026-09-19T16:32:05Z

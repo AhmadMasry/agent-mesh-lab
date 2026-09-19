@@ -8,16 +8,20 @@
 # selector below, none of it repeated here; it is read with
 # `git show 896917a:deploy/step-3-stress-nohelm/prometheus.yaml`.
 #
-# Chart: prometheus-community/prometheus 29.28.1, appVersion v3.14.0, from
+# Chart: prometheus-community/prometheus 29.31.1, appVersion v3.14.0, from
 # https://prometheus-community.github.io/helm-charts. Pinned in versions.yaml under
 # prometheus-chart with the URLs read in this session. appVersion v3.14.0 is the
 # Prometheus version this lab already counted against, so the chart route does not
-# move Prometheus.
+# move Prometheus. Moved on 2026-09-19 (follow-ups 19) from 29.28.1, the chart this
+# file was written against; rendered with this file at both versions, the six objects
+# differ in the chart label and in one added pod annotation
+# (kubectl.kubernetes.io/default-container), and the chart's defaults named below
+# read the same at 29.31.1.
 #
 # Scope rule 6, twice over. This chart is the one in the set that would otherwise
 # bring components this lab does not admit: four subcharts, every one of them
 # enabled in the chart's own defaults, and a configmap-reload sidecar. Chart.yaml at
-# 29.28.1 declares each subchart with a `condition`, so each is turned off by the
+# 29.31.1 declares each subchart with a `condition`, so each is turned off by the
 # key named in that condition, and all five disables are below and are counted in
 # the findings entry by `helm template | grep -c kind:`.
 alertmanager:

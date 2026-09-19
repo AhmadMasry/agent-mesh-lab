@@ -1,0 +1,27 @@
+# 2026-09-19T15:47:27Z removed-endpoint grep over the tracked tree at the final tree of this task
+# Jaeger 2.21.0 removed (jaegertracing/jaeger#9260): GET /api/services, GET /api/operations, GET /api/services/{service}/operations, GET /api/traces (search).
+# Pattern: /api/(services|operations|traces) NOT preceded by /v3 -- i.e. every legacy-path mention. /api/traces/{traceID} is not removed and would show here too, to be read by eye.
+
+## 1. What the lab's tools read (Makefile and experiments/, run records excluded)
+$ git grep -nE '/api/(v3/)?(services|operations|traces)' -- Makefile experiments ':!experiments/runs'
+Makefile:466:# The query is Jaeger's stable /api/v3/traces binding, reached through a
+Makefile:504:	curl -sS -G "http://127.0.0.1:$(JAEGER_QUERY_PORT)/api/v3/traces" \
+experiments/lib/jaeger-spans.jq:2:# GET /api/v3/traces binding.
+   legacy-path lines among them: 0
+
+## 2. Every legacy-path mention in tracked files outside run records (experiments/runs) and outside the dated registers findings.md and versions.yaml
+$ git grep -nE '(^|[^3])/api/(services|operations|traces)' -- . ':!experiments/runs' ':!findings.md' ':!versions.yaml'
+deploy/step-3-stress/jaeger-values.yaml:43:# removed four legacy HTTP query endpoints (jaegertracing/jaeger#9260: /api/services,
+deploy/step-3-stress/jaeger-values.yaml:44:# /api/operations, /api/services/{service}/operations and the /api/traces search); this
+docs/walkthrough.md:898:legacy `/api/services` path this step used until 2026-09-19, in jaegertracing/jaeger#9260; the v3 path answers the
+
+## 3. Of those, lines that CALL a legacy path (curl, wget, http client, port-forwarded URL) rather than name it in prose
+$ ... | grep -E 'curl|wget|http://|https://|requests\.|urlopen|fetch\('
+   uses of a removed endpoint left outside dated records: 0
+
+## 4. The same pattern inside the dated registers and run records, for the record. These are NOT changed: each says what was run or read on its date.
+findings.md: 0 line(s)
+versions.yaml: 1 line(s) (the trace-backend key's account of this very removal)
+run records under experiments/runs that hold a legacy path in a command: 1
+  experiments/runs/2026-09-16-walkthrough/step-3/jaeger-services.txt:5:$ curl -s http://127.0.0.1:16686/api/services | jq -r ".data[]" | sort
+  That file is the capture of the walkthrough step as it was run on 2026-09-16 against Jaeger 2.20.0, where the path answered 200 (see jaeger-services-endpoint-check.txt for 2.20.0). It is a dated record of a run and stays as written.

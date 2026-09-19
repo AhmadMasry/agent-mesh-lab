@@ -894,8 +894,12 @@ kubectl -n telemetry port-forward svc/jaeger 16686:16686
 # then open http://127.0.0.1:16686
 ```
 
+The services the backend holds spans for, read from its stable `/api/v3` query API (Jaeger 2.21.0 removed the
+legacy `/api/services` path this step used until 2026-09-19, in jaegertracing/jaeger#9260; the v3 path answers the
+same list on 2.20.0 and on 2.21.0, as `{"services":[…]}`):
+
 ```
-curl -s http://127.0.0.1:16686/api/services | jq -r '.data[]' | sort
+curl -s http://127.0.0.1:16686/api/v3/services | jq -r '.services[]' | sort
 ```
 
 ```

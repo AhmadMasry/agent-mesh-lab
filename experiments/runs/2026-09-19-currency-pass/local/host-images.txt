@@ -1,0 +1,26 @@
+# Host docker state after this task, read 2026-09-19T16:23:36Z (fix round 1). No cluster is involved: these are images in the local docker daemon.
+
+## the task's own verification image, removed
+$ docker image inspect orchestrator:fu19-currency --format '{{.Id}} created {{.Created}}'
+sha256:7766e91406a0505bf0a643bc6b357632566435dfeae0337c70db379a452e0d3b created 2026-09-19T15:37:30.868365712Z
+$ docker rmi orchestrator:fu19-currency
+  Untagged: orchestrator:fu19-currency
+  Deleted: sha256:7766e91406a0505bf0a643bc6b357632566435dfeae0337c70db379a452e0d3b
+images tagged orchestrator:fu19-currency now: 0
+
+## orchestrator:dev, the tag the cluster's image was loaded from: not rebuilt by this task (`make orchestrator-image` was not run)
+orchestrator:dev  id=sha256:39c98a7f5d1c3da28893f368f165ea9ac31bbb4fb592c292d0b9b24a791681cc  created=2026-09-19T11:35:41.385150677Z
+this task's first command ran at 2026-09-19T15:06:54Z; the image's creation time is before it.
+
+## the lab's ko.local :latest tags
+ko.local/loadgen-3213c6ac35f3a712608a51068f91d823:latest  id=542df988305c
+ko.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:latest  id=3b5ad87d4ce7
+ko.local/replay-693f7c26c04c2e161a535fb994879193:latest  id=86b5bb96afde
+ko.local/worker-918a018b7a581926ead34dec2ba0fb83:latest  id=80419b46bfb5
+These four tags WERE moved by this task, by its own `KO_DOCKER_REPO=ko.local ko build` (local/ko-build.txt) -- the same command `make scan-images` runs -- and point at the build of the committed tree.
+They were read before and after the grpc-scan scratch build and its removal and did not change: that build used a separate name, ko.local/fu19-grpc184/, and its 8 tags are removed.
+scratch images left under ko.local/fu19-grpc184/: 0
+ko stamps images with the epoch, so a ko.local image cannot be dated from its metadata; the digests this task's build printed are in local/ko-build.txt.
+
+## containers
+containers of this task left running or stopped: 0

@@ -1,0 +1,29 @@
+# 2026-09-19T15:46:45Z the two moved telemetry images, checked on local docker. No cluster is involved. relay.yaml is the collector configuration the chart
+# renders from the tree's deploy/step-3-stress/otel-collector-values.yaml (chart 0.173.1), 2103 bytes, sha256 0c035cdc9a9119e608016473be972d4b1576a0e124a243e9af465194d2962ad0.
+
+## the lab's four OTTL set statements, each guarded on the list it indexes (0.161.0 turns ottl.set.allowNil on by default)
+167:        - set(span.attributes["lab.work_item"], span.attributes["http.request.header.x_logical_work_item_id"][0]) where span.attributes["lab.work_item"] == nil and span.attributes["http.request.header.x_logical_work_item_id"] != nil
+168:        - set(span.attributes["lab.message_id"], span.attributes["http.request.header.x_a2a_message_id"][0]) where span.attributes["lab.message_id"] == nil and span.attributes["http.request.header.x_a2a_message_id"] != nil
+169:        - set(span.attributes["lab.task_id"], span.attributes["http.request.header.x_a2a_task_id"][0]) where span.attributes["lab.task_id"] == nil and span.attributes["http.request.header.x_a2a_task_id"] != nil
+170:        - set(span.attributes["lab.caller"], span.attributes["http.request.header.x_caller"][0]) where span.attributes["lab.caller"] == nil and span.attributes["http.request.header.x_caller"] != nil
+statements: 4; of them, statements whose where clause tests the very list they index with [0] for != nil: 4 (counted by matching each statement's indexed path against its own where clause)
+
+## validate
+$ docker run --rm --read-only -v relay.yaml:/conf/relay.yaml:ro otel/opentelemetry-collector-contrib:0.160.0 validate --config=/conf/relay.yaml
+    exit=0
+$ docker run --rm --read-only -v relay.yaml:/conf/relay.yaml:ro otel/opentelemetry-collector-contrib:0.161.0 validate --config=/conf/relay.yaml
+    exit=0
+
+## image ids
+otel/opentelemetry-collector-contrib:0.161.0 -> otel/opentelemetry-collector-contrib@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1
+jaegertracing/jaeger:2.21.0 -> jaegertracing/jaeger@sha256:3d0ac795ff98aa04d1be04311d2dac6c25b4bfc8322dc02e53bc5b170c5018c3
+
+## read-only root filesystem start
+$ docker run -d --name fu19-otelcol --read-only -v relay.yaml:/conf/relay.yaml:ro otel/opentelemetry-collector-contrib:0.161.0 --config=/conf/relay.yaml
+    state=running restarts=0 ; log line: Everything is ready. Begin running and processing data.
+    warn/error lines in its log: 0
+$ docker run -d --name fu19-jaeger --read-only jaegertracing/jaeger:2.21.0
+    state=running restarts=0 ; log line: Everything is ready. Begin running and processing data.
+both containers stopped and removed 2026-09-19T15:46:48Z
+
+What this does not show: spans, metrics and the work-item attribute passing through 0.161.0, and traces exported from 2.21.0, on a cluster. That is the rebuild's (follow-ups 19 task 3).

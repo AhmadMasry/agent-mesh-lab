@@ -93,7 +93,7 @@ def _retry_on() -> str:
 # request. The names below were read from the OpenTelemetry GenAI semantic
 # conventions, docs/gen-ai/gen-ai-agent-spans.md in
 # open-telemetry/semantic-conventions-genai at commit
-# 0c87594975195608dc91b3f702e250a7b240c151, whose Status is Development
+# c88d504ab3d9879f8e50d3cc87e69775e11db234, whose Status is Development
 # (versions.yaml, genai-semantic-conventions). The Go client says the same things
 # through internal/otel.InvokeAgent.
 #

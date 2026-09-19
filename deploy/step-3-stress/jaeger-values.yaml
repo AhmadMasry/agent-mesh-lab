@@ -31,8 +31,22 @@
 #     chart's defaults; they are restated below so a chart upgrade that flipped one
 #     could not add a component unnoticed (scope rule 6).
 #
-# The image is pinned rather than left to the chart's appVersion default, so the tag
-# in the tree is the tag the scan record and every earlier findings entry name.
+# The image is pinned rather than left to the chart's appVersion default. Since
+# 2026-09-19 (follow-ups 19, every pin at its latest stable release) the tag is 2.21.0,
+# one release ahead of the appVersion of the newest chart: the chart index read that
+# day lists 4.13.1 (appVersion 2.20.0) as its newest entry and no chart names 2.21.0.
+# `jaeger.image.tag` is the chart's own value for this; its values file says of the
+# tag, "Overrides the image tag where default is the chart appVersion". Rendered with
+# this file, the chart's output at the two tags differs in the image line alone, and
+# the 2.21.0 image reaches ready with a read-only root filesystem
+# (experiments/runs/2026-09-19-currency-pass/local/telemetry-images.txt). Jaeger 2.21.0
+# removed four legacy HTTP query endpoints (jaegertracing/jaeger#9260: /api/services,
+# /api/operations, /api/services/{service}/operations and the /api/traces search); this
+# lab's tools read /api/v3/traces, which is not among them. Findings entries and scan
+# records up to 2026-09-19 name 2.20.0. If the pairing of image 2.21.0 with chart 4.13.1
+# fails on the rebuilt cluster, the fallback is to set this tag back to 2.20.0, the
+# chart's appVersion, until a chart names 2.21.0, and the findings entry says so; the
+# walkthrough's /api/v3/services line answers the same on both versions and would stay.
 
 # Release name `jaeger` in namespace `telemetry` already gives the Service the name
 # `jaeger`, which is what the collector's exporter
@@ -46,7 +60,7 @@ jaeger:
   replicas: 1
   image:
     repository: jaegertracing/jaeger
-    tag: "2.20.0"
+    tag: "2.21.0"
 
   # Hardening the chart exposes and the manifest does not carry; recorded as a
   # difference between the two routes rather than back-ported. The chart's pod-level

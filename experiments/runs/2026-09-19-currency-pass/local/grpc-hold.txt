@@ -1,0 +1,79 @@
+# google.golang.org/grpc: HELD at v1.83.2 on 2026-09-19 (follow-ups 19). Two kinds of document disagree about v1.84.0.
+
+## Reading 1 -- the latest stable release is v1.84.0
+  2026-09-19T15:08:50Z  HTTP 200  190 bytes  sha256 5697cd27e2597e6c42f66a16355de6061d83799ec55bcb57d0e8691b78d82a5d
+    https://proxy.golang.org/google.golang.org/grpc/@latest
+    {"Version":"v1.84.0","Time":"2026-09-17T20:03:25Z","Origin":{"VCS":"git","URL":"https://github.com/grpc/grpc-go","Hash":"e84aa5ab15d1d2b29d54f838312ad490cb7551a8","Ref":"refs/tags/v1.84.0"}}
+  2026-09-19T15:12:28Z  HTTP 200  20587 bytes  sha256 8e14ce5b30b77a26b32111ac7ddd2e366b9705cff00814d7748f5f1617daaae9
+    https://api.github.com/repos/grpc/grpc-go/releases?per_page=6
+    v1.84.0  prerelease=false  published 2026-09-17T20:03:39Z
+    v1.83.2  prerelease=false  published 2026-08-25T16:31:23Z
+    v1.82.2  prerelease=false  published 2026-08-25T14:33:12Z
+    v1.83.1  prerelease=false  published 2026-08-19T07:03:12Z
+    v1.83.0  prerelease=false  published 2026-07-30T04:14:57Z
+    v1.82.1  prerelease=false  published 2026-07-15T23:53:26Z
+
+## Reading 2 -- both advisory documents place v1.84.0 inside an affected range
+  2026-09-19T15:12:29Z  HTTP 200  5374 bytes  sha256 1ae3f4272b9edab70402a19ec7e85ee40f17bb56fb58a679b8a003e2d5faec96
+    https://api.github.com/advisories/GHSA-2v4p-qf9q-27wj
+    GHSA-2v4p-qf9q-27wj CVE-2026-84445 severity=high published 2026-09-08T21:21:43Z updated 2026-09-08T21:21:44Z
+    gRPC-Go xDS servers: Denial of Service (DoS) via crash due to missing `:authority` and `Host` headers
+    vulnerable_version_range: < 1.82.2    first_patched_version: 1.82.2
+    vulnerable_version_range: >= 1.83.0, < 1.83.2    first_patched_version: 1.83.2
+    vulnerable_version_range: >= 1.84.0-dev, < 1.85.0-dev.0.20260825072537-93e31b48545e    first_patched_version: 1.85.0-dev.0.20260825072537-93e31b48545e
+  2026-09-19T15:13:30Z  HTTP 200  1480 bytes  sha256 9c0649467a4fab7755be028d300a9b577f39cd61b562fd461e96584df6fd3fde
+    https://vuln.go.dev/ID/GO-2026-6443.json
+    GO-2026-6443 aliases CVE-2026-84445, GHSA-2v4p-qf9q-27wj published 2026-09-15T18:39:25Z modified 2026-09-15T18:39:25Z
+    Server panic via missing authority or Host headers in google.golang.org/grpc
+    ranges: [[{"introduced":"0"},{"fixed":"1.82.2"},{"introduced":"1.83.0"},{"fixed":"1.83.2"},{"introduced":"1.84.0-dev"},{"fixed":"1.85.0-dev.0.20260825072537-93e31b48545e"}]]
+  By semantic-version ordering v1.84.0 is >= 1.84.0-dev and < 1.85.0-dev.0.20260825072537-93e31b48545e, so v1.84.0 falls inside the third range of both documents as they read today. v1.83.2 is the fixed version both documents give for the second range.
+
+## Reading 3 -- the repository shows the fix cherry-picked onto the v1.84.x release branch before v1.84.0 was tagged
+  2026-09-19T15:12:51Z  HTTP 200  16977 bytes  sha256 93e95392798e8dc45e52c0d963f98401adc9064a0331e3bf76e365a3bfe75448
+    https://api.github.com/repos/grpc/grpc-go/commits/93e31b48545e
+    fix on master: 93e31b48545e2a8aaeb6e06b47fb249f94e6297f 2026-08-25T07:25:37Z transport: reject requests missing :authority and host headers (#9365)
+  2026-09-19T15:12:50Z  HTTP 200  190929 bytes  sha256 80452d59ca97f72603daa2c371d73e982a15b4c6e8ec3b6f738f2885b655a16e
+    https://api.github.com/repos/grpc/grpc-go/compare/93e31b48545e...v1.84.0
+    compare 93e31b48545e...v1.84.0: status=diverged ahead_by=7 behind_by=17 merge_base=30ce1d594fa9d7b86ff9d3d7dd7873ef0c161acf (2026-08-15T09:37:16Z)
+    the seven commits v1.84.0 has beyond that merge base:
+      f8b54e7c9133 2026-08-19T06:19:15Z Cherry-pick #9331 to v1.84.x (#9334)
+      8a9f866584e3 2026-08-19T07:40:42Z Cherry-pick #9332 to v1.84.x (#9338)
+      89d55e04f9f3 2026-08-25T13:51:37Z cherry-pick #9346 to v1.84.x (#9372)
+      d5a41119e0e3 2026-08-25T14:40:03Z cherry-pick #9365 to v1.84.x (#9370)
+      a592f6a8d262 2026-09-11T10:28:51Z Cherrypick #9351 and #9404 to v1.84.x (#9408)
+      c5ae88df420f 2026-09-11T10:41:10Z Cherrypick #9204 and #9321 to v1.84.x (#9407)
+      e84aa5ab15d1 2026-09-17T20:03:25Z Change version to 1.84.0 (#9324)
+    #9365 is the fix's pull request number on master; d5a41119e0e3 is its cherry-pick to v1.84.x.
+
+## The other two reports published the same day do not bear on the choice
+    GO-2026-6348 (CVE-2026-84304, GHSA-vp52-pcj8-j9qc): Heap Memory Exhaustion (OOM) via HTTP/2 DATA Frame Fragmentation in google.golang.org/grpc; ranges [[{"introduced":"0"},{"fixed":"1.83.1"}]] -- v1.83.2 is at or above the fixed version
+    GO-2026-6441 (CVE-2026-84303, GHSA-qc2q-p7wx-3px3): Bypass of xDS RBAC HTTP filter header matching in google.golang.org/grpc; ranges [[{"introduced":"0"},{"fixed":"1.83.1"}]] -- v1.83.2 is at or above the fixed version
+
+## What was done
+  No blanket `go get -u ./...`. The two genproto modules were moved by name and the module graph still selects grpc v1.83.2:
+  $ go list -m all | grep -E 'google.golang.org/(grpc|genproto)'   (2026-09-19T15:36:37Z)
+    go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0
+    google.golang.org/genproto/googleapis/api v0.0.0-20260918162117-cecb64721679
+    google.golang.org/genproto/googleapis/rpc v0.0.0-20260918162117-cecb64721679
+    google.golang.org/grpc v1.83.2
+  $ go mod why -m google.golang.org/grpc
+    # google.golang.org/grpc
+    github.com/AhmadMasry/agent-mesh-lab/internal/otel
+    go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp
+    go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp/internal/otlpconfig
+    google.golang.org/grpc
+
+## What lifts the hold
+  Either advisory document's third range corrected so that it no longer contains v1.84.0, or a release that the advisories themselves name as fixed (a v1.85.x at or above the fixed pseudo-version, or a later v1.84.x named in a patched list). Until then this lab's image scan reads these same documents, and v1.83.2 is patched by both.
+
+## Appended 2026-09-19T16:24:38Z (fix round 1). The text above is the record as committed first and is not edited.
+  Correction to the last paragraph above: "this lab's image scan reads these same documents" was an expectation when it was written. It is now measured
+  (../grpc-scan/grpc-scan.txt, Kubescape 4.0.14, vulnerability DB built 2026-09-19): at v1.83.2 the scan counts 0 findings in the four Go images; at v1.84.0,
+  built from a scratch copy outside the repository, it counts 1 High, GHSA-2v4p-qf9q-27wj, in each of worker, mockllm and loadgen, and 0 in replay, whose binary
+  links no grpc package. So the scanner does read the advisory's third range literally.
+  Added to reading 3, from the review and verified here: the cherry-pick is an ancestor of the v1.84.0 TAG, not only a commit of the branch.
+  2026-09-19T16:21:38Z  HTTP 200  124666 bytes  sha256 dd712e5f5fc970dc65c58d5c54372c1d2bbaa977ffad4f0470f219b8a9c18969  https://api.github.com/repos/grpc/grpc-go/compare/d5a41119e0e3...v1.84.0
+    compare d5a41119e0e3...v1.84.0: status=ahead ahead_by=3 behind_by=0 merge_base=d5a41119e0e3189ea913cf839586ce34a44f1a3f
+    behind_by=0 with the merge base equal to d5a41119 itself: every commit of the cherry-pick's history is in v1.84.0. The fix is in the release.
+  So the hold rests on two things and not on any doubt about the code: the two advisory documents still place v1.84.0 inside an affected range, and the lab's
+  scanner counts a High against it in three images. What lifts it is unchanged: either range corrected, or a release the advisories name as fixed.

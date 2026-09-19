@@ -1,0 +1,80 @@
+# Go module graph, follow-ups 19 task 1 (2026-09-19). go version go1.27.1 darwin/arm64
+# No `go get -u ./...` in this pass: google.golang.org/grpc is held at v1.83.2 (grpc-hold.txt), so the two genproto modules were moved by name.
+
+# 2026-09-19T15:20:57Z go version go1.27.1 darwin/arm64
+$ go get google.golang.org/genproto/googleapis/api@v0.0.0-20260918162117-cecb64721679 google.golang.org/genproto/googleapis/rpc@v0.0.0-20260918162117-cecb64721679
+go: downloading google.golang.org/genproto/googleapis/rpc v0.0.0-20260918162117-cecb64721679
+go: downloading google.golang.org/genproto/googleapis/api v0.0.0-20260918162117-cecb64721679
+go: downloading google.golang.org/genproto v0.0.0-20260918162117-cecb64721679
+go: upgraded google.golang.org/genproto/googleapis/api v0.0.0-20260911204522-f61a6ca850bd => v0.0.0-20260918162117-cecb64721679
+go: upgraded google.golang.org/genproto/googleapis/rpc v0.0.0-20260911204522-f61a6ca850bd => v0.0.0-20260918162117-cecb64721679
+$ go mod tidy
+
+## `go list -m all`, before -> after (94 modules in the graph at both): the lines that differ
+89,90c89,90
+< google.golang.org/genproto/googleapis/api v0.0.0-20260911204522-f61a6ca850bd
+< google.golang.org/genproto/googleapis/rpc v0.0.0-20260911204522-f61a6ca850bd
+---
+> google.golang.org/genproto/googleapis/api v0.0.0-20260918162117-cecb64721679
+> google.golang.org/genproto/googleapis/rpc v0.0.0-20260918162117-cecb64721679
+
+## grpc and genproto in the graph after the move  ($ go list -m all | grep -E 'google.golang.org/(grpc|genproto)')
+go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0
+google.golang.org/genproto/googleapis/api v0.0.0-20260918162117-cecb64721679
+google.golang.org/genproto/googleapis/rpc v0.0.0-20260918162117-cecb64721679
+google.golang.org/grpc v1.83.2
+
+## `go list -m -u all` before the move: 43 modules of the graph have a newer version
+cel.dev/expr v0.25.2 [v0.25.3]
+cloud.google.com/go/auth v0.18.2 [v0.23.3]
+cloud.google.com/go/compute/metadata v0.9.0 [v0.9.1]
+github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.33.0 [v1.38.0] (deprecated)
+github.com/envoyproxy/go-control-plane/envoy v1.37.0 [v1.39.0]
+github.com/go-jose/go-jose/v4 v4.1.4 [v4.1.5]
+github.com/go-openapi/analysis v0.25.5 [v1.0.0]
+github.com/go-openapi/jsonpointer v1.0.0 [v1.0.1]
+github.com/go-openapi/jsonreference v1.0.0 [v1.0.2]
+github.com/go-openapi/loads v0.25.0 [v0.25.3]
+github.com/go-openapi/runtime v0.33.0 [v0.33.2]
+github.com/go-openapi/runtime/server-middleware v0.30.0 [v0.33.2]
+github.com/go-openapi/spec v0.22.9 [v1.0.1]
+github.com/go-openapi/strfmt v0.27.0 [v0.27.2]
+github.com/go-openapi/swag v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/cmdutils v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/conv v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/fileutils v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/jsonutils v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/loading v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/mangling v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/netutils v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/pools v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/stringutils v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/typeutils v0.28.0 [v0.29.2]
+github.com/go-openapi/swag/yamlutils v0.28.0 [v0.29.2]
+github.com/go-openapi/validate v0.26.1 [v1.0.0]
+github.com/google/s2a-go v0.1.9 [v0.1.10]
+github.com/googleapis/enterprise-certificate-proxy v0.3.11 [v0.3.22]
+github.com/googleapis/gax-go/v2 v2.17.0 [v2.24.1]
+github.com/oapi-codegen/runtime v1.6.0 [v1.7.0]
+github.com/oklog/ulid/v2 v2.1.1 [v2.1.2]
+github.com/rogpeppe/go-internal v1.14.1 [v1.16.0]
+github.com/spf13/pflag v1.0.9 [v1.0.10]
+github.com/spiffe/go-spiffe/v2 v2.7.0 [v2.8.2]
+go.opentelemetry.io/contrib/detectors/gcp v1.44.0 [v1.46.0]
+go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.70.0 [v0.71.0]
+go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.45.0 [v1.46.0]
+golang.org/x/oauth2 v0.36.0 [v0.37.0]
+golang.org/x/tools v0.49.0 [v0.50.0]
+google.golang.org/genproto/googleapis/api v0.0.0-20260911204522-f61a6ca850bd [v0.0.0-20260918162117-cecb64721679]
+google.golang.org/genproto/googleapis/rpc v0.0.0-20260911204522-f61a6ca850bd [v0.0.0-20260918162117-cecb64721679]
+google.golang.org/grpc v1.83.2 [v1.84.0]
+
+## of those, the modules that provide a package `./...` builds or tests (`go list -deps [-test] ./...`): 3
+google.golang.org/genproto/googleapis/api
+google.golang.org/genproto/googleapis/rpc
+google.golang.org/grpc
+The other 40 are graph-only: no package of theirs is built here, and they are left where minimal version selection puts them, as on 2026-09-12.
+
+## `go list -m -u all` after the move: what still has a newer version among the built modules
+google.golang.org/grpc v1.83.2 [v1.84.0]
+  (google.golang.org/grpc alone: the hold)
