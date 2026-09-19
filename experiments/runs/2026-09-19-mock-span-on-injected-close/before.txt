@@ -1,0 +1,60 @@
+# BEFORE -- the mock as it was at the commit "build(pins): every pin at its latest stable release read on
+# 2026-09-19" (no marking), otelhttp v0.71.0, otel sdk v1.46.0.
+# Taken 2026-09-19T16:50:47Z, before any change to fixtures/mockllm/server.go or internal/otel/otel.go, by
+#   go test ./fixtures/mockllm/ -run 'TestInjectedClose_ServerSpanReading' -count=1 -v
+# with the test as first written: the same request, the same two assertions on the marking, no comment block yet,
+# so the span_test.go line numbers below are that draft's. Verbatim from here on. The FAIL is the point: it is
+# the test failing first. Ports are the test server's, picked at random on the loopback.
+=== RUN   TestInjectedClose_ServerSpanReading
+=== RUN   TestInjectedClose_ServerSpanReading/close
+    span_test.go:122: server span of a request the mock closed by injection (close):
+        name=POST /v1/chat/completions
+        kind=server
+        status.code=Unset
+        status.description=""
+        attributes:
+          client.address=127.0.0.1
+          http.request.body.size=57
+          http.request.method=POST
+          http.response.status_code=200
+          lab.work_item=span-close-1
+          network.peer.address=127.0.0.1
+          network.peer.port=62981
+          network.protocol.version=1.1
+          server.address=127.0.0.1
+          server.port=62979
+          url.path=/v1/chat/completions
+          url.scheme=http
+          user_agent.original=Go-http-client/1.1
+        events=0
+    span_test.go:125: status: got Unset "", want Error "injected: close"
+    span_test.go:128: lab.injection: got "", want "close"
+=== RUN   TestInjectedClose_ServerSpanReading/delay-then-close
+    span_test.go:122: server span of a request the mock closed by injection (delay-then-close):
+        name=POST /v1/chat/completions
+        kind=server
+        status.code=Unset
+        status.description=""
+        attributes:
+          client.address=127.0.0.1
+          http.request.body.size=57
+          http.request.method=POST
+          http.response.status_code=200
+          lab.work_item=span-close-1
+          network.peer.address=127.0.0.1
+          network.peer.port=62984
+          network.protocol.version=1.1
+          server.address=127.0.0.1
+          server.port=62982
+          url.path=/v1/chat/completions
+          url.scheme=http
+          user_agent.original=Go-http-client/1.1
+        events=0
+    span_test.go:125: status: got Unset "", want Error "injected: delay-then-close"
+    span_test.go:128: lab.injection: got "", want "delay-then-close"
+--- FAIL: TestInjectedClose_ServerSpanReading (0.02s)
+    --- FAIL: TestInjectedClose_ServerSpanReading/close (0.00s)
+    --- FAIL: TestInjectedClose_ServerSpanReading/delay-then-close (0.01s)
+FAIL
+FAIL	github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm	0.588s
+FAIL

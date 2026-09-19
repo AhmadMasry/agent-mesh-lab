@@ -121,6 +121,41 @@ func TestHandler_NoHeadersSetsNoLabAttributes(t *testing.T) {
 	}
 }
 
+// MarkInjection is called by a fixture from inside the handler Handler wraps, so
+// that is how it is driven here. The instrumentation sets status Unset after the
+// handler returns; the Error set from inside must be what the ended span carries.
+// fixtures/mockllm/span_test.go drives the same thing through a real hijack.
+func TestMarkInjection_MarksTheServerSpanOfTheRequest(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		closeErr    error
+		description string
+	}{
+		{"the close happened", nil, "injected: close"},
+		{"the close did not happen", errors.New("not hijackable"), "injected: close failed: not hijackable"},
+	} {
+		sr := recorder(t)
+		h := Handler("mockllm", http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+			MarkInjection(r.Context(), "close", tc.closeErr)
+		}))
+		h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", nil))
+
+		spans := sr.Ended()
+		if len(spans) != 1 {
+			t.Fatalf("%s: spans ended: got %d, want 1", tc.name, len(spans))
+		}
+		if st := spans[0].Status(); st.Code != codes.Error || st.Description != tc.description {
+			t.Errorf("%s: status: got %v %q, want Error %q", tc.name, st.Code, st.Description, tc.description)
+		}
+		if got := attrs(spans[0])["lab.injection"]; got != "close" {
+			t.Errorf("%s: lab.injection: got %q, want %q", tc.name, got, "close")
+		}
+	}
+	// A context carrying no span is a fixture running with no tracing: nothing to
+	// mark, and nothing may panic.
+	MarkInjection(context.Background(), "close", nil)
+}
+
 func TestTransport_InjectsTraceparent(t *testing.T) {
 	// Setup installs this propagator in the lab binaries; the test states it
 	// itself so that what it measures is the transport rather than the order

@@ -1,0 +1,64 @@
+# AFTER -- the mock marking its own server span on an injected close, same versions.
+# Taken 2026-09-19T16:55:05Z at the committed tree of this change, by
+#   go test ./fixtures/mockllm/ -run 'TestInjectedClose' -count=1 -v
+# Verbatim from here on. Read beside before.txt: status.code and status.description changed, lab.injection
+# appeared, and http.response.status_code=200 is STILL stamped by the instrumentation on a request that got
+# no response -- the test asserts that 200 as measured rather than leaving it out.
+=== RUN   TestInjectedClose_ServerSpanReading
+=== RUN   TestInjectedClose_ServerSpanReading/close
+    span_test.go:148: server span of a request the mock closed by injection (close):
+        name=POST /v1/chat/completions
+        kind=server
+        status.code=Error
+        status.description="injected: close"
+        attributes:
+          client.address=127.0.0.1
+          http.request.body.size=57
+          http.request.method=POST
+          http.response.status_code=200
+          lab.injection=close
+          lab.work_item=span-close-1
+          network.peer.address=127.0.0.1
+          network.peer.port=63290
+          network.protocol.version=1.1
+          server.address=127.0.0.1
+          server.port=63288
+          url.path=/v1/chat/completions
+          url.scheme=http
+          user_agent.original=Go-http-client/1.1
+        events=0
+=== RUN   TestInjectedClose_ServerSpanReading/delay-then-close
+    span_test.go:148: server span of a request the mock closed by injection (delay-then-close):
+        name=POST /v1/chat/completions
+        kind=server
+        status.code=Error
+        status.description="injected: delay-then-close"
+        attributes:
+          client.address=127.0.0.1
+          http.request.body.size=57
+          http.request.method=POST
+          http.response.status_code=200
+          lab.injection=delay-then-close
+          lab.work_item=span-close-1
+          network.peer.address=127.0.0.1
+          network.peer.port=63293
+          network.protocol.version=1.1
+          server.address=127.0.0.1
+          server.port=63291
+          url.path=/v1/chat/completions
+          url.scheme=http
+          user_agent.original=Go-http-client/1.1
+        events=0
+--- PASS: TestInjectedClose_ServerSpanReading (0.02s)
+    --- PASS: TestInjectedClose_ServerSpanReading/close (0.00s)
+    --- PASS: TestInjectedClose_ServerSpanReading/delay-then-close (0.01s)
+=== RUN   TestInjectedClose_ThatCouldNotCloseSaysSoOnTheSpan
+--- PASS: TestInjectedClose_ThatCouldNotCloseSaysSoOnTheSpan (0.00s)
+=== RUN   TestInjectedClose_MarkingIsAbsentFromEveryOtherCall
+=== RUN   TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/served_normally
+=== RUN   TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/injected_http500
+--- PASS: TestInjectedClose_MarkingIsAbsentFromEveryOtherCall (0.00s)
+    --- PASS: TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/served_normally (0.00s)
+    --- PASS: TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/injected_http500 (0.00s)
+PASS
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm	0.363s

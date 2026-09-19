@@ -110,6 +110,42 @@ func identityAttributes(header http.Header) []attribute.KeyValue {
 	return kv
 }
 
+// labInjection is the span attribute naming the failure injection a lab fixture
+// fired on a request, spelled as the fixture's own mode name.
+const labInjection = "lab.injection"
+
+// MarkInjection marks the server span of the request in ctx as one a lab fixture
+// ended by closing its connection on command, instead of answering it. It sets
+// lab.injection=<mode> and status Error with the description "injected: <mode>",
+// or "injected: <mode> failed: <closeErr>" when the close did not happen.
+//
+// It exists because the HTTP instrumentation cannot see such a close. Measured on
+// 2026-09-19 (experiments/runs/2026-09-19-failed-model-call/, and again in
+// fixtures/mockllm/span_test.go): the mock's span for a request it closed by
+// injection read http.response.status_code=200 with status Unset, while the proxy
+// in front of it answered 503. Read from otelhttp at v0.71.0: its response-writer
+// wrapper starts at http.StatusOK "in case the Handler doesn't write anything"
+// (internal/request/resp_writer_wrapper.go l.40) and the handler hooks Header,
+// Write, WriteHeader and Flush but not Hijack (handler.go l.164-177), so a
+// connection taken through http.Hijacker leaves that default in place and it is
+// stamped on the span after the handler returns (handler.go l.191-201).
+//
+// The instrumentation still stamps its 200 beside this marking, and sets status
+// Unset after the handler returns; the SDK keeps the Error set here because a
+// later, lower status is ignored (sdk/trace/span.go l.220 at v1.46.0). So a
+// reader tells an injected close by this status and attribute, never by the
+// status code. Nothing on the wire and no ledger line changes; with no tracer
+// provider installed the span is non-recording and this does nothing.
+func MarkInjection(ctx context.Context, mode string, closeErr error) {
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String(labInjection, mode))
+	description := "injected: " + mode
+	if closeErr != nil {
+		description += " failed: " + closeErr.Error()
+	}
+	span.SetStatus(codes.Error, description)
+}
+
 // Transport wraps a RoundTripper so an outbound request is a client span and
 // carries the trace context to whatever answers it. It adds no retry and no
 // header of the lab's own: base is used exactly as the caller built it, which is

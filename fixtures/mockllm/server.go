@@ -12,6 +12,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	labotel "github.com/AhmadMasry/agent-mesh-lab/internal/otel"
 )
 
 var errNotHijackable = errors.New("response writer does not support hijacking")
@@ -285,9 +287,16 @@ func (s *server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		}})
 		line.Outcome = "http500"
 
+	// The two modes that end a request with no response also mark this
+	// request's own server span, because the HTTP instrumentation cannot see a
+	// hijacked connection and would otherwise leave the span reading 200 with
+	// status Unset (labotel.MarkInjection has the measurement and the source
+	// lines). The ledger line is what it was: same fields, same outcomes.
 	case fire && mode == modeClose:
 		line.Injection = mode
-		if err := s.hijackAndClose(w); err != nil {
+		err := s.hijackAndClose(w)
+		labotel.MarkInjection(r.Context(), mode, err)
+		if err != nil {
 			line.Outcome = "closed-error"
 		} else {
 			line.Outcome = "closed"
@@ -296,7 +305,9 @@ func (s *server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	case fire && mode == modeDelayThenClose:
 		line.Injection = mode
 		s.sleepMs(delayMs)
-		if err := s.hijackAndClose(w); err != nil {
+		err := s.hijackAndClose(w)
+		labotel.MarkInjection(r.Context(), mode, err)
+		if err != nil {
 			line.Outcome = "closed-error"
 		} else {
 			line.Outcome = "delayed-close"

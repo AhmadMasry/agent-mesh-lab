@@ -1,0 +1,34 @@
+# 2026-09-19T17:51:32Z the SAME test on a MUTANT, in a scratch copy of the tree outside the repository (git archive; the checkout was not
+# touched): the marking ADDED to the stale branch of fixtures/mockllm/server.go, the change the review found that
+# nothing caught before this row existed. The mutation, whole:
+#   @@ -320,6 +320,7 @@
+#    		// connection actually reaches StateIdle and gets closed. See
+#    		// connState's comment.
+#    		line.Injection = mode
+#   +		labotel.MarkInjection(r.Context(), mode, nil) // MUTANT: the marking added to stale
+#    		s.sleepMs(s.cfg.LatencyMs)
+#    		s.writeNormalResponse(w, req, bodySHA256)
+#    		s.armStaleClose(r, ident)
+# Verbatim from here on; the FAIL is the point.
+=== RUN   TestInjectedClose_MarkingIsAbsentFromEveryOtherCall
+=== RUN   TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/served_normally
+=== RUN   TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/injected_http500
+=== RUN   TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/injected_stale
+    span_test.go:237: lab.injection is set on a call that was not an injected close
+    span_test.go:240: status: got Error "injected: stale", want Unset and no description
+--- FAIL: TestInjectedClose_MarkingIsAbsentFromEveryOtherCall (0.00s)
+    --- PASS: TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/served_normally (0.00s)
+    --- PASS: TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/injected_http500 (0.00s)
+    --- FAIL: TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/injected_stale (0.00s)
+FAIL
+FAIL	github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm	0.354s
+FAIL
+exit status: 1
+# the whole package on that mutant (go test ./fixtures/mockllm/ -count=1), which passed before the row existed:
+    --- FAIL: TestInjectedClose_MarkingIsAbsentFromEveryOtherCall/injected_stale (0.00s)
+        span_test.go:237: lab.injection is set on a call that was not an injected close
+        span_test.go:240: status: got Error "injected: stale", want Unset and no description
+FAIL
+FAIL	github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm	0.430s
+FAIL
+exit status: 1
