@@ -1,5 +1,7 @@
 # agent-mesh-lab
 
+> **2026-09-19 — the topology changed on branch `followups-18` and this text is being re-taken.** Every L7 proxy is now under agentgateway's own control plane (one proxy, `agw-central`, is the waypoint for both agents and the egress for the model host); the istiod-driven waypoints, the separate egress proxy and the step-3 Telemetry objects are retired. Until this banner is removed, what is below describes the previous topology: read `docs/proposal-notes.md` (the note of that day) and the newest entry in `findings.md` instead of following it.
+
 Can you retry an agent? A reproducible lab for A2A failure semantics on Kubernetes.
 
 ## What this is

@@ -1,0 +1,53 @@
+# Follow-ups 18, task 2: five places where a file in this directory says less, or other, than a reader would take
+# it to say. Written 2026-09-19 after the readings, by the agent that took them. The recorded files are left as they
+# were written; nothing below changes a count.
+
+1. strict/plaintext-probe.txt, first line: "(not enrolled: )" has an empty parenthesis.
+   checks.sh meant to print the `istio.io/dataplane-mode` label of namespace `default` there, or the words "no
+   dataplane-mode label". The jsonpath printed nothing at all, not even a newline, so the sed after it had no line
+   to rewrite. The fact is in strict/posture.txt, read four seconds earlier: `default  <none>`. The prober was
+   outside the mesh, which is also what its two refusals show.
+
+2. strict/ztunnel-other-error-lines.txt is named for ztunnel lines OTHER than the probe's own, and holds 18 lines.
+   One of the 18 IS the probe's: the refusal at the worker, stamped 11:41:36.070706Z, dst.workload the worker pod,
+   "explicitly denied by: istio-system/istio_converted_static_strict". checks.sh excluded the probe's lines by
+   `src.workload="mtls-probe"`, and that line carries `src.addr=` alone and no source workload. docs/walkthrough.md
+   ("Plaintext is refused") warns of exactly this: the source fields are ztunnel's own attribution of a pod it has
+   to have learned about, and on a prober created a moment earlier it may not have. The refusal at the
+   orchestrator, 56 ms later, does carry src.workload="mtls-probe". So the file's other lines number 17:
+     15  warn, direction="outbound", "no healthy upstream: 10.96.83.56:4318", 11:36:57.536Z to 11:37:10.727Z.
+         10.96.83.56 is the otel-collector Service. Those 13 seconds are inside `make step-3` (11:36:30Z to
+         11:38:21Z), after its overlay gave the agents their OTLP endpoint and before its collector chart was
+         installed. No reading was in progress; the first one started at 11:38:43Z.
+      2  "try_tcp_on_error: false", one per ztunnel pod: a line of the configuration ztunnel prints at start, kept
+         by the pattern only because it holds the word "error".
+   Lines of a policy rejection that are not the probe's: 0.
+
+3. strict/legs.csv says `no-series` for two legs, for two different reasons, and neither is a leg that failed.
+     "plaintext probe -> worker": the series exists, under another name. For the reason in note 2 its
+       source_workload is `unknown`, and hops.py looked for `mtls-probe`. In strict/hops-security.csv it is the row
+       `destination,unknown,unknown,worker.lab.svc.cluster.local,worker,lab,unknown,...,1`: one connection opened
+       at the worker, connection security `unknown`, which is the refused plaintext connection. The probe's other
+       row, to the orchestrator, is attributed and reads the same: `unknown`, 1.
+     "agentgateway-ingress -> worker": no reading in this proof sent to the worker through the ingress. The clean
+       check and the trace reach the worker in-cluster, through agw-central, and the ingress carried the
+       orchestrator's SendMessage only (`agentgateway-ingress -> orchestrator`, mutual_tls, 1).
+   The third `no-series` leg, "agw-central -> mockllm", is the one the table expects to be empty: neither end is
+   ztunnel-captured (strict/posture.txt lists both as TCP), so ztunnel has nothing to report. It is this lab's
+   plaintext external leg by design; that the calls arrived is the mock's invocation ledger, 1 per work item.
+
+4. checks.txt prints "ztunnel 'policy rejection' lines: 3" and, under it, "of them naming
+   istio-system/istio_converted_static_strict: 2". The refusals are 2, not 3. The first count is a grep for the
+   words `policy rejection` over strict/plaintext-probe-ztunnel.txt, and that file's own first line, a comment
+   checks.sh wrote, holds those words. The second count is the true one: two ztunnel lines, one with
+   dst.service="worker.lab.svc.cluster.local" and one with dst.service="orchestrator.lab.svc.cluster.local", both
+   direction="inbound", both "explicitly denied by: istio-system/istio_converted_static_strict".
+
+5. The "deployed paths" status that rebuild.sh and checks.sh read uses the pathspec 'experiments/*.sh', as the
+   earlier rebuild records do. In a git pathspec `*` also matches `/`, so once this directory exists that
+   pathspec matches its own three scripts (rebuild.sh, checks.sh, host-sleep.sh). It was empty at every read the
+   logs record, because none of the three was in the repository then: they ran from outside it and were copied in
+   after the readings. Anyone repeating the read now sees those three names and no other. The read that does not
+   cross directories, `git diff --name-only HEAD -- ... ':(glob)experiments/*.sh' ...`, is empty, and the ten
+   deployed subtree ids and eleven script blob ids of the committed tree equal, one for one, the ids build.txt
+   printed before the build.

@@ -61,25 +61,32 @@
 #     reads "The ambient profile enables ambient mode. The Istiod, CNI, and ztunnel
 #     charts must be deployed".
 #
-#   pilot.env.PILOT_ENABLE_AGENTGATEWAY
+#   pilot.env
 #     The istiod chart's values.yaml at 1.31.0 documents the key as `env` under its
 #     `_internal_defaults_do_not_set` root ("Additional container arguments" sits
 #     above it; the env map itself is `env: {}`), and the chart ships
 #     templates/zzy_descope_legacy.yaml, whose comment reads "Copy anything under
 #     `.pilot` to `.`, to avoid the need to specify a redundant prefix." Both
-#     spellings were rendered in this session against chart 1.31.0 and both put the
-#     variable in the istiod container's env with value "true"; `--set
-#     foo.env.PILOT_ENABLE_AGENTGATEWAY=true` put nothing there, so the prefix is
-#     recognised rather than merged blindly. `pilot.env` is used here because it is
-#     the spelling the chart's own ambient profile file uses for
-#     PILOT_ENABLE_AMBIENT. The render is in the run directory.
+#     spellings were rendered on 2026-09-12 against chart 1.31.0 and both put a
+#     variable in the istiod container's env; a `foo.env` prefix put nothing there,
+#     so the prefix is recognised rather than merged blindly. `pilot.env` is used
+#     here because it is the spelling the chart's own ambient profile file uses for
+#     PILOT_ENABLE_AMBIENT.
+#
+#     REMOVED on 2026-09-19: `PILOT_ENABLE_AGENTGATEWAY: "true"`, the second `--set`
+#     of the retired recipe and the variable that render was taken for. It made istiod
+#     drive agentgateway proxies of class `istio-agentgateway-waypoint`. By the
+#     author's decision of that day (docs/proposal-notes.md) no such waypoint exists
+#     any more: every L7 proxy is under agentgateway's own control plane and Istio does
+#     L4 only, so istiod is not asked to program agentgateway at all. That the variable
+#     is absent from the running istiod's env is read in the findings entry that ships
+#     with this change.
 #
 # This file is mesh configuration, not a Kustomize overlay, and names no cluster type.
 profile: ambient
 
 pilot:
   env:
-    PILOT_ENABLE_AGENTGATEWAY: "true"
     # Seven days, by the author's addition of 2026-09-12. Istio's istiod reference
     # (https://istio.io/latest/docs/reference/commands/pilot-discovery/, read
     # 2026-09-12) gives this variable as a Time Duration defaulting to 24h0m0s:
@@ -102,11 +109,72 @@ pilot:
     # istio-workload-cert-ttl.
     DEFAULT_WORKLOAD_CERT_TTL: "168h"
 
-# Byte-equal to spec.meshConfig of the retired IstioOperator file (same sha256,
-# experiments/runs/2026-09-15-helm-only/operator-file-coverage.txt). Every field's
-# source is quoted under versions.yaml key istio-otel-tracing-provider.
+# `enableTracing` and `extensionProviders` are what spec.meshConfig of the retired
+# IstioOperator file held, key for key and value for value; until 2026-09-19 they were the
+# whole block and it was byte-equal to that file's (same sha256,
+# experiments/runs/2026-09-15-helm-only/operator-file-coverage.txt). Every field's source is
+# quoted under versions.yaml key istio-otel-tracing-provider.
+#
+# `defaultProviders` and `defaultConfig.tracing.sampling` were added on 2026-09-19, by the
+# author's ruling that day: tracing is on by default for Istio, set globally through the Helm
+# values, and not through Telemetry objects. The three Telemetry objects this lab applied in
+# step 3 until then (deploy/step-3-stress/istio-tracing.yaml, read from git history) are gone
+# with this change. Recorded under versions.yaml key istio-meshconfig-tracing-defaults.
+#
+#   defaultProviders.tracing: [otel-tracing]
+#     istio/api at tag 1.31.0, mesh/v1alpha1/config.proto lines 1503-1518 (read 2026-09-19):
+#     "Holds the name references to the providers that will be used by default in other Istio
+#     configuration resources if the provider is not specified. These names must match a
+#     provider defined in `extensionProviders` that is one of the supported tracing
+#     providers." The Telemetry task page says the same of it: "a default provider can be set
+#     which will be used when the `Telemetry` resources do not specify a provider"
+#     (istio.io source at commit 4b4bd5fb, content/en/docs/tasks/observability/telemetry/
+#     index.md, lines 74-75).
+#
+#   defaultProviders.metrics: [prometheus]   -- stated because of the line above it
+#     The chart writes this value itself ONLY while `meshConfig.defaultProviders` is absent
+#     from the values. Read 2026-09-19 from the istiod chart pulled at 1.31.0 (`helm pull
+#     istiod --repo https://blob.istio.io/istio-release/charts --version 1.31.0`):
+#     templates/_helpers.tpl lines 1-7 define "default-prometheus" as `and (not
+#     .Values.meshConfig.defaultProviders) .Values.telemetry.enabled ...`, under the chart's
+#     own comment "Default Prometheus is enabled if its enabled and there are no config
+#     overrides set"; templates/configmap.yaml lines 12-19 write `defaultProviders: metrics:
+#     - prometheus` into the chart's mesh block only when that helper is true; and line 79
+#     merges these values over that block. So naming a tracing default alone makes the helper
+#     false and the chart's metrics default goes with it. Rendered three ways against that
+#     chart the same day: this file before the change gives `metrics: [prometheus]`; with
+#     `tracing` alone added, `metrics` is gone; with both stated, as here, both are present.
+#     The render is experiments/runs/2026-09-19-agentgateway-only/chart-defaultproviders.txt.
+#
+#   defaultConfig.tracing.sampling: 100
+#     Istio's sampling page (same istio.io commit, content/en/docs/tasks/observability/
+#     distributed-tracing/sampling/index.md, lines 77 and 84-88): "Random percentage sampling
+#     can be configured globally via `MeshConfig`", with `defaultConfig: tracing: sampling:`
+#     as the key. 100 because this lab counts hops, and a sampled-away hop would read as a
+#     missing one. Line 188 gives the precedence, "Telemetry API > Pod Annotation >
+#     `MeshConfig`"; with no Telemetry object and no annotation in this lab, this is the value.
+#
+# WHAT IS DOCUMENTED HERE AND WHAT IS NOT. Every key above is documented. What no page read
+# states is the combination: the sampling page's own `MeshConfig` example (lines 79-113) sets
+# the sampling rate in MeshConfig and then still enables the provider "via Telemetry API". That
+# a default provider alone, with no Telemetry object, is enough rests on the two narrow
+# sentences quoted under `defaultProviders.tracing`.
+#
+# WHAT THIS REACHES IN THIS LAB. These keys are mesh configuration for the proxies istiod
+# programs. Since 2026-09-19 this lab runs no such L7 proxy: no sidecar, and no Gateway of an
+# Istio class. What can be read of this block on the cluster is the `istio` ConfigMap's mesh
+# config, and the findings entry that ships with this change records it; the same entry lists
+# every span's service, which is where a span from an Istio-programmed proxy would show.
 meshConfig:
   enableTracing: true
+  defaultProviders:
+    metrics:
+      - prometheus
+    tracing:
+      - otel-tracing
+  defaultConfig:
+    tracing:
+      sampling: 100
   extensionProviders:
     - name: otel-tracing
       opentelemetry:

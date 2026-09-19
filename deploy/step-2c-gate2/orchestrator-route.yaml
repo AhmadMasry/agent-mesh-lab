@@ -1,0 +1,42 @@
+# HTTPRoute for the orchestrator Service on `agw-central`, so an in-cluster stimulus to the
+# Python receiver crosses the same agentgateway-managed proxy as one to the worker. The same
+# form as step 2's `worker` route (deploy/step-2-ambient-agw/worker-route.yaml, which has the
+# sources): the route lives beside its Service in `lab`, names the Gateway and its internal
+# listener across namespaces, and is told apart from the other routes on that listener by the
+# Service's fully qualified name. No retry stanza and no filter.
+#
+# New on 2026-09-19. Until then the orchestrator's in-cluster path had a waypoint of its own,
+# `agentgateway-waypoint-orch`, driven by istiod, and that waypoint carried NO HTTPRoute
+# (orchestrator-waypoint.yaml, read from git history). One proxy for both receivers is what
+# the 2026-09-09 note in docs/proposal-notes.md ruled out, for a measured reason: on one
+# istiod-driven waypoint, requests for the orchestrator were answered by the worker. That was
+# a measurement of class `istio-agentgateway-waypoint`, where the routes were attached to
+# Services. Here each destination has a hostname-matched route on a Gateway listener, under a
+# different control plane, and the author's note of 2026-09-19 supersedes the earlier one for
+# this shape. Whether each receiver is answered by itself on this topology is counted, not
+# assumed: the clean check in this change's findings entry sends to both.
+#
+# What this route is not expected to carry is the orchestrator's SendMessage. The
+# orchestrator's agent card advertises the agentgateway ingress (deploy/step-2b-agw-ingress-
+# egress/orchestrator-model-url.yaml), so a client built from the card fetches the card from
+# the orchestrator Service, on this route, and then sends to the ingress. On 2026-09-09 the
+# ingress was measured dialling the backend pod rather than the Service, so no Service-scoped
+# waypoint was on that hop (docs/proposal-notes.md, the note of that day). That was the
+# previous topology; which proxy each leg of the orchestrator's path crosses on this one is
+# read from ztunnel's series in this change's findings entry.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: orchestrator
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agw-central
+      namespace: agentgateway-waypoint
+      sectionName: inner-http
+  hostnames:
+    - orchestrator.lab.svc.cluster.local
+  rules:
+    - backendRefs:
+        - name: orchestrator
+          port: 8080

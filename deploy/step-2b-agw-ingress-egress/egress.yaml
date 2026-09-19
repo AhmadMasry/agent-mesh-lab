@@ -1,81 +1,55 @@
-# agentgateway as an egress waypoint between Agent B (the worker) and the model
-# endpoint, under agentgateway's own control plane. Shape from the agentgateway
-# documentation's Istio ambient egress page (agentgateway.dev/docs/kubernetes/latest/
-# integrations/istio/ambient/ambient-egress/, read 2026-09-08 from the site source at
-# github.com/agentgateway/website, assets/agw-docs/pages/integrations/istio/ambient/
-# ambient-egress.md): a separate namespace that is deliberately not ambient-labelled,
-# AgentgatewayParameters with istio.enabled so the proxy carries an Istio identity and
-# terminates HBONE, a Gateway labelled `istio.io/waypoint-for: service` with an HBONE
-# listener on 15008 and an internal HTTP listener for route attachment, a ServiceEntry
-# that models the destination as MESH_EXTERNAL and carries the use-waypoint labels, an
-# AgentgatewayBackend for the upstream, and an HTTPRoute on the internal listener.
+# The egress role: the model host, bound to `agw-central`, the agentgateway proxy step 2
+# created under agentgateway's own control plane. Three objects -- a ServiceEntry that models
+# the destination as MESH_EXTERNAL and carries the two use-waypoint labels, an
+# AgentgatewayBackend for the upstream, and an HTTPRoute on the Gateway's internal listener --
+# which are the second half of the agentgateway documentation's Istio ambient egress page
+# (agentgateway.dev/docs/kubernetes/latest/integrations/istio/ambient-egress/, read 2026-09-08
+# and again 2026-09-19 from the site source, github.com/agentgateway/website at commit
+# 10cda98d, assets/agw-docs/pages/integrations/istio/ambient/ambient-egress.md, lines 170-236).
+# The page's words for why both the ServiceEntry and the backend are needed: "The ServiceEntry
+# tells Istio that `httpbin.org` is an external destination (`MESH_EXTERNAL`) and enables
+# ambient waypoint steering for that host. The AgentgatewayBackend tells agentgateway where to
+# forward traffic after the route matches."
+#
+# The first half of that page -- the unlabelled namespace, the AgentgatewayParameters and the
+# Gateway with its HBONE and internal listeners -- is deploy/step-2-ambient-agw/
+# central-gateway.yaml since 2026-09-19. Until that day this file created all of it for a
+# proxy of its own, `agw-egress` in the namespace `agentgateway-egress`, which carried the model
+# leg and nothing else. By the author's decision of that day (docs/proposal-notes.md) one
+# agentgateway-managed proxy is the waypoint for both agents and the egress for the model
+# host, so that namespace, its parameters and that Gateway are gone, and the backend and the
+# route moved into `agentgateway-waypoint`, beside the Gateway they name. The route sits on the
+# same internal listener as the two in-mesh routes (`worker` from step 2, `orchestrator` from
+# step 2c) and is told apart from them by its hostname.
+#
+# Names kept on purpose: the ServiceEntry `model-external`, the backend `mockllm` and the route
+# `model-via-agw`. The route's namespace is what changed, and
+# deploy/step-3-stress/retry/egress/on/ names it.
 #
 # The page routes to httpbin.org on port 80; here the destination is the lab's mock
-# model endpoint, addressed as `model.lab.internal:8080`, so the internal listener port
-# and the `agentgateway.dev/internal-ports` value are 8080, which is what the page's
-# step 9 says to match to the destination port. The mock stays in the cluster and is
-# reached through the ServiceEntry as an external host, so pointing this at a real
-# provider later is a change of host, not of shape. The page's ResponseHeaderModifier
-# filter is not used: the ledgers count the hop, and no filter is applied to traffic
-# the baseline measures. No retry stanza anywhere.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: agentgateway-egress
----
-apiVersion: agentgateway.dev/v1alpha1
-kind: AgentgatewayParameters
-metadata:
-  name: agw-egress-params
-  namespace: agentgateway-egress
-spec:
-  istio:
-    enabled: true
-  service:
-    spec:
-      type: ClusterIP
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: agw-egress
-  namespace: agentgateway-egress
-  labels:
-    istio.io/waypoint-for: service
-  annotations:
-    agentgateway.dev/internal-ports: "8080"
-spec:
-  gatewayClassName: agentgateway
-  infrastructure:
-    parametersRef:
-      group: agentgateway.dev
-      kind: AgentgatewayParameters
-      name: agw-egress-params
-  listeners:
-    - name: mesh
-      port: 15008
-      protocol: HBONE
-      allowedRoutes:
-        namespaces:
-          from: All
-    - name: inner-http
-      port: 8080
-      protocol: HTTP
-      allowedRoutes:
-        namespaces:
-          from: All
----
+# model endpoint, addressed as `model.lab.internal:8080`, and the Gateway's internal listener
+# and its `agentgateway.dev/internal-ports` value are 8080, which the page says to match to
+# the destination port (line 347). The mock stays in the cluster and is reached through the
+# ServiceEntry as an external host, so pointing this at a real provider later is a change of
+# host, not of shape. The mock is outside ambient (deploy/base/mockllm.yaml) and so is this
+# proxy, so proxy -> mock is this lab's plaintext external leg, by design. The page's
+# ResponseHeaderModifier filter is not used: the ledgers count the hop, and no filter is
+# applied to traffic the baseline measures. No retry stanza anywhere.
+#
 # The model endpoint as an external destination. The endpoint address is the mock's
 # in-cluster Service name, so `model.lab.internal` resolves through ztunnel's DNS
-# proxy and steers to the waypoint named by the two labels.
+# proxy and steers to the waypoint named by the two labels; the second label is there because
+# the Gateway is in another namespace, as on the two Services (Istio's waypoint page, quoted
+# in deploy/step-2-ambient-agw/worker-use-waypoint.yaml, whose own example labels a
+# ServiceEntry).
 apiVersion: networking.istio.io/v1
 kind: ServiceEntry
 metadata:
   name: model-external
   namespace: lab
   labels:
-    istio.io/use-waypoint: agw-egress
-    istio.io/use-waypoint-namespace: agentgateway-egress
+    istio.io/use-waypoint: agw-central
+    istio.io/use-waypoint-namespace: agentgateway-waypoint
 spec:
   hosts:
     - model.lab.internal
@@ -92,7 +66,7 @@ apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayBackend
 metadata:
   name: mockllm
-  namespace: agentgateway-egress
+  namespace: agentgateway-waypoint
 spec:
   static:
     host: mockllm.lab.svc.cluster.local
@@ -102,10 +76,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: model-via-agw
-  namespace: agentgateway-egress
+  namespace: agentgateway-waypoint
 spec:
   parentRefs:
-    - name: agw-egress
+    - name: agw-central
       sectionName: inner-http
   hostnames:
     - model.lab.internal

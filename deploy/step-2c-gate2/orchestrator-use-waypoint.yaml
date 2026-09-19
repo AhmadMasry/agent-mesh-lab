@@ -1,12 +1,18 @@
-# Enrols the orchestrator Service on its own waypoint, so an in-cluster stimulus
-# to the Python receiver traverses a gateway the way one to the worker does. A
-# Service-scoped waypoint is selected by the client's ztunnel, so this takes
-# effect without restarting any pod. The waypoint named here is the orchestrator's
-# own, not the worker's; the reason is in orchestrator-waypoint.yaml.
+# Binds the orchestrator Service to `agw-central`, so an in-cluster stimulus to the Python
+# receiver traverses a gateway the way one to the worker does. The same two labels step 2 puts
+# on the worker Service, for the same reason: the Gateway is in another namespace
+# (deploy/step-2-ambient-agw/worker-use-waypoint.yaml quotes Istio's waypoint page). A
+# Service-scoped waypoint is selected by the client's ztunnel, so this takes effect without
+# restarting any pod.
+#
+# Until 2026-09-19 the label named the orchestrator's own istiod-driven waypoint,
+# `agentgateway-waypoint-orch`. Both receivers now name the one agentgateway-managed proxy;
+# orchestrator-route.yaml says what that supersedes and what is counted rather than assumed.
 apiVersion: v1
 kind: Service
 metadata:
   name: orchestrator
   namespace: lab
   labels:
-    istio.io/use-waypoint: agentgateway-waypoint-orch
+    istio.io/use-waypoint: agw-central
+    istio.io/use-waypoint-namespace: agentgateway-waypoint

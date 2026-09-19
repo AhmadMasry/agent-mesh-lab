@@ -1,5 +1,7 @@
 # Walkthrough — from a deleted cluster to Experiment A
 
+> **2026-09-19 — the topology changed on branch `followups-18` and this walkthrough is being re-taken; do not follow its steps 2 to 3 as written.** Every L7 proxy is now under agentgateway's own control plane: `make step-2` installs that control plane and creates one proxy, `agw-central`, which is the waypoint for both agents and the egress for the model host. The istiod-driven waypoints, the separate egress proxy `agw-egress` and the step-3 Telemetry objects this text names are retired, so its commands that name them fail and its outputs were taken on the previous topology. The make target names are unchanged. See `docs/proposal-notes.md` (the note of that day) and the newest entry in `findings.md`.
+
 This lab counts what happens to A2A agent traffic when a message is delivered more than once: two agents built on the
 two official A2A SDKs, a controllable model endpoint, three ledgers that count every arrival, dispatch and model call,
 and Istio Ambient with agentgateway on the path. This walkthrough builds the whole of it from a deleted cluster and

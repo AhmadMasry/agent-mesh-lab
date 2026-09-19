@@ -3,10 +3,17 @@
 # APPLIED AND WIRED IN: this file is in this overlay's kustomization and the object is live in
 # the cluster from step 2 on. It is the shape the lab runs, not a probe that was withdrawn.
 #
+# NAMES, SINCE 2026-09-19. On that day every L7 proxy moved under agentgateway's own control
+# plane (the author's decision, docs/proposal-notes.md). The separate egress proxy `agw-egress`
+# in `agentgateway-egress` and the two istiod-driven waypoints in `lab` no longer exist; one
+# proxy, `agw-central` in `agentgateway-waypoint`, has all three roles. The policy below did
+# not change by a byte. Where this comment tells the history of 2026-09-12 to 2026-09-15 it
+# names the proxies that existed then, and is left as it was written.
+#
 # Three other files make it hold for the lab's own traffic, and none is in this overlay:
 #   deploy/base/mockllm.yaml carries the per-pod ambient opt-out `istio.io/dataplane-mode: none`.
-#     The mock stands in for an external model provider, so the egress waypoint's call to it is
-#     this lab's external plaintext leg by design.
+#     The mock stands in for an external model provider, so the central proxy's call to it
+#     (until 2026-09-19 the egress waypoint's) is this lab's external plaintext leg by design.
 #   deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metrics.yaml gives the
 #     agentgateway ingress pod's scrape port one port-level PERMISSIVE exception, because
 #     Prometheus runs outside the mesh.
@@ -16,7 +23,8 @@
 #     `agentgateway-system` unlabelled, so the controller is outside the mesh by its namespace.
 #     It is infrastructure, not the traffic path: it serves XDS over its own TLS and carries no
 #     agentgateway traffic, and it has three clients. Two are outside the mesh and speak
-#     plaintext to it: the egress proxy, by agentgateway's documented egress shape, and
+#     plaintext to it: the central proxy `agw-central` (until 2026-09-19 the separate egress
+#     proxy), unenrolled by agentgateway's documented egress shape, and
 #     Prometheus. The third is the ingress proxy itself, which since that change dials XDS from
 #     inside the mesh, across the namespace boundary, to
 #     https://agentgateway.agentgateway-system.svc.cluster.local:9978 -- a captured pod reaching
@@ -36,9 +44,9 @@
 #     `## Gate 3 / both receivers / ingress namespace` have the counts.
 # The `telemetry` namespace is deliberately NOT enrolled in ambient: an in-mesh collector would
 # enforce mTLS on inbound OTLP and so refuse the spans of every emitter that is not
-# ztunnel-captured -- the mock, the egress proxy and both istiod-driven waypoints, all of which
-# export in plaintext to otel-collector:4317/4318 -- and the trace would lose exactly the hops
-# Gate 3 lit up.
+# ztunnel-captured -- the mock and the central proxy (until 2026-09-19: the mock, the egress
+# proxy and both istiod-driven waypoints), which export in plaintext to
+# otel-collector:4317/4318 -- and the trace would lose exactly the hops Gate 3 lit up.
 #
 # How that shape was arrived at, in two counted attempts on 2026-09-12
 # (experiments/runs/2026-09-12-mtls-enforced/, and the entry
@@ -103,9 +111,10 @@
 #     addresses `169.254.7.127` (IPv4) and `fd16:9254:7127:1337:ffff:ffff:ffff:ffff`
 #     (IPv6) to identify and correctly allow kubelet health probe packets"
 #     (https://istio.io/latest/docs/ambient/usage/networkpolicy/, read 2026-09-12).
-#   - `agentgateway-egress` is not ambient-enrolled and the model host it fronts is
-#     outside the mesh, so that leg has no receiving ztunnel to enforce at. Left as is.
-#   - The waypoints and the agentgateway ingress terminate HBONE themselves and carry
+#   - `agentgateway-waypoint` (until 2026-09-19 `agentgateway-egress`) is not
+#     ambient-enrolled and the model host its proxy fronts is outside the mesh, so that leg
+#     has no receiving ztunnel to enforce at. Left as is.
+#   - The waypoint and the agentgateway ingress terminate HBONE themselves and carry
 #     their own identity: "Waypoint proxies do not impersonate the identity of the
 #     source workload. Once you have introduced a waypoint to the traffic path, the
 #     destination ztunnel will see traffic with the `waypoint's` identity, not the

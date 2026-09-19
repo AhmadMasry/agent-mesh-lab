@@ -1,0 +1,131 @@
+# The istiod chart at 1.31.0 and meshConfig.defaultProviders: why `metrics: [prometheus]` is stated in
+# deploy/step-2-ambient-agw/istio-values.yaml. Offline: helm template only, no cluster. Written 2026-09-19T11:35:19Z.
+#
+# The chart: helm pull istiod --repo https://blob.istio.io/istio-release/charts --version 1.31.0 --untar
+#   Chart.yaml: appVersion: 1.31.0 name: istiod version: 1.31.0 
+#   sha256 templates/configmap.yaml f39226cdf9174f6e55f33ed9319f3c6b54a0766bfbf5007d0c1c4f8566d3e075
+#   sha256 templates/_helpers.tpl   325fb5ed6ed3e2f23bad52b9198a2b8932df57c90b0d9ac68f27eece1bccd40a
+#   helm: v4.3.0+gbec5b06
+#
+# templates/_helpers.tpl lines 1-7, the condition:
+#   {{/* Default Prometheus is enabled if its enabled and there are no config overrides set */}}
+#   {{ define "default-prometheus" }}
+#   {{- and
+#     (not .Values.meshConfig.defaultProviders)
+#     .Values.telemetry.enabled .Values.telemetry.v2.enabled .Values.telemetry.v2.prometheus.enabled
+#   }}
+#   {{- end }}
+# templates/configmap.yaml lines 12-19, where the chart writes its own default, and line 79, the merge:
+#     {{ $prom := include "default-prometheus" . | eq "true" }}
+#     {{ $sdMetrics := include "default-sd-metrics" . | eq "true" }}
+#     {{ $sdLogs := include "default-sd-logs" . | eq "true" }}
+#     {{- if or $prom $sdMetrics $sdLogs }}
+#       defaultProviders:
+#       {{- if or $prom $sdMetrics }}
+#         metrics:
+#         {{ if $prom }}- prometheus{{ end }}
+#   {{- $mesh := mergeOverwrite $originalMesh .Values.meshConfig }}
+
+## (a) the values file BEFORE this change (git show HEAD~1:deploy/step-2-ambient-agw/istio-values.yaml): the rendered mesh config
+    defaultConfig:
+      discoveryAddress: istiod.istio-system.svc:15012
+      image:
+        imageType: distroless
+      proxyMetadata:
+        ISTIO_META_ENABLE_HBONE: "true"
+    defaultProviders:
+      metrics:
+      - prometheus
+    enablePrometheusMerge: true
+    enableTracing: true
+    extensionProviders:
+    - name: otel-tracing
+      opentelemetry:
+        port: 4317
+        resource_detectors:
+          environment: {}
+        service: otel-collector.telemetry.svc.cluster.local
+    rootNamespace: istio-system
+    serviceScopeConfigs:
+    - scope: GLOBAL
+      servicesSelector:
+        matchExpressions:
+        - key: istio.io/global
+          operator: In
+          values:
+          - "true"
+    trustDomain: cluster.local
+
+
+
+## (b) that file plus --set 'meshConfig.defaultProviders.tracing={otel-tracing}' ALONE: metrics is gone
+    defaultConfig:
+      discoveryAddress: istiod.istio-system.svc:15012
+      image:
+        imageType: distroless
+      proxyMetadata:
+        ISTIO_META_ENABLE_HBONE: "true"
+    defaultProviders:
+      tracing:
+      - otel-tracing
+    enablePrometheusMerge: true
+    enableTracing: true
+    extensionProviders:
+    - name: otel-tracing
+      opentelemetry:
+        port: 4317
+        resource_detectors:
+          environment: {}
+        service: otel-collector.telemetry.svc.cluster.local
+    rootNamespace: istio-system
+    serviceScopeConfigs:
+    - scope: GLOBAL
+      servicesSelector:
+        matchExpressions:
+        - key: istio.io/global
+          operator: In
+          values:
+          - "true"
+    trustDomain: cluster.local
+
+
+
+## (c) the values file AS COMMITTED by this change (both defaults stated, sampling 100): the rendered mesh config
+    defaultConfig:
+      discoveryAddress: istiod.istio-system.svc:15012
+      image:
+        imageType: distroless
+      proxyMetadata:
+        ISTIO_META_ENABLE_HBONE: "true"
+      tracing:
+        sampling: 100
+    defaultProviders:
+      metrics:
+      - prometheus
+      tracing:
+      - otel-tracing
+    enablePrometheusMerge: true
+    enableTracing: true
+    extensionProviders:
+    - name: otel-tracing
+      opentelemetry:
+        port: 4317
+        resource_detectors:
+          environment: {}
+        service: otel-collector.telemetry.svc.cluster.local
+    rootNamespace: istio-system
+    serviceScopeConfigs:
+    - scope: GLOBAL
+      servicesSelector:
+        matchExpressions:
+        - key: istio.io/global
+          operator: In
+          values:
+          - "true"
+    trustDomain: cluster.local
+
+
+
+## (c) also: istiod's container env names PILOT_ENABLE_AGENTGATEWAY this many times (before / as committed):
+before:       1
+as committed: 0

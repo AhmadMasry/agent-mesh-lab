@@ -7,7 +7,9 @@
 # reset before each request and no injection is applied, so this measures the
 # instruments, not a failure.
 #
-#   worker:       loadgen -> worker Service (istiod-driven waypoint on the path)
+#   worker:       loadgen -> worker Service (the waypoint the Service names is on the
+#                 path: since 2026-09-19 `agw-central`, under agentgateway's own control
+#                 plane; until then an istiod-driven waypoint)
 #   orchestrator: loadgen -> orchestrator Service for the card; the card
 #                 advertises the agentgateway ingress, so the SendMessage POST
 #                 enters through the ingress, and the orchestrator forwards to

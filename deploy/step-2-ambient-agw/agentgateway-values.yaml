@@ -1,7 +1,18 @@
-# The agentgateway control plane's Helm values, for `make step-2b`. Since follow-ups 12
+# The agentgateway control plane's Helm values, for `make step-2`. Since follow-ups 12
 # (2026-09-15) this file sets nothing, and the chart installs at its defaults. It stays,
-# and `make step-2b` keeps passing it, so the one place the control plane's values would
-# go is the one the README and versions.yaml already name.
+# and the install keeps passing it, so there is one place the control plane's values would go.
+#
+# MOVED on 2026-09-19 from deploy/step-2b-agw-ingress-egress/ with the install itself: until
+# then `make step-2b` installed the control plane, because step 2's waypoint was istiod's. By
+# the author's decision of that day (docs/proposal-notes.md) the waypoint is an agentgateway
+# proxy under this control plane, so step 2 needs it. The file's content did not change; the
+# README and entries dated before that day name it at its old path. It still sets nothing:
+# in particular no `gatewayClassParametersRefs` and no class-wide tracing configuration. Each
+# Gateway's tracing is one AgentgatewayPolicy beside it, in deploy/step-3-stress/.
+#
+# The history below is of 2026-09-12 to 2026-09-15 and names the targets and proxies of
+# those days: where it says `make step-2b`, that target installed the control plane then,
+# and `agw-egress` was the separate egress proxy, retired on 2026-09-19.
 #
 # What it used to set, and why that is gone. From follow-ups 9 (2026-09-12) to follow-ups
 # 12 this file set one value, `podLabels: {istio.io/dataplane-mode: none}`, which opted

@@ -1,24 +1,32 @@
-# Step 2: step 1 plus Istio Ambient with agentgateway as the waypoint in front of
-# the worker (Agent B). Applies on top of step 1; nothing is edited in place.
-# The Istio control plane and the Gateway API CRDs are installed by `make step-2`
-# (they are not application manifests); this overlay only enrols the namespace,
-# creates the waypoint, attaches the worker Service to it, and adds a retry-free
-# HTTPRoute for later experiments to extend.
+# Step 2: step 1 plus Istio Ambient for L4, and one agentgateway proxy under agentgateway's
+# own control plane as the waypoint in front of the worker (Agent B). Applies on top of step 1;
+# nothing is edited in place. The Gateway API CRDs, the Istio control plane and the
+# agentgateway control plane are installed by `make step-2` (they are not application
+# manifests); this overlay enrols the `lab` namespace, creates the central Gateway in its own
+# namespace, binds the worker Service to it, and adds a retry-free HTTPRoute for later
+# experiments to extend.
+#
+# Since 2026-09-19 every L7 proxy in this lab is managed by agentgateway's control plane and
+# Istio does L4 only; the author's decision is dated that day in docs/proposal-notes.md. Until
+# then this overlay created an istiod-driven waypoint of class `istio-agentgateway-waypoint`
+# (waypoint.yaml, read from git history), and the agentgateway control plane arrived one step
+# later, in step 2b. It moved here because the waypoint now needs it; its values file moved with
+# it (agentgateway-values.yaml).
 #
 # peer-authentication.yaml takes the mesh from the documented ambient default of
 # PERMISSIVE to STRICT, mesh-wide, from this step on. Two other files make that hold
 # for this lab's own traffic, and neither belongs to this overlay: the mock model opts
 # out of ambient in deploy/base/mockllm.yaml, because it stands in for an external
-# provider and the egress waypoint's call to it is the external plaintext leg; and the
+# provider and the central proxy's call to it is the external plaintext leg; and the
 # agentgateway ingress pod's scrape port gets one port-level exception in
-# deploy/step-2b-agw-ingress-egress/, because Prometheus is not in the mesh. All three
-# were measured together on 2026-09-12; the counts are the findings entry
-# `## Gate 3 / both receivers / mTLS enforced`.
+# deploy/step-2b-agw-ingress-egress/, because Prometheus is not in the mesh. That shape was
+# first measured on 2026-09-12 (`## Gate 3 / both receivers / mTLS enforced` in findings.md)
+# and is measured again on this topology in the entry that ships with this change.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../step-1-nomesh
-  - waypoint.yaml
+  - central-gateway.yaml
   - worker-route.yaml
   - peer-authentication.yaml
 patches:

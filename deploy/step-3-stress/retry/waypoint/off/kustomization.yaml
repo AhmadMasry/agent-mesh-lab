@@ -1,8 +1,13 @@
 # The waypoint route with no retry stanza: the baseline state of the `worker`
-# HTTPRoute in `lab`, which is attached to the worker Service and so is the route
-# the istiod-driven agentgateway waypoint serves. `make retry-off ROUTE=waypoint`
-# applies exactly this, which is why it removes the stanza rather than editing it
-# away: the object goes back to what step 2 declared.
+# HTTPRoute in `lab`, the worker Service's hostname route on `agw-central`, the
+# agentgateway-managed proxy that is the worker's waypoint (until 2026-09-19 the same
+# name was a Service-attached route served by an istiod-driven waypoint).
+# `make retry-off ROUTE=waypoint` applies exactly this, which is why it removes the
+# stanza rather than editing it away: the object goes back to what step 2 declared.
+#
+# The route set is the worker's route alone, as it was before 2026-09-19. The
+# `orchestrator` route on the same proxy (step 2c) is not in it: whether the set should
+# grow is a question for the task that re-takes the retry rows, not for the knob.
 #
 # The file is read from the step-2 overlay rather than copied, so this cannot drift
 # from the route the cluster is actually running.

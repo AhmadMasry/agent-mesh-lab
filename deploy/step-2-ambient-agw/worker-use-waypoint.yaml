@@ -1,6 +1,17 @@
+# Binds the worker Service to `agw-central`, which lives in another namespace, so two labels
+# rather than one. Istio's waypoint page (istio.io source at commit 4b4bd5fb,
+# content/en/docs/ambient/usage/waypoint/index.md, lines 351-353, read 2026-09-19): "By
+# default, the Istio control plane will look for a waypoint specified using the
+# `istio.io/use-waypoint` label in the same namespace as the resource which the label is applied
+# to. It is possible to use a waypoint in another namespace by adding a new label,
+# `istio.io/use-waypoint-namespace`. ... Together, the two labels specify the name and namespace
+# of your waypoint respectively."
+#
+# Until 2026-09-19 this file carried one label naming the istiod-driven waypoint in `lab`.
 apiVersion: v1
 kind: Service
 metadata:
   name: worker
   labels:
-    istio.io/use-waypoint: agentgateway-waypoint
+    istio.io/use-waypoint: agw-central
+    istio.io/use-waypoint-namespace: agentgateway-waypoint

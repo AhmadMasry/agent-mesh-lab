@@ -1,6 +1,27 @@
-# HTTPRoute for the worker Service through the waypoint. No retry stanza: the
-# baseline is measured with every layer's retries off. Gate 3's R2 run adds the
-# experimental `retry` field here and nowhere else.
+# HTTPRoute for the worker Service on `agw-central`, the agentgateway-managed proxy that is the
+# worker's waypoint (central-gateway.yaml). No retry stanza: the baseline is measured with every
+# layer's retries off. `make retry-on ROUTE=waypoint` adds the experimental `retry` field here
+# and nowhere else, and `make retry-off` applies this file again.
+#
+# The name `worker` and the namespace `lab` are kept from the route this replaces, so the retry
+# kustomizations under deploy/step-3-stress/retry/waypoint/ target the same object. What changed
+# on 2026-09-19 is the parent. Until then the parentRef was the worker Service itself
+# (`kind: Service`), which is how an istiod-driven waypoint finds its routes. agentgateway's own
+# controller resolves a parentRef that names a Gateway and a listener, which is the form its
+# egress page uses for its own route: there `parentRefs` names the Gateway `agw-waypoint` with
+# `sectionName: inner-http`, and `hostnames` names the destination (ambient-egress.md at
+# website commit 10cda98d, lines 216-220, read 2026-09-19). So this route names `agw-central`
+# and its internal listener `inner-http`. The route stays beside its Service and
+# names the Gateway across namespaces; the listener's `allowedRoutes.namespaces.from: All` is
+# the whole handshake in that direction (versions.yaml,
+# `gateway-api-cross-namespace-route-attachment`).
+#
+# The hostname is the worker Service's fully qualified name, because one internal listener on
+# 8080 now carries three destinations and the hostname is what tells them apart. Every client
+# in this lab addresses the worker by that name: the load client's and the replay harness's
+# TARGET_URL, the orchestrator's DOWNSTREAM_A2A_URL, and the URL the worker's own agent card
+# advertises (deploy/base/). A request for the worker under a shorter name, such as
+# `worker.lab` or `worker`, would match no route on this listener.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -8,10 +29,11 @@ metadata:
   namespace: lab
 spec:
   parentRefs:
-    - group: ""
-      kind: Service
-      name: worker
-      port: 8080
+    - name: agw-central
+      namespace: agentgateway-waypoint
+      sectionName: inner-http
+  hostnames:
+    - worker.lab.svc.cluster.local
   rules:
     - backendRefs:
         - name: worker

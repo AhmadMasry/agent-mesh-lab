@@ -47,8 +47,10 @@ check-go-sources-clean:
 #   - Gateway API's CRDs: the project publishes no Helm chart (its install page gives
 #     only `kubectl apply -f <release>/experimental-install.yaml`), so step-2 applies
 #     them that way.
-#   - the agentgateway control plane (step-2b): the project documents only a Helm
-#     install of its two OCI charts, so step-2b needs helm as step-2 and step-3 do.
+#   - the agentgateway control plane (step-2): the project documents only a Helm
+#     install of its two OCI charts. Until 2026-09-19 step-2b installed it; it moved to
+#     step-2 with the author's decision of that day (docs/proposal-notes.md), because
+#     step 2's waypoint is now a proxy under that control plane.
 HELM := $(shell command -v helm 2>/dev/null)
 
 # The Helm requirement is checked while make reads this file, before any goal runs.
@@ -62,7 +64,11 @@ HELM := $(shell command -v helm 2>/dev/null)
 # host without helm `make step-1 step-2` ran step-1 in full before stopping. The
 # demonstration with a PATH that lacks helm, before and after this change, is committed
 # in experiments/runs/2026-09-15-ingress-namespace/guard/.
-HELM_GOALS           := step-2 step-2b step-3
+#
+# step-2b left this list on 2026-09-19, when its two Helm installs moved to step-2: its
+# recipe calls helm no more, and the list is the goals whose recipes do. It still cannot
+# run to any purpose on a host without helm, because it applies on top of step-2.
+HELM_GOALS           := step-2 step-3
 HELM_GOALS_REQUESTED := $(filter $(HELM_GOALS),$(MAKECMDGOALS))
 ifneq ($(HELM_GOALS_REQUESTED),)
 ifeq ($(HELM),)
@@ -70,11 +76,12 @@ $(error $(HELM_GOALS_REQUESTED): helm is not on PATH. Istio and agentgateway ins
 endif
 endif
 
-# helm-required: the first prerequisite of step-2, step-2b and step-3. It names the helm that
-# runs, so a run record carries it. The check above has already stopped any command line
+# helm-required: the first prerequisite of step-2 and step-3 (and of step-2b until
+# 2026-09-19, while that target installed the agentgateway control plane). It names the helm
+# that runs, so a run record carries it. The check above has already stopped any command line
 # that names those goals without helm; the $(error) here is kept for a goal that reaches
 # them without naming them, and it says only what is then true. `make -n step-2 step-2b
-# step-3` with helm on PATH is committed in
+# step-3` with helm on PATH, as the targets were on 2026-09-15, is committed in
 # experiments/runs/2026-09-15-ingress-namespace/make-n.txt.
 .PHONY: helm-required
 helm-required:
@@ -187,15 +194,29 @@ step-1: check-go-sources-clean orchestrator-image
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
 	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
-# step-2: Istio Ambient with agentgateway as the waypoint. Versions come from
-# versions.yaml (gateway-api v1.6.2 experimental; istio 1.31.0 through its four Helm
-# charts; agentgateway v1.5.0 through the waypoint image annotation in the overlay).
+# step-2: Istio Ambient for L4, and agentgateway under its OWN control plane as the waypoint.
+# Versions come from versions.yaml (gateway-api v1.6.2 experimental; istio 1.31.0 through its
+# four Helm charts; agentgateway v1.5.0 through its two Helm charts, whose appVersion is the
+# proxy the controller deploys).
+#
+# Since 2026-09-19 (the author's decision of that day in docs/proposal-notes.md) every L7
+# proxy is managed by agentgateway's control plane and istiod programs none: the overlay
+# creates one Gateway of class `agentgateway`, `agw-central`, in a namespace of its own, and
+# binds the worker Service to it. So this target installs three things in order -- Gateway
+# API's CRDs, Istio, then agentgateway's CRDs and control plane -- before it applies the
+# overlay, which holds an AgentgatewayParameters and a Gateway of that class and would be
+# refused without them. Until that day the waypoint was istiod's (class
+# `istio-agentgateway-waypoint`, behind the pilot flag PILOT_ENABLE_AGENTGATEWAY, both gone)
+# and agentgateway's control plane was step-2b's to install.
+#
 # A setup target, like step-1: it rotates all three Deployments, and the worker's
 # log is a ledger source, so do not re-run it against a baseline in progress.
 # The overlay pulls in step-1, whose orchestrator Deployment needs the Python
 # image; ko builds the Go images inline, so orchestrator-image is the only
 # prerequisite that makes step-2 runnable on a cluster that never ran step-1.
 GATEWAY_API_VERSION := v1.6.2
+# The agentgateway charts' pin; recorded in versions.yaml under agentgateway-controlplane.
+AGENTGATEWAY_CHART_VERSION := v1.5.0
 step-2: helm-required check-go-sources-clean orchestrator-image
 	# Applied unconditionally: a present CRD does not tell us the channel it came
 	# from, and the experimental channel is what carries HTTPRoute.Retry.
@@ -211,10 +232,12 @@ step-2: helm-required check-go-sources-clean orchestrator-image
 	# each from the repository URL that page's `helm repo add` line gives. `--repo` is
 	# used instead of `helm repo add` so the target adds nothing to the user's Helm
 	# configuration. `helm upgrade -i` rather than the page's `helm install`, so a re-run
-	# of this target is not an error -- the same substitution step-2b makes. The page
+	# of this target is not an error -- the same substitution the agentgateway installs
+	# below make. The page
 	# passes `--set profile=ambient` to istiod and cni and nothing to ztunnel or base;
 	# here istiod takes the profile from istio-values.yaml, which also carries the mesh
-	# configuration (the OpenTelemetry tracing provider), the agentgateway pilot flag and
+	# configuration (the OpenTelemetry tracing provider, and since 2026-09-19 the tracing
+	# and metrics default providers and the sampling rate, in place of Telemetry objects) and
 	# istiod's default workload certificate lifetime. ztunnel takes a values file of its
 	# own, for the certificate lifetime it asks for and for the ambient profile; the page
 	# passes ztunnel nothing, but without the profile the ztunnel chart ran the
@@ -230,55 +253,72 @@ step-2: helm-required check-go-sources-clean orchestrator-image
 		-n istio-system --set profile=ambient --wait
 	helm upgrade -i ztunnel ztunnel --repo $(ISTIO_CHART_REPO) --version $(ISTIO_CHART_VERSION) \
 		-n istio-system -f deploy/step-2-ambient-agw/ztunnel-values.yaml --wait
+	# The agentgateway control plane, by Helm, after Istio: the proxy it deploys for the
+	# overlay's Gateway has `istio.enabled` and takes its identity from istiod. One route
+	# only: the agentgateway documentation installs its control plane by Helm from two OCI
+	# charts, agentgateway-crds and agentgateway from oci://cr.agentgateway.dev/charts, and
+	# documents no other way, which is a fact about the project's install surface and is
+	# recorded as one in findings.md (versions.yaml, agentgateway-controlplane). The
+	# documented install adds --set controller.image.pullPolicy=Always, which is omitted
+	# here because a pinned tag is not re-pulled. Both installs were step-2b's until
+	# 2026-09-19 and are unchanged but for their place and the values file's path.
+	#
+	# agentgateway-system holds the control plane only and is not labelled ambient, so the
+	# controller is outside the mesh by its namespace: it is not on the traffic path. The
+	# values file sets nothing, and its header says what it set before and why that is gone.
+	@echo "step-2: agentgateway control plane via Helm ($(HELM)), charts pinned to $(AGENTGATEWAY_CHART_VERSION)"
+	helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
+		--create-namespace --namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION)
+	helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
+		--namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION) \
+		-f deploy/step-2-ambient-agw/agentgateway-values.yaml --wait
 	kubectl kustomize deploy/step-2-ambient-agw | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
 	# ztunnel captures a pod when it starts, so pods that predate the namespace's
 	# ambient label are restarted to be enrolled.
 	kubectl -n $(NAMESPACE) rollout restart deployment/mockllm deployment/worker deployment/orchestrator
-	kubectl -n $(NAMESPACE) rollout status deployment/agentgateway-waypoint --timeout=180s
+	# The central proxy. Programmed is the wait agentgateway's egress page uses for this
+	# Gateway shape, and it says the controller accepted the Gateway; the rollout wait
+	# after it says the proxy pod is ready to carry traffic. The controller creates that
+	# Deployment, named after the Gateway, some time after the apply above, and `rollout
+	# status` on an object that does not exist yet is an error rather than a wait, so its
+	# creation is waited for first. None of the three is a retry of anything measured.
+	kubectl -n agentgateway-waypoint wait --for=condition=Programmed gateway/agw-central --timeout=180s
+	kubectl -n agentgateway-waypoint wait --for=create deployment/agw-central --timeout=180s
+	kubectl -n agentgateway-waypoint rollout status deployment/agw-central --timeout=180s
+	# The worker's route on it: Accepted by agentgateway's controller, the wait its egress
+	# page uses for its own route. If the controller wrote no such status, the target fails.
+	kubectl -n $(NAMESPACE) wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/worker --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
 	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
-# step-2b: two more agentgateway proxies, an ingress in front of Agent A and an
-# egress waypoint between Agent B and the model, both under agentgateway's own
-# control plane. The waypoint from step 2 is untouched and stays driven by istiod.
-# The two Helm installs follow the agentgateway documentation's Istio ambient
-# ingress and egress pages; the chart version is
-# pinned in versions.yaml under agentgateway-controlplane. The documented install
-# adds --set controller.image.pullPolicy=Always, which is omitted here because a
-# pinned tag is not re-pulled; the omission is recorded in the findings entry.
+# step-2b: the way in and the way out, both on proxies under agentgateway's own
+# control plane. The way in is a second agentgateway proxy, the ingress in front of
+# Agent A. The way out is a ROLE, not a proxy: the model host is bound to `agw-central`,
+# the proxy step 2 created, with its backend and its route there. The shapes follow the
+# agentgateway documentation's Istio ambient ingress and egress pages.
+#
+# Until 2026-09-19 this target also installed the agentgateway control plane, by Helm,
+# and the overlay created a third proxy, `agw-egress`, for the model leg. The installs
+# moved to step-2 (its waypoint needs them; see there) and that proxy is retired (the
+# author's decision of that day in docs/proposal-notes.md). So this target calls helm no
+# more, and helm-required is no longer its prerequisite; step-2 must have run, which is
+# where the guard now stands.
+#
 # Like step-1 and step-2 this is a setup target: it rotates the worker and the
 # orchestrator, whose logs are ledger sources, and `ko apply` can rotate the mock
 # as well, so do not run it against a baseline in progress. The overlay pulls in
 # step-2, whose orchestrator Deployment needs the Python image, so
 # orchestrator-image is a prerequisite here for the same reason it is on step-2.
 #
-# helm-required is its first prerequisite, as on step-2 and step-3, and the check at
-# the top of this file stops a command line naming step-2b without helm before any goal
-# runs. One route only: the agentgateway documentation installs its control plane by
-# Helm from two OCI charts, agentgateway-crds and agentgateway from
-# oci://cr.agentgateway.dev/charts, and documents no other way, which is a fact about
-# the project's install surface and is recorded as one in findings.md (versions.yaml,
-# agentgateway-controlplane). Until follow-ups 12 this target carried its own shell
-# check with that message.
-AGENTGATEWAY_CHART_VERSION := v1.5.0
-step-2b: helm-required check-go-sources-clean orchestrator-image
-	@echo "step-2b: agentgateway control plane via Helm ($(HELM)), charts pinned to $(AGENTGATEWAY_CHART_VERSION)"
-	helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
-		--create-namespace --namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION)
-	# agentgateway-system holds the control plane only and is not labelled ambient, so the
-	# controller is outside the mesh by its namespace: it is not on the traffic path. It
-	# has three clients. Two are outside the mesh and speak plaintext to it: the egress
-	# waypoint's XDS and Prometheus. The third, since follow-ups 12, is the ingress proxy
-	# in the ambient namespace agentgateway-ingress, whose XDS dial to
-	# https://agentgateway.agentgateway-system.svc.cluster.local:9978 leaves a captured pod
-	# for an uncaptured one: ztunnel does not tunnel it, so it is not mesh mTLS, and what
-	# rides it is agentgateway's own TLS. The values file sets nothing since follow-ups 12
-	# and its header says what it set before and why that is gone.
-	helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
-		--namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION) \
-		-f deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml --wait
+# The control plane has three clients. Two are outside the mesh and speak plaintext to
+# it: the central proxy's XDS and Prometheus. The third, since follow-ups 12, is the
+# ingress proxy in the ambient namespace agentgateway-ingress, whose XDS dial to
+# https://agentgateway.agentgateway-system.svc.cluster.local:9978 leaves a captured pod
+# for an uncaptured one: ztunnel does not tunnel it, so it is not mesh mTLS, and what
+# rides it is agentgateway's own TLS.
+step-2b: check-go-sources-clean orchestrator-image
 	# The ingress proxy's namespace, agentgateway-ingress, is created by the overlay with
 	# the ambient label the ingress page asks for, so the hop from the gateway pod to the
 	# backend pod is HBONE like every other hop in the mesh and the proxy pod is captured
@@ -286,20 +326,25 @@ step-2b: helm-required check-go-sources-clean orchestrator-image
 	# this target labelled that namespace here.
 	kubectl kustomize deploy/step-2b-agw-ingress-egress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
 	kubectl -n agentgateway-ingress wait --for=condition=Programmed gateway/agentgateway-ingress --timeout=180s
-	kubectl -n agentgateway-egress wait --for=condition=Programmed gateway/agw-egress --timeout=180s
+	# The model route on the central proxy: Accepted, by the wait agentgateway's egress
+	# page uses for its own route. If the controller wrote no such status for the route,
+	# this wait runs out and the target fails, instead of the step ending with a route
+	# that nothing serves.
+	kubectl -n agentgateway-waypoint wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/model-via-agw --timeout=180s
 	# ko rebuilds the Go images, so the mock can rotate on this apply too.
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
 	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
-# step-2c: the Gate 2 stimulus paths. Adds a second istiod-driven waypoint for
-# the orchestrator Service, so each receiver has a waypoint of its own, and
-# gives the worker its own hostname on the step-2b ingress, so an
-# out-of-cluster stimulus can reach either receiver. The two receivers do not
-# share one waypoint; the measured reason is in the kustomization comment.
-# Applies on top of step 2b: the overlay adds one Gateway, one Service label and
-# one HTTPRoute and edits nothing in place. It is not free to repeat, though.
+# step-2c: the Gate 2 stimulus paths. Binds the orchestrator Service to `agw-central`
+# and gives it a hostname route there, so an in-cluster stimulus to either receiver
+# crosses the agentgateway-managed proxy, and gives the worker its own hostname on the
+# step-2b ingress, so an out-of-cluster stimulus can reach either receiver. Until
+# 2026-09-19 it added a second istiod-driven waypoint instead, one per receiver; what
+# that was for, and what supersedes it, is in the kustomization comment.
+# Applies on top of step 2b: the overlay adds two HTTPRoutes and the Service's two
+# labels and edits nothing in place. It is not free to repeat, though.
 # Measured on 2026-09-09 while running step 3 (evidence in
 # experiments/runs/2026-09-09-a3-pipeline/replicasets.txt): `ko apply` rebuilds
 # the Go images from unchanged sources to NEW digests, so the worker and the mock
@@ -309,10 +354,10 @@ step-2b: helm-required check-go-sources-clean orchestrator-image
 # already in the cluster and this overlay does not change its Deployment.
 step-2c: check-go-sources-clean
 	kubectl kustomize deploy/step-2c-gate2 | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
-	# Programmed says istiod accepted the Gateway and provisioned for it; the
-	# rollout wait after it says the proxy pod is ready to carry traffic.
-	kubectl -n $(NAMESPACE) wait --for=condition=Programmed gateway/agentgateway-waypoint-orch --timeout=180s
-	kubectl -n $(NAMESPACE) rollout status deployment/agentgateway-waypoint-orch --timeout=180s
+	# No proxy is created by this overlay, so there is no Gateway or rollout to wait for.
+	# What it adds to the central proxy is one route, waited for the way step-2b waits
+	# for the model route: Accepted by agentgateway's controller, or the target fails.
+	kubectl -n $(NAMESPACE) wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/orchestrator --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
 	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
@@ -475,13 +520,20 @@ export-trace:
 # route, because the failure injected on that hop is the model endpoint's 500.
 # The three route sets are:
 #
-#   waypoint  the `worker` HTTPRoute in `lab`, attached to the worker Service and
-#             served by the istiod-driven agentgateway waypoint (step 2)
+#   waypoint  the `worker` HTTPRoute in `lab`, the worker Service's hostname route on
+#             `agw-central`, the agentgateway-managed proxy that is its waypoint (step 2)
 #   ingress   `worker-ingress` and the `orchestrator-ingress` catch-all, both on
 #             the agentgateway ingress under agentgateway's own control plane
 #             (steps 2b and 2c)
-#   egress    `model-via-agw` in `agentgateway-egress`, the route to
-#             model.lab.internal on the egress waypoint (step 2b)
+#   egress    `model-via-agw` in `agentgateway-waypoint`, the route to
+#             model.lab.internal on `agw-central` in its egress role (step 2b)
+#
+# Since 2026-09-19 the waypoint and the egress route are served by ONE proxy, where
+# until then each had its own (an istiod-driven waypoint in `lab`, and `agw-egress` in
+# `agentgateway-egress`). The route names are the same; the egress route's namespace is
+# what changed. The stanza stays per route: `retry-on ROUTE=waypoint` patches `lab/worker`
+# and nothing else on that proxy. The `orchestrator` route the same proxy serves since
+# that day (step 2c) is in no route set.
 #
 # What these targets touch is routes and nothing else. The manifests come from
 # deploy/step-3-stress/retry/<route>/{off,on}, which read the step-2/2b/2c route
@@ -560,9 +612,13 @@ retry-off:
 #
 #   VIA=waypoint  in-cluster. Renders deploy/base/replay-job.yaml as Job
 #                 replay-$(LWI) and applies it; the pod is ztunnel-captured, so
-#                 the request reaches the receiver through that receiver's own
-#                 istiod-driven waypoint. The two client lines are in the pod
-#                 log, which `make ledgers LWI=<id>` collects.
+#                 the request reaches the receiver through the waypoint its
+#                 Service names, which since 2026-09-19 is `agw-central` for
+#                 both receivers (until then each receiver's own istiod-driven
+#                 waypoint). The target URL is the receiver Service's fully
+#                 qualified name, which is what that proxy's routes match on.
+#                 The two client lines are in the pod log, which
+#                 `make ledgers LWI=<id>` collects.
 #   VIA=ingress   out-of-cluster. Opens `kubectl port-forward` to the ingress
 #                 Service, runs the harness on this host against 127.0.0.1, and
 #                 stops the port-forward. port-forward is a TCP tunnel, not an

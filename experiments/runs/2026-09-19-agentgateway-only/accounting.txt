@@ -1,0 +1,52 @@
+# the build (build.txt)
+  header reads                                    0.614 s  from epoch 1789817468.616
+  gap                                             0.131 s  (status reads and log lines)
+  make teardown                                   1.322 s  exit=0
+  gap                                             0.153 s  (status reads and log lines)
+  make cluster-kind                              18.910 s  exit=0
+  gap                                             0.141 s  (status reads and log lines)
+  make step-1                                    67.490 s  exit=0
+  gap                                             0.135 s  (status reads and log lines)
+  make step-2                                   147.355 s  exit=0
+  gap                                             0.141 s  (status reads and log lines)
+  make step-2b                                   63.808 s  exit=0
+  gap                                             0.142 s  (status reads and log lines)
+  make step-2c                                   21.177 s  exit=0
+  gap                                             0.136 s  (status reads and log lines)
+  make step-3                                   110.991 s  exit=0
+  close                                           0.082 s  (after-status read and last line)
+  sum                                           432.728 s  against first-line-to-last 432.728 s
+
+# between the build and the readings
+  gap                                            22.642 s  build end -> first reading
+
+# the proof readings (checks.txt)
+  clean check                                    52.721 s  exit=0
+  gap                                             0.015 s
+  trace per work item REPS=2                    118.195 s  exit=0
+  gap                                             0.013 s
+  dangling parents (follow-ups 14 dangling.py,    0.034 s  exit=0
+  gap                                             0.014 s
+  GenAI spans per operation (follow-ups 14 gen    0.038 s  exit=0
+  gap                                             0.016 s
+  prometheus targets                              0.334 s  exit=0
+  gap                                             0.015 s
+  STRICT posture                                  0.129 s  exit=0
+  gap                                             0.015 s
+  plaintext probe, both receivers                 3.739 s  exit=0
+  gap                                             0.016 s
+  ztunnel connection security, every series      35.473 s  exit=0
+  gap                                             0.049 s
+  config dumps (follow-ups 17 config-dump.sh a    0.675 s  exit=0
+  gap                                             0.016 s
+  cluster facts                                   0.731 s  exit=0
+  gap                                             0.016 s
+  retry knobs on the new route names              2.115 s  exit=0
+  readings, first start to last end             214.369 s
+
+# What the one gap no log stamps held, stated by hand (2026-09-19, follow-ups 18, task 2):
+#   build end -> first reading: this agent's own turn between two tool calls. The wait on the driver ended by
+#   reading the last lines of the driver's output and of build.txt in the scratchpad; the next call made the run
+#   directory, copied hops.py into it, read `git status` over the deployed paths (empty) and appended one line to
+#   the controller's progress ledger, which git ignores; the call after that started checks.sh. No command reached
+#   the cluster in that interval, and no deployed path was written then or since.

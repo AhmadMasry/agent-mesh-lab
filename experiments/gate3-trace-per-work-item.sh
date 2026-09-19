@@ -10,13 +10,19 @@
 # The two paths are the ones the Gate 2 script established:
 #
 #   worker:       loadgen -> worker Service. The loadgen pod is ztunnel-captured, so
-#                 the request reaches the worker through the worker's own
-#                 istiod-driven agentgateway waypoint. The worker's model call leaves
-#                 through the egress waypoint.
+#                 the request reaches the worker through the waypoint the worker
+#                 Service names, `agw-central`. The worker's model call leaves
+#                 through the same proxy, in its egress role.
 #   orchestrator: loadgen -> orchestrator Service for the card; the card advertises the
 #                 agentgateway ingress, so the SendMessage POST enters through the
-#                 ingress, and the orchestrator forwards to the worker through the
-#                 worker's waypoint.
+#                 ingress, and the orchestrator forwards to the worker through
+#                 `agw-central`.
+#
+# Since 2026-09-19 (the author's decision of that day in docs/proposal-notes.md) one
+# agentgateway-managed proxy, `agw-central`, is the waypoint for both agents and the
+# egress for the model host. Until then the worker path crossed an istiod-driven waypoint
+# and a separate egress proxy, and the orchestrator path a second istiod-driven waypoint;
+# run directories dated before that day name those proxies in their summaries.
 #
 # One Job per work item, backoffLimit 0, one send. No retry logic anywhere.
 #
@@ -51,12 +57,18 @@ ORCH_URL="http://orchestrator.lab.svc.cluster.local:8080"
 # is counted as having produced a span when a span's service.name is this string; the
 # summary also prints every service that did appear, so a hop that named itself
 # something else shows up there rather than being silently counted as missing.
-# The orchestrator path crosses two istiod-driven waypoints, not one: the card fetch
-# goes to the orchestrator Service in-cluster and so crosses that Service's waypoint,
-# while the SendMessage POST goes through the ingress, which dials pods and crosses
-# none; the forward to the worker then crosses the worker's waypoint.
-HOPS_WORKER="loadgen agentgateway-waypoint worker agw-egress mockllm"
-HOPS_ORCH="loadgen agentgateway-waypoint-orch agentgateway-ingress orchestrator agentgateway-waypoint worker agw-egress mockllm"
+#
+# `agw-central` is listed once per path although it serves more than one leg of each (it
+# holds the worker's route, the orchestrator's and the model host's): one proxy has one
+# service.name, so this list can say whether that proxy produced a span, not which of its
+# legs did. How many spans it produced per work item is in spans_by_service. Telling its
+# legs apart needs something other than the service name, which is what
+# experiments/lib/derive-layer.sh keys on (EGRESS_SERVICE); that is a later task's.
+# Until 2026-09-19 the lists named five and eight hops: `agentgateway-waypoint` and
+# `agw-egress` on the worker path, and those two plus `agentgateway-waypoint-orch` on the
+# orchestrator path.
+HOPS_WORKER="loadgen agw-central worker mockllm"
+HOPS_ORCH="loadgen agw-central agentgateway-ingress orchestrator worker mockllm"
 
 mkdir -p "$RUN_DIR"
 

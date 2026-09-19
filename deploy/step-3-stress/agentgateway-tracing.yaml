@@ -1,5 +1,8 @@
-# OTLP export for the two proxies that agentgateway's own control plane drives: the
-# ingress in front of Agent A and the egress waypoint in front of the model.
+# OTLP export for the two proxies that agentgateway's own control plane drives, which since
+# 2026-09-19 are every L7 proxy this lab has: the ingress in front of Agent A, and
+# `agw-central`, the waypoint for both agents and the egress in front of the model. One
+# AgentgatewayPolicy per Gateway and nothing else: no `config.tracing`, no Gateway
+# `parametersRef` carrying tracing, no class-wide parameters (the author's ruling of that day).
 #
 # The proxy emits no traces until asked to ("The agentgateway proxy does not emit
 # traces by default", the project's tracing setup page), and what asks it is an
@@ -19,8 +22,19 @@
 # defaults to false, clientSampling decides one that does and defaults to true. This
 # lab counts hops, so a sampled-away hop would read as a missing one; both are on.
 #
-# The two istiod-driven waypoints in `lab` are not targeted here. Whether a policy
-# reaches them at all is the Task 1 spike, recorded in findings.md.
+# A `frontend` policy targets a Gateway and nothing smaller: the CRD's own validation
+# message at v1.5.0 is "the 'frontend' field can only target a Gateway"
+# (controller/api/v1alpha1/agentgateway/agentgateway_policy_types.go line 61, read
+# 2026-09-19). So one policy covers all three routes `agw-central` serves.
+#
+# Until 2026-09-19 the second object below targeted `agw-egress` in `agentgateway-egress`,
+# and the two istiod-driven waypoints in `lab` were not targeted, because a policy did not
+# reach them: it read Attached and was never delivered, in both repetitions (findings.md,
+# `## Gate 3 / go receiver / the documented AgentgatewayPolicy tracing on an istiod-managed
+# agentgateway waypoint`). Their spans came from a Deployment overlay instead
+# (waypoint-tracing-config.yaml, read from git history), which is gone with them. That this
+# policy is delivered to `agw-central` is read from the proxy's own /config_dump in the
+# findings entry that ships with this change.
 apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
@@ -45,12 +59,12 @@ apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
   name: tracing
-  namespace: agentgateway-egress
+  namespace: agentgateway-waypoint
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      name: agw-egress
+      name: agw-central
   frontend:
     tracing:
       backendRef:

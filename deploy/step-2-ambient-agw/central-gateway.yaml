@@ -1,0 +1,120 @@
+# The one L7 proxy between the agents and in front of the model: `agw-central`, an agentgateway
+# proxy under agentgateway's OWN control plane (GatewayClass `agentgateway`), in a namespace of
+# its own that is not enrolled in ambient. From this step it is the waypoint for the worker
+# Service; step 2b adds the model host to it (the egress role) and step 2c the orchestrator
+# Service. Istio does L4 only: ztunnel capture, identity and mesh-wide STRICT mTLS.
+#
+# The decision is the author's, dated 2026-09-19 in docs/proposal-notes.md. Until then this
+# step created an istiod-driven waypoint of class `istio-agentgateway-waypoint` in `lab`
+# (waypoint.yaml, read from git history), and step 2c a second one for the orchestrator.
+#
+# WHAT IS DOCUMENTED AND WHAT IS NOT. Said plainly, because the shape rests on both.
+#
+#   documented   The object shape is agentgateway's Istio ambient EGRESS page, unchanged except
+#                for the names and the port: a namespace that is left unlabelled, an
+#                AgentgatewayParameters with `istio.enabled` and a ClusterIP Service, and a
+#                Gateway of class `agentgateway` labelled `istio.io/waypoint-for: service` with
+#                an HBONE listener on 15008 and an internal HTTP listener for route attachment,
+#                both with allowedRoutes from All. Read 2026-09-19 from the site source,
+#                github.com/agentgateway/website at commit 10cda98d,
+#                assets/agw-docs/pages/integrations/istio/ambient/ambient-egress.md (last
+#                changed in 3f96d16e), lines 98-101 and 105-160:
+#                  "By default, leave the `agentgateway-egress` namespace unlabeled for ambient
+#                   mode. If you do label that namespace with `istio.io/dataplane-mode=ambient`,
+#                   make sure the waypoint pods opt out with `istio.io/dataplane-mode=none`;
+#                   otherwise ztunnel capture can conflict with the waypoint's HBONE listener on
+#                   port `15008`."
+#                  "The internal listener is a routing attachment point, not a direct entry
+#                   socket."
+#
+#   not documented
+#                agentgateway documents no in-mesh waypoint role for a proxy under its own
+#                control plane. At that commit its published Istio section,
+#                content/docs/kubernetes/latest/integrations/istio/, holds exactly three files:
+#                _index.md, ambient-egress.md and ambient-ingress.md. The section's index says
+#                it covers AI traffic "entering, leaving, or moving within your service mesh";
+#                the two pages cover entering and leaving. The assets directory also holds a
+#                waypoint.md, which no published page includes: its class is `kgateway-waypoint`
+#                and its first lines read "The waypoint integration for Envoy-based gateway
+#                proxies is deprecated". So binding in-mesh Services to this Gateway is the
+#                egress page's mechanism applied to a destination that page does not describe.
+#                It is measured in this lab, not documented by the project.
+#
+#   outside the listed versions
+#                agentgateway's version table (assets/agw-docs/pages/reference/versions.md,
+#                line 7, same commit) lists Istio "1.23 - 1.30" for agentgateway 1.5.x. This
+#                lab runs Istio 1.31.0. Every count taken on this shape is at that pairing.
+#
+# Both are recorded in versions.yaml under `agentgateway-managed-central-waypoint`.
+#
+# Why another namespace works at all is Istio's, from its waypoint page (istio.io source at
+# commit 4b4bd5fb, content/en/docs/ambient/usage/waypoint/index.md, lines 316-352, read
+# 2026-09-19): "Beginning with Istio 1.23, it is possible to use waypoints in different
+# namespaces"; "the `Gateway` should be configured to allow routes from other namespaces"; and
+# "The keyword `All` may be specified as the value for `allowedRoutes.namespaces.from` in order
+# to allow routes from any namespace." The Services name this Gateway with two labels; see
+# worker-use-waypoint.yaml.
+#
+# `from: All` on BOTH listeners, as the egress page has it. The HBONE listener is the one
+# Istio's sentence above is about. The internal listener is the one the HTTPRoutes name, and
+# those routes live beside their Services in `lab`, so they attach across namespaces; the
+# Gateway API handshake for that direction is recorded in versions.yaml under
+# `gateway-api-cross-namespace-route-attachment`.
+#
+# Why 8080. The egress page, line 347: "Match the waypoint `inner-http` listener port and
+# `agentgateway.dev/internal-ports` value to the destination port that you want to route." The
+# worker, the orchestrator and model.lab.internal all listen on 8080, so one internal listener
+# receives all three and the HTTPRoute hostnames tell them apart.
+#
+# The namespace carries no `istio.io/dataplane-mode` label, by the page's first sentence quoted
+# above. What the proxy pod's own label reads, and that the proxy is not ztunnel-captured, is
+# read from the rebuilt cluster in this commit's findings entry rather than asserted here.
+#
+# No retry stanza anywhere and no filter. The proxy's tracing and access-log policies are step
+# 3's (deploy/step-3-stress/agentgateway-tracing.yaml), not this file's.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agentgateway-waypoint
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: agw-central-params
+  namespace: agentgateway-waypoint
+spec:
+  istio:
+    enabled: true
+  service:
+    spec:
+      type: ClusterIP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agw-central
+  namespace: agentgateway-waypoint
+  labels:
+    istio.io/waypoint-for: service
+  annotations:
+    agentgateway.dev/internal-ports: "8080"
+spec:
+  gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef:
+      group: agentgateway.dev
+      kind: AgentgatewayParameters
+      name: agw-central-params
+  listeners:
+    - name: mesh
+      port: 15008
+      protocol: HBONE
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: inner-http
+      port: 8080
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: All

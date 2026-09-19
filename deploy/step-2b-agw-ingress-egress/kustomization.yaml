@@ -1,8 +1,18 @@
-# Step 2b: step 2 plus two more agentgateway proxies, both driven by agentgateway's own
-# control plane (GatewayClass `agentgateway`, installed by `make step-2b` from the
-# project's Helm charts) rather than by istiod. istiod keeps the waypoint between the
-# two agents exactly as step 2 left it. Applies on top of step 2; nothing is edited in
-# place. The decision this overlay implements is dated 2026-09-08 in
+# Step 2b: step 2 plus the way in and the way out, both on proxies driven by agentgateway's
+# own control plane (GatewayClass `agentgateway`, installed by `make step-2` from the
+# project's Helm charts since 2026-09-19, and by `make step-2b` before that):
+#
+#   ingress.yaml   a second agentgateway proxy, the ingress in front of Agent A, in its own
+#                  ambient namespace. Unchanged by the 2026-09-19 decision.
+#   egress.yaml    the egress ROLE on the proxy step 2 already created: the model host as a
+#                  ServiceEntry bound to `agw-central`, with its backend and its route there.
+#                  Until 2026-09-19 this file created a third proxy, `agw-egress`, for it.
+#
+# Applies on top of step 2; nothing is edited in place: step 2's Gateway, its route and the
+# worker Service's labels are as step 2 left them, and this overlay only adds objects and the
+# two model URL patches. The decisions this overlay implements are dated 2026-09-08 (ingress
+# and egress under agentgateway's own control plane) and 2026-09-19 (one agentgateway-managed
+# proxy for the waypoint and the egress roles; no istiod-driven waypoint) in
 # docs/proposal-notes.md.
 #
 # peer-authentication-ingress-metrics.yaml is here rather than with the mesh-wide STRICT

@@ -1,6 +1,7 @@
-# OTLP access-log export for the two proxies agentgateway's own control plane drives:
-# the ingress in front of Agent A and the egress waypoint in front of the model. The
-# same two Gateways that already export traces under agentgateway-tracing.yaml.
+# OTLP access-log export for the two proxies agentgateway's own control plane drives, which
+# since 2026-09-19 are every L7 proxy this lab has: the ingress in front of Agent A, and
+# `agw-central`, the waypoint for both agents and the egress in front of the model. The
+# same two Gateways that export traces under agentgateway-tracing.yaml.
 #
 # Source, read 2026-09-12:
 # https://agentgateway.dev/docs/kubernetes/latest/documentation/observability/access-logs/export.md
@@ -20,9 +21,10 @@
 # resources that it targets" (the targeting page), while the backendRef names a Service
 # in another namespace.
 #
-# The two istiod-driven waypoints in lab are deliberately not targeted. Whether an
-# AgentgatewayPolicy reaches them at all is what the waypoint measurement in findings.md
-# answers; a policy here would prejudge it.
+# Until 2026-09-19 the second object below targeted `agw-egress` in `agentgateway-egress`, and
+# the two istiod-driven waypoints then in `lab` were not targeted at all, because an
+# AgentgatewayPolicy did not reach them (agentgateway-tracing.yaml names the entry). With
+# every proxy under agentgateway's own control plane, each Gateway has the policy beside it.
 #
 # Metrics are not exported over OTLP because v1.5.0 documents no way to do it: the data
 # plane's metrics are a Prometheus endpoint on 15020, and spec.frontend.metrics carries
@@ -52,12 +54,12 @@ apiVersion: agentgateway.dev/v1alpha1
 kind: AgentgatewayPolicy
 metadata:
   name: access-logs
-  namespace: agentgateway-egress
+  namespace: agentgateway-waypoint
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      name: agw-egress
+      name: agw-central
   frontend:
     accessLog:
       otlp:

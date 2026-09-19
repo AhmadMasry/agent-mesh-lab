@@ -14,25 +14,31 @@
 # What this adds:
 #   namespace.yaml         the telemetry namespace, deliberately not ambient-enrolled
 #   agentgateway-tracing.yaml
-#                          OTLP export for the ingress and the egress waypoint, the two
-#                          proxies agentgateway's own control plane drives
+#                          OTLP export for the ingress and for `agw-central`, the two
+#                          proxies agentgateway's own control plane drives and, since
+#                          2026-09-19, every L7 proxy in the lab: one AgentgatewayPolicy
+#                          beside each Gateway
 #   agentgateway-access-logs.yaml
 #                          OTLP access-log export for the same two agentgateway-driven
 #                          proxies. Their stdout access logs are unaffected: the project's
 #                          page says export "happens in addition to the standard stdout
 #                          output". No metrics are exported over OTLP, because v1.5.0
 #                          documents no way to do it
-#   waypoint-tracing-config.yaml
-#                          the agentgateway configuration that makes the two istiod-driven
-#                          waypoints emit spans: config.tracing in the --config argument
-#                          istiod passes empty, delivered by the Gateway parametersRef
-#                          Deployment overlay. Measured on 2026-09-12 and kept; the file
-#                          says which halves are documented and which join is a probe
-#   istio-tracing.yaml     the Telemetry resources that select the `otel-tracing`
-#                          provider the step-2 mesh configuration declares: one
-#                          mesh-wide in istio-system, one per waypoint in lab. A
-#                          waypoint needs the targetRefs form; the reference says
-#                          selector policies are ignored for waypoints
+#
+# What this no longer adds, since 2026-09-19 (the author's decision of that day in
+# docs/proposal-notes.md; each file is read from git history):
+#   waypoint-tracing-config.yaml, waypoint-parameters-patch.yaml
+#                          the agentgateway `config.tracing` that made the two istiod-driven
+#                          waypoints emit spans, delivered through a Gateway parametersRef
+#                          Deployment overlay: a probe that joined two documented halves.
+#                          The waypoints it served are retired, and the proxy that replaces
+#                          them takes the documented policy above
+#   istio-tracing.yaml     three Telemetry objects selecting the `otel-tracing` provider: one
+#                          mesh-wide, one per waypoint. Istio's tracing defaults are now Helm
+#                          values (`meshConfig.defaultProviders` and
+#                          `defaultConfig.tracing.sampling` in
+#                          deploy/step-2-ambient-agw/istio-values.yaml) and this lab applies
+#                          no Telemetry object
 #
 # What the patches add:
 #   orchestrator-instrumentation.yaml
@@ -55,12 +61,7 @@ resources:
   - namespace.yaml
   - agentgateway-tracing.yaml
   - agentgateway-access-logs.yaml
-  - waypoint-tracing-config.yaml
-  - istio-tracing.yaml
 patches:
-  # Adds spec.infrastructure.parametersRef to the two waypoint Gateways, which step 2
-  # and step 2c created without one.
-  - path: waypoint-parameters-patch.yaml
   - path: orchestrator-instrumentation.yaml
     target:
       kind: Deployment

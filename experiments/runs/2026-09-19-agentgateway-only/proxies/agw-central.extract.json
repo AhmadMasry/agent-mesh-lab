@@ -1,0 +1,93 @@
+{
+  "agentgateway_version": {
+    "build_profile": "release",
+    "build_target": "aarch64-unknown-linux-gnu",
+    "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+    "rust_version": "1.98.0",
+    "version": "1.5.0"
+  },
+  "config": {
+    "tracing": null,
+    "xds": {
+      "address": "https://agentgateway.agentgateway-system.svc.cluster.local:9978",
+      "auth": {
+        "token": [
+          "./var/run/secrets/xds-tokens/xds-token",
+          "Kubernetes"
+        ]
+      },
+      "caCert": {
+        "File": "/etc/xds-tls/ca.crt"
+      },
+      "gateway": "agw-central",
+      "headers": [],
+      "localConfig": "/config/config.yaml",
+      "namespace": "agentgateway-waypoint"
+    }
+  },
+  "policies": [
+    {
+      "key": "frontend/agentgateway-waypoint/access-logs:frontend-logging:agentgateway-waypoint/agw-central",
+      "name": {
+        "kind": "AgentgatewayPolicy",
+        "name": "access-logs",
+        "namespace": "agentgateway-waypoint"
+      },
+      "policy": {
+        "frontend": {
+          "accessLog": {
+            "otlp": {
+              "protocol": "grpc",
+              "service": {
+                "name": "telemetry/otel-collector.telemetry.svc.cluster.local",
+                "port": 4317
+              }
+            }
+          }
+        }
+      },
+      "target": {
+        "gateway": {
+          "gatewayName": "agw-central",
+          "gatewayNamespace": "agentgateway-waypoint",
+          "listenerName": null
+        }
+      }
+    },
+    {
+      "key": "frontend/agentgateway-waypoint/tracing:frontend-tracing:agentgateway-waypoint/agw-central",
+      "name": {
+        "kind": "AgentgatewayPolicy",
+        "name": "tracing",
+        "namespace": "agentgateway-waypoint"
+      },
+      "policy": {
+        "frontend": {
+          "tracing": {
+            "attributes": {},
+            "clientSampling": "true",
+            "path": "/v1/traces",
+            "protocol": "grpc",
+            "randomSampling": "true",
+            "remove": [],
+            "resources": {},
+            "service": {
+              "name": "telemetry/otel-collector.telemetry.svc.cluster.local",
+              "port": 4317
+            }
+          }
+        }
+      },
+      "target": {
+        "gateway": {
+          "gatewayName": "agw-central",
+          "gatewayNamespace": "agentgateway-waypoint",
+          "listenerName": null
+        }
+      }
+    }
+  ],
+  "policies_count": 2,
+  "source_bytes": 46315,
+  "source_sha256": "d3abc612ec2a9f6e88bedae12661cd06cec9023f9564df328302becd31b922eb"
+}
