@@ -1,0 +1,258 @@
+# The worker's own close-after-read at the tree of the commit that marks it (the live AFTER): 2026-09-19T19:49:16Z. python3 experiments/runs/2026-09-19-currency-rebuild/worker-span/worker-span-reading.py (task 3's reading tool, unedited) on the work item gate3-matrix.sh RUN=R1 SUB=http RECEIVER=go REPS=1 DRY_RUN=off sent on this cluster. Task 3's reading (h), experiments/runs/2026-09-19-currency-rebuild/worker-span/before-live-close-after-read.txt, is the live BEFORE.
+# experiments/runs/2026-09-19-worker-span-rebuild/worker-span/close-after-read/a3m-r1-go-http-fu3ch-01: 17 spans; by service: agw-central=8|loadgen=3|mockllm=1|worker=5
+## 1. the worker's server span(s), in start order: 3 span(s)
+  service=worker scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=GET /.well-known/agent-card.json
+    kind=server
+    status.code=Unset
+    status.description=""
+    lab.injection=<absent>
+    http.request.method=GET
+    http.response.status_code=200
+    url.path=/.well-known/agent-card.json
+    lab.work_item=a3m-r1-go-http-fu3ch-01
+    duration_ms=0.1 events=0 span_id=fa3c67c950f1d149 parent=cc054a7f30f323b3
+    every attribute:
+      client.address=10.244.1.13
+      http.request.method=GET
+      http.response.body.size=437
+      http.response.status_code=200
+      lab.caller=loadgen
+      lab.work_item=a3m-r1-go-http-fu3ch-01
+      network.peer.address=10.244.1.13
+      network.peer.port=40941
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.path=/.well-known/agent-card.json
+      url.scheme=http
+      user_agent.original=Go-http-client/1.1
+  service=worker scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=POST /
+    kind=server
+    status.code=Error
+    status.description="injected: close-after-read"
+    lab.injection=close-after-read
+    http.request.method=POST
+    http.response.status_code=200
+    url.path=/
+    lab.work_item=a3m-r1-go-http-fu3ch-01
+    duration_ms=0.1 events=0 span_id=39658848008962d3 parent=354d35f7ed1ec668
+    every attribute:
+      client.address=10.244.1.13
+      http.request.body.size=294
+      http.request.method=POST
+      http.response.status_code=200
+      lab.caller=loadgen
+      lab.injection=close-after-read
+      lab.work_item=a3m-r1-go-http-fu3ch-01
+      network.peer.address=10.244.1.13
+      network.peer.port=40941
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.path=/
+      url.scheme=http
+      user_agent.original=Go-http-client/1.1
+  service=worker scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=POST /
+    kind=server
+    status.code=Unset
+    status.description=""
+    lab.injection=<absent>
+    http.request.method=POST
+    http.response.status_code=200
+    url.path=/
+    lab.work_item=a3m-r1-go-http-fu3ch-01
+    duration_ms=209.0 events=0 span_id=a5759494bcfbe2ff parent=206b847ab9f93d1c
+    every attribute:
+      client.address=10.244.1.13
+      http.request.body.size=294
+      http.request.method=POST
+      http.response.body.size=590
+      http.response.status_code=200
+      lab.caller=loadgen
+      lab.work_item=a3m-r1-go-http-fu3ch-01
+      network.peer.address=10.244.1.13
+      network.peer.port=51459
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.path=/
+      url.scheme=http
+      user_agent.original=Go-http-client/1.1
+## 2. the proxy's entry span(s) on the agent route lab/worker, in start order: 3 span(s)
+  service=agw-central scope=agentgateway
+    name=GET /*
+    kind=server
+    status.code=Unset
+    status.description=""
+    http.method=GET
+    http.status=200
+    reason=<absent>
+    route=lab/worker
+    retry.attempt=<absent>
+    duration_ms=0.4 events=0 span_id=d4dede3b0fadca2d parent=f01fffded43ea688
+    every attribute:
+      duration=0ms
+      endpoint=10.244.1.19:8080
+      gateway=agentgateway-waypoint/agw-central
+      http.host=worker.lab.svc.cluster.local
+      http.method=GET
+      http.path=/.well-known/agent-card.json
+      http.status=200
+      http.version=HTTP/1.1
+      listener=inner-http
+      network.protocol.version=1.1
+      protocol=http
+      route=lab/worker
+      span.id=d4dede3b0fadca2d
+      src.addr=10.244.1.36:41356
+      src.identity=spiffe://cluster.local/ns/lab/sa/default
+      trace.id=cee1c4455ed52261338338e3de9c6a79
+      url.scheme=http
+  service=agw-central scope=agentgateway
+    name=POST /*
+    kind=server
+    status.code=Error
+    status.description="upstream call failed: SendRequest: connection closed before message completed"
+    http.method=POST
+    http.status=503
+    reason=UpstreamFailure
+    route=lab/worker
+    retry.attempt=<absent>
+    duration_ms=0.3 events=0 span_id=91f217053654845f parent=ed6216f8fd7e5a6b
+    every attribute:
+      duration=0ms
+      endpoint=10.244.1.19:8080
+      gateway=agentgateway-waypoint/agw-central
+      http.host=worker.lab.svc.cluster.local
+      http.method=POST
+      http.path=/
+      http.status=503
+      http.version=HTTP/1.1
+      listener=inner-http
+      network.protocol.version=1.1
+      protocol=http
+      reason=UpstreamFailure
+      route=lab/worker
+      span.id=91f217053654845f
+      src.addr=10.244.1.36:41356
+      src.identity=spiffe://cluster.local/ns/lab/sa/default
+      trace.id=0b1e2b89bd6e953d8c67241110dca7cd
+      url.scheme=http
+  service=agw-central scope=agentgateway
+    name=POST /*
+    kind=server
+    status.code=Unset
+    status.description=""
+    http.method=POST
+    http.status=200
+    reason=<absent>
+    route=lab/worker
+    retry.attempt=<absent>
+    duration_ms=250.3 events=0 span_id=3b0ffc5ae1f99eb1 parent=ed6216f8fd7e5a6b
+    every attribute:
+      duration=250ms
+      endpoint=10.244.1.19:8080
+      gateway=agentgateway-waypoint/agw-central
+      http.host=worker.lab.svc.cluster.local
+      http.method=POST
+      http.path=/
+      http.status=200
+      http.version=HTTP/1.1
+      listener=inner-http
+      network.protocol.version=1.1
+      protocol=http
+      route=lab/worker
+      span.id=3b0ffc5ae1f99eb1
+      src.addr=10.244.1.36:41356
+      src.identity=spiffe://cluster.local/ns/lab/sa/default
+      trace.id=0b1e2b89bd6e953d8c67241110dca7cd
+      url.scheme=http
+## 3. the load client's client span(s), in start order: 3 span(s)
+  service=loadgen scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=HTTP GET
+    kind=client
+    status.code=Unset
+    status.description=""
+    http.request.method=GET
+    http.response.status_code=200
+    error.type=<absent>
+    http.request.resend_count=<absent>
+    duration_ms=110.4 events=0 span_id=f01fffded43ea688 parent=<none>
+    every attribute:
+      http.request.method=GET
+      http.response.status_code=200
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.full=http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json
+  service=loadgen scope=github.com/AhmadMasry/agent-mesh-lab/internal/otel
+    name=invoke_agent worker
+    kind=client
+    status.code=Unset
+    status.description=""
+    http.request.method=<absent>
+    http.response.status_code=<absent>
+    error.type=<absent>
+    http.request.resend_count=<absent>
+    duration_ms=251.7 events=0 span_id=bdd3bd40ae80d600 parent=<none>
+    every attribute:
+      gen_ai.agent.description=agent-mesh-lab agent: one model call per message
+      gen_ai.agent.name=worker
+      gen_ai.agent.version=0.0.0
+      gen_ai.conversation.id=01a0bb37-04e8-70d5-8a63-25b201f04bfe
+      gen_ai.operation.name=invoke_agent
+      gen_ai.provider.name=a2a
+      lab.caller=loadgen
+      lab.message_id=01a0bb37-04be-7241-bed1-d033cd6d723b
+      lab.work_item=a3m-r1-go-http-fu3ch-01
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+  service=loadgen scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=HTTP POST
+    kind=client
+    status.code=Unset
+    status.description=""
+    http.request.method=POST
+    http.response.status_code=200
+    error.type=<absent>
+    http.request.resend_count=<absent>
+    duration_ms=251.4 events=0 span_id=ed6216f8fd7e5a6b parent=bdd3bd40ae80d600
+    every attribute:
+      http.request.method=POST
+      http.response.status_code=200
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.full=http://worker.lab.svc.cluster.local:8080
+## 4. the ledgers
+  ingress: deliveries (JSON-RPC arrivals) = 2 (SendMessage@worker, SendMessage@worker)
+  execution: received = 1, execute = 1, tasks (distinct taskId) = 1
+    execution line: event=state state=TASK_STATE_SUBMITTED error=""
+    execution line: event=state state=TASK_STATE_WORKING error=""
+    execution line: event=state state=TASK_STATE_COMPLETED error=""
+    execution line: event=result state=TASK_STATE_COMPLETED error=""
+  invocation: lines = 1; by outcome: ok=1
+    invocation line: caller=worker injection=none outcome=ok latency_ms=206.479
+  client line: attempt=1 result_kind=task state=TASK_STATE_COMPLETED error=""
+
+## the row's own attribution:
+work item a3m-r1-go-http-fu3ch-01
+layer=client-http
+reason=the two worker server spans have distinct parent span ids 354d35f7ed1ec668 and 206b847ab9f93d1c that do not converge on one proxy span / so each attempt crossed the proxy separately / client lines 1 which does not separate the two layers because the lab's HTTP retry loops below the line the client prints / a proxy that exports nothing leaves both parents dangling and is caught by the shared-parent rule instead because Task 2 measured the istiod-driven waypoint (retired 2026-09-19) issuing one span id for both of its own attempts
+spans by service: agw-central=8|loadgen=3|mockllm=1|worker=5
+parents of the receiver POST spans, in start order: agw-central+agw-central
+parents of the model endpoint POST spans, in start order: agw-central
+route column in the exported trace: yes
+proxy entry above each receiver POST span, in start order: agw-central lab/worker retry.attempt=(none) + agw-central lab/worker retry.attempt=(none)
+calls that entered the model route agentgateway-waypoint/model-via-agw: 1
+routes named like the model route under another namespace, with their POST entries: (none)
+upstream attempts the proxy made under those calls: 1
+retry.attempt on those model route entries, in start order: (none)
+receiver POST server span ids, in start order: 39658848008962d3 a5759494bcfbe2ff
+receiver POST server span parent ids, in start order: 354d35f7ed1ec668 206b847ab9f93d1c
+parents of those parents, in start order: 91f217053654845f 3b0ffc5ae1f99eb1
+ledgers: deliveries=2 dispatched=1 invocations=1 client_lines=1
+identity across the first two arrivals: messageId_same=yes rpc_id_same=yes body_same=yes

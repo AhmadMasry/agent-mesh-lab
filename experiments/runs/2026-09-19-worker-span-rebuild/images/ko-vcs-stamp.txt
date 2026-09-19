@@ -1,0 +1,25 @@
+# Why a ko-built image of a package whose sources did not change has another digest at another commit. Read 2026-09-19T19:54:29Z, on the host, no cluster action.
+# WHAT THIS IS: `go version -m` of /ko-app/mockllm copied out of the image ko.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:latest
+# (image id sha256:35501f9b923e7d9f393c426d9819dcfd9fb2403171a57ca911bdb529d3c84d7b), which is the image follow-ups 19 task 3's `make scan-images` built into the Docker daemon
+# at the tree of the commit task 3's rebuild proved. WHAT THIS IS NOT: a binary of THIS rebuild -- the images this
+# cluster runs were loaded by ko into the kind nodes and nothing was copied out of a node. Only the build-setting
+# lines are kept; the module list is in task 3's scan/go-binary-modules.csv.
+# $ docker create <image>; docker cp <container>:/ko-app/mockllm <scratch>; docker rm <container>; go version -m <scratch>/mockllm | grep '^.build'
+	build	-buildmode=exe
+	build	-compiler=gc
+	build	-trimpath=true
+	build	CGO_ENABLED=0
+	build	GOARCH=arm64
+	build	GOOS=linux
+	build	GOARM64=v8.0
+	build	vcs=git
+	build	vcs.revision=96e854319c924f9f5f2564354c7c893446c6cb2d
+	build	vcs.time=2026-09-19T17:59:13Z
+	build	vcs.modified=true
+# That image id is the one task 3's scan record names for mockllm (experiments/runs/2026-09-19-currency-rebuild/scan/
+# scan-context.txt l.40, and scan/mockllm.json).
+# Reading: the Go toolchain stamps vcs.revision (the commit), vcs.time and vcs.modified into every binary ko builds
+# here, so a binary built at another commit differs in those bytes whatever its package's sources are, and its image
+# has another digest. Why THAT binary reads vcs.modified=true is not established here (task 3's scan ran while its run
+# directory lay uncommitted in the checkout, which may be it); it says nothing about this rebuild, whose build.txt
+# reads `git status --short` empty before every target.

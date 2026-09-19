@@ -1,0 +1,279 @@
+# BEFORE: experiments/runs/2026-09-19-currency-rebuild/worker-span/before-live-close-after-read.txt
+# AFTER:  experiments/runs/2026-09-19-worker-span-rebuild/worker-span/after-live-close-after-read.txt
+# every row: verdict, field, BEFORE | AFTER
+## spans in the trace, by service
+    same     span count and services              17 spans; by service: agw-central=8|loadgen=3|mockllm=1|worker=5 | 17 spans; by service: agw-central=8|loadgen=3|mockllm=1|worker=5
+## 1. the worker's server span(s), in start order: 3 span(s)
+  span 1 of the section (start order): GET /.well-known/agent-card.json | GET /.well-known/agent-card.json
+    same     service                              worker | worker
+    same     scope                                go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp | go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    same     name                                 GET /.well-known/agent-card.json | GET /.well-known/agent-card.json
+    same     kind                                 server | server
+    same     status.code                          Unset | Unset
+    same     status.description                   "" | ""
+    same     lab.injection                        <absent> | <absent>
+    same     http.request.method                  GET | GET
+    same     http.response.status_code            200 | 200
+    same     url.path                             /.well-known/agent-card.json | /.well-known/agent-card.json
+    per-run  lab.work_item                        a3m-r1-go-http-fu19h-01 | a3m-r1-go-http-fu3ch-01
+    same     duration_ms                          0.1 | 0.1
+    same     events                               0 | 0
+    per-run  span_id                              9f026862f8cef263 | fa3c67c950f1d149
+    per-run  parent                               de0b2ed015dc5a25 | cc054a7f30f323b3
+    same     attr:client.address                  10.244.1.13 | 10.244.1.13
+    same     attr:http.request.method             GET | GET
+    same     attr:http.response.body.size         437 | 437
+    same     attr:http.response.status_code       200 | 200
+    same     attr:lab.caller                      loadgen | loadgen
+    per-run  attr:lab.work_item                   a3m-r1-go-http-fu19h-01 | a3m-r1-go-http-fu3ch-01
+    same     attr:network.peer.address            10.244.1.13 | 10.244.1.13
+    per-run  attr:network.peer.port               60341 | 40941
+    same     attr:network.protocol.version        1.1 | 1.1
+    same     attr:server.address                  worker.lab.svc.cluster.local | worker.lab.svc.cluster.local
+    same     attr:server.port                     8080 | 8080
+    same     attr:url.path                        /.well-known/agent-card.json | /.well-known/agent-card.json
+    same     attr:url.scheme                      http | http
+    same     attr:user_agent.original             Go-http-client/1.1 | Go-http-client/1.1
+  span 2 of the section (start order): POST / | POST /
+    same     service                              worker | worker
+    same     scope                                go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp | go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    same     name                                 POST / | POST /
+    same     kind                                 server | server
+    DIFFERS  status.code                          Unset | Error
+    DIFFERS  status.description                   "" | "injected: close-after-read"
+    DIFFERS  lab.injection                        <absent> | close-after-read
+    same     http.request.method                  POST | POST
+    same     http.response.status_code            200 | 200
+    same     url.path                             / | /
+    per-run  lab.work_item                        a3m-r1-go-http-fu19h-01 | a3m-r1-go-http-fu3ch-01
+    same     duration_ms                          0.1 | 0.1
+    same     events                               0 | 0
+    per-run  span_id                              8d2474af5ac2b3b9 | 39658848008962d3
+    per-run  parent                               69ad7cebff866366 | 354d35f7ed1ec668
+    same     attr:client.address                  10.244.1.13 | 10.244.1.13
+    same     attr:http.request.body.size          294 | 294
+    same     attr:http.request.method             POST | POST
+    same     attr:http.response.status_code       200 | 200
+    same     attr:lab.caller                      loadgen | loadgen
+    per-run  attr:lab.work_item                   a3m-r1-go-http-fu19h-01 | a3m-r1-go-http-fu3ch-01
+    same     attr:network.peer.address            10.244.1.13 | 10.244.1.13
+    per-run  attr:network.peer.port               60341 | 40941
+    same     attr:network.protocol.version        1.1 | 1.1
+    same     attr:server.address                  worker.lab.svc.cluster.local | worker.lab.svc.cluster.local
+    same     attr:server.port                     8080 | 8080
+    same     attr:url.path                        / | /
+    same     attr:url.scheme                      http | http
+    same     attr:user_agent.original             Go-http-client/1.1 | Go-http-client/1.1
+    DIFFERS  attr:lab.injection                   <not printed> | close-after-read
+  span 3 of the section (start order): POST / | POST /
+    same     service                              worker | worker
+    same     scope                                go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp | go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    same     name                                 POST / | POST /
+    same     kind                                 server | server
+    same     status.code                          Unset | Unset
+    same     status.description                   "" | ""
+    same     lab.injection                        <absent> | <absent>
+    same     http.request.method                  POST | POST
+    same     http.response.status_code            200 | 200
+    same     url.path                             / | /
+    per-run  lab.work_item                        a3m-r1-go-http-fu19h-01 | a3m-r1-go-http-fu3ch-01
+    per-run  duration_ms                          206.7 | 209.0
+    same     events                               0 | 0
+    per-run  span_id                              4eb336bdb7b6523a | a5759494bcfbe2ff
+    per-run  parent                               4b68d7c69a8d16f2 | 206b847ab9f93d1c
+    same     attr:client.address                  10.244.1.13 | 10.244.1.13
+    same     attr:http.request.body.size          294 | 294
+    same     attr:http.request.method             POST | POST
+    same     attr:http.response.body.size         590 | 590
+    same     attr:http.response.status_code       200 | 200
+    same     attr:lab.caller                      loadgen | loadgen
+    per-run  attr:lab.work_item                   a3m-r1-go-http-fu19h-01 | a3m-r1-go-http-fu3ch-01
+    same     attr:network.peer.address            10.244.1.13 | 10.244.1.13
+    per-run  attr:network.peer.port               38205 | 51459
+    same     attr:network.protocol.version        1.1 | 1.1
+    same     attr:server.address                  worker.lab.svc.cluster.local | worker.lab.svc.cluster.local
+    same     attr:server.port                     8080 | 8080
+    same     attr:url.path                        / | /
+    same     attr:url.scheme                      http | http
+    same     attr:user_agent.original             Go-http-client/1.1 | Go-http-client/1.1
+## 2. the proxy's entry span(s) on the agent route lab/worker, in start order: 3 span(s)
+  span 1 of the section (start order): GET /* | GET /*
+    same     service                              agw-central | agw-central
+    same     scope                                agentgateway | agentgateway
+    same     name                                 GET /* | GET /*
+    same     kind                                 server | server
+    same     status.code                          Unset | Unset
+    same     status.description                   "" | ""
+    same     http.method                          GET | GET
+    same     http.status                          200 | 200
+    same     reason                               <absent> | <absent>
+    same     route                                lab/worker | lab/worker
+    same     retry.attempt                        <absent> | <absent>
+    per-run  duration_ms                          0.5 | 0.4
+    same     events                               0 | 0
+    per-run  span_id                              1e6c540abfe54c6c | d4dede3b0fadca2d
+    per-run  parent                               efa13b87b69eb120 | f01fffded43ea688
+    same     attr:duration                        0ms | 0ms
+    per-run  attr:endpoint                        10.244.1.40:8080 | 10.244.1.19:8080
+    same     attr:gateway                         agentgateway-waypoint/agw-central | agentgateway-waypoint/agw-central
+    same     attr:http.host                       worker.lab.svc.cluster.local | worker.lab.svc.cluster.local
+    same     attr:http.method                     GET | GET
+    same     attr:http.path                       /.well-known/agent-card.json | /.well-known/agent-card.json
+    same     attr:http.status                     200 | 200
+    same     attr:http.version                    HTTP/1.1 | HTTP/1.1
+    same     attr:listener                        inner-http | inner-http
+    same     attr:network.protocol.version        1.1 | 1.1
+    same     attr:protocol                        http | http
+    same     attr:route                           lab/worker | lab/worker
+    per-run  attr:span.id                         1e6c540abfe54c6c | d4dede3b0fadca2d
+    per-run  attr:src.addr                        10.244.1.45:49138 | 10.244.1.36:41356
+    same     attr:src.identity                    spiffe://cluster.local/ns/lab/sa/default | spiffe://cluster.local/ns/lab/sa/default
+    per-run  attr:trace.id                        85e68f85f14e5d6daeb63dbe5984e4a7 | cee1c4455ed52261338338e3de9c6a79
+    same     attr:url.scheme                      http | http
+  span 2 of the section (start order): POST /* | POST /*
+    same     service                              agw-central | agw-central
+    same     scope                                agentgateway | agentgateway
+    same     name                                 POST /* | POST /*
+    same     kind                                 server | server
+    same     status.code                          Error | Error
+    same     status.description                   "upstream call failed: SendRequest: connection closed before message completed" | "upstream call failed: SendRequest: connection closed before message completed"
+    same     http.method                          POST | POST
+    same     http.status                          503 | 503
+    same     reason                               UpstreamFailure | UpstreamFailure
+    same     route                                lab/worker | lab/worker
+    same     retry.attempt                        <absent> | <absent>
+    same     duration_ms                          0.3 | 0.3
+    same     events                               0 | 0
+    per-run  span_id                              24a0511e3e7759da | 91f217053654845f
+    per-run  parent                               648155e386ababd4 | ed6216f8fd7e5a6b
+    same     attr:duration                        0ms | 0ms
+    per-run  attr:endpoint                        10.244.1.40:8080 | 10.244.1.19:8080
+    same     attr:gateway                         agentgateway-waypoint/agw-central | agentgateway-waypoint/agw-central
+    same     attr:http.host                       worker.lab.svc.cluster.local | worker.lab.svc.cluster.local
+    same     attr:http.method                     POST | POST
+    same     attr:http.path                       / | /
+    same     attr:http.status                     503 | 503
+    same     attr:http.version                    HTTP/1.1 | HTTP/1.1
+    same     attr:listener                        inner-http | inner-http
+    same     attr:network.protocol.version        1.1 | 1.1
+    same     attr:protocol                        http | http
+    same     attr:reason                          UpstreamFailure | UpstreamFailure
+    same     attr:route                           lab/worker | lab/worker
+    per-run  attr:span.id                         24a0511e3e7759da | 91f217053654845f
+    per-run  attr:src.addr                        10.244.1.45:49138 | 10.244.1.36:41356
+    same     attr:src.identity                    spiffe://cluster.local/ns/lab/sa/default | spiffe://cluster.local/ns/lab/sa/default
+    per-run  attr:trace.id                        8518a63393b725a68fc5ea10b55cd299 | 0b1e2b89bd6e953d8c67241110dca7cd
+    same     attr:url.scheme                      http | http
+  span 3 of the section (start order): POST /* | POST /*
+    same     service                              agw-central | agw-central
+    same     scope                                agentgateway | agentgateway
+    same     name                                 POST /* | POST /*
+    same     kind                                 server | server
+    same     status.code                          Unset | Unset
+    same     status.description                   "" | ""
+    same     http.method                          POST | POST
+    same     http.status                          200 | 200
+    same     reason                               <absent> | <absent>
+    same     route                                lab/worker | lab/worker
+    same     retry.attempt                        <absent> | <absent>
+    per-run  duration_ms                          248.6 | 250.3
+    same     events                               0 | 0
+    per-run  span_id                              67a0fa94e2647141 | 3b0ffc5ae1f99eb1
+    per-run  parent                               648155e386ababd4 | ed6216f8fd7e5a6b
+    per-run  attr:duration                        248ms | 250ms
+    per-run  attr:endpoint                        10.244.1.40:8080 | 10.244.1.19:8080
+    same     attr:gateway                         agentgateway-waypoint/agw-central | agentgateway-waypoint/agw-central
+    same     attr:http.host                       worker.lab.svc.cluster.local | worker.lab.svc.cluster.local
+    same     attr:http.method                     POST | POST
+    same     attr:http.path                       / | /
+    same     attr:http.status                     200 | 200
+    same     attr:http.version                    HTTP/1.1 | HTTP/1.1
+    same     attr:listener                        inner-http | inner-http
+    same     attr:network.protocol.version        1.1 | 1.1
+    same     attr:protocol                        http | http
+    same     attr:route                           lab/worker | lab/worker
+    per-run  attr:span.id                         67a0fa94e2647141 | 3b0ffc5ae1f99eb1
+    per-run  attr:src.addr                        10.244.1.45:49138 | 10.244.1.36:41356
+    same     attr:src.identity                    spiffe://cluster.local/ns/lab/sa/default | spiffe://cluster.local/ns/lab/sa/default
+    per-run  attr:trace.id                        8518a63393b725a68fc5ea10b55cd299 | 0b1e2b89bd6e953d8c67241110dca7cd
+    same     attr:url.scheme                      http | http
+## 3. the load client's client span(s), in start order: 3 span(s)
+  span 1 of the section (start order): HTTP GET | HTTP GET
+    same     service                              loadgen | loadgen
+    same     scope                                go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp | go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    same     name                                 HTTP GET | HTTP GET
+    same     kind                                 client | client
+    same     status.code                          Unset | Unset
+    same     status.description                   "" | ""
+    same     http.request.method                  GET | GET
+    same     http.response.status_code            200 | 200
+    same     error.type                           <absent> | <absent>
+    same     http.request.resend_count            <absent> | <absent>
+    per-run  duration_ms                          110.6 | 110.4
+    same     events                               0 | 0
+    per-run  span_id                              efa13b87b69eb120 | f01fffded43ea688
+    same     parent                               <none> | <none>
+    same     attr:http.request.method             GET | GET
+    same     attr:http.response.status_code       200 | 200
+    same     attr:network.protocol.version        1.1 | 1.1
+    same     attr:server.address                  worker.lab.svc.cluster.local | worker.lab.svc.cluster.local
+    same     attr:server.port                     8080 | 8080
+    same     attr:url.full                        http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json | http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json
+  span 2 of the section (start order): invoke_agent worker | invoke_agent worker
+    same     service                              loadgen | loadgen
+    same     scope                                github.com/AhmadMasry/agent-mesh-lab/internal/otel | github.com/AhmadMasry/agent-mesh-lab/internal/otel
+    same     name                                 invoke_agent worker | invoke_agent worker
+    same     kind                                 client | client
+    same     status.code                          Unset | Unset
+    same     status.description                   "" | ""
+    same     http.request.method                  <absent> | <absent>
+    same     http.response.status_code            <absent> | <absent>
+    same     error.type                           <absent> | <absent>
+    same     http.request.resend_count            <absent> | <absent>
+    per-run  duration_ms                          250.0 | 251.7
+    same     events                               0 | 0
+    per-run  span_id                              de7260d0eed50fbd | bdd3bd40ae80d600
+    same     parent                               <none> | <none>
+    same     attr:gen_ai.agent.description        agent-mesh-lab agent: one model call per message | agent-mesh-lab agent: one model call per message
+    same     attr:gen_ai.agent.name               worker | worker
+    same     attr:gen_ai.agent.version            0.0.0 | 0.0.0
+    per-run  attr:gen_ai.conversation.id          01a0bafa-610a-7908-8e80-18234f43992f | 01a0bb37-04e8-70d5-8a63-25b201f04bfe
+    same     attr:gen_ai.operation.name           invoke_agent | invoke_agent
+    same     attr:gen_ai.provider.name            a2a | a2a
+    same     attr:lab.caller                      loadgen | loadgen
+    per-run  attr:lab.message_id                  01a0bafa-60e0-767f-84cc-097ba856574b | 01a0bb37-04be-7241-bed1-d033cd6d723b
+    per-run  attr:lab.work_item                   a3m-r1-go-http-fu19h-01 | a3m-r1-go-http-fu3ch-01
+    same     attr:server.address                  worker.lab.svc.cluster.local | worker.lab.svc.cluster.local
+    same     attr:server.port                     8080 | 8080
+  span 3 of the section (start order): HTTP POST | HTTP POST
+    same     service                              loadgen | loadgen
+    same     scope                                go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp | go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    same     name                                 HTTP POST | HTTP POST
+    same     kind                                 client | client
+    same     status.code                          Unset | Unset
+    same     status.description                   "" | ""
+    same     http.request.method                  POST | POST
+    same     http.response.status_code            200 | 200
+    same     error.type                           <absent> | <absent>
+    same     http.request.resend_count            <absent> | <absent>
+    per-run  duration_ms                          249.7 | 251.4
+    same     events                               0 | 0
+    per-run  span_id                              648155e386ababd4 | ed6216f8fd7e5a6b
+    per-run  parent                               de7260d0eed50fbd | bdd3bd40ae80d600
+    same     attr:http.request.method             POST | POST
+    same     attr:http.response.status_code       200 | 200
+    same     attr:network.protocol.version        1.1 | 1.1
+    same     attr:server.address                  worker.lab.svc.cluster.local | worker.lab.svc.cluster.local
+    same     attr:server.port                     8080 | 8080
+    same     attr:url.full                        http://worker.lab.svc.cluster.local:8080 | http://worker.lab.svc.cluster.local:8080
+## 4. the ledgers
+    same     ledger line 1                        ingress: deliveries (JSON-RPC arrivals) = 2 (SendMessage@worker, SendMessage@worker) | ingress: deliveries (JSON-RPC arrivals) = 2 (SendMessage@worker, SendMessage@worker)
+    same     ledger line 2                        execution: received = 1, execute = 1, tasks (distinct taskId) = 1 | execution: received = 1, execute = 1, tasks (distinct taskId) = 1
+    same     ledger line 3                        execution line: event=state state=TASK_STATE_SUBMITTED error="" | execution line: event=state state=TASK_STATE_SUBMITTED error=""
+    same     ledger line 4                        execution line: event=state state=TASK_STATE_WORKING error="" | execution line: event=state state=TASK_STATE_WORKING error=""
+    same     ledger line 5                        execution line: event=state state=TASK_STATE_COMPLETED error="" | execution line: event=state state=TASK_STATE_COMPLETED error=""
+    same     ledger line 6                        execution line: event=result state=TASK_STATE_COMPLETED error="" | execution line: event=result state=TASK_STATE_COMPLETED error=""
+    same     ledger line 7                        invocation: lines = 1; by outcome: ok=1 | invocation: lines = 1; by outcome: ok=1
+    per-run  ledger line 8                        invocation line: caller=worker injection=none outcome=ok latency_ms=200.564 | invocation line: caller=worker injection=none outcome=ok latency_ms=206.479
+    same     ledger line 9                        client line: attempt=1 result_kind=task state=TASK_STATE_COMPLETED error="" | client line: attempt=1 result_kind=task state=TASK_STATE_COMPLETED error=""
+# rows: same=209 per-run=48 DIFFERS=4

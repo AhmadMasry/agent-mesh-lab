@@ -1,0 +1,206 @@
+# Follow-ups 19, task 3c (REBUILD-2): what each part of this directory is, and fourteen places where a file in it says
+# less, or other, than a reader would take it to say. Written 2026-09-19 after the readings, by the agent that took
+# them. The recorded files are left as they were written; nothing below changes a count.
+
+WHAT THIS RECORD IS
+  The cluster-side proof of ONE commit, `fix(worker): mark the server span of an injected close-after-read`: a rebuild
+  from a deleted cluster at the branch's tip, the standard proof re-taken, and only the readings that commit can touch.
+  Task 3's record, experiments/runs/2026-09-19-currency-rebuild/, is the rebuild of the tree two commits below (subject
+  `docs(comments): six comments that went stale with the topology, and two notes on the currency record`); between the
+  two built trees the deployed paths differ in agents/worker/ingress.go (+13 lines) and agents/worker/span_test.go (new)
+  and in nothing else (build.txt's header: both trees' subtree and blob ids, the diff stat, the name-status).
+
+WHAT IS WHERE
+  preflight/            step 0, before any cluster action: builds and tests at the tip (preflight.sh, its output, make test's).
+  rebuild.sh build.txt timings.csv driver.txt accounting.txt
+                        the rebuild: the driver, its log (written outside the repository while it ran), one row per make
+                        target, and where every second of both logs went (task 3's accounting.py, run unedited).
+  checks.sh checks.txt checks-driver.txt checks-as-run/
+                        the readings, ONE invocation (`all`), 18 steps, every one exit 0. checks-as-run/ holds the byte copy
+                        the driver made of itself as it started; its sha256 is the one checks.txt l.2 prints and is
+                        checks.sh's (note 1).
+  clean-check/ trace/ prometheus-targets.txt strict/ proxies/ cluster/ retry-knobs/
+                        part one and the knobs: the same files task 3's record and the proof before it hold.
+  standard-counts-vs-task-3.py standard-counts-vs-task-3.txt
+                        every count of part one, of the wire-version capture and of the knobs beside task 3's: 63 rows the
+                        same, 7 that differ (notes 5, 6, 7), and the masked diff of cluster/facts.txt, 16 lines, listed whole.
+  worker-span/          reading (a). close-after-read/ is the committed row's own run directory. after-live-close-after-read.txt
+                        is task 3's reading tool, unedited, on it: the live AFTER. before-vs-after.py / before-vs-after.txt set
+                        it beside task 3's reading (h), the live BEFORE, field for field. after-the-row.txt; clean-after/, the
+                        clean work item per receiver sent after the row.
+  wire-version/         reading (b): experiments/gate1-wire-version.sh, unedited.
+  images/               reading (c): containers.csv (task 3's containers.py, unedited), helm-list.json, readback.txt (also the
+                        versions read from the cluster for the entry's Versions line), images-vs-task-3.py and its CSV,
+                        ko-vcs-stamp.txt (note 4).
+  ingress-shape/        reading (d): ingress-shape.py, its output, and the worker pod's own raw log lines for three work items.
+  checks-added.sh checks-added.txt checks-added-driver.txt
+                        the SECOND driver, for the two readings the controller added after checks.sh had run (note 13); its
+                        two as-run copies are in checks-as-run/ beside checks.sh's one.
+  orchestrator-image/   added reading (f): the distributions installed in the running orchestrator container against uv.lock
+                        (task 3's lock-vs-installed.py, unedited), and image-build-values.py: what each rebuild's log observed
+                        while it built that image.
+  scan/                 added reading (e): `make scan-images` as task 3 took it, the build settings and module versions
+                        linked into THIS build's scanned Go binaries, and go-binaries-vs-task-3.py.
+  cluster-after.sh cluster-after.txt
+                        the state the cluster is left in, reads only.
+  host-sleep.sh host-sleep.txt windows.csv host-sleep-assertion-counts.py
+                        Sleep, Wake, DarkWake and Maintenance lines in each counted window: 0 in every one; and the counts of
+                        assertion lines naming `caffeinate` (note 11). No Assertions line is listed anywhere.
+  Not committed (the repository ignores experiments/runs/**/raw/ and *.log): images/raw/pods.json, proxies/raw/ (the two
+  config dumps; their sizes and sha256 are in the extracts), and the matrix row's apply.log and collect.log.
+
+NOT RE-TAKEN, and why the commit between the two trees cannot touch it
+  The pins read back against pins.csv, rule 4 on the orchestrator, Jaeger's API, the mock's span on its two modes and the
+  exporter's columns are task 3's readings and stand as task 3 recorded them. (The image scan was on this list in the
+  brief and came off it: note 13.) The commit changes one
+  branch of the Go worker's ingress middleware (it sets a span status and one attribute when the worker has taken a
+  connection by its own injection) and adds a test file. It changes no pin, go.mod, go.sum, lockfile, chart value or
+  manifest (ids equal in build.txt); nothing in agents/orchestrator, fixtures/ or internal/ (subtree ids equal); nothing
+  in experiments/lib or any experiments/*.sh (the exporter and every script: blob ids equal); and the worker imported
+  internal/otel already (main.go wraps the mux with labotel.Handler), so the worker binary links no module it did not
+  link before. What is equal between the two built trees is sources, go.mod, go.sum and the orchestrator's lock; what is
+  NOT equal is the images' digests (note 4), which is why the scan and the orchestrator's installed list were added.
+
+NOTES
+
+1. One invocation, and what was written when. checks.sh was written whole before it first ran and ran once, straight
+   through: checks-driver.txt has the 18 step lines and `checks all driver exit=0`. At its start the script printed its
+   own sha256 into checks.txt (l.2) and copied itself to checks-as-run/checks.sh.as-run-20260919T194423Z-all; that copy,
+   the committed checks.sh and the printed value are one sha256, 8ee90f7d...47fb00. Three host-side tools the driver calls
+   (images/images-vs-task-3.py, worker-span/before-vs-after.py, ingress-shape/ingress-shape.py) were written and
+   self-tested on task 3's files during the build and copied into this directory before the driver started, as were
+   cluster-after.sh, host-sleep.sh and host-sleep-assertion-counts.py, which ran after it. standard-counts-vs-task-3.py
+   was written WHILE the driver ran and run after it; it reads committed files and reaches no cluster. Task 3's tools
+   (containers.py, worker-span-reading.py, accounting.py) and the older records' (dangling.py, genai-spans.py, promq.sh,
+   hops.py, config-dump.sh, extract-config-dump.py) were run from where they are committed, unedited. The gap between the
+   build's last line and the first reading, 27.2 s, is this agent's turn: it read the driver's last lines, counted the
+   host's sleep lines for the build window (0), made this directory, copied the three tools in and read `git status` over
+   the deployed paths (empty). No command reached the cluster in that gap.
+
+2. The order inside part two is c, b, a, d, not a, b, c, d. Reading (c) lists every pod, so it was taken first, as task 3
+   took its read-back first, to list what task 3's listed (the built pods and part one's six finished Job pods); see note
+   3 for the one pod that made it differ all the same. (b) came before (a) as in task 3. (d) has to follow (a): it reads
+   the closed delivery's lines.
+
+3. images/containers.csv has 32 containers in 32 pods, 26 of them the main containers of Running pods; task 3's had 31
+   and 25. The one more is default/mtls-probe (curlimages/curl:8.22.0), the plaintext probe's pod: checks.sh deletes it
+   with `--wait=false` after the ztunnel series are read, and here reading (c) began one second later (19:47:54Z), while
+   task 3's read-back came 93 s after its part one. It is the same image the probe used in task 3 (checks.sh names it),
+   so images-vs-task-3.csv reads `only here` for that one group, and 17 of the 17 third-party groups that exist on both
+   sides are equal in spec image and imageID. cluster-after.txt, read 19:52:28Z, counts 0 pods of a curl image.
+
+4. ALL FOUR of the lab's own builds differ from task 3's in tag and imageID: worker, mockllm, loadgen, orchestrator. Only
+   the worker's sources changed. For the three ko images the cause is shown by a binary, images/ko-vcs-stamp.txt: the Go
+   toolchain stamps vcs.revision, vcs.time and vcs.modified into each binary ko builds, so a build at another commit is
+   another digest whatever the package's sources. That binary was read out of the image task 3's SCAN left in the Docker
+   daemon (its id is in task 3's scan-context.txt), NOT out of an image this cluster runs: nothing was copied out of a
+   kind node. Added reading (e) then showed it on THIS build's own scanned binaries (scan/go-binary-build-settings.csv):
+   vcs.revision is the tip, 2c082053..., in 4 of 4, vcs.time the tip's commit time, and every one of the 75 (binary,
+   module) rows equals task 3's in Go version and module version. Those scanned binaries read vcs.modified=true; the
+   checkout's status held one line when they were built, this run directory, not yet committed (scan/go-binary-modules.txt
+   l.1); the flag's cause is not examined further, and the images the cluster RUNS were built from a checkout whose
+   status build.txt reads empty before every target, so the scanned images are not the running images' bytes either (as
+   in task 3's note 11). For the orchestrator image the make target builds with `--no-cache` each time; by added reading
+   (f) its contents are equal to task 3's in what was read (53 of 53 distributions equal uv.lock and the list is
+   byte-identical to task 3's; base digest, uv image digest, release, Python package and uv version the same on 7 of 7
+   rows), and the cause of the differing digest is not established beyond that it is a --no-cache rebuild. What ties the running worker to this checkout is gate3-matrix.sh's own
+   line (worker-span/close-after-read/knobs.txt l.1-2): checkout-go-sources-hash b31cd245... equals the annotation on
+   deployment/worker and deployment/mockllm (task 3's: 7df78755...). The brief for this task spoke of "the four images the
+   commit does not rebuild differently"; that is true of their sources and of go.mod and go.sum and is not true of their
+   digests, and the controller was told before the entry was written.
+
+5. The probe's refused connection at the worker is unattributed here and was attributed in task 3 -- and was unattributed
+   in the proof before task 3 (2026-09-19-agentgateway-only). strict/plaintext-probe-ztunnel.txt holds the two refusal
+   lines, both naming istio-system/istio_converted_static_strict, 54 ms apart; the first, at the worker, carries no
+   src.workload, the second, at the orchestrator, carries src.workload="mtls-probe". So in hops-security.csv that leg's
+   source reads `unknown`/`unknown` (task 3: `mtls-probe`/`default`), legs.csv reads `no-series` for `plaintext probe ->
+   worker` (task 3: a series), and the unattributed line stays in ztunnel-other-error-lines.txt, which therefore holds 1
+   policy-rejection line (task 3: 0; the proof before: 1) -- the probe's own, same stamp, same destination. 24 legs, 14
+   mutual_tls and 10 unknown, as in both earlier proofs. These are the same two cells task 3's note 7 recorded, fallen
+   the other way. Cause not established: docs/walkthrough.md, "Plaintext is refused", warns that ztunnel has to have
+   learned of a pod to attribute it; which way it falls for a pod created a second earlier was not under this task's
+   control and was not read.
+
+6. One of the 23 legs common to this record and task 3's differs in its connection count: prometheus -> agentgateway-ingress,
+   the scrape port, 18 here and 17 in task 3 and in the proof before it. It is a count of scrapes since Prometheus
+   started. The records give: Prometheus's container started 19:43:25Z and the series were read 19:47:52Z, 267 s; in
+   task 3 18:22:45Z and 18:27:06Z, 261 s; the scrape interval is 15 s. Beyond that arithmetic, cause not established.
+   The other 22 common legs carry equal counts.
+
+7. strict/ztunnel-other-error-lines.txt holds 21 lines (task 3: 13; the proof before: 18): 18 `no healthy upstream:
+   10.96.174.127:4318` warnings, 19:42:36.3Z to 19:42:51.8Z (task 3: 11 over 10.0 s; before: 15 over 13 s), 2 of
+   ztunnel's `try_tcp_on_error: false` startup lines, and the probe line of note 5. The warnings are the collector's
+   Service in the seconds of `make step-3` between its overlay giving the agents their OTLP endpoint and the collector's
+   chart being installed; how many there are is how many export attempts fell in that gap, and no reading was in
+   progress. Why the gap was 15.5 s this time: not established.
+
+8. build.txt l.46-47 read oddly and mean one thing: agents/worker/span_test.go does not exist at task 3's tree. `git
+   rev-parse <commit>:<path>` prints the argument it could not resolve before it fails, so the driver's fallback text
+   landed on a second line. The name-status at l.58 says it plainly: `A agents/worker/span_test.go`.
+
+9. cluster-after.txt, the mock: "the last inject:" is empty and "resets after the last inject: 15" because there was NO
+   inject on this cluster: 15 control lines, 0 injects, 15 resets. No row of this task arms the mock (the R1 row arms the
+   worker; its knobs.txt says `mock injection per repetition: none`). Task 3's cluster read 25 lines with two injects,
+   from its two mock-span rows, which are not re-taken here. The worker's Deployment reads generation 5 here and 7 in task
+   3: task 3's delay-then-close row rolled the worker twice by its own recipe, and that row is not run here; the worker
+   pod that served every reading of this record is the one the build started (19:42:31Z).
+
+10. worker-span/before-vs-after.txt: 261 rows = 209 same + 48 per-run + 4 DIFFERS. `per-run` is a label, not a mask: both
+    values are printed. It is given to span and trace ids, parents, durations, the peer's port, the proxy's endpoint and
+    source address, the message and conversation ids, the work-item id (it carries the nonce) and the invocation's
+    latency. Addresses that happened to be equal on the two clusters (client.address 10.244.1.13 on both) read `same`.
+    The 4 DIFFERS rows are all on one span, the worker's server span of the delivery it closed: status.code Unset ->
+    Error, status.description "" -> "injected: close-after-read", lab.injection absent -> close-after-read (the tool
+    prints it once as a named field and once in the attribute list). The tool's output ends with a copy of the row's
+    attribution.txt, which this comparison does not read: compared apart, its 17 lines are equal on 12 as written and
+    on 17 once 16-hex span ids and the nonce are masked (layer=client-http and the reason's words are the same).
+    http.response.status_code=200 on the closed delivery's span reads `same`: it was there before and it is there now.
+
+11. Keep-awake. This task's scripts and commands started none and changed no power setting: host-sleep.txt's last section
+    counts, for each .sh and .py here, the non-comment lines that name `caffeinate` or `pmset` and how many of them would
+    start a keep-awake or set a power value (0 in every file; the lines that match are the recorder's own reads and the
+    counting program's match strings). Keep-awake is NOT claimed absent: of the whole window's 25 assertion lines
+    (19:36:13Z-20:02:14Z, the added readings included) 21 name `caffeinate`, all 21 of type PreventUserIdleSystemSleep --
+    16 ends of a holder (pmset's action word ClientDied), 5 Summary lines, 0 Created; 6 of 6 in the rebuild window, 3 of 6
+    in part one, 2 of 3 in part two, 0 of 0 in the knobs' two seconds, 1 of 1 in cluster-after, 0 of 0 in added reading
+    (f)'s one second, 3 of 3 in added reading (e); 15 inside a named sub-window and 6 in the gaps (no assertion line is
+    stamped on a second two sub-windows share). That is the shape the agent harness's rolling `caffeinate -i -t 300` per
+    session leaves, as the entry on the pins of 2026-09-19 and the entry on the chat span on a failed model call
+    recorded; read by `ps` after the windows (20:02:57Z), 3 such processes, each the child of a `claude` process.
+    host-sleep.txt was written twice: first at 19:54:02Z over the six windows to 19:52:29Z (18 lines, 14 naming
+    caffeinate, 2 processes), then again over all eight once the added readings were done; the second writing
+    replaced the first and is what is committed. Whether an assertion was held at
+    every moment of a window is not read from a count of ends and summaries, and which session owned each line is not
+    established. No span, ledger or leg count depends on it. The counting program is task 3's with the one change its
+    review asked for: the action word is the word after the process token `PID <n>(caffeinate)`, printed only if it is
+    one of pmset's own action words; its output was read before it was committed and holds numbers, window labels, the
+    process name, the type and two action words.
+
+12. Build times differ from task 3's and no cause is established: 462.464 s against 416.007 s from the log's first line to
+    its last; step-2 153.5 s against 126.5 s and step-2b 84.9 s against 60.8 s carry most of it; step-1 was 6.1 s
+    shorter. The proof before task 3 (2026-09-19-agentgateway-only): 432.728 s, step-1 67.5 s, step-2 147.4 s, step-2b
+    63.8 s. Same host, same targets, same charts and images. The make targets pull and wait on what they pull.
+
+13. Two readings were ADDED after checks.sh had run, by the controller's ruling, because reading (c) showed a premise of
+    this task's brief wrong (note 4): the brief had left the image scan out as "the four images the commit does not
+    rebuild differently". checks.sh was NOT amended: it is the file as it ran, once. The added readings have their own
+    driver, checks-added.sh, invoked twice (`f`, then `e`), which logs its sha256 and keeps a byte copy of itself each
+    time; both copies and the committed file are one sha256, c43de52e...c28402. (f) 20:00:02Z: two reads of the cluster, a
+    `kubectl get pods` naming the orchestrator pod and its imageID and one `kubectl exec`, then files only. (e)
+    20:01:23Z-20:02:14Z: `make scan-images` (49.9 s) and `go version -m` of the four scanned binaries: 0 findings in 5 of
+    5 images, vulnerability database built 2026-09-19, as task 3. In checks-added-driver.txt the line `added f driver
+    exit=` has no value: the wrapping command read bash's PIPESTATUS under zsh, where it is empty; the step's own line
+    above it and checks-added.txt both read exit=0. accounting.txt covers build.txt and checks.txt only; the added
+    readings' wall times are in checks-added.txt.
+
+14. The cluster was HANDED OVER to the controller at 2026-09-19T20:00:02Z, when added reading (f)'s exec returned: from
+    then on another agent uses it for a validation of its own (sends, a throwaway retry stanza added and removed). So
+    "the cluster as left" in this record is cluster-after.txt, read 19:52:28Z, plus added reading (f); nothing here reads
+    the cluster's state after 20:00:02Z, with ONE exception, made on the controller's word after it was asked: the
+    committed experiments/scan-images.sh, run unedited by `make scan-images`, makes one read-only `kubectl -n lab get pod
+    -l 'app in (worker,mockllm,orchestrator)'` (its l.125) to print the image ids those pods run into
+    scan/scan-context.txt -- between that file's Generated stamp, 20:02:10Z, and the step's end, 20:02:13Z. The ids it
+    printed are reading (c)'s (worker d2f5cf1d..., mockllm 1f8c5b15..., orchestrator 414a4319...): the other agent's
+    validation creates its own client pods and Jobs and does not touch those three. A message from the controller
+    asking this task to hold before `make teardown` reached this agent only after the rebuild and the readings were
+    done (teardown had run at 19:36:14Z); nothing was undone or attempted.
