@@ -1,0 +1,92 @@
+# the build (build.txt)
+  header reads                                                   0.647 s  from epoch 1789841780.065
+  gap                                                            0.124 s  (status reads and log lines)
+  make teardown                                                  1.281 s  exit=0
+  gap                                                            0.167 s  (status reads and log lines)
+  make cluster-kind                                             18.957 s  exit=0
+  gap                                                            0.129 s  (status reads and log lines)
+  make step-1                                                   84.628 s  exit=0
+  gap                                                            0.151 s  (status reads and log lines)
+  make step-2                                                  126.476 s  exit=0
+  gap                                                            0.144 s  (status reads and log lines)
+  make step-2b                                                  60.761 s  exit=0
+  gap                                                            0.156 s  (status reads and log lines)
+  make step-2c                                                  18.695 s  exit=0
+  gap                                                            0.149 s  (status reads and log lines)
+  make step-3                                                  103.465 s  exit=0
+  close                                                          0.077 s  (after-status read and last line)
+  sum                                                          416.007 s  against first-line-to-last 416.007 s
+  the seven targets alone                                      414.263 s
+
+# between the build and the readings
+  gap                                                           24.997 s  build end -> first reading
+
+# the readings (checks.txt), in the order taken; a gap of more than a second is this agent's own turn between two parts
+  clean check                                                   47.588 s  exit=0
+  gap                                                            0.014 s
+  trace per work item REPS=2                                   118.083 s  exit=0
+  gap                                                            0.022 s
+  dangling parents (follow-ups 14 dangling.py, unedited)         0.033 s  exit=0
+  gap                                                            0.013 s
+  GenAI spans per operation (follow-ups 14 genai-spans.py, u     0.036 s  exit=0
+  gap                                                            0.015 s
+  prometheus targets                                             0.350 s  exit=0
+  gap                                                            0.017 s
+  STRICT posture                                                 0.131 s  exit=0
+  gap                                                            0.015 s
+  plaintext probe, both receivers                                3.802 s  exit=0
+  gap                                                            0.013 s
+  ztunnel connection security, every series (follow-ups 18 h    35.519 s  exit=0
+  gap                                                            0.044 s
+  config dumps (follow-ups 17 config-dump.sh and extract-con     0.737 s  exit=0
+  gap                                                            0.014 s
+  cluster facts                                                  0.694 s  exit=0
+  gap                                                           93.412 s
+  (a) pins read back                                             0.804 s  exit=0
+  gap                                                            0.013 s
+  (b) gate1-wire-version.sh, unedited                           41.234 s  exit=0
+  gap                                                            0.015 s
+  (c) rule 4 on the running pods                                 0.558 s  exit=0
+  gap                                                            0.019 s
+  (d) Jaeger API on the cluster                                  0.711 s  exit=0
+  gap                                                            0.014 s
+  (e) close: gate3-matrix.sh RUN=baseline RECEIVER=go REPS=1    34.265 s  exit=0
+  gap                                                           23.858 s
+  (e) delay-then-close: gate1-baseline.sh RUNS=3 REPS=1 (com    41.735 s  exit=0
+  gap                                                            0.014 s
+  (e) delay-then-close: make export-trace for its work item      0.653 s  exit=0
+  gap                                                            0.015 s
+  (e) the mock's mode read back                                  0.123 s  exit=0
+  gap                                                            0.015 s
+  (e) one clean work item per receiver after the disarm         43.745 s  exit=0
+  gap                                                            0.015 s
+  (g) make scan-images                                          50.525 s  exit=0
+  gap                                                            0.014 s
+  (g) the module versions linked into the scanned Go binarie     1.529 s  exit=0
+  gap                                                           22.013 s
+  retry knobs                                                    2.181 s  exit=0
+  gap                                                          560.653 s
+  (h) the worker's own close-after-read: gate3-matrix.sh RUN    35.432 s  exit=0
+  gap                                                            0.015 s
+  (h) stanzas, the worker's env and the mock's last control      0.177 s  exit=0
+  gap                                                            0.017 s
+  (h) one clean work item per receiver after it (the receive    44.215 s  exit=0
+  gap                                                            0.103 s
+  retry knobs -> experiments/runs/2026-09-19-currency-rebuil     2.027 s  exit=0
+  readings, first start to last end                           1207.259 s
+  of it inside a reading                                       506.887 s
+
+# What no log stamps, stated by hand (2026-09-19, follow-ups 19, task 3):
+#   build end -> first reading (25.0 s): this agent's own turn between two tool calls. It read the driver's last lines,
+#   made the run directory, copied two helper files (pins/containers.py, pins/log-levels.py) into it, read `git status`
+#   over the deployed paths (empty) and appended one line to the controller's progress ledger, which git ignores. No
+#   command reached the cluster in that interval, and no deployed path was written then or since.
+#   The gaps of 93 s, 24 s and 22 s between the parts of the readings, and the 9 min 21 s between the first knobs
+#   reading and part three, are this agent's turns too: part one's counts were read against the last proof's and the
+#   controller was told of the one that differed; the entry was then held for the controller's word, which added
+#   reading (h). In those gaps the cluster was read (cluster-after.sh, reads only) and nothing was sent to it.
+#   The two rollouts of deployment/worker inside "(e) delay-then-close" are gate1-baseline.sh's own recipe for its
+#   run type 3 (`kubectl set env deployment/worker MODEL_TIMEOUT_S=5`, then `MODEL_TIMEOUT_S-`, each followed by
+#   `kubectl rollout status`), a committed script run unedited: they are part of that step's 41.7 s and are not a
+#   manual step. No other reading rolled a Deployment; no pod was deleted by hand; no helm or kubectl call outside a
+#   make target was made during the build.

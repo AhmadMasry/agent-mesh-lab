@@ -1,0 +1,29 @@
+# Jaeger 2.21.0 removed four v1 HTTP endpoints (jaegertracing/jaeger#9260): GET /api/services, GET /api/operations,
+# GET /api/services/{service}/operations and the GET /api/traces search. Uses of them in tracked files, counted 2026-09-19T18:35:50Z
+# at the built tree. Pattern: /api/(services|operations|traces) not preceded by /v3.
+
+## 1. tracked files outside the dated records (experiments/runs/, findings.md): every line naming a removed path
+deploy/step-3-stress/jaeger-values.yaml:43:# removed four legacy HTTP query endpoints (jaegertracing/jaeger#9260: /api/services,
+deploy/step-3-stress/jaeger-values.yaml:44:# /api/operations, /api/services/{service}/operations and the /api/traces search); this
+docs/walkthrough.md:898:legacy `/api/services` path this step used until 2026-09-19, in jaegertracing/jaeger#9260; the v3 path answers the
+lines: 3
+of them, lines that CALL one (curl, wget, http://, https://, requests., urlopen, fetch(): 0
+   (the three lines are prose that says the paths were removed: two comment lines of deploy/step-3-stress/jaeger-values.yaml and one sentence of docs/walkthrough.md)
+
+## 2. the same files, lines that use the /api/v3 binding
+Makefile:469:# The query is Jaeger's stable /api/v3/traces binding, reached through a
+Makefile:507:	curl -sS -G "http://127.0.0.1:$(JAEGER_QUERY_PORT)/api/v3/traces" \
+README.md:703:It opens a short-lived port-forward, queries the backend's `/api/v3/traces`
+deploy/step-3-stress/jaeger-values.yaml:45:# lab's tools read /api/v3/traces, which is not among them. Findings entries and scan
+deploy/step-3-stress/jaeger-values.yaml:49:# walkthrough's /api/v3/services line answers the same on both versions and would stay.
+docs/walkthrough.md:902:curl -s http://127.0.0.1:16686/api/v3/services | jq -r '.services[]' | sort
+experiments/lib/jaeger-spans.jq:2:# GET /api/v3/traces binding.
+versions.yaml:15:trace-backend:             { value: "v2.21.0", previous: "v2.20.0", read: "2026-09-19", chart_app_version_lags: "the newest chart, jaeger 4.13.1, still d
+
+## 3. dated records, for the record and left as written: lines naming a removed path, per file
+experiments/runs/2026-09-16-walkthrough/step-3/jaeger-services.txt:1
+experiments/runs/2026-09-19-currency-pass/README.md:4
+experiments/runs/2026-09-19-currency-pass/jaeger-endpoints/check.sh:1
+experiments/runs/2026-09-19-currency-pass/jaeger-endpoints/jaeger-services-endpoint-check.txt:2
+experiments/runs/2026-09-19-currency-pass/jaeger-endpoints/removed-endpoint-grep.txt:6
+of them, a command as it was run on its date: experiments/runs/2026-09-16-walkthrough/step-3/jaeger-services.txt l.5 (against Jaeger 2.20.0, where the path answered 200); the rest is the currency pass record describing this removal

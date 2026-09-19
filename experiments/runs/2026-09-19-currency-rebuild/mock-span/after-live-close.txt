@@ -1,0 +1,90 @@
+# AFTER, live, mode close: 2026-09-19T18:35:30Z. python3 mock-span/span-reading.py on the work item gate3-matrix.sh RUN=baseline RECEIVER=go REPS=1 DRY_RUN=off sent at 18:29Z.
+# experiments/runs/2026-09-19-currency-rebuild/mock-span/close/a3m-baseline-go-fu19m-01: 14 spans; by service: agw-central=6|loadgen=3|mockllm=1|worker=4
+## 1. the mock's server span(s): 1 span(s)
+  service=mockllm scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=POST /v1/chat/completions
+    kind=server
+    status.code=Error
+    status.description="injected: close"
+    lab.injection=close
+    http.response.status_code=200
+    lab.work_item=a3m-baseline-go-fu19m-01
+    duration_ms=0.1 events=0 span_id=0ef2c32f6a852e39 parent=a69253b72b7ccd4b
+    every attribute:
+      client.address=10.244.1.13
+      http.request.body.size=92
+      http.request.method=POST
+      http.response.status_code=200
+      lab.caller=worker
+      lab.injection=close
+      lab.message_id=01a0baee-706f-77a8-ae45-ae653113f1c0
+      lab.task_id=01a0baee-706f-7dd8-973b-faa54eaeca05
+      lab.work_item=a3m-baseline-go-fu19m-01
+      network.peer.address=10.244.1.13
+      network.peer.port=46008
+      network.protocol.version=1.1
+      server.address=mockllm.lab.svc.cluster.local
+      url.path=/v1/chat/completions
+      url.scheme=http
+      user_agent.original=Go-http-client/1.1
+## 2. the agent's chat span(s): 1 span(s)
+  service=worker scope=github.com/AhmadMasry/agent-mesh-lab/internal/otel
+    name=chat mock
+    kind=client
+    status.code=Error
+    status.description="model call: status 503"
+    error.type=503
+    gen_ai.operation.name=chat
+    server.address=model.lab.internal
+    server.port=8080
+    duration_ms=0.5 events=0 span_id=dbcd46efc97b4fd2 parent=f25aede719c23285
+    every attribute:
+      error.type=503
+      gen_ai.operation.name=chat
+      gen_ai.provider.name=openai
+      gen_ai.request.model=mock
+      lab.caller=worker
+      lab.message_id=01a0baee-706f-77a8-ae45-ae653113f1c0
+      lab.task_id=01a0baee-706f-7dd8-973b-faa54eaeca05
+      lab.work_item=a3m-baseline-go-fu19m-01
+      server.address=model.lab.internal
+      server.port=8080
+## 3. the proxy's entry span(s) on the model route agentgateway-waypoint/model-via-agw: 1 span(s)
+  service=agw-central scope=agentgateway
+    name=POST /*
+    kind=server
+    status.code=Error
+    status.description="upstream call failed: SendRequest: connection closed before message completed"
+    http.status=503
+    route=agentgateway-waypoint/model-via-agw
+    retry.attempt=<absent>
+    duration_ms=0.2 events=0 span_id=0c9ed7c43889f1df parent=e74b14cc6c3fceb8
+    every attribute:
+      duration=0ms
+      endpoint=mockllm.lab.svc.cluster.local:8080
+      gateway=agentgateway-waypoint/agw-central
+      http.host=model.lab.internal
+      http.method=POST
+      http.path=/v1/chat/completions
+      http.status=503
+      http.version=HTTP/1.1
+      listener=inner-http
+      network.protocol.version=1.1
+      protocol=http
+      reason=UpstreamFailure
+      route=agentgateway-waypoint/model-via-agw
+      span.id=0c9ed7c43889f1df
+      src.addr=10.244.1.19:55830
+      src.identity=spiffe://cluster.local/ns/lab/sa/default
+      trace.id=15c2bc93dae2cdb41bdfb947f7b4e4a6
+      url.scheme=http
+## 4. the ledgers
+  ingress: deliveries (JSON-RPC arrivals) = 1 (SendMessage@worker)
+  execution: received = 1, execute = 1, tasks (distinct taskId) = 1
+    execution line: event=state state=TASK_STATE_SUBMITTED error=""
+    execution line: event=state state=TASK_STATE_WORKING error=""
+    execution line: event=state state=TASK_STATE_FAILED error="model call: status 503"
+    execution line: event=result state=TASK_STATE_FAILED error=""
+  invocation: lines = 1; by outcome: closed=1
+    invocation line: caller=worker injection=close outcome=closed latency_ms=0.031
+  client line: attempt=1 result_kind=task state=TASK_STATE_FAILED error=""

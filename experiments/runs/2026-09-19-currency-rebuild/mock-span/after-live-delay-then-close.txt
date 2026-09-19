@@ -1,0 +1,89 @@
+# AFTER, live, mode delay-then-close: 2026-09-19T18:35:30Z. python3 mock-span/span-reading.py on the work item gate1-baseline.sh RUNS=3 REPS=1 sent at 18:30Z (8 s delay against MODEL_TIMEOUT_S=5 on the worker: the worker gives up at 5 s, the mock closes at 8 s).
+# experiments/runs/2026-09-19-currency-rebuild/mock-span/delay-then-close/b3-fu19m-r3-01: 14 spans; by service: agw-central=6|loadgen=3|mockllm=1|worker=4
+## 1. the mock's server span(s): 1 span(s)
+  service=mockllm scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=POST /v1/chat/completions
+    kind=server
+    status.code=Error
+    status.description="injected: delay-then-close"
+    lab.injection=delay-then-close
+    http.response.status_code=200
+    lab.work_item=b3-fu19m-r3-01
+    duration_ms=8002.0 events=0 span_id=6b6ec81bc4beaa90 parent=9d36395430955baa
+    every attribute:
+      client.address=10.244.1.13
+      http.request.body.size=82
+      http.request.method=POST
+      http.response.status_code=200
+      lab.caller=worker
+      lab.injection=delay-then-close
+      lab.message_id=01a0baef-5b4c-7e07-a321-bf92ad9aee27
+      lab.task_id=01a0baef-5b4d-7805-9966-c3e9fc56fb03
+      lab.work_item=b3-fu19m-r3-01
+      network.peer.address=10.244.1.13
+      network.peer.port=56878
+      network.protocol.version=1.1
+      server.address=mockllm.lab.svc.cluster.local
+      url.path=/v1/chat/completions
+      url.scheme=http
+      user_agent.original=Go-http-client/1.1
+## 2. the agent's chat span(s): 1 span(s)
+  service=worker scope=github.com/AhmadMasry/agent-mesh-lab/internal/otel
+    name=chat mock
+    kind=client
+    status.code=Error
+    status.description="model call: Post "http://model.lab.internal:8080/v1/chat/completions": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+    error.type=*http.timeoutError
+    gen_ai.operation.name=chat
+    server.address=model.lab.internal
+    server.port=8080
+    duration_ms=5000.8 events=0 span_id=33b7b5022f64a26c parent=60ce2cfcbc73055c
+    every attribute:
+      error.type=*http.timeoutError
+      gen_ai.operation.name=chat
+      gen_ai.provider.name=openai
+      gen_ai.request.model=mock
+      lab.caller=worker
+      lab.message_id=01a0baef-5b4c-7e07-a321-bf92ad9aee27
+      lab.task_id=01a0baef-5b4d-7805-9966-c3e9fc56fb03
+      lab.work_item=b3-fu19m-r3-01
+      server.address=model.lab.internal
+      server.port=8080
+## 3. the proxy's entry span(s) on the model route agentgateway-waypoint/model-via-agw: 1 span(s)
+  service=agw-central scope=agentgateway
+    name=POST /*
+    kind=server
+    status.code=Unset
+    status.description=""
+    http.status=<absent>
+    route=agentgateway-waypoint/model-via-agw
+    retry.attempt=<absent>
+    duration_ms=4999.8 events=0 span_id=2f03af2680988876 parent=d4bbf7d8df714d9d
+    every attribute:
+      @jaeger@warnings=clock skew adjustment disabled; not applying calculated delta of -887.209µs
+      duration=4999ms
+      endpoint=mockllm.lab.svc.cluster.local:8080
+      gateway=agentgateway-waypoint/agw-central
+      http.host=model.lab.internal
+      http.method=POST
+      http.path=/v1/chat/completions
+      http.version=HTTP/1.1
+      listener=inner-http
+      network.protocol.version=1.1
+      protocol=http
+      route=agentgateway-waypoint/model-via-agw
+      span.id=2f03af2680988876
+      src.addr=10.244.1.38:39754
+      src.identity=spiffe://cluster.local/ns/lab/sa/default
+      trace.id=3b3e009d6a421b8c00daf083f496f349
+      url.scheme=http
+## 4. the ledgers
+  ingress: deliveries (JSON-RPC arrivals) = 1 (SendMessage@worker)
+  execution: received = 1, execute = 1, tasks (distinct taskId) = 1
+    execution line: event=state state=TASK_STATE_SUBMITTED error=""
+    execution line: event=state state=TASK_STATE_WORKING error=""
+    execution line: event=state state=TASK_STATE_FAILED error="model call: Post \"http://model.lab.internal:8080/v1/chat/completions\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+    execution line: event=result state=TASK_STATE_FAILED error=""
+  invocation: lines = 1; by outcome: delayed-close=1
+    invocation line: caller=worker injection=delay-then-close outcome=delayed-close latency_ms=8001.883
+  client line: attempt=1 result_kind=task state=TASK_STATE_FAILED error=""

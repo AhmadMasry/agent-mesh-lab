@@ -1,0 +1,211 @@
+# Follow-ups 19, task 3: what each part of this directory is, and fifteen places where a file in it says less, or
+# other, than a reader would take it to say. Written 2026-09-19 after the readings, by the agent that took them. The
+# recorded files are left as they were written; nothing below changes a count. Fix round 1, 2026-09-19 after review, added
+# notes 14 and 15, the last sentences of notes 1, 7 and 8, checks-as-run/, host-sleep-assertion-counts.py and the note appended
+# to host-sleep.txt, and regenerated trace/span-diff.txt; it took no cluster action and changed no count.
+
+WHAT IS WHERE
+  preflight/            step 0, before any cluster action: builds and tests at the tip (preflight.sh, its output, make test's).
+  rebuild.sh build.txt timings.csv driver.txt accounting.txt accounting.py
+                        the rebuild from a deleted cluster: the driver, its log (written outside the repository while it
+                        ran), one row per make target, and where every second of both logs went.
+  checks.sh checks.txt checks-driver.txt checks-as-run/
+                        the readings: part one is the standard proof in the last proof's order; part two is what this proof
+                        adds; the retry knobs are last. checks-as-run/ holds the script as it stood for the earlier
+                        invocations (note 1).
+  clean-check/ trace/ prometheus-targets.txt strict/ proxies/ cluster/ retry-knobs/
+                        part one and the knobs, the same files the last proof (2026-09-19-agentgateway-only) holds.
+  trace/span-diff.py trace/span-diff.txt trace/a2a-sdk-source/
+                        the one count that moved, 69 -> 81 spans on the orchestrator path: which spans, and the code that shows why.
+  pins/                 reading (a): containers.csv (every container of every pod), helm-list.json, readback.txt, the
+                        orchestrator's installed distributions against uv.lock, the two ahead-of-chart images' warn lines,
+                        and readback-vs-pins.csv: all 84 rows of the currency pass's pins.csv beside what was read here.
+  wire-version/         reading (b). rule-4/ reading (c). jaeger-api/ reading (d).
+  mock-span/            reading (e): close/ and delay-then-close/ are the two committed rows' own run directories;
+                        after-live-*.txt and before-on-the-cluster.txt are one tool's reading of each; clean-after/ is the
+                        clean work item per receiver sent after the disarm.
+  exporter-columns/     reading (f). scan/ reading (g), with the module versions linked into each scanned Go binary.
+  worker-span/          reading (h), added by the controller after the author's decision of 2026-09-19 that the worker is to
+                        mark its own close-after-read span: that span as it reads at THIS tree (not marked), by the committed
+                        row that arms it; after-the-row.txt; clean-after/, the clean work item per receiver sent after it.
+  retry-knobs/          readings.txt is the first take (18:33Z, then the last reading); readings-take-2-after-reading-h.txt
+                        is the second (18:43Z), taken so that the knobs are the last reading again. Both end at 0 stanzas.
+  cluster-after.sh cluster-after.txt cluster-after-take-1-before-reading-h.txt
+                        the state the cluster is left in; the first take is kept with a note above it.
+  host-sleep.sh host-sleep.txt windows.csv host-sleep-assertion-counts.py
+                        Sleep, Wake, DarkWake and Maintenance lines in each counted window: 0 in every one. Keep-awake
+                        is not claimed absent (note 15; the counts are the note appended to host-sleep.txt).
+  Not committed (the repository ignores experiments/runs/**/raw/ and *.log): pins/raw/ (pods.json and the two full
+  pod logs the warn-line files were cut from), proxies/raw/ (the two config dumps; their sizes and sha256 are in the
+  extracts), and the two matrix rows' apply.log and collect.log.
+
+NOTES
+
+1. checks.sh was run in six invocations, not one: `part1`, `part2a`, `part2b`, `knobs`, then `part3` and `knobs`
+   again (checks-driver.txt has each; accounting.txt shows the gaps between them, which are this agent's own
+   turns). The reason for the first split is in the brief: part one's counts were to be read against the last
+   proof's before anything else was sent, and one of them differed, so the controller was told before part two
+   began. The script's text was amended twice, each time in a gap and each time only in parts that had not run:
+   before part two, two readings were added (the distributions installed in the running orchestrator container;
+   `go version -m` of the scanned binaries) and part two was split in two; before part three, that part was added
+   and the knobs step was given a second output path so that a second take could not overwrite the first. The
+   part-one block of the file that ran and of the committed file were compared and are identical (10 218
+   characters), and the second amendment changed four lines of the file as it had run (the header's last
+   sentence, the list of part names, the mkdir line and the knobs step's output path); the as-run copies are not
+   committed. The knobs were read twice, by design, and both takes are kept; no other reading was taken twice and
+   none was discarded. ADDED IN FIX ROUND 1: the as-run copies had been kept in this agent's scratchpad and are now
+   in checks-as-run/, byte for byte as they stood (each a `cp` made in the gap before the amendment that followed
+   it, 18:28Z and 18:42Z): `checks.sh.as-it-ran-for-part1`, sha256 92f72926…2517b, and
+   `checks.sh.as-it-ran-for-part2a-part2b-and-the-first-knobs-take`, sha256 26e95a0a…8ef35; checks.sh itself,
+   sha256 9bfa13cd…0d837, is the file as it ran for part three and the second knobs take. That a copy IS what ran
+   rests on this agent's account of when it was made; what a reader can check is that each copy's step labels are
+   the labels checks.txt printed for its invocations (the first knobs take's label lacks the `-> <path>` the
+   second amendment added).
+
+2. After `gate1-baseline.sh RUNS=3 REPS=1` the mock was STILL ARMED. mock-span/mock-mode-readback.txt, read at
+   18:31:05Z, shows the mock's last control line to be the inject of `delay-then-close` for work item b3-fu19m-r3-01:
+   that script resets the mock before each repetition and not after the last one. The arming is keyed to a work
+   item that is never sent again, so it could not have fired for another; and every committed script resets the
+   mock before it sends. It was cleared by the next script's own resets (the clean check, 18:31Z), and the two
+   takes of the final state read it clear: the first, last control line a reset stamped 18:31:49Z, 3 resets after
+   the last inject; cluster-after.txt, after reading (h), a reset stamped 18:43:46Z, 10 resets after it. The brief's order was "disarm, read the mode back, send a clean
+   item"; what ran was "read the mode back (armed), clean item (which disarms), read again (clear)". For the next
+   task: a run of gate1-baseline.sh leaves the mock armed whenever its last run type arms by work item.
+
+3. The `delay-then-close` row is not the agent seeing a close. Its committed shape is an 8 s delay against
+   MODEL_TIMEOUT_S=5 on the worker: the worker gave up at 5.0 s (chat span: `context deadline exceeded
+   (Client.Timeout exceeded while awaiting headers)`, error.type `*http.timeoutError`, the same text as the
+   execution ledger's), the proxy's entry span on the model route ended at 4 999 ms with status Unset and NO
+   `http.status` and no `reason` (its caller went away before the upstream answered), and the mock closed at 8.0 s
+   and marked its own span then (duration 8 002 ms). Which branch of the mock ran is fixtures/mockllm/server.go
+   l.305-314: `s.sleepMs(delayMs)` is a plain time.Sleep (l.201-205) that does not watch the request's context, so
+   the delay ran to its end although the caller had left, then hijackAndClose, then MarkInjection; the ledger's
+   outcome `delayed-close` (not `closed-error`) says the hijack-close returned no error, latency 8 001.883 ms. So
+   the marked path WAS reached, and no driver with a shorter delay was needed for the marking itself (the
+   controller's condition for one). This row therefore reads the MOCK's marking for that mode, live, and
+   does not read what an agent or the proxy records for a delayed close that reaches them; the `close` row reads
+   that (chat span 503, proxy 503 / UpstreamFailure). The brief made a committed row the reading where one exists,
+   and this is the only committed row that arms this mode; the controller was told of the shape before it ran.
+
+4. That row rolled the worker Deployment twice, by its own recipe (`kubectl set env … MODEL_TIMEOUT_S=5`, then
+   `MODEL_TIMEOUT_S-`): the Deployment reads generation 7 afterwards (it was not read before), and the worker pod
+   is a new one since 18:31:01Z. Nothing under deploy/ sets MODEL_TIMEOUT_S, so unsetting it restores the built
+   spec (cluster-after.txt lists the env: no such variable). The script's restore also writes PLAN_MODEL_CALL=off
+   and MODEL_MAX_RETRIES=0 on the orchestrator, which are the values deploy/base already carries: its pod is the
+   one that started at 18:21:50Z, so nothing rolled there. Consequence for this record: rule-4/running-pods.txt
+   quotes the startup line of the EARLIER worker pod (18:21:51Z), taken before the row ran.
+
+5. rule-4/running-pods.txt, the orchestrator: the model client it prints was BUILT FOR THE READING, by
+   `kubectl exec` of a second Python process inside the running container, from the pod's own environment and with
+   the constructor server.py uses. The serving process holds no model client at all: with DOWNSTREAM_A2A_URL set
+   and PLAN_MODEL_CALL off it is in forward mode, and server.py builds one only in model mode or with the plan call
+   on. So the line says what that image builds from that environment (max_retries 0, transport retries 0, pool
+   retries 0), which is how the committed records of 2026-09-12 and of the currency pass read it, there in the
+   image and here in the pod. The same kind of exec wrote pins/orchestrator-installed.txt. Both are reads; neither
+   process serves or sends anything.
+
+6. "Go clients' recorded settings" are of two kinds here and neither is a printed retry count. The worker prints
+   `MODEL_RETRIES=0` and its timeout in its startup line; the load client prints nothing about its transport, so
+   what is read is that no loadgen Job carries a CLIENT_* variable (8 of 8 Jobs at the time; each backoffLimit 0),
+   which by fixtures/loadgen/main.go means internal/httpclient.New, the no-retry client. That the binaries are
+   built from the tree whose tests assert those defaults is build.txt's subtree ids, not this file.
+
+7. strict/ztunnel-other-error-lines.txt holds 13 lines where the last proof's held 18, and the difference is not
+   a refusal. 11 are `no healthy upstream: 10.96.201.241:4318` warnings, 18:21:56.056Z to 18:22:06.061Z, the
+   collector's Service in the seconds of `make step-3` between its overlay giving the agents their OTLP endpoint
+   and the collector's chart being installed (the last proof: 15, over 13 s; how many there are is how many
+   export attempts fell in that gap, and no reading was in progress); 2 are ztunnel's own `try_tcp_on_error:
+   false` startup lines. The last proof's eighteenth line was a probe refusal ztunnel could not attribute; this
+   time both refusals carry src.workload="mtls-probe", so neither is in this file and both named probe legs have a
+   series (last proof: the worker one read `no-series` under that name). Policy rejections that are not the
+   probe's: 0. The 24 legs are the last proof's 24 leg for leg; what differs is two cells of that one row of
+   hops-security.csv, the source workload and the source namespace (`unknown` / `unknown` then, `mtls-probe` /
+   `default` now). Cause not established: which way ztunnel's attribution of a just-created pod falls is not
+   something this task controlled or read.
+   `agentgateway-ingress -> worker` reads `no-series` for the last proof's reason: no reading in part one sent to
+   the worker through the ingress.
+
+8. pins/otel-collector-warn-error-lines.txt: 1 314 log lines, of which 93 carry a level field (info 87, warn 6,
+   error 0); the other 1 221 are the debug exporter's multi-line print of OTLP log records (the proxies' access
+   logs), which have no level column of the process's own. The 6 warn lines are one message, gRPC `connection
+   refused` dialling jaeger:4317, 18:22:10.683Z to 18:22:26.195Z: make step-3 installs the collector's chart
+   before Jaeger's (collector container started 18:22:06Z, Jaeger's 18:22:18Z), and none follows. Jaeger: 40 level
+   lines, warn 2, error 0, both at start: "Using legacy service.telemetry.resource inline map format" and "zPages
+   span processor registration is not available". Whether 0.160.0 and 2.20.0 printed the same lines is NOT known
+   from a record: no earlier proof kept these logs, so these counts have nothing beside them. FOR THE NEXT
+   CURRENCY PASS: Jaeger 2.21.0's notice "Using legacy service.telemetry.resource inline map format" appears
+   although deploy/step-3-stress/jaeger-values.yaml sets no `service.telemetry` (0 lines), so the legacy format is
+   a default of the chart (4.13.1, written for 2.20.0) or of the image; plausibly the image-ahead-of-chart
+   pairing; nothing is claimed, and a chart whose appVersion is 2.21.0 is where to look again.
+
+9. pins/readback-vs-pins.csv says `matched` on 79 of 84 rows and `not read back: <why>` on 5 (three documents, two
+   dev-group packages the image leaves out). `matched` is the tool's comparison of the row's first version or
+   digest token with the value read; every row was also read by eye. Two rows are matched against something other
+   than a running container and say so: the `module graph` rows and any go.mod module no binary links are read
+   from `go list -m all` at the built tree (pins/go-list-m-all.txt), and the host tools from build.txt's header and
+   pins/host-tools.txt, which was read after the readings (18:34:43Z). `docker version` prints the Desktop
+   version only on its server platform line, which is why that file exists. 12 of the 20 distinct running images
+   have no pin row of their own, each with why (pins/running-images-without-a-pin-row.csv): eight come inside the
+   kind node image, which is the pin; four are the lab's own builds.
+
+10. exporter-columns/: "route column: absent" for the last proof's trace means what it says. That export was taken
+    by the exporter of its day, before the `route` and `retry_attempt` columns existed; it is read as committed and
+    not re-exported. Its `http_status` column exists and is empty on all 28 proxy rows, which is the cell this
+    proof's export fills on 28 of 28 (each `200`). In the two mock-span work items the same column shows what the
+    change was for: in `close`, the proxy's entry row on the model route reads 503 beside the mock's own 200; in
+    `delay-then-close` that row is empty, because the proxy wrote no status (note 3). 162 - 138 = 24 more
+    non-proxy rows than the last proof are the 12 new SDK spans on each of the two orchestrator work items; they
+    carry none of the three columns.
+
+11. scan/scan-context.txt says it itself and it bears repeating beside a "pins read back" claim: the four ko image
+    ids that were SCANNED are not the ids the pods RUN, because ko rebuilds to a new digest at every apply. What
+    ties them is the input: one checkout, one .ko.yaml base digest, one toolchain. scan/go-binary-modules.csv is
+    therefore the module list of the scanned binaries (grpc v1.83.2 in worker, mockllm and loadgen; none in
+    replay; a2a-go v2.5.0 in worker, loadgen and replay), built seconds apart from the same tree as the running ones.
+
+12. Reading (h) is R1 SUB=http, not R2 SUB=waypoint. The controller asked for "the row that arms the worker with
+    close-after-read on the Go receiver" and read the script's header as R2/waypoint, adding "the script wins". It
+    does: gate3-matrix.sh l.226-234 give R1's two sub-rows RECEIVER_INJECT="$RECEIVER_CLOSE_MODE", which is
+    close-after-read for RECEIVER=go (l.215-218), and l.235-253 give all three R2 sub-rows http503-before-dispatch.
+    R1/http was taken (R1/sdk arms the same mode). What else that row switches on, from its own knobs.txt: the load
+    client's knob for its one Job, CLIENT_RETRIES=1 with CLIENT_RETRY_ON=transport+503, which is the layer that row
+    measures; mock injection none; route-retry none, 0 stanzas before and after; no Deployment rolled. What it
+    read: the worker's server span for the delivery it closed says status Unset, no description, NO lab.injection,
+    http.response.status_code=200, 0.1 ms -- the shape the mock's span had before follow-ups 19 task 2, and the
+    same the committed R1 go/http row of 2026-09-19-route-keyed-attribution shows at the earlier pins; the proxy's
+    entry span for it says 503 / UpstreamFailure, no retry.attempt; the client's second send was served (200);
+    ledgers 2 deliveries, 1 received, 1 execute, 1 task, 1 invocation, COMPLETED, layer client-http. The load
+    client's one `HTTP POST` span covers both sends and reads 200: its retry loops below that span.
+
+13. build.txt's header lists two worktrees; `git worktree list` showed three when it was next read, at 18:42Z:
+    the controller had started another isolated agent (branch fu19-worker-span, at the same commit, locked) under
+    .claude/worktrees/, the path .git/info/exclude names. The controller's message says it was created after
+    parts one and two; this agent did not read the list between the build and 18:42Z. This checkout's status read
+    clean of everything but this run directory at every read.
+
+14. trace/span-diff.txt as first committed was NOT the whole output of trace/span-diff.py, though its header said
+    it was that tool's output. This agent cut it when writing it: the command piped the tool through a `grep -v`
+    that dropped, for each of the 12 new spans, its name line and the `parent:` and `attrs:` lines under it (36
+    lines per orchestrator repetition, 72 in all), and printed only the first four lines of the r1 worker block
+    and nothing of r2's. It was done to keep the file short and the header did not say so. Fix round 1 regenerated
+    the file with the committed tool over the committed traces, nothing cut: 152 lines where there were 48, 24
+    `parent:` lines (each `…EventQueueSource._dispatch_loop`), 24 `attrs: {}` lines, and both worker blocks (13 of
+    13 groups unchanged in each). No count differs between the two versions; "no attributes" on the new spans is
+    now in a committed text file, which it was not before. The two groups CSVs were not touched.
+
+15. Keep-awake is NOT claimed absent, and the entry as first committed said "no keep-awake was started" with no
+    subject. What is true: this task's scripts and commands started none and changed no power setting. What the
+    host's own log shows: 19 of the 71 assertion lines of the whole window name `caffeinate`, all 19 with
+    PreventUserIdleSystemSleep -- 15 ends of a holder (ClientDied), 4 Summary lines, 0 Created; 3 of 6 in the
+    rebuild window, 1 of 1 in part one; 12 inside a named sub-window and 7 in the gaps (every window's figures
+    are in the note appended to host-sleep.txt, counted by host-sleep-assertion-counts.py, which prints numbers
+    only). That is what the agent harness's rolling `caffeinate -i -t 300` per session would leave; read by `ps`
+    after the windows, 3 such processes, each the child of a `claude` process. What the lines do NOT say: that an
+    assertion was held at every moment of a window -- continuous coverage is not read from a count of ends and
+    summaries -- and which session owned each line. The first wording of this note, of the entry and of the
+    note on host-sleep.txt (fix round 1, a first amend) called the windows "the reading of a host that was being
+    held awake"; that said more than the lines carry and was corrected by a second amend on the controller's
+    word. "Sleep=0" in every window is a true count; no span, ledger or leg count depends on it. rebuild.sh l.8 and
+    host-sleep.sh's header say "no keep-awake … is started by this script or by the task that runs it", which is
+    scoped to what they can know and stands. The brief's limit "no keep-awake of any form" is one an agent under
+    this harness cannot meet as written; the controller has it.

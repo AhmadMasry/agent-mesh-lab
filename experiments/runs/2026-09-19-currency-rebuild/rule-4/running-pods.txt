@@ -1,0 +1,26 @@
+== 2026-09-19T18:29:23Z every Deployment in lab: env names starting MODEL_, CLIENT_, DOWNSTREAM_ or PLAN_ ==
+  deploy/mockllm container mockllm: (none)
+  deploy/orchestrator container orchestrator: MODEL_BASE_URL=http://model.lab.internal:8080/v1 DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080 PLAN_MODEL_CALL=off MODEL_NAME=mock MODEL_API_KEY=unused MODEL_MAX_RETRIES=0
+  deploy/worker container worker: MODEL_BASE_URL=http://model.lab.internal:8080/v1 MODEL_NAME=mock MODEL_API_KEY=unused
+CLIENT_* on any Deployment in lab, by the jq test gate3-matrix.sh uses (empty means none): 
+== 2026-09-19T18:29:23Z the worker (Go): its own startup line, which prints the model timeout and MODEL_RETRIES as the process read them ==
+2026/09/19 18:21:51 worker "worker" listening on :8080; card at /.well-known/agent-card.json; model http://model.lab.internal:8080/v1 (timeout 1m0s, MODEL_RETRIES=0)
+== 2026-09-19T18:29:23Z the mock (Go): its startup line ==
+2026/09/19 18:21:51 mockllm: listening on :8080 (latency_ms=200, response_text_len=35)
+== 2026-09-19T18:29:23Z the load client (Go): the env of every loadgen Job that exists, names starting CLIENT_ (the Job template carries none; the client builds internal/httpclient.New unless one is set) ==
+  job/loadgen-a3t-fu19t-r1-orchestrator backoffLimit=0: (no CLIENT_ variable)
+  job/loadgen-a3t-fu19t-r1-worker backoffLimit=0: (no CLIENT_ variable)
+  job/loadgen-a3t-fu19t-r2-orchestrator backoffLimit=0: (no CLIENT_ variable)
+  job/loadgen-a3t-fu19t-r2-worker backoffLimit=0: (no CLIENT_ variable)
+  job/loadgen-g2c-fu19c-orchestrator backoffLimit=0: (no CLIENT_ variable)
+  job/loadgen-g2c-fu19c-worker backoffLimit=0: (no CLIENT_ variable)
+  job/loadgen-wv-fu19w-go-001 backoffLimit=0: (no CLIENT_ variable)
+  job/loadgen-wv-fu19w-py-001 backoffLimit=0: (no CLIENT_ variable)
+== 2026-09-19T18:29:23Z the orchestrator (Python): inside the running container, the packages it runs and the model client its own constructor builds from the pod's environment ==
+python 3.14.7
+a2a-sdk=1.1.4 openai=3.16.2 uvicorn=0.53.0 httpx2=2.13.0 httpcore2=2.13.0 protobuf=6.33.6 opentelemetry-distro=0.65b0 opentelemetry-instrumentation-openai-v2=2.4b0 opentelemetry-util-genai=1.1b0
+env: MODEL_MAX_RETRIES='0' PLAN_MODEL_CALL='off' DOWNSTREAM_A2A_URL='http://worker.lab.svc.cluster.local:8080'
+ModelClient built as server.py builds it: max_retries=0 transport_retries=0 ; AsyncOpenAI.max_retries=0 ; openai DEFAULT_MAX_RETRIES=2
+httpx2 transport AsyncHTTPTransport: pool retries=0
+a2a VERSION_HEADER='A2A-Version' PROTOCOL_VERSION_CURRENT='1.0'
+(the running orchestrator is in forward mode when DOWNSTREAM_A2A_URL is set and PLAN_MODEL_CALL is off: server.py then builds no model client at all, so the line above is what it WOULD build from this pod's environment, read in this pod's image)

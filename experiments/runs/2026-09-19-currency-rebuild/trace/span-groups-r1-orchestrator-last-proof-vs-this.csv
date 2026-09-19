@@ -1,0 +1,41 @@
+service,instrumentation_scope,kind,name,spans_old,spans_new,verdict
+agentgateway-ingress,agentgateway,client,POST orchestrator.lab.svc.cluster.local:8080,1,1,equal
+agentgateway-ingress,agentgateway,server,POST /*,1,1,equal
+agw-central,agentgateway,client,GET orchestrator.lab.svc.cluster.local:8080,1,1,equal
+agw-central,agentgateway,client,POST mockllm.lab.svc.cluster.local:8080,1,1,equal
+agw-central,agentgateway,client,POST worker.lab.svc.cluster.local:8080,1,1,equal
+agw-central,agentgateway,server,GET /*,1,1,equal
+agw-central,agentgateway,server,POST /*,2,2,equal
+loadgen,github.com/AhmadMasry/agent-mesh-lab/internal/otel,client,invoke_agent orchestrator,1,1,equal
+loadgen,go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp,client,HTTP GET,1,1,equal
+loadgen,go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp,client,HTTP POST,1,1,equal
+mockllm,go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp,server,POST /v1/chat/completions,1,1,equal
+orchestrator,a2a-python-sdk,client,a2a.client.transports.jsonrpc.JsonRpcTransport._send_request,1,1,equal
+orchestrator,a2a-python-sdk,client,a2a.client.transports.jsonrpc.JsonRpcTransport.send_message,1,1,equal
+orchestrator,a2a-python-sdk,internal,a2a.server.tasks.task_manager.append_artifact_to_task,1,1,equal
+orchestrator,a2a-python-sdk,server,a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink,0,12,differs
+orchestrator,a2a-python-sdk,server,a2a.server.events.event_queue_v2.EventQueueSource._dispatch_loop,2,2,equal
+orchestrator,a2a-python-sdk,server,a2a.server.events.event_queue_v2.EventQueueSource._join_incoming_queue,2,2,equal
+orchestrator,a2a-python-sdk,server,a2a.server.events.event_queue_v2.EventQueueSource.close,3,3,equal
+orchestrator,a2a-python-sdk,server,a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event,7,7,equal
+orchestrator,a2a-python-sdk,server,a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event,12,12,equal
+orchestrator,a2a-python-sdk,server,a2a.server.events.event_queue_v2.EventQueueSource.remove_sink,2,2,equal
+orchestrator,a2a-python-sdk,server,a2a.server.events.event_queue_v2.EventQueueSource.tap,1,1,equal
+orchestrator,a2a-python-sdk,server,a2a.server.events.event_queue_v2.EventQueueSource.task_done,6,6,equal
+orchestrator,a2a-python-sdk,server,a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2._setup_active_task,1,1,equal
+orchestrator,a2a-python-sdk,server,a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2._validate_task_id_match,1,1,equal
+orchestrator,a2a-python-sdk,server,a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2.on_message_send,1,1,equal
+orchestrator,a2a-python-sdk,server,a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._create_response,1,1,equal
+orchestrator,a2a-python-sdk,server,a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._handle_send_message,1,1,equal
+orchestrator,a2a-python-sdk,server,a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._process_non_streaming_request,1,1,equal
+orchestrator,a2a-python-sdk,server,a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher.handle_requests,1,1,equal
+orchestrator,opentelemetry.instrumentation.httpx,client,POST,1,1,equal
+orchestrator,opentelemetry.instrumentation.starlette,internal,GET /.well-known/agent-card.json http send,2,2,equal
+orchestrator,opentelemetry.instrumentation.starlette,internal,POST / http receive,1,1,equal
+orchestrator,opentelemetry.instrumentation.starlette,internal,POST / http send,2,2,equal
+orchestrator,opentelemetry.instrumentation.starlette,server,GET /.well-known/agent-card.json,1,1,equal
+orchestrator,opentelemetry.instrumentation.starlette,server,POST /,1,1,equal
+orchestrator,orchestrator.forward,client,invoke_agent worker,1,1,equal
+worker,github.com/AhmadMasry/agent-mesh-lab/internal/otel,client,chat mock,1,1,equal
+worker,go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp,client,HTTP POST,1,1,equal
+worker,go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp,server,POST /,1,1,equal

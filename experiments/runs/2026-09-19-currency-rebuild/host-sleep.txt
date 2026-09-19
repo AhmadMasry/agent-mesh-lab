@@ -1,0 +1,81 @@
+# Host sleep during the follow-ups 19 task 3 rebuild and readings. Written 2026-09-19T18:45:05Z.
+#
+# The selection, by pmset's event-kind column (field $4), over the whole of `pmset -g log`:
+#   $4=="Sleep" || $4=="Wake" || $4=="DarkWake" || $4=="Maintenance"
+# pmset stamps in the host local zone (shown per line); the windows are given in UTC and compared after
+# converting each stamp with its own offset. No Assertions line is listed anywhere in this file.
+#
+# EVERY COUNTED WINDOW, and the lines of each kept kind whose stamp falls inside it:
+
+   window rebuild-and-readings: 2026-09-19T18:16:20Z .. 2026-09-19T18:44:50Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=71   (Assertions: counted, never listed)
+
+   window rebuild: 2026-09-19T18:16:20Z .. 2026-09-19T18:23:16Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=6   (Assertions: counted, never listed)
+
+   window readings-part-one: 2026-09-19T18:23:40Z .. 2026-09-19T18:27:08Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=1   (Assertions: counted, never listed)
+
+   window readings-part-two-a: 2026-09-19T18:28:41Z .. 2026-09-19T18:29:59Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=2   (Assertions: counted, never listed)
+
+   window readings-part-two-b: 2026-09-19T18:30:23Z .. 2026-09-19T18:32:41Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=8   (Assertions: counted, never listed)
+
+   window readings-retry-knobs-take-1: 2026-09-19T18:33:03Z .. 2026-09-19T18:33:05Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=0   (Assertions: counted, never listed)
+
+   window cluster-after-take-1: 2026-09-19T18:33:43Z .. 2026-09-19T18:34:20Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=0   (Assertions: counted, never listed)
+
+   window readings-part-three-and-retry-knobs-take-2: 2026-09-19T18:42:26Z .. 2026-09-19T18:43:48Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=1   (Assertions: counted, never listed)
+
+   window cluster-after: 2026-09-19T18:44:25Z .. 2026-09-19T18:44:50Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=5   (Assertions: counted, never listed)
+
+# kept lines whose tail was cut by the guard: 0
+# the earliest stamped line pmset holds: 2026-09-15T17:25:40+03:00 (the log covers the windows only if this is before them)
+# Sleep lines pmset holds in all: 24; the last one stamped 2026-09-19T10:24:38+03:00
+# Wake lines pmset holds in all:  2; the last one stamped 2026-09-19T11:24:41+03:00
+
+# NOTE APPENDED 2026-09-19T19:17:03Z (fix round 1, after review); its wording CORRECTED 2026-09-19T19:21:53Z on the controller's word: as first
+# written it ended by calling these windows "the reading of a host that was being held awake", which says more than the lines
+# below carry. Keep-awake is NOT claimed absent for these windows, and it is not claimed present at every moment of them either.
+# Counts only: no Assertions line is listed here. How counted: `pmset -g log | python3 host-sleep-assertion-counts.py windows.csv`
+# (the method is in that program's header: field $4 == "Assertions"; stamps compared in UTC, both ends inclusive; the substring
+# "caffeinate"; the type substring; the action word after the process token). It prints numbers and pmset's own action words, never
+# a line, a pid or a name other than that process name. Its totals equal the Assertions= figures above in 9 of 9 windows.
+#
+   window rebuild-and-readings: 2026-09-19T18:16:20Z .. 2026-09-19T18:44:50Z
+     Assertions lines=71  naming caffeinate=19  of those with type PreventUserIdleSystemSleep=19  by action word: Created=0, ClientDied=15, Summary=4
+   window rebuild: 2026-09-19T18:16:20Z .. 2026-09-19T18:23:16Z
+     Assertions lines=6  naming caffeinate=3  of those with type PreventUserIdleSystemSleep=3  by action word: Created=0, ClientDied=3
+   window readings-part-one: 2026-09-19T18:23:40Z .. 2026-09-19T18:27:08Z
+     Assertions lines=1  naming caffeinate=1  of those with type PreventUserIdleSystemSleep=1  by action word: Created=0, ClientDied=1
+   window readings-part-two-a: 2026-09-19T18:28:41Z .. 2026-09-19T18:29:59Z
+     Assertions lines=2  naming caffeinate=2  of those with type PreventUserIdleSystemSleep=2  by action word: Created=0, Summary=2
+   window readings-part-two-b: 2026-09-19T18:30:23Z .. 2026-09-19T18:32:41Z
+     Assertions lines=8  naming caffeinate=2  of those with type PreventUserIdleSystemSleep=2  by action word: Created=0, ClientDied=2
+   window readings-retry-knobs-take-1: 2026-09-19T18:33:03Z .. 2026-09-19T18:33:05Z
+     Assertions lines=0  naming caffeinate=0  of those with type PreventUserIdleSystemSleep=0  by action word: Created=0
+   window cluster-after-take-1: 2026-09-19T18:33:43Z .. 2026-09-19T18:34:20Z
+     Assertions lines=0  naming caffeinate=0  of those with type PreventUserIdleSystemSleep=0  by action word: Created=0
+   window readings-part-three-and-retry-knobs-take-2: 2026-09-19T18:42:26Z .. 2026-09-19T18:43:48Z
+     Assertions lines=1  naming caffeinate=1  of those with type PreventUserIdleSystemSleep=1  by action word: Created=0, ClientDied=1
+   window cluster-after: 2026-09-19T18:44:25Z .. 2026-09-19T18:44:50Z
+     Assertions lines=5  naming caffeinate=3  of those with type PreventUserIdleSystemSleep=3  by action word: Created=0, ClientDied=1, Summary=2
+#
+# Reading: of the whole window's 71 assertion lines 19 name caffeinate, all 19 of type PreventUserIdleSystemSleep: 15 are the END
+# of a holder (pmset's action word ClientDied), 4 are Summary lines, 0 are Created. 12 of the 19 fall inside a named sub-window
+# (3 + 1 + 2 + 2 + 0 + 0 + 1 + 3) and 7 in the gaps between them. That is what the agent harness's rolling `caffeinate -i -t 300`
+# per session would leave in the log. Continuous coverage is NOT read from these lines: whether an assertion was held at every
+# moment of a window is not something a count of ends and summaries says. 15 ends in 28.5 min resembles three rolling 300 s
+# streams; that is a resemblance, not a count of sessions, and which session owned each line is NOT ESTABLISHED (pmset records
+# a pid, not a parent, and nothing read the parents during the windows).
+# Read after the windows, 2026-09-19T19:17:03Z, by `ps` (process arguments and the PARENT's command name only):
+#   3 x   caffeinate -i -t 300   <- parent command name: claude
+# This task's scripts and commands started none of them and changed no power setting: 0 lines of this directory's .sh and .py
+# files run caffeinate or a pmset setter (the only lines that name caffeinate are the counting program's own header and match
+# strings), and host-sleep.sh's one pmset call is `pmset -g log`. The Sleep, Wake, DarkWake and Maintenance counts above are true
+# counts, and no span, ledger or leg count in this record depends on them.

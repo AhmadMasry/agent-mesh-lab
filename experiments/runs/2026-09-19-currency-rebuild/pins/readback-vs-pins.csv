@@ -1,0 +1,85 @@
+component,versions_yaml_key,action,pinned,read_where,read_value,verdict
+kind,kind,current,v0.33.0,"build.txt header, `kind version`",kind v0.33.0 go1.27.0 darwin/arm64,matched
+kind node image (Kubernetes),kubernetes,current,v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5,docker inspect of both node containers; kubectl version; kubelet on both nodes (pins/readback.txt),kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5; server v1.37.0,matched
+Istio,istio,current,1.31.0,running images; istioctl version (pins/readback.txt),"docker.io/istio/install-cni:1.31.0-distroless|docker.io/istio/pilot:1.31.0-distroless|docker.io/istio/ztunnel:1.31.0-distroless; control plane 1.31.0, data plane 1.31.0",matched
+Istio chart base,istio-chart-version,current,1.31.0 (app 1.31.0),"helm list -A, release istio-base",base-1.31.0 (app 1.31.0),matched
+Istio chart istiod,istio-chart-version,current,1.31.0 (app 1.31.0),"helm list -A, release istiod",istiod-1.31.0 (app 1.31.0),matched
+Istio chart cni,istio-chart-version,current,1.31.0 (app 1.31.0),"helm list -A, release istio-cni",cni-1.31.0 (app 1.31.0),matched
+Istio chart ztunnel,istio-chart-version,current,1.31.0 (app 1.31.0),"helm list -A, release ztunnel",ztunnel-1.31.0 (app 1.31.0),matched
+agentgateway proxy image,agentgateway,current,v1.5.0,"running image of both proxies (agw-central, agentgateway-ingress)",cr.agentgateway.dev/agentgateway:v1.5.0,matched
+agentgateway controller image,agentgateway-controlplane,current,v1.5.0,running image of the controller,cr.agentgateway.dev/controller:v1.5.0,matched
+agentgateway chart,agentgateway-controlplane,current,v1.5.0 (app v1.5.0),"helm list -A, release agentgateway",agentgateway-v1.5.0 (app v1.5.0),matched
+agentgateway-crds chart,agentgateway-controlplane,current,v1.5.0 (app v1.5.0),"helm list -A, release agentgateway-crds",agentgateway-crds-v1.5.0 (app v1.5.0),matched
+"agentgateway's stated Istio range (a recorded document, not a pin)",agentgateway-managed-central-waypoint,current,1.23 - 1.30 (for 1.5.x),,,"not read back: a recorded document, not a deployed value; the pairing it speaks of is read back in the two rows above and the Istio row (v1.5.0 on Istio 1.31.0)"
+Gateway API CRDs,gateway-api,no-stable-line,"v1.6.2, experimental channel",annotations of the gateways and httproutes CRDs (pins/readback.txt),bundle-version=v1.6.2 channel=experimental,matched
+A2A specification,a2a-spec,current,3303592588e388e62e0f69f701af531d2f4e3991 (v1.0.1),,,not read back: a document commit; what the wire carries is reading (b): A2A-Version 1.0 from both SDKs
+a2a-go,a2a-go,current,v2.5.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v2.5.0 in loadgen+replay+worker,matched
+a2a-python (a2a-sdk),a2a-python,moved,1.1.4,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),1.1.4,matched
+openai-python,openai-python,moved,3.16.2,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),3.16.2,matched
+uvicorn,uvicorn,moved,0.53.0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),0.53.0,matched
+pytest,pytest,current,9.1.1,,,"not read back: dev group of the lock, left out of the image by `uv sync --no-dev`; the preflight's pytest ran under the lock (63 passed)"
+pytest-asyncio,pytest-asyncio,current,1.4.0,,,"not read back: dev group of the lock, left out of the image by `uv sync --no-dev`; the preflight's pytest ran under the lock (63 passed)"
+OpenTelemetry Python distro,otel-python-distro,no-stable-line,0.65b0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),0.65b0,matched
+OpenTelemetry Python instrumentation-starlette,otel-python-distro,no-stable-line,0.65b0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),0.65b0,matched
+OpenTelemetry Python instrumentation-httpx,otel-python-distro,no-stable-line,0.65b0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),0.65b0,matched
+OpenTelemetry Python OTLP/HTTP exporter,otel-python-distro,current,1.44.0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),1.44.0,matched
+OpenTelemetry Python instrumentation-openai-v2,otel-python-genai-openai,no-stable-line,2.4b0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),2.4b0,matched
+OpenTelemetry Python util-genai,otel-python-genai-openai,no-stable-line,1.1b0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),1.1b0,matched
+OpenTelemetry GenAI semantic conventions,genai-semantic-conventions,no-stable-line,commit c88d504ab3d9879f8e50d3cc87e69775e11db234,,,not read back: a document commit named in two code comments; what the spans carry is the GenAI summary: 0 missing on 4 of 4
+uv.lock google-api-core,python-lock-moves-2026-09-19,moved,2.38.0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),2.38.0,matched
+uv.lock httpcore2,python-lock-moves-2026-09-19,moved,2.13.0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),2.13.0,matched
+uv.lock httpx2,python-lock-moves-2026-09-19,moved,2.13.0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),2.13.0,matched
+uv.lock idna,python-lock-moves-2026-09-19,moved,3.20,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),3.20,matched
+uv.lock urllib3,python-lock-moves-2026-09-19,moved,2.8.0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),2.8.0,matched
+uv.lock httpx,httpx,current,0.28.1,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),0.28.1,matched
+uv.lock httpcore,httpcore,current,1.0.9,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),1.0.9,matched
+uv.lock protobuf,pin-audit-2026-09-19,held,6.33.6 (PyPI latest 7.36.2),importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),6.33.6,matched
+uv.lock pydantic-core,pin-audit-2026-09-19,held,2.46.5 (PyPI latest 2.49.0),importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),2.46.5,matched
+uv.lock opentelemetry-instrumentation,otel-python-distro,no-stable-line,0.65b0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),0.65b0,matched
+uv.lock opentelemetry-instrumentation-asgi,otel-python-distro,no-stable-line,0.65b0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),0.65b0,matched
+uv.lock opentelemetry-semantic-conventions,otel-python-distro,no-stable-line,0.65b0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),0.65b0,matched
+uv.lock opentelemetry-util-http,otel-python-distro,no-stable-line,0.65b0,importlib.metadata inside the running orchestrator container (pins/orchestrator-installed.txt),0.65b0,matched
+"uv.lock, the other 41 packages",pin-audit-2026-09-19,current,equal to the lock,every distribution installed in the running orchestrator container against uv.lock (pins/lock-vs-installed.csv),"53 installed, 53 equal to the lock, 0 differing",matched
+Go toolchain,go,current,go1.27.1,go version -m of the scanned binaries; build.txt header,go1.27.1; host go version go1.27.1 darwin/arm64,matched
+"OpenTelemetry Go (otel, sdk, trace, otlptracehttp)",otel-go,current,v1.46.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.46.0 in loadgen+mockllm+worker,matched
+OpenTelemetry Go contrib otelhttp,otel-go-contrib,current,v0.71.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v0.71.0 in loadgen+mockllm+worker,matched
+go.mod github.com/google/uuid,(go.mod),current,v1.6.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.6.0 in loadgen+mockllm+replay+worker,matched
+go.mod google.golang.org/grpc,grpc-go,held,v1.83.2 (held; v1.84.0 not taken),go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.83.2 in loadgen+mockllm+worker,matched
+go.mod google.golang.org/genproto/googleapis/api,go-module-moves-2026-09-19,no-stable-line,v0.0.0-20260918162117-cecb64721679,go version -m of the scanned binaries (scan/go-binary-modules.csv),v0.0.0-20260918162117-cecb64721679 in loadgen+mockllm+worker,matched
+go.mod google.golang.org/genproto/googleapis/rpc,go-module-moves-2026-09-19,no-stable-line,v0.0.0-20260918162117-cecb64721679,go version -m of the scanned binaries (scan/go-binary-modules.csv),v0.0.0-20260918162117-cecb64721679 in loadgen+mockllm+worker,matched
+go.mod golang.org/x/mod,golang-x-mod,current,v0.41.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v0.41.0 in loadgen,matched
+go.mod golang.org/x/net,"(go.mod, indirect)",current,v0.59.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v0.59.0 in loadgen+mockllm+worker,matched
+go.mod golang.org/x/sync,"(go.mod, indirect)",current,v0.23.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v0.23.0 in worker,matched
+go.mod golang.org/x/sys,"(go.mod, indirect)",current,v0.48.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v0.48.0 in loadgen+mockllm+worker,matched
+go.mod golang.org/x/text,"(go.mod, indirect)",current,v0.42.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v0.42.0 in loadgen+mockllm+worker,matched
+go.mod github.com/cenkalti/backoff/v5,"(go.mod, indirect)",current,v5.0.3,go version -m of the scanned binaries (scan/go-binary-modules.csv),v5.0.3 in loadgen+mockllm+worker,matched
+go.mod github.com/cespare/xxhash/v2,"(go.mod, indirect)",current,v2.3.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v2.3.0 in loadgen+mockllm+worker,matched
+go.mod github.com/felixge/httpsnoop,"(go.mod, indirect)",current,v1.1.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.1.0 in loadgen+mockllm+worker,matched
+go.mod github.com/go-logr/logr,"(go.mod, indirect)",current,v1.4.4,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.4.4 in loadgen+mockllm+worker,matched
+go.mod github.com/go-logr/stdr,"(go.mod, indirect)",current,v1.2.2,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.2.2 in loadgen+mockllm+worker,matched
+go.mod github.com/grpc-ecosystem/grpc-gateway/v2,"(go.mod, indirect)",current,v2.30.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v2.30.0 in loadgen+mockllm+worker,matched
+go.mod go.opentelemetry.io/auto/sdk,"(go.mod, indirect)",current,v1.2.1,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.2.1 in loadgen+mockllm+worker,matched
+go.mod go.opentelemetry.io/otel/exporters/otlp/otlptrace,"(go.mod, indirect)",current,v1.46.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.46.0 in loadgen+mockllm+worker,matched
+go.mod go.opentelemetry.io/otel/metric,"(go.mod, indirect)",current,v1.46.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.46.0 in loadgen+mockllm+worker,matched
+go.mod go.opentelemetry.io/proto/otlp,"(go.mod, indirect)",current,v1.11.0,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.11.0 in loadgen+mockllm+worker,matched
+go.mod google.golang.org/protobuf,"(go.mod, indirect)",current,v1.36.12,go version -m of the scanned binaries (scan/go-binary-modules.csv),v1.36.12 in loadgen+mockllm+worker,matched
+module graph golang.org/x/crypto,go-module-moves-2026-09-12,current,v0.57.0,not linked into any of the four binaries; `go list -m all` at the built tree selects it (pins/go-list-m-all.txt),v0.57.0,matched
+module graph golang.org/x/term,go-module-moves-2026-09-12,current,v0.46.0,not linked into any of the four binaries; `go list -m all` at the built tree selects it (pins/go-list-m-all.txt),v0.46.0,matched
+OpenTelemetry Collector contrib image,opentelemetry-collector,moved,0.161.0,"running image, telemetry/otel-collector",otel/opentelemetry-collector-contrib:0.161.0,matched
+OpenTelemetry Collector chart,opentelemetry-collector-chart,current,0.173.1 (app 0.160.0),"helm list -A, release otel-collector",opentelemetry-collector-0.173.1 (app 0.160.0),matched
+Jaeger image,trace-backend,moved,2.21.0,"running image, telemetry/jaeger",jaegertracing/jaeger:2.21.0,matched
+Jaeger chart,trace-backend-chart,current,4.13.1 (app 2.20.0),"helm list -A, release jaeger",jaeger-4.13.1 (app 2.20.0),matched
+Prometheus image,prometheus,current,v3.14.0,"running image, telemetry/prometheus",prom/prometheus:v3.14.0,matched
+Prometheus chart,prometheus-chart,moved,29.31.1 (app v3.14.0),"helm list -A, release prometheus",prometheus-29.31.1 (app v3.14.0),matched
+Amazon Linux 2023 base tag (floats),amazonlinux-2023,current,":2023, observed @sha256:06da5a33... release 2023.12.20260918","build.txt, the image build's FROM line and the dnf transaction",sha256:06da5a3362eda00c5114227ac81abe56dd9b943395553b7c64a310457f4d9e2b release 2023.12.20260918,matched
+Amazon Linux 2023 python3.14 package,amazonlinux-2023,current,python3.14-3.14.7-1.amzn2023.0.1,"build.txt, the dnf transaction; python inside the running container (rule-4/running-pods.txt)",python3.14-3.14.7-1.amzn2023.0.1,matched
+uv (image tag floats),uv,current,":latest, observed 0.12.17 @sha256:10787c68...","build.txt, the builder stage's FROM line and `uv --version`",0.12.17 sha256:10787c682e4184e4f290de1171fd4703dc63de99221f10fe1c99002ce7fa9acc,matched
+distroless base (tag floats),distroless,current,"static-debian13:nonroot, observed @sha256:e2e927ec...",ko's `Using base` line in build.txt and checks.txt,static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3,matched
+Python on this host (tests),(agents/orchestrator/.python-version),current,3.14.7,"pins/host-tools.txt, the interpreter uv runs the orchestrator's tests on",3.14.7,matched
+curlimages/curl (experiment scripts' in-cluster client),curl-image,current,8.22.0,the image string of the scripts' control and probe pods as they ran (checks.sh probe; committed scripts' CURL_IMAGE),curlimages/curl:8.22.0,matched
+Kubescape CLI,kubescape,current,4.0.14,"scan/scan-context.txt, `kubescape version`",4.0.14,matched
+Helm,helm,current,v4.3.0,"build.txt header, `helm version --short`",v4.3.0+gbec5b06,matched
+ko,ko,current,0.19.1,"build.txt header, `ko version`",0.19.1,matched
+istioctl on this host,(host tool; must equal istio),current,1.31.0,build.txt header; istioctl version (pins/readback.txt),client version: 1.31.0; client version: 1.31.0,matched
+kubectl,(host tool),current,v1.37.0,build.txt header; kubectl version (pins/readback.txt),v1.37.0,matched
+Docker Desktop (docker engine),(host tool),current,4.91.0 (engine 29.8.0),"pins/host-tools.txt, `docker version` (server platform name and engine)",4.91.0; engine 29.8.0,matched
