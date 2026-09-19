@@ -171,3 +171,5 @@ Its fixture marks its own server span when it closes a connection on command: st
 the injection, and an attribute of its own. The SDK keeps that Error when the instrumentation sets Unset afterwards
 (`sdk/trace/span.go` l.220 at v1.46.0: a later, lower status is ignored). The `200` is still stamped beside it
 (`experiments/runs/2026-09-19-mock-span-on-injected-close/after.txt`).
+
+2026-09-19: the lab's Go agent shows the same shape. Its `close-after-read` injection hijacks and closes the connection behind the same `otelhttp.NewHandler`, and its server span read `http.response.status_code=200` with status Unset, measured by `TestInjectedCloseAfterRead_ServerSpanReading` in `agents/worker/span_test.go` on the code as it was (`experiments/runs/2026-09-19-worker-span-on-injected-close/before-final-test-on-the-parent.txt`, the committed test on the parent commit's code, which anyone can run again; `before.txt` there is the same reading from the first draft of that test, failing first); it now marks its own span as the fixture does, and the `200` is still stamped beside the marking (`after.txt` there).

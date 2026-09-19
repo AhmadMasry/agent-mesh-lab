@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	labotel "github.com/AhmadMasry/agent-mesh-lab/internal/otel"
 )
 
 // ingressLine is one pre-dispatch ingress ledger record. Every physical HTTP
@@ -223,6 +225,17 @@ func newIngressMiddleware(next http.Handler, lw *lineWriter, inj *injector) http
 				// the status actually written when it could not be.
 				status := 0
 				hijacked, err := hijackAndClose(w)
+				// A taken connection also marks this request's own server span,
+				// which the HTTP instrumentation would otherwise leave reading 200
+				// with status Unset (labotel.MarkInjection has the measurement).
+				// Only a taken one: the 500 below is a real answer that the span
+				// already reads as Error, and a marking there would name a close
+				// that did not happen (span_test.go; reading-notes.txt in
+				// experiments/runs/2026-09-19-worker-span-on-injected-close/).
+				// The ledger lines are what they were.
+				if hijacked {
+					labotel.MarkInjection(r.Context(), mode, err)
+				}
 				switch {
 				case !hijacked:
 					log.Printf("ingress: close-after-read could not hijack the connection: %v", err)

@@ -1,0 +1,180 @@
+# 2026-09-19T18:50:02Z the SAME test on a MUTANT, in a scratch copy of the tree of this change outside the
+# repository (an archive of the staged tree; no checkout was touched):
+#   the marking ADDED to the http503-before-dispatch branch, the other injection in the same switch.
+# The mutation, whole (diff -u against agents/worker/ingress.go of this change; the header's file stamps and the
+# blank that diff puts on an empty context line removed):
+#   --- a/agents/worker/ingress.go
+#   +++ b/agents/worker/ingress.go
+#   @@ -214,6 +214,7 @@
+#    		if mode, ok := inj.take(line.LogicalWorkItemID); ok {
+#    			switch mode {
+#    			case modeHTTP503BeforeDispatch:
+#   +				labotel.MarkInjection(r.Context(), mode, nil) // MUTANT: the marking added to the 503 branch
+#    				w.Header().Set("Content-Type", "application/json")
+#    				w.WriteHeader(http.StatusServiceUnavailable)
+#    				_, _ = w.Write([]byte(`{"error":"injected"}`))
+# Verbatim from here on; the FAIL is the point.
+#   TZ=UTC go test ./agents/worker/ -run 'TestInjectedCloseAfterRead' -count=1 -v
+=== RUN   TestInjectedCloseAfterRead_ServerSpanReading
+    span_test.go:179: ingress ledger, close-after-read taken and closed:
+        {"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-19T18:50:02.920672Z","remote":"127.0.0.1:61686","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"application/json","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262}
+        {"ledger":"ingress","phase":"response","ts_arrival":"2026-09-19T18:50:02.920672Z","remote":"127.0.0.1:61686","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"application/json","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262,"status":0,"injection":"close-after-read"}
+    span_test.go:188: server span of a delivery the worker closed by injection (close-after-read):
+        name=POST /
+        kind=server
+        status.code=Error
+        status.description="injected: close-after-read"
+        attributes:
+          client.address=127.0.0.1
+          http.request.body.size=262
+          http.request.method=POST
+          http.response.status_code=200
+          lab.injection=close-after-read
+          network.peer.address=127.0.0.1
+          network.peer.port=61686
+          network.protocol.version=1.1
+          server.address=127.0.0.1
+          server.port=61684
+          url.path=/
+          url.scheme=http
+          user_agent.original=Go-http-client/1.1
+        events=0
+--- PASS: TestInjectedCloseAfterRead_ServerSpanReading (0.00s)
+=== RUN   TestInjectedCloseAfterRead_TakenButNotClosedSaysSoOnTheSpan
+2026/09/19 18:50:02 ingress: close-after-read hijacked the connection but closing it failed: close failed on command
+    span_test.go:236: ingress ledger, close-after-read taken but not closed:
+        {"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-19T18:50:02.921216Z","remote":"192.0.2.1:1234","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262}
+        {"ledger":"ingress","phase":"response","ts_arrival":"2026-09-19T18:50:02.921216Z","remote":"192.0.2.1:1234","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262,"status":0,"injection":"close-after-read"}
+    span_test.go:242: server span of a close-after-read that took the connection and could not close it:
+        name=POST /
+        kind=server
+        status.code=Error
+        status.description="injected: close-after-read failed: close failed on command"
+        attributes:
+          client.address=192.0.2.1
+          http.request.body.size=262
+          http.request.method=POST
+          http.response.status_code=200
+          lab.injection=close-after-read
+          network.peer.address=192.0.2.1
+          network.peer.port=1234
+          network.protocol.version=1.1
+          server.address=example.com
+          url.path=/
+          url.scheme=http
+        events=0
+--- PASS: TestInjectedCloseAfterRead_TakenButNotClosedSaysSoOnTheSpan (0.00s)
+=== RUN   TestInjectedCloseAfterRead_ThatCouldNotHijackIsNotMarked
+2026/09/19 18:50:02 ingress: close-after-read could not hijack the connection: response writer does not support hijacking
+    span_test.go:286: ingress ledger, close-after-read that could not hijack:
+        {"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-19T18:50:02.921383Z","remote":"192.0.2.1:1234","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262}
+        {"ledger":"ingress","phase":"response","ts_arrival":"2026-09-19T18:50:02.921383Z","remote":"192.0.2.1:1234","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262,"status":500,"injection":"close-after-read"}
+    span_test.go:292: server span of a close-after-read that could not take the connection:
+        name=POST /
+        kind=server
+        status.code=Error
+        status.description=""
+        attributes:
+          client.address=192.0.2.1
+          http.request.body.size=262
+          http.request.method=POST
+          http.response.status_code=500
+          network.peer.address=192.0.2.1
+          network.peer.port=1234
+          network.protocol.version=1.1
+          server.address=example.com
+          url.path=/
+          url.scheme=http
+        events=0
+--- PASS: TestInjectedCloseAfterRead_ThatCouldNotHijackIsNotMarked (0.00s)
+=== RUN   TestInjectedCloseAfterRead_MarkingIsAbsentFromEveryOtherDelivery
+=== RUN   TestInjectedCloseAfterRead_MarkingIsAbsentFromEveryOtherDelivery/served_normally
+    span_test.go:341: ingress ledger, served normally:
+        {"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-19T18:50:02.921956Z","remote":"127.0.0.1:61688","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"application/json","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262}
+        {"ledger":"ingress","phase":"response","ts_arrival":"2026-09-19T18:50:02.921956Z","remote":"127.0.0.1:61688","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"application/json","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262,"status":200}
+    span_test.go:347: server span of a delivery that was not an injected close (served normally):
+        name=POST /
+        kind=server
+        status.code=Unset
+        status.description=""
+        attributes:
+          client.address=127.0.0.1
+          http.request.body.size=262
+          http.request.method=POST
+          http.response.status_code=200
+          network.peer.address=127.0.0.1
+          network.peer.port=61688
+          network.protocol.version=1.1
+          server.address=127.0.0.1
+          server.port=61687
+          url.path=/
+          url.scheme=http
+          user_agent.original=Go-http-client/1.1
+        events=0
+=== RUN   TestInjectedCloseAfterRead_MarkingIsAbsentFromEveryOtherDelivery/injected_http503-before-dispatch
+    span_test.go:341: ingress ledger, injected http503-before-dispatch:
+        {"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-19T18:50:02.922943Z","remote":"127.0.0.1:61691","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"application/json","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262}
+        {"ledger":"ingress","phase":"response","ts_arrival":"2026-09-19T18:50:02.922943Z","remote":"127.0.0.1:61691","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"application/json","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262,"status":503,"injection":"http503-before-dispatch"}
+    span_test.go:347: server span of a delivery that was not an injected close (injected http503-before-dispatch):
+        name=POST /
+        kind=server
+        status.code=Error
+        status.description=""
+        attributes:
+          client.address=127.0.0.1
+          http.request.body.size=262
+          http.request.method=POST
+          http.response.body.size=20
+          http.response.status_code=503
+          lab.injection=http503-before-dispatch
+          network.peer.address=127.0.0.1
+          network.peer.port=61691
+          network.protocol.version=1.1
+          server.address=127.0.0.1
+          server.port=61689
+          url.path=/
+          url.scheme=http
+          user_agent.original=Go-http-client/1.1
+        events=0
+    span_test.go:350: lab.injection is set on a delivery that was not an injected close
+--- FAIL: TestInjectedCloseAfterRead_MarkingIsAbsentFromEveryOtherDelivery (0.00s)
+    --- PASS: TestInjectedCloseAfterRead_MarkingIsAbsentFromEveryOtherDelivery/served_normally (0.00s)
+    --- FAIL: TestInjectedCloseAfterRead_MarkingIsAbsentFromEveryOtherDelivery/injected_http503-before-dispatch (0.00s)
+FAIL
+FAIL	github.com/AhmadMasry/agent-mesh-lab/agents/worker	0.363s
+FAIL
+exit status: 1
+# the whole package on that mutant (TZ=UTC go test ./agents/worker/ -count=1):
+2026/09/19 18:50:03 ingress: close-after-read hijacked the connection but closing it failed: close failed on command
+2026/09/19 18:50:03 ingress: close-after-read could not hijack the connection: response writer does not support hijacking
+--- FAIL: TestInjectedCloseAfterRead_MarkingIsAbsentFromEveryOtherDelivery (0.00s)
+    --- FAIL: TestInjectedCloseAfterRead_MarkingIsAbsentFromEveryOtherDelivery/injected_http503-before-dispatch (0.00s)
+        span_test.go:341: ingress ledger, injected http503-before-dispatch:
+            {"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-19T18:50:03.661616Z","remote":"127.0.0.1:61726","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"application/json","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262}
+            {"ledger":"ingress","phase":"response","ts_arrival":"2026-09-19T18:50:03.661616Z","remote":"127.0.0.1:61726","method":"SendMessage","id":"66f3ae4b-47df-4346-8fdb-0aacc23d7869","messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","taskId":"","logical_work_item_id":"go-dump","a2a_version":"","content_type":"application/json","body_sha256":"bd6b451783571181190236dcf686586e72e2def7f8428252622491c73c746b0a","body_len":262,"status":503,"injection":"http503-before-dispatch"}
+        span_test.go:347: server span of a delivery that was not an injected close (injected http503-before-dispatch):
+            name=POST /
+            kind=server
+            status.code=Error
+            status.description=""
+            attributes:
+              client.address=127.0.0.1
+              http.request.body.size=262
+              http.request.method=POST
+              http.response.body.size=20
+              http.response.status_code=503
+              lab.injection=http503-before-dispatch
+              network.peer.address=127.0.0.1
+              network.peer.port=61726
+              network.protocol.version=1.1
+              server.address=127.0.0.1
+              server.port=61724
+              url.path=/
+              url.scheme=http
+              user_agent.original=Go-http-client/1.1
+            events=0
+        span_test.go:350: lab.injection is set on a delivery that was not an injected close
+FAIL
+FAIL	github.com/AhmadMasry/agent-mesh-lab/agents/worker	0.263s
+FAIL
+exit status: 1

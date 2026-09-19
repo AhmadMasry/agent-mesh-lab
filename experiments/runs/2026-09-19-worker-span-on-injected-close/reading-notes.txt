@@ -1,0 +1,98 @@
+Reading notes for experiments/runs/2026-09-19-worker-span-on-injected-close/ (follow-ups 19, task 3b).
+No cluster was touched. Everything here is a unit test with an in-memory span recorder, run either in the
+implementer's own checkout or on scratch copies outside the repository. Nothing here is a findings entry; the live
+reading ships with the rebuild that follows. Stamps are UTC from the clock, and every run was made with TZ=UTC so
+that the worker's own log lines (Go's `log` prints the local wall clock) read in UTC too.
+Versions, as go.mod selects them: go 1.27.1, otelhttp v0.71.0, go.opentelemetry.io/otel and its sdk v1.46.0.
+
+THE QUESTION. The Go receiver's close-after-read injection takes its connection through http.Hijacker behind the
+same otelhttp handler as the mock's close (main.go: labotel.Handler("worker", root), the ingress middleware inside
+it). The mock's span for such a request read 200 with status Unset until the commit "fix(mockllm): mark the server
+span of an injected connection close". Does the worker's read the same, and what should it read instead?
+
+BEFORE (before.txt, 2026-09-19T18:41:05Z, ingress.go untouched): yes, the same shape. The server span of a
+delivery whose connection the worker took and closed read
+    status.code=Unset  status.description=""  http.response.status_code=200  no lab.injection, no error
+    attribute, events=0
+while the ingress ledger's response line for it read "status":0,"injection":"close-after-read". On the cluster
+the same day: experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/r1-go-http/
+a3m-r1-go-http-fu18f-01/, where the worker's 80 microsecond `POST /` row of spans.csv reads http_status 200 for
+the delivery whose ingress.jsonl response line reads status 0, injection close-after-read.
+
+THE CHANGE. In the close-after-read branch of agents/worker/ingress.go:
+    if hijacked { labotel.MarkInjection(r.Context(), mode, err) }
+and nothing else. internal/otel is untouched. Nothing on the wire changes and no ledger line changes.
+
+THE THREE BRANCHES OF close-after-read, as the span reads AFTER (after.txt, 2026-09-19T18:50:17Z), each pinned
+by a test in agents/worker/span_test.go:
+
+  branch                       span status                                          lab.injection     status_code  ledger
+  (i)   taken and closed       Error "injected: close-after-read"                   close-after-read  200 (*)      status 0
+  (ii)  taken, close failed    Error "injected: close-after-read failed: <err>"     close-after-read  200 (*)      status 0
+  (iii) could NOT be taken     Error ""   (exactly as before this change)           absent            500          status 500
+  (*) the instrumentation's default, still stamped beside the marking at otelhttp v0.71.0 on a delivery that
+      got no response; asserted as measured, not left out. labotel.MarkInjection's comment has the cause, and
+      docs/upstream/otelhttp-status-200-after-hijack.md is the draft about it.
+  Rows (i), and the 503 and normal rows below, go over a real loopback connection with keep-alives off (net/http
+  replays only on a reused connection, so one send is one delivery). Rows (ii) and (iii) need a ResponseWriter of
+  their own and are served in process: (iii) through an httptest.ResponseRecorder, which is not an
+  http.Hijacker; (ii) through one given a Hijack method whose connection refuses to close, which a real
+  connection does not do on command.
+
+WHY (iii) IS NOT MARKED -- where the worker departs from the mock. The task was briefed as "mirror what the mock
+does with a failed close", whose span keeps the helper's "failed: <err>" text. Measured first, 2026-09-19T18:41:20Z,
+with the call made UNCONDITIONAL (the same shape is kept as mutant 3, below): the could-not-hijack span read
+    status.code=Error  status.description=""  http.response.status_code=500  lab.injection=close-after-read
+The helper had set "injected: close-after-read failed: response writer does not support hijacking" (its unit test
+in internal/otel pins that form), and the ended span carries "" instead: the description was REPLACED. The chain,
+read in the module cache at the versions above:
+    otelhttp v0.71.0 handler.go l.193      span.SetStatus(h.semconv.Status(statusCode)), after the handler returns
+    otelhttp v0.71.0 internal/semconv/server.go l.74-75
+                                           if code >= 500 { return codes.Error, "" }
+    otel sdk v1.46.0 trace/span.go l.220   if s.status.Code > code { return }   -- only a LOWER status is ignored;
+                                           l.224-229 then store the new code with its (empty) description
+                                           ("overriding previous values set", the method's own comment, l.206-207)
+The worker answers a real 500 on that branch, so the instrumentation's Error "" arrives after the helper's and is
+equal, not lower. The mock never meets this: its failed close answers the empty 200 of a handler that wrote nothing,
+the instrumentation sets Unset, and Unset is lower than Error. No ordering inside the handler changes it (the
+instrumentation sets its status after the handler has returned), and the 500 may not change (nothing on the wire
+changes).
+Ruling of the controller, 2026-09-19: mark only a TAKEN connection. The marking exists to correct a span that
+would otherwise misread (200 / Unset for a connection the worker closed). On branch (iii) the span already reads
+what happened (500 / Error) and claims no close; an unconditional call would leave lab.injection=close-after-read
+beside Error "" on a connection that was never closed, a span that half-claims a close. Changing the shared helper
+so that a failure survives was not asked for and would change the mock's span too. The injection is still named
+where it always was for that branch: on the ledger's response line, beside the 500, and in the worker's log.
+This is not recorded as a gap of otelhttp or of the SDK: replacing an earlier status with a later one that is not
+lower is what span.go says it does. Nothing about it was added to the draft under docs/upstream/.
+
+THE OTHER DELIVERIES, not marked, as found (after.txt; the same in before-final-test-on-the-parent.txt):
+    served normally                     Unset ""   http.response.status_code=200   no lab.injection   ledger 200
+    injected http503-before-dispatch    Error ""   http.response.status_code=503   no lab.injection   ledger 503,
+                                        http.response.body.size=20                                    injection named
+The 503 is a real answer, and the instrumentation already reads it as Error.
+
+IS THE TEST REAL -- three mutants, each in a scratch copy of the tree of this change (an archive of the staged
+tree, unpacked outside the repository), each FAILS; the diffs are whole inside the files:
+    mutant-1-marking-removed.txt                  rows (i) and (ii) fail: status Unset "", lab.injection ""
+    mutant-2-marking-added-to-the-503-branch.txt  the 503 row fails: lab.injection is set. (Its description does
+                                                  not survive there either, for the reason above, so it is the
+                                                  attribute that catches it.)
+    mutant-3-call-made-unconditional.txt          row (iii) fails: lab.injection is set on a connection never taken
+before-final-test-on-the-parent.txt is the committed test on the parent commit's code: rows (i) and (ii) fail, the
+other three pass, which is the claim that this change leaves those three spans as they were.
+
+THE LEDGER (rule 5). compare-ledgers.sh extracts the ingress ledger lines the test logged for all five cases from
+before-final-test-on-the-parent.txt (ledger-before.txt) and from after.txt (ledger-after.txt), as written, and
+compares them byte for byte with ts_arrival and the port of `remote` masked in the comparison only:
+ledger-comparison.txt, 10 lines in 5 cases, byte-identical, same order of lines and of keys. The response line of
+a taken connection still carries an explicit "status":0. What the port mask covers: on the six lines of a real
+connection the port the loopback picked, which differs from run to run; on the four lines served in process
+httptest's fixed 192.0.2.1:1234, which does not, and which one pattern masks along with the rest. With a mask for
+127.0.0.1 alone (1234 left as written) the two files are byte-identical too (2026-09-19T19:16:31Z). The script's
+wording was corrected to say this after the review of 2026-09-19, and ledger-comparison.txt regenerated
+(2026-09-19T19:16:53Z); ledger-before.txt and ledger-after.txt came out byte-identical to the first time.
+
+NOT HERE, on purpose: no findings entry (no run on a cluster happened in this task), no pin change, nothing under
+deploy/. The Python receiver refuses to arm close-after-read, with HTTP 400 (agents/orchestrator/orchestrator/
+control.py: the condition l.62, the 400 returned l.63), so there is no Python counterpart.
