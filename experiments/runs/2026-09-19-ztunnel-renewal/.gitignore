@@ -1,0 +1,23 @@
+# Left out of the commit, and why (the findings entry says the same):
+# chart/                       the ztunnel chart archive `helm pull` fetched at Setup for the restore's no-network route;
+#                              a binary that the Makefile's pins (repository URL, version 1.31.0) reproduce; its sha256 is in driver.log
+# logs/                        whole pod logs (ztunnel on both nodes, istiod) collected after each arm, 1.5 MB; every identity and
+#                              TLS line of them is kept in ztunnel-<node>-identity.after-<arm>.log
+# host-sleep-window-raw.txt    pmset's whole log for the run window, every kind; its Sleep, DarkWake and Wake lines, its
+#                              Assertions lines by kind and those before each Sleep are kept verbatim in host-sleep.txt
+# The repository's own .gitignore leaves out experiments/runs/**/*.log and *.out. The small records among them are
+# committed as copies under .txt names: driver.log -> driver-log.txt, ztunnel-<node>-identity.after-<arm>.log -> .txt.
+# derive.out repeats summary.txt; driver.out is empty.
+# *.uncut                     the four `pmset -g assertions` snapshots as the driver wrote them. The committed snapshots had the
+#                              Kernel Assertions block's 0x4=USB lines cut (9 lines each) and one line put in their place: those
+#                              lines end in owner=<device name>, the names of the host's USB peripherals, and no reading uses them.
+#                              Everything else in the snapshots is as written: the system-wide totals by kind, every process-owned
+#                              assertion with its owner, and the kernel assertions of kind THNDR, CPU and MAGICWAKE.
+chart/
+logs/
+*.uncut
+host-sleep-window-raw.txt
+driver.pid
+.dry/
+.stderr.tmp
+__pycache__/

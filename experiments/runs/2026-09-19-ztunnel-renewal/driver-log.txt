@@ -1,0 +1,158 @@
+2026-09-19T00:05:37Z [Preflight] STATE -> Preflight run started, pid 41413
+2026-09-19T00:05:37Z [Preflight] driver $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal/driver.sh; run dir $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal; repository root $(git rev-parse --show-toplevel); DRY_RUN=0
+2026-09-19T00:05:37Z [Preflight] curl flags of the probe: -sS --retry 0 --max-time 10 -o /dev/null -w %{http_code},%{time_total}
+2026-09-19T00:05:37Z [Preflight] configuration: P1_GATE=strict P1_MAX_RESIDUAL=30s P1_MIN_RENEWALS=3 ARM_C_SECS=1800 T_WAIT_CAP=300 SLEEP_AFTER_RENEWAL=30 SLEEP_CONFIRM_SECS=60 T_MIN_AWAKE=3900 T_MIN_RENEWALS=2 T_CAP_AWAKE=28800 LONG_GAP=900 GAP_THRESHOLD=60 P4_RENEWALS=2 P4_CAP_AWAKE=900 RESTORE_ATTEMPTS=3 OVERRIDE_TTL=10m OVERRIDE_RUST_LOG=info,ztunnel::identity=debug TRACK_ID=spiffe://cluster.local/ns/lab/sa/default TRACK_NODE=agent-mesh-lab-worker
+2026-09-19T00:05:37Z [Preflight] rulings.txt, as found in the run directory at the start:
+    | # Rulings of the controller (team-lead) for this run, written here at 2026-09-18T23:58:33Z, before the driver started.
+    | 1. P1 gate: P1_GATE=strict with P1_MAX_RESIDUAL=30 s for this run (the driver's default is 5 s). The PREDICTION P1 stays
+    |    |residual| <= 5 s and the findings entry reports the measured residuals against 5 s. The gate only decides whether
+    |    arm T is worth a night: an awake bias of seconds cannot blur a D of thousands of seconds. No renewal, or a VALID CERT
+    |    false reading while the host is awake, still stops the run before arm T.
+    | 2. Restore: up to three helm rounds, the repository route and then the chart archive pulled at Setup, each attempt
+    |    recorded. CLAUDE.md rule 4 governs fixtures and measured requests, not the operator's restore.
+    | 3. Accepted as built: istiod's CSR counters read through the API server's pod proxy; the probe pod lab/zt-probe; the
+    |    sleep request going ahead if no renewal is seen within 300 s; OVERRIDE-APPLIED written before the helm upgrade; the
+    |    host-sleep-total column in clock.csv.
+    | 4. Corrections to the design's Setup and Restore checklist: the active log filter is read with
+    |    `istioctl ztunnel-config log` (no --level: a read) plus the count of identity debug lines; a "new log filter is"
+    |    line is expected 0 times, because ztunnel 1.31.0 logs it only on a runtime change (src/telemetry.rs 112-132). Leaves
+    |    are read back on the worker node; a node whose ztunnel holds no Leaf is accepted and said so (the control-plane
+    |    node holds none in this lab: experiments/runs/2026-09-16-genai-spans/rebuild/istio.txt 76-77).
+    | 5. The author's authorisation (2026-09-19, before going to bed), verbatim: "for your ztunnel experement, in case you
+    |    felt you have reached it, you are authroized to do the needed for your experement, making sure to go back to the
+    |    values recoemnded for the experement, and as u said the mac is on AC, so no needed for external keep-awake."
+    | 6. Changed after the first preflight (2026-09-19T00:05:03Z), before anything was applied: the first preflight FAILED on
+    |    "DaemonSet env is not the committed one: RUST_LOG=info SECRET_TTL=168h" (preflight.txt keeps it). The standard lab's
+    |    ztunnel DaemonSet carries RUST_LOG=info, rendered by the chart from its logLevel value
+    |    (manifests/charts/ztunnel/templates/daemonset.yaml 130-131 at 1.31.0), so "no RUST_LOG" was the wrong standard, and
+    |    the design's override (RUST_LOG under env) would have given the container two RUST_LOG entries (helm template,
+    |    rendered locally: lines 112 and 154). The override now sets the chart's own key, logLevel, plus env.SECRET_TTL; the
+    |    whole rendering then differs from the committed one in exactly two lines (RUST_LOG's value, SECRET_TTL's value).
+    |    The restore's readback now requires the whole DaemonSet env to be identical to the one captured at this run's
+    |    preflight (ds-env.standard.txt), which is stricter than the two-key check it replaces. No safety path was loosened.
+    |    Offline suite after the change: 91 PASS, 0 FAIL, shellcheck absent (test/last-transcript.txt).
+2026-09-19T00:05:38Z [Setup] STATE -> Setup 
+2026-09-19T00:05:39Z [Setup] override written: $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal/ztunnel-ttl-override.yaml
+2026-09-19T00:05:39Z [Setup] run (cap 180s): helm pull ztunnel --repo https://blob.istio.io/istio-release/charts --version 1.31.0 -d $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal/chart
+2026-09-19T00:05:41Z [Setup] rc=0
+2026-09-19T00:05:41Z [Setup] chart archive for the restore's no-network route: ztunnel-1.31.0.tgz  sha256 f24c1bccc0a92c2ce11bf95c1cf6423834c007c94057a8c7e69ac25f7ae7c8cc
+2026-09-19T00:05:41Z [Setup] run (cap 600s): helm --kube-context kind-agent-mesh-lab upgrade -i ztunnel ztunnel --repo https://blob.istio.io/istio-release/charts --version 1.31.0 -n istio-system -f deploy/step-2-ambient-agw/ztunnel-values.yaml -f $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal/ztunnel-ttl-override.yaml --wait
+    | Release "ztunnel" has been upgraded. Happy Helming!
+    | NAME: ztunnel
+    | LAST DEPLOYED: Sat Sep 19 03:05:42 2026
+    | NAMESPACE: istio-system
+    | STATUS: deployed
+    | REVISION: 2
+    | DESCRIPTION: Upgrade complete
+    | TEST SUITE: None
+    | NOTES:
+    | ztunnel successfully installed!
+    | 
+    | To learn more about the release, try:
+    |   $ helm status ztunnel -n istio-system
+    |   $ helm get all ztunnel -n istio-system
+2026-09-19T00:06:09Z [Setup] rc=0
+2026-09-19T00:06:09Z [Setup] run (cap 300s): kubectl --context kind-agent-mesh-lab -n istio-system rollout status ds/ztunnel --timeout=240s
+    | daemon set "ztunnel" successfully rolled out
+2026-09-19T00:06:11Z [Setup] rc=0
+2026-09-19T00:06:11Z [Setup] Setup: the active filter reads ztunnel::identity=debug
+2026-09-19T00:06:11Z [Setup] run (cap 120s): kubectl --context kind-agent-mesh-lab -n lab run zt-probe --image=curlimages/curl:8.22.0 --restart=Never --overrides={"spec":{"securityContext":{"runAsNonRoot":true,"runAsUser":65532,"runAsGroup":65532,"fsGroup":65532,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"zt-probe","image":"curlimages/curl:8.22.0","command":["sleep","259200"],"securityContext":{"allowPrivilegeEscalation":false,"readOnlyRootFilesystem":true,"runAsNonRoot":true,"runAsUser":65532,"runAsGroup":65532,"capabilities":{"drop":["ALL"]},"seccompProfile":{"type":"RuntimeDefault"}}}]}} --command -- sleep 259200
+    | pod/zt-probe created
+2026-09-19T00:06:13Z [Setup] rc=0
+2026-09-19T00:06:13Z [Setup] run (cap 150s): kubectl --context kind-agent-mesh-lab -n lab wait --for=condition=Ready pod/zt-probe --timeout=120s
+    | pod/zt-probe condition met
+2026-09-19T00:06:16Z [Setup] rc=0
+2026-09-19T00:06:16Z [Setup] Setup: every leaf read 720s (NOT AFTER - NOT BEFORE), VALID CERT true (certificates.setup.txt)
+2026-09-19T00:06:16Z [Setup] logs collected after Setup: 2 'certificate fetch succeeded' lines on the worker ztunnel, 0 on the control-plane ztunnel
+2026-09-19T00:06:16Z [Setup] Setup: identity debug lines visible on the worker's ztunnel (2; control-plane 0, which holds certificates only if a captured workload runs there)
+2026-09-19T00:06:16Z [Setup] arm Setup ended: awake 38s, renewals seen 0. override applied and read back
+2026-09-19T00:06:16Z [C] STATE -> C control: host awake, instruments only, 1800s
+2026-09-19T00:09:52Z [C] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker 4118868ac371c9252865d3411d3a6262 -> 5dd4a45786e689d856ae444950d3668d (NOT BEFORE 2026-09-19T00:07:43Z; in arm 1, since reference 1)
+2026-09-19T00:13:58Z [C] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker 5dd4a45786e689d856ae444950d3668d -> bb676aadd02f891865e637e6b2e1beeb (NOT BEFORE 2026-09-19T00:11:43Z; in arm 2, since reference 2)
+2026-09-19T00:18:04Z [C] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker bb676aadd02f891865e637e6b2e1beeb -> a4c51f5137976b65689bf3cd0fb47e83 (NOT BEFORE 2026-09-19T00:15:43Z; in arm 3, since reference 3)
+2026-09-19T00:22:11Z [C] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker a4c51f5137976b65689bf3cd0fb47e83 -> cc5192d419a1027979b517a1b25828f9 (NOT BEFORE 2026-09-19T00:19:43Z; in arm 4, since reference 4)
+2026-09-19T00:25:46Z [C] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker cc5192d419a1027979b517a1b25828f9 -> 15e0752e0dfadee32315ad14876829dc (NOT BEFORE 2026-09-19T00:23:43Z; in arm 5, since reference 5)
+2026-09-19T00:29:53Z [C] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker 15e0752e0dfadee32315ad14876829dc -> 5a77e547b6b2fdffc5ff8191bed8a32a (NOT BEFORE 2026-09-19T00:27:43Z; in arm 6, since reference 6)
+2026-09-19T00:33:59Z [C] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker 5a77e547b6b2fdffc5ff8191bed8a32a -> aaf3d63ae50d097fcae70181db4c832e (NOT BEFORE 2026-09-19T00:31:43Z; in arm 7, since reference 7)
+2026-09-19T00:36:18Z [C] logs collected after C: 16 'certificate fetch succeeded' lines on the worker ztunnel, 0 on the control-plane ztunnel
+2026-09-19T00:36:18Z [C] arm C ended: awake 1802s, renewals seen 7. gaps during the control arm so far: 0
+2026-09-19T00:36:18Z [C] P1 gate: derive over arm C (max |residual| 30s, at least 3 renewals of the tracked identity, no VALID CERT false reading)
+    | ztunnel-worker.after-C.log: 16 [agentgateway-ingress/sa/agentgateway-ingress: 8] [lab/sa/default: 8]
+    | ztunnel-worker.after-Setup.log: 2 [agentgateway-ingress/sa/agentgateway-ingress: 1] [lab/sa/default: 1]
+    | 
+    | ## gate over arm C
+    | PASS  renewals of spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker: 7 (need >= 3)
+    | PASS  residuals measured: 14; beyond +/-30.0s: 0
+    | PASS  VALID CERT false readings in the arm: 0
+    | gate: passed
+2026-09-19T00:36:18Z [C] P1 gate: passed
+2026-09-19T00:36:18Z [T-wait] STATE -> T-wait waiting for a renewal of spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker, at most 300s
+2026-09-19T00:37:51Z [T-wait] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker aaf3d63ae50d097fcae70181db4c832e -> ba938a6f11ab83b0f7bc5f0886cfb511 (NOT BEFORE 2026-09-19T00:35:43Z; in arm 1, since reference 8)
+2026-09-19T00:38:17Z [T-wait] arm T-wait ended: awake 119s, renewals seen 1. renewal seen (issuance 2026-09-19T00:37:43Z); the sleep request follows 30s after it
+2026-09-19T00:38:17Z [T] STATE -> T treatment: forced host sleep, then the adaptive awake window
+2026-09-19T00:38:17Z [T] pre-sleep readings: clock, certificates, pmset -g assertions
+2026-09-19T00:38:17Z [T] STATE -> T pmset sleepnow issued
+2026-09-19T00:38:17Z [T] run: pmset sleepnow
+    | Sleeping now...
+2026-09-19T00:38:17Z [T] rc=0
+2026-09-19T00:38:28Z [T] sleep produced: pmset log has a new line: 2026-09-19 03:38:22 +0300 Sleep               	Entering Sleep state due to 'Software Sleep pid=54934':TCPKeepAlive=active Using AC (Charge:100%) 3 secs    
+2026-09-19T00:38:28Z [T] STATE -> T sleep produced; observing until 3900s awake and 2 renewals since the last gap >= 900s, cap 28800s awake
+2026-09-19T00:55:39Z [T] GAP 1: host clock stepped 1026 s between ticks (2026-09-19T00:38:33Z -> 2026-09-19T00:55:39Z); fast sampling starts
+2026-09-19T00:55:39Z [T] first wake after the forced sleep: 2026-09-19T00:55:39Z; gap 1026 s
+2026-09-19T00:55:39Z [T] gap >= 900s: the two-renewals count restarts here
+2026-09-19T00:58:47Z [T] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker ba938a6f11ab83b0f7bc5f0886cfb511 -> b9a28605391574e71566928e455b6483 (NOT BEFORE 2026-09-19T00:56:43Z; in arm 1, since reference 1)
+2026-09-19T01:19:52Z [T] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker b9a28605391574e71566928e455b6483 -> 2800d6b5fda81d82f04142ec8cad0b55 (NOT BEFORE 2026-09-19T01:17:43Z; in arm 2, since reference 2)
+2026-09-19T01:40:54Z [T] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker 2800d6b5fda81d82f04142ec8cad0b55 -> 8ead7ae234fa819eaab7e56ccc36a0fa (NOT BEFORE 2026-09-19T01:38:43Z; in arm 3, since reference 3)
+2026-09-19T02:00:44Z [T] pmset window written (after arm T): 216 raw lines
+2026-09-19T02:00:44Z [T] logs collected after T: 24 'certificate fetch succeeded' lines on the worker ztunnel, 0 on the control-plane ztunnel
+2026-09-19T02:00:44Z [T] arm T ended: awake 3921s, renewals seen 3. 3904s awake since the first wake and 3 renewals of the tracked identity since the last gap >= 900s; first wake 2026-09-19T00:55:39Z; gaps so far 1
+2026-09-19T02:00:44Z [P4] STATE -> P4 restart remedy at the override's lifetime: rollout restart ds/ztunnel, then 2 renewals or 900s awake
+2026-09-19T02:00:44Z [P4] run: kubectl --context kind-agent-mesh-lab -n istio-system rollout restart ds/ztunnel
+    | daemonset.apps/ztunnel restarted
+2026-09-19T02:00:44Z [P4] rc=0
+2026-09-19T02:00:44Z [P4] run (cap 300s): kubectl --context kind-agent-mesh-lab -n istio-system rollout status ds/ztunnel --timeout=240s
+    | Waiting for daemon set "ztunnel" rollout to finish: 0 out of 2 new pods have been updated...
+    | Waiting for daemon set "ztunnel" rollout to finish: 1 out of 2 new pods have been updated...
+    | daemon set "ztunnel" successfully rolled out
+2026-09-19T02:01:10Z [P4] rc=0
+2026-09-19T02:04:47Z [P4] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker 4418c31424fe6c4314ac5f626853e25f -> 821de76bd45254b1c7f7e175208f41d5 (NOT BEFORE 2026-09-19T02:02:45Z; in arm 1, since reference 4)
+2026-09-19T02:08:55Z [P4] renewal seen: spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker 821de76bd45254b1c7f7e175208f41d5 -> 92a0529cab10ad2d37b051d45b5d9a0e (NOT BEFORE 2026-09-19T02:06:45Z; in arm 2, since reference 5)
+2026-09-19T02:08:55Z [P4] logs collected after P4: 6 'certificate fetch succeeded' lines on the worker ztunnel, 0 on the control-plane ztunnel
+2026-09-19T02:08:55Z [P4] arm P4 ended: awake 464s, renewals seen 2. renewals seen after the restart: 2
+2026-09-19T02:08:56Z [P4] pmset window written (before the restore): 240 raw lines
+2026-09-19T02:08:56Z [Restore] STATE -> Restore helm upgrade with deploy/step-2-ambient-agw/ztunnel-values.yaml alone, then the readbacks
+2026-09-19T02:08:56Z [Restore] run (cap 600s): helm --kube-context kind-agent-mesh-lab upgrade -i ztunnel ztunnel --repo https://blob.istio.io/istio-release/charts --version 1.31.0 -n istio-system -f deploy/step-2-ambient-agw/ztunnel-values.yaml --wait
+2026-09-19T02:19:44Z [Restore] GAP 2: host clock stepped 644 s between ticks (2026-09-19T02:09:00Z -> 2026-09-19T02:19:44Z); fast sampling starts
+2026-09-19T02:19:44Z [Restore] cap of 600s reached; terminating pid 89249
+    | Release ztunnel has been cancelled.
+    | level=WARN msg="upgrade failed" name=ztunnel error="context canceled"
+    | Error: UPGRADE FAILED: context canceled
+2026-09-19T02:19:47Z [Restore] rc=1
+2026-09-19T02:19:47Z [Restore] restore attempt 1 through the repository failed; trying the chart archive pulled at Setup
+2026-09-19T02:19:47Z [Restore] run (cap 600s): helm --kube-context kind-agent-mesh-lab upgrade -i ztunnel $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal/chart/ztunnel-1.31.0.tgz -n istio-system -f deploy/step-2-ambient-agw/ztunnel-values.yaml --wait
+    | Release "ztunnel" has been upgraded. Happy Helming!
+    | NAME: ztunnel
+    | LAST DEPLOYED: Sat Sep 19 05:19:47 2026
+    | NAMESPACE: istio-system
+    | STATUS: deployed
+    | REVISION: 4
+    | DESCRIPTION: Upgrade complete
+    | TEST SUITE: None
+    | NOTES:
+    | ztunnel successfully installed!
+    | 
+    | To learn more about the release, try:
+    |   $ helm status ztunnel -n istio-system
+    |   $ helm get all ztunnel -n istio-system
+2026-09-19T02:20:07Z [Restore] rc=0
+2026-09-19T02:20:07Z [Restore] run (cap 300s): kubectl --context kind-agent-mesh-lab -n istio-system rollout status ds/ztunnel --timeout=240s
+    | daemon set "ztunnel" successfully rolled out
+2026-09-19T02:20:09Z [Restore] rc=0
+2026-09-19T02:20:10Z [Restore] run (cap 120s): kubectl --context kind-agent-mesh-lab -n lab delete pod zt-probe --ignore-not-found --wait=true
+    | pod "zt-probe" deleted from lab namespace
+2026-09-19T02:20:42Z [Restore] rc=0
+2026-09-19T02:20:43Z [Restore] logs collected after Restore: 0 'certificate fetch succeeded' lines on the worker ztunnel, 0 on the control-plane ztunnel
+2026-09-19T02:20:43Z [Restore] arm Restore ended: awake 63s, renewals seen 0. restore read back
+2026-09-19T02:20:43Z [Restore] pmset window written (end of the run): 272 raw lines
+2026-09-19T02:20:44Z [Done] STATE -> Done all arms ran; restore read back
+2026-09-19T02:20:44Z [Done] driver exits rc=0

@@ -1,0 +1,53 @@
+# derive-renewals.py over $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal at 2026-09-19T00:36:18Z
+# model: residual = t_w - D(t_w) - R_prev; t_w = NOT BEFORE(next) + 120s; step threshold 0.5s
+# D source on agent-mesh-lab-control-plane: CLOCK_MONOTONIC from /proc/timer_list; 177 clock samples
+# D source on agent-mesh-lab-worker: CLOCK_MONOTONIC from /proc/timer_list; 177 clock samples
+
+## renewals per arm (kind=renewal; restart issuances listed apart)
+arm      node                           identity                                                                   n ambig nobr       min    median       max restart
+C        agent-mesh-lab-worker          spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     7     0    0    -0.002    -0.001     0.000       0
+C        agent-mesh-lab-worker          spiffe://cluster.local/ns/lab/sa/default                                   7     0    0    -0.002    -0.001     0.000       0
+
+## every renewal, in order
+C        worker  agentgateway-ingress/sa/agentgateway-ingress     renewal  R_prev=2026-09-19T00:09:44Z t_w=2026-09-19T00:09:44Z t_w-R=     0.0s D=    -0.000 residual=   0.000 expired_before=     0.0s since_gap_end=       - ok
+C        worker  agentgateway-ingress/sa/agentgateway-ingress     renewal  R_prev=2026-09-19T00:13:44Z t_w=2026-09-19T00:13:44Z t_w-R=     0.0s D=     0.000 residual=  -0.000 expired_before=     0.0s since_gap_end=       - ok
+C        worker  agentgateway-ingress/sa/agentgateway-ingress     renewal  R_prev=2026-09-19T00:17:44Z t_w=2026-09-19T00:17:44Z t_w-R=     0.0s D=     0.001 residual=  -0.001 expired_before=     0.0s since_gap_end=       - ok
+C        worker  agentgateway-ingress/sa/agentgateway-ingress     renewal  R_prev=2026-09-19T00:21:44Z t_w=2026-09-19T00:21:44Z t_w-R=     0.0s D=     0.001 residual=  -0.001 expired_before=     0.0s since_gap_end=       - ok
+C        worker  agentgateway-ingress/sa/agentgateway-ingress     renewal  R_prev=2026-09-19T00:25:44Z t_w=2026-09-19T00:25:44Z t_w-R=     0.0s D=     0.002 residual=  -0.002 expired_before=     0.0s since_gap_end=       - ok
+C        worker  agentgateway-ingress/sa/agentgateway-ingress     renewal  R_prev=2026-09-19T00:29:44Z t_w=2026-09-19T00:29:44Z t_w-R=     0.0s D=     0.002 residual=  -0.002 expired_before=     0.0s since_gap_end=       - ok
+C        worker  agentgateway-ingress/sa/agentgateway-ingress     renewal  R_prev=2026-09-19T00:33:44Z t_w=2026-09-19T00:33:44Z t_w-R=     0.0s D=     0.002 residual=  -0.002 expired_before=     0.0s since_gap_end=       - ok
+C        worker  lab/sa/default                                   renewal  R_prev=2026-09-19T00:09:43Z t_w=2026-09-19T00:09:43Z t_w-R=     0.0s D=    -0.000 residual=   0.000 expired_before=     0.0s since_gap_end=       - ok
+C        worker  lab/sa/default                                   renewal  R_prev=2026-09-19T00:13:43Z t_w=2026-09-19T00:13:43Z t_w-R=     0.0s D=     0.000 residual=  -0.000 expired_before=     0.0s since_gap_end=       - ok
+C        worker  lab/sa/default                                   renewal  R_prev=2026-09-19T00:17:43Z t_w=2026-09-19T00:17:43Z t_w-R=     0.0s D=     0.001 residual=  -0.001 expired_before=     0.0s since_gap_end=       - ok
+C        worker  lab/sa/default                                   renewal  R_prev=2026-09-19T00:21:43Z t_w=2026-09-19T00:21:43Z t_w-R=     0.0s D=     0.001 residual=  -0.001 expired_before=     0.0s since_gap_end=       - ok
+C        worker  lab/sa/default                                   renewal  R_prev=2026-09-19T00:25:43Z t_w=2026-09-19T00:25:43Z t_w-R=     0.0s D=     0.002 residual=  -0.002 expired_before=     0.0s since_gap_end=       - ok
+C        worker  lab/sa/default                                   renewal  R_prev=2026-09-19T00:29:43Z t_w=2026-09-19T00:29:43Z t_w-R=     0.0s D=     0.002 residual=  -0.002 expired_before=     0.0s since_gap_end=       - ok
+C        worker  lab/sa/default                                   renewal  R_prev=2026-09-19T00:33:43Z t_w=2026-09-19T00:33:43Z t_w-R=     0.0s D=     0.002 residual=  -0.002 expired_before=     0.0s since_gap_end=       - ok
+
+## minutes each leaf read VALID CERT false (sum of intervals between consecutive readings of at most 90 s whose earlier reading was false)
+C        agent-mesh-lab-worker          spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress   readings    59  false     0  minutes false     0.0
+C        agent-mesh-lab-worker          spiffe://cluster.local/ns/lab/sa/default                                 readings    59  false     0  minutes false     0.0
+
+## readings that were not a Leaf row: identities with no certificate chain (TYPE NA), unparsed rows, failed reads
+none
+
+## istiod CSR counters against issuances counted from serials (both nodes, every identity; restart issuances included)
+## window per arm: from the last counter sample at or before the arm's start to the last one at or before its end; issuances counted by t_w in that window
+Setup    fewer than two counter samples span the arm
+C        csr_count 9 -> 23 (delta 14); success delta 14; serial changes with t_w in the window 14; window 2026-09-19T00:06:16Z..2026-09-19T00:36:02Z; istiod pod(s) istiod-7d565d6dd7-qnd9r
+whole    csr_count 9 -> 23 (delta 14); serial changes with t_w in the window 14; window 2026-09-19T00:06:16Z..2026-09-19T00:36:02Z
+
+## D across each gap (gaps-d.csv)
+no gap recorded
+
+## 'certificate fetch succeeded' lines in the collected ztunnel logs (whole-pod logs, cumulative per pod)
+ztunnel-cp.after-C.log: 0 
+ztunnel-cp.after-Setup.log: 0 
+ztunnel-worker.after-C.log: 16 [agentgateway-ingress/sa/agentgateway-ingress: 8] [lab/sa/default: 8]
+ztunnel-worker.after-Setup.log: 2 [agentgateway-ingress/sa/agentgateway-ingress: 1] [lab/sa/default: 1]
+
+## gate over arm C
+PASS  renewals of spiffe://cluster.local/ns/lab/sa/default on agent-mesh-lab-worker: 7 (need >= 3)
+PASS  residuals measured: 14; beyond +/-30.0s: 0
+PASS  VALID CERT false readings in the arm: 0
+gate: passed

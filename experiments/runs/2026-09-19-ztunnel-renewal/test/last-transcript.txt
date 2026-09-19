@@ -1,0 +1,112 @@
+# test/run-tests.sh, run 2026-09-19T00:05:03Z on macOS 27.0, /bin/bash 3.2.57(1)-release, Python 3.14.7; work dir paths shortened to <W>
+== static
+PASS  bash -n driver.sh under 3.2.57(1)-release
+PASS  bash -n run-tests.sh
+PASS  py_compile derive-renewals.py, sim.py, make-derive-fixture.py
+SKIP  shellcheck is not installed on this host
+PASS  no direct call of a cluster or power tool outside xread/xmut/xlong
+PASS  no keep-awake, no sudo, no power-setting change, no make target in the driver's code
+== scenarios started: normal cap nosleep osascript osascript-late p1fail abort-presleep (parallel), then abort-c, trap, restorefail (steered)
+PASS  normal: no BLOCKED direct call and no unmapped command in DRY_RUN
+PASS  cap: no BLOCKED direct call and no unmapped command in DRY_RUN
+PASS  nosleep: no BLOCKED direct call and no unmapped command in DRY_RUN
+PASS  osascript: no BLOCKED direct call and no unmapped command in DRY_RUN
+PASS  osascript-late: no BLOCKED direct call and no unmapped command in DRY_RUN
+PASS  p1fail: no BLOCKED direct call and no unmapped command in DRY_RUN
+PASS  abort-presleep: no BLOCKED direct call and no unmapped command in DRY_RUN
+PASS  abort-c: no BLOCKED direct call and no unmapped command in DRY_RUN
+PASS  trap: no BLOCKED direct call and no unmapped command in DRY_RUN
+PASS  restorefail: no BLOCKED direct call and no unmapped command in DRY_RUN
+== normal: 3 h gap, 40 s running, 1000 s gap, then awake
+PASS  exit 0
+PASS  markers: OVERRIDE-APPLIED and RESTORE-VERIFIED present, RESTORE-FAILED absent
+PASS  wake detector: two gaps recorded (10802 s, 1005 s)
+PASS  first wake set from the first gap
+PASS  fast sampling after a gap: clock rows 5 s apart in the first 3 min after the first wake
+PASS  the second gap (>= 900 s) restarted the two-renewals count
+PASS  adaptive window: arm T ran past 65 min, to the second renewal at about 4 min + D (awake 12265 s)
+PASS  sleep requested once with pmset sleepnow, never with osascript
+PASS  pre-sleep snapshot of pmset -g assertions written
+PASS  the override sets the filter through the chart's logLevel key, never RUST_LOG under env
+PASS  Setup read back exactly one RUST_LOG entry with the override's value
+PASS  the restore read the whole DaemonSet env back identical to the one captured at preflight (RUST_LOG=info among it)
+PASS  P1 gate passed
+PASS  the log header records the effective configuration (the P1 gate's bound among it)
+PASS  order of the changing commands: override, probe pod, sleepnow, rollout restart, committed values, probe pod delete
+PASS  the restore's helm command carries the committed values file and no second -f
+PASS  probe header records curl's flags with --retry 0
+PASS  derive: every measured residual within 0.001 s of 0 against the simulator's known D (11800 s)
+PASS  derive: post-wake renewals carry D = 11800 s
+PASS  derive: istiod's CSR-counter delta equals the serial changes counted in the same window, for every arm and for the whole run (>= 20)
+PASS  derive: D grew by the frozen time across each gap (10800 s, 1000 s)
+PASS  derive: the host's own sleep account across each gap is in gaps-d.csv (10800 s, 1000 s)
+PASS  status subcommand prints the state
+PASS  a second run on a used run directory is refused (exit 64)
+== cap: the second renewal would come after the cap (T_CAP_AWAKE=5400 for the test)
+PASS  exit 0
+PASS  arm T ended with 'cap reached'
+PASS  P4 and Restore still ran; RESTORE-VERIFIED
+== nosleep: neither request produces a sleep
+PASS  exit 20
+PASS  both requests made, in order, and both outputs recorded
+PASS  arm marked 'sleep not produced'
+PASS  no gap recorded
+PASS  P4 ran, then the restore; RESTORE-VERIFIED
+== osascript: pmset sleepnow exits 1, the osascript request sleeps the host 20 min
+PASS  exit 0
+PASS  sleepnow rc=1 recorded, then osascript produced the sleep
+PASS  a non-zero exit of pmset sleepnow sends the osascript request at once (same stamp), as the design says
+PASS  arm T ended on the 65-minute condition (awake 39xx s) with renewals >= 2
+== osascript-late: pmset sleepnow exits 0 without effect; after 60 s the osascript request sleeps the host 20 min
+PASS  exit 0
+PASS  60 s without a gap or a new pmset line, then osascript produced the sleep
+PASS  SLEEP_ISSUED_AT names the request that produced the sleep (the osascript one, 60+ s after the pmset one)
+== p1fail: the simulator renews 20 s late while awake
+PASS  exit 30
+PASS  gate failed on the residuals
+PASS  no sleep requested; RESTORE-VERIFIED
+== abort-presleep: ABORT appears after the wait loop and before the request
+PASS  exit 10
+PASS  no sleep requested; no P4; RESTORE-VERIFIED
+== abort-c: ABORT during arm C
+PASS  exit 10
+PASS  straight to Restore: no T-wait, no sleep request, no P4; RESTORE-VERIFIED
+== trap: TERM during arm C
+PASS  exit 143
+PASS  the exit path restored: log line, RESTORE-VERIFIED, driver.pid removed
+== restorefail: the workload still carries RUST_LOG after the helm upgrade
+PASS  exit 50
+PASS  RESTORE-FAILED names the reason; RESTORE-VERIFIED absent
+PASS  the exit path does not claim a restore either
+== standalone restore, twice
+PASS  first restore exits 0 and writes RESTORE-VERIFIED
+PASS  second restore exits 0 (idempotent)
+PASS  standalone restore on the run whose restore failed: exit 0, RESTORE-VERIFIED written, RESTORE-FAILED removed
+== a restore cut short by kill -9 still leaves a marker
+PASS  the killed process was the driver itself and it is gone
+PASS  RESTORE-FAILED says 'in progress, not read back'; RESTORE-VERIFIED absent (4 s after the kill)
+PASS  standalone restore under TERM: exit 143, marker kept, log says it ended without a verified restore
+PASS  log lines never carry a doubled count (grep -c with a fallback)
+== preflight refuses when AC sleep is not 0
+PASS  preflight exits 60 and names the AC sleep value
+PASS  run on the same fixtures exits 60 and applies nothing
+== derive on the hand-built fixture
+PASS  five residuals, all 0.000, with D = 0, 0, 0, 1500, 1500
+PASS  one ambiguous renewal, D_lo 1500 and D_hi 2100, no residual
+== single functions, run for real (no cluster or power command among them; pmset -g log is a read)
+PASS  now_hr gives epoch seconds with six decimals
+PASS  iso_to_epoch parses istioctl's stamp (2026-09-19T18:26:28Z = 1789842388)
+PASS  ttl_to_s: 168h, 10m, 600s parsed; anything else rejected
+PASS  committed_ttl reads 168h from the committed values file
+PASS  values_equal: committed values equal (0), override values differ (1)
+PASS  bounded runner: a 30 s child under a 2 s bound ends with rc 143 within 5 s, and the failure is recorded
+PASS  bounded runner passes the child's exit code and output through
+PASS  host_slept reads a number from the host's clocks
+PASS  pmset window on the real log: sections written, Assertions counted by kind
+PASS  certificate table parser: the Leaf row and the chainless identity (TYPE NA) are both recorded, the Root is not
+PASS  normal: the control-plane node holds no certificate, as in the lab, and every readback still passed
+PASS  leaves_ok: 604920 s lifetime accepted, but an identity without a chain keeps the readback from passing
+PASS  real xlong under TERM: exit 143 only after the child ended by itself (6s), no restore attempted without OVERRIDE-APPLIED
+PASS  bounded runner ends a Go child too (kubectl, helm, istioctl and docker are Go; a bare alarm+exec does not)
+
+assertions failed: 0

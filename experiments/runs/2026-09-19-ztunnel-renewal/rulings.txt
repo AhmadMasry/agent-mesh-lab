@@ -1,0 +1,28 @@
+# Rulings of the controller (team-lead) for this run, written here at 2026-09-18T23:58:33Z, before the driver started.
+1. P1 gate: P1_GATE=strict with P1_MAX_RESIDUAL=30 s for this run (the driver's default is 5 s). The PREDICTION P1 stays
+   |residual| <= 5 s and the findings entry reports the measured residuals against 5 s. The gate only decides whether
+   arm T is worth a night: an awake bias of seconds cannot blur a D of thousands of seconds. No renewal, or a VALID CERT
+   false reading while the host is awake, still stops the run before arm T.
+2. Restore: up to three helm rounds, the repository route and then the chart archive pulled at Setup, each attempt
+   recorded. CLAUDE.md rule 4 governs fixtures and measured requests, not the operator's restore.
+3. Accepted as built: istiod's CSR counters read through the API server's pod proxy; the probe pod lab/zt-probe; the
+   sleep request going ahead if no renewal is seen within 300 s; OVERRIDE-APPLIED written before the helm upgrade; the
+   host-sleep-total column in clock.csv.
+4. Corrections to the design's Setup and Restore checklist: the active log filter is read with
+   `istioctl ztunnel-config log` (no --level: a read) plus the count of identity debug lines; a "new log filter is"
+   line is expected 0 times, because ztunnel 1.31.0 logs it only on a runtime change (src/telemetry.rs 112-132). Leaves
+   are read back on the worker node; a node whose ztunnel holds no Leaf is accepted and said so (the control-plane
+   node holds none in this lab: experiments/runs/2026-09-16-genai-spans/rebuild/istio.txt 76-77).
+5. The author's authorisation (2026-09-19, before going to bed), verbatim: "for your ztunnel experement, in case you
+   felt you have reached it, you are authroized to do the needed for your experement, making sure to go back to the
+   values recoemnded for the experement, and as u said the mac is on AC, so no needed for external keep-awake."
+6. Changed after the first preflight (2026-09-19T00:05:03Z), before anything was applied: the first preflight FAILED on
+   "DaemonSet env is not the committed one: RUST_LOG=info SECRET_TTL=168h" (preflight.txt keeps it). The standard lab's
+   ztunnel DaemonSet carries RUST_LOG=info, rendered by the chart from its logLevel value
+   (manifests/charts/ztunnel/templates/daemonset.yaml 130-131 at 1.31.0), so "no RUST_LOG" was the wrong standard, and
+   the design's override (RUST_LOG under env) would have given the container two RUST_LOG entries (helm template,
+   rendered locally: lines 112 and 154). The override now sets the chart's own key, logLevel, plus env.SECRET_TTL; the
+   whole rendering then differs from the committed one in exactly two lines (RUST_LOG's value, SECRET_TTL's value).
+   The restore's readback now requires the whole DaemonSet env to be identical to the one captured at this run's
+   preflight (ds-env.standard.txt), which is stricter than the two-key check it replaces. No safety path was loosened.
+   Offline suite after the change: 91 PASS, 0 FAIL, shellcheck absent (test/last-transcript.txt).

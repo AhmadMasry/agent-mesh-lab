@@ -1,0 +1,88 @@
+
+# preflight at 2026-09-18T23:58:40Z (DRY_RUN=0) run dir $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal
+INFO  bash 3.2.57(1)-release; driver experiments/runs/2026-09-19-ztunnel-renewal/driver.sh; repository root $(git rev-parse --show-toplevel)
+PASS  derive script present: $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal/derive-renewals.py
+PASS  committed values present: deploy/step-2-ambient-agw/ztunnel-values.yaml
+PASS  Makefile pins: ISTIO_CHART_VERSION=1.31.0 ISTIO_CHART_REPO=https://blob.istio.io/istio-release/charts
+PASS  the Makefile's ztunnel helm command has the form this driver reproduces
+PASS  committed SECRET_TTL=168h (604800s; leaves expected at 604920s)
+PASS  probe image from versions.yaml curl-image: curlimages/curl:8.22.0
+INFO  probe: kubectl -n lab exec zt-probe -- curl -sS --retry 0 --max-time 10 -o /dev/null -w %{http_code},%{time_total} http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json
+PASS  power source: Now drawing from 'AC Power'
+PASS  pmset -g custom: AC sleep 0 (no idle sleep on AC; no keep-awake needed)
+PASS  pmset -g assertions: PreventSystemSleep 0 (snapshot saved)
+INFO  PreventUserIdleSystemSleep 1 (an idle-sleep assertion; IOPMLib.h: the system may still sleep for other reasons)
+PASS  node agent-mesh-lab-worker Ready (context kind-agent-mesh-lab)
+PASS  node agent-mesh-lab-control-plane Ready (context kind-agent-mesh-lab)
+PASS  two ztunnel pods, one per node: agent-mesh-lab-worker ztunnel-575qv 2026-09-18T23:53:04Z 0;agent-mesh-lab-control-plane ztunnel-swwpv 2026-09-18T23:53:05Z 0
+PASS  helm values of release ztunnel equal the committed file alone: helm     : {"env": {"SECRET_TTL": "168h"}, "profile": "ambient"}
+FAIL  DaemonSet env is not the committed one: RUST_LOG=info SECRET_TTL=168h 
+PASS  every leaf held by either node's ztunnel VALID CERT true at the committed lifetime; spiffe://cluster.local/ns/lab/sa/default present on agent-mesh-lab-worker (certificates.preflight.txt)
+PASS  agent-mesh-lab-worker clocks read (wall, /proc/timer_list monotonic, /proc/uptime, wall): 1789775920.553348463,10241763201454,10241.76,1789775920.555274963
+INFO  agent-mesh-lab-worker privileged: true
+PASS  agent-mesh-lab-control-plane clocks read (wall, /proc/timer_list monotonic, /proc/uptime, wall): 1789775920.626807671,10241836659038,10241.83,1789775920.628110463
+INFO  agent-mesh-lab-control-plane privileged: true
+PASS  istiod pod: istiod-7d565d6dd7-qnd9r (restarts 0)
+PASS  istiod CSR series as exposed: citadel_server_csr_count and citadel_server_success_cert_issuance_count (istiod-metric-names.txt)
+PASS  Service lab/worker port 8080 exists
+INFO  probe pod lab/zt-probe does not exist; Setup creates it and Restore deletes it
+INFO  preflight: 1 fail, 0 warn
+
+# preflight at 2026-09-19T00:05:13Z (DRY_RUN=0) run dir $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal
+INFO  bash 3.2.57(1)-release; driver experiments/runs/2026-09-19-ztunnel-renewal/driver.sh; repository root $(git rev-parse --show-toplevel)
+PASS  derive script present: $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal/derive-renewals.py
+PASS  committed values present: deploy/step-2-ambient-agw/ztunnel-values.yaml
+PASS  Makefile pins: ISTIO_CHART_VERSION=1.31.0 ISTIO_CHART_REPO=https://blob.istio.io/istio-release/charts
+PASS  the Makefile's ztunnel helm command has the form this driver reproduces
+PASS  committed SECRET_TTL=168h (604800s; leaves expected at 604920s)
+PASS  probe image from versions.yaml curl-image: curlimages/curl:8.22.0
+INFO  probe: kubectl -n lab exec zt-probe -- curl -sS --retry 0 --max-time 10 -o /dev/null -w %{http_code},%{time_total} http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json
+PASS  power source: Now drawing from 'AC Power'
+PASS  pmset -g custom: AC sleep 0 (no idle sleep on AC; no keep-awake needed)
+PASS  pmset -g assertions: PreventSystemSleep 0 (snapshot saved)
+INFO  PreventUserIdleSystemSleep 1 (an idle-sleep assertion; IOPMLib.h: the system may still sleep for other reasons)
+PASS  node agent-mesh-lab-worker Ready (context kind-agent-mesh-lab)
+PASS  node agent-mesh-lab-control-plane Ready (context kind-agent-mesh-lab)
+PASS  two ztunnel pods, one per node: agent-mesh-lab-worker ztunnel-575qv 2026-09-18T23:53:04Z 0;agent-mesh-lab-control-plane ztunnel-swwpv 2026-09-18T23:53:05Z 0
+PASS  helm values of release ztunnel equal the committed file alone: helm     : {"env": {"SECRET_TTL": "168h"}, "profile": "ambient"}
+PASS  DaemonSet env: SECRET_TTL=168h, one RUST_LOG entry, RUST_LOG=info (the chart's logLevel; no identity or debug directive)
+INFO  the standard DaemonSet env captured for the restore's readback: ds-env.standard.txt (16 entries)
+PASS  every leaf held by either node's ztunnel VALID CERT true at the committed lifetime; spiffe://cluster.local/ns/lab/sa/default present on agent-mesh-lab-worker (certificates.preflight.txt)
+PASS  agent-mesh-lab-worker clocks read (wall, /proc/timer_list monotonic, /proc/uptime, wall): 1789776313.667639006,10634876014881,10634.87,1789776313.669217006
+INFO  agent-mesh-lab-worker privileged: true
+PASS  agent-mesh-lab-control-plane clocks read (wall, /proc/timer_list monotonic, /proc/uptime, wall): 1789776313.735621256,10634943844006,10634.94,1789776313.736921339
+INFO  agent-mesh-lab-control-plane privileged: true
+PASS  istiod pod: istiod-7d565d6dd7-qnd9r (restarts 0)
+PASS  istiod CSR series as exposed: citadel_server_csr_count and citadel_server_success_cert_issuance_count (istiod-metric-names.txt)
+PASS  Service lab/worker port 8080 exists
+INFO  probe pod lab/zt-probe does not exist; Setup creates it and Restore deletes it
+INFO  preflight: 0 fail, 0 warn
+
+# preflight at 2026-09-19T00:05:37Z (DRY_RUN=0) run dir $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal
+INFO  bash 3.2.57(1)-release; driver $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal/driver.sh; repository root $(git rev-parse --show-toplevel)
+PASS  derive script present: $(git rev-parse --show-toplevel)/experiments/runs/2026-09-19-ztunnel-renewal/derive-renewals.py
+PASS  committed values present: deploy/step-2-ambient-agw/ztunnel-values.yaml
+PASS  Makefile pins: ISTIO_CHART_VERSION=1.31.0 ISTIO_CHART_REPO=https://blob.istio.io/istio-release/charts
+PASS  the Makefile's ztunnel helm command has the form this driver reproduces
+PASS  committed SECRET_TTL=168h (604800s; leaves expected at 604920s)
+PASS  probe image from versions.yaml curl-image: curlimages/curl:8.22.0
+INFO  probe: kubectl -n lab exec zt-probe -- curl -sS --retry 0 --max-time 10 -o /dev/null -w %{http_code},%{time_total} http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json
+PASS  power source: Now drawing from 'AC Power'
+PASS  pmset -g custom: AC sleep 0 (no idle sleep on AC; no keep-awake needed)
+PASS  pmset -g assertions: PreventSystemSleep 0 (snapshot saved)
+INFO  PreventUserIdleSystemSleep 1 (an idle-sleep assertion; IOPMLib.h: the system may still sleep for other reasons)
+PASS  node agent-mesh-lab-worker Ready (context kind-agent-mesh-lab)
+PASS  node agent-mesh-lab-control-plane Ready (context kind-agent-mesh-lab)
+PASS  two ztunnel pods, one per node: agent-mesh-lab-worker ztunnel-575qv 2026-09-18T23:53:04Z 0;agent-mesh-lab-control-plane ztunnel-swwpv 2026-09-18T23:53:05Z 0
+PASS  helm values of release ztunnel equal the committed file alone: helm     : {"env": {"SECRET_TTL": "168h"}, "profile": "ambient"}
+PASS  DaemonSet env: SECRET_TTL=168h, one RUST_LOG entry, RUST_LOG=info (the chart's logLevel; no identity or debug directive)
+PASS  every leaf held by either node's ztunnel VALID CERT true at the committed lifetime; spiffe://cluster.local/ns/lab/sa/default present on agent-mesh-lab-worker (certificates.preflight.txt)
+PASS  agent-mesh-lab-worker clocks read (wall, /proc/timer_list monotonic, /proc/uptime, wall): 1789776338.445878003,10659654491850,10659.65,1789776338.447446878
+INFO  agent-mesh-lab-worker privileged: true
+PASS  agent-mesh-lab-control-plane clocks read (wall, /proc/timer_list monotonic, /proc/uptime, wall): 1789776338.515485753,10659723911350,10659.72,1789776338.516807670
+INFO  agent-mesh-lab-control-plane privileged: true
+PASS  istiod pod: istiod-7d565d6dd7-qnd9r (restarts 0)
+PASS  istiod CSR series as exposed: citadel_server_csr_count and citadel_server_success_cert_issuance_count (istiod-metric-names.txt)
+PASS  Service lab/worker port 8080 exists
+INFO  probe pod lab/zt-probe does not exist; Setup creates it and Restore deletes it
+INFO  preflight: 0 fail, 0 warn
