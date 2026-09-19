@@ -1,0 +1,17 @@
+2026-09-19T09:13:11Z
+# remove every custom piece around lab/agentgateway-waypoint: the page's policy (re-created below), the three Istio Telemetry objects, then a new pod
+agentgatewaypolicy.agentgateway.dev "tracing" deleted from lab namespace
+telemetry.telemetry.istio.io "mesh-tracing" deleted from istio-system namespace
+telemetry.telemetry.istio.io "waypoint-tracing" deleted from lab namespace
+telemetry.telemetry.istio.io "waypoint-orch-tracing" deleted from lab namespace
+telemetry objects left: 0
+deployment.apps/agentgateway-waypoint restarted
+Waiting for deployment "agentgateway-waypoint" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "agentgateway-waypoint" rollout to finish: 1 old replicas are pending termination...
+deployment "agentgateway-waypoint" successfully rolled out
+args: ["--config","{}"]
+gateway annotations: {"gateway.istio.io/agentgatewayImage":"cr.agentgateway.dev/agentgateway:v1.5.0","kubectl.kubernetes.io/last-applied-configuration":"{\"apiVersion\":\"gateway.networking.k8s.io/v1\",\"kind\":\"Gateway\",\"metadata\":{\"annotations\":{\"gateway.istio.io/agentgatewayImage\":\"cr.agentgateway.dev/agentgateway:v1.5.0\"},\"labels\":{\"istio.io/waypoint-for\":\"service\"},\"name\":\"agentgateway-waypoint\",\"namespace\":\"lab\"},\"spec\":{\"gatewayClassName\":\"istio-agentgateway-waypoint\",\"infrastructure\":{\"parametersRef\":{\"group\":\"\",\"kind\":\"ConfigMap\",\"name\":\"waypoint-tracing-config\"}},\"listeners\":[{\"name\":\"mesh\",\"port\":15008,\"protocol\":\"HBONE\"}]}}\n"}
+gateway spec.infrastructure: {}
+POD                                      START                  IMAGE
+agentgateway-waypoint-746b4f9c5b-49j86   2026-09-19T09:13:11Z   cr.agentgateway.dev/agentgateway:v1.5.0
+2026-09-19T09:13:14Z

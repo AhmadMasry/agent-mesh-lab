@@ -1,0 +1,12 @@
+2026-09-19T08:48:31Z
+# waypoint (istiod-managed), 25+ s after the policy reported Attached
+policies: 0
+config.tracing: null
+xds: {"xds": {"address": "https://istiod.istio-system.svc:15012", "auth": {"token": ["./var/run/secrets/xds-tokens/xds-token", "Kubernetes"]}, "caCert": {"File": "./var/run/secrets/xds/root-cert.pem"}, "headers": [], "namespace": "lab", "gateway": "agentgateway-waypoint", "localConfig": "static"}}
+
+# positive control, same cluster, same minute: the ingress (class agentgateway) under a policy of the same shape
+policies: 2
+  key= frontend/agentgateway-ingress/access-logs:frontend-logging:agentgateway-ingress/agentgateway-ingress name= {'kind': 'AgentgatewayPolicy', 'name': 'access-logs', 'namespace': 'agentgateway-ingress'} target= {"gateway": {"gatewayName": "agentgateway-ingress", "gatewayNamespace": "agentgateway-ingress", "listenerName": null}}
+  key= frontend/agentgateway-ingress/tracing:frontend-tracing:agentgateway-ingress/agentgateway-ingress name= {'kind': 'AgentgatewayPolicy', 'name': 'tracing', 'namespace': 'agentgateway-ingress'} target= {"gateway": {"gatewayName": "agentgateway-ingress", "gatewayNamespace": "agentgateway-ingress", "listenerName": null}}
+config.tracing: null
+xds: {"xds": {"address": "https://agentgateway.agentgateway-system.svc.cluster.local:9978", "auth": {"token": ["./var/run/secrets/xds-tokens/xds-token", "Kubernetes"]}, "caCert": {"File": "/etc/xds-tls/ca.crt"}, "headers": [], "namespace": "agentgateway-ingress", "gateway": "agentgateway-ingress", "local

@@ -1,0 +1,31 @@
+# 2026-09-19T09:15:44Z
+NS                     NAME                         CLASS                         PARAMS                         PROGRAMMED
+agentgateway-egress    agw-egress                   agentgateway                  agw-egress-params              True
+agentgateway-ingress   agentgateway-ingress         agentgateway                  agentgateway-ingress-params    True
+lab                    agentgateway-waypoint        istio-agentgateway-waypoint   waypoint-tracing-config        True
+lab                    agentgateway-waypoint-orch   istio-agentgateway-waypoint   waypoint-orch-tracing-config   True
+NS             NAME
+istio-system   mesh-tracing
+lab            waypoint-orch-tracing
+lab            waypoint-tracing
+NS                     NAME          ACCEPTED   ATTACHED
+agentgateway-egress    access-logs   True       True
+agentgateway-egress    tracing       True       True
+agentgateway-ingress   access-logs   True       True
+agentgateway-ingress   tracing       True       True
+args lab/agentgateway-waypoint: ["--config","{\"config\":{\"tracing\":{\"otlpEndpoint\":\"http://otel-collector.telemetry.svc.cluster.local:4317\",\"otlpProtocol\":\"grpc\",\"randomSampling\":true,\"clientSampling\":true}}}"]
+args lab/agentgateway-waypoint-orch: ["--config","{\"config\":{\"tracing\":{\"otlpEndpoint\":\"http://otel-collector.telemetry.svc.cluster.local:4317\",\"otlpProtocol\":\"grpc\",\"randomSampling\":true,\"clientSampling\":true}}}"]
+
+# checks
+PASS  state equal to the one captured at preflight (Gateways' class, parametersRef and Programmed; Telemetry objects; policies and their status; both waypoints' args): equal
+PASS  lab/agentgateway-waypoint parametersRef: waypoint-tracing-config
+PASS  lab/agentgateway-waypoint-orch parametersRef: waypoint-orch-tracing-config
+PASS  Telemetry objects: istio-system/mesh-tracing lab/waypoint-orch-tracing lab/waypoint-tracing
+PASS  AgentgatewayPolicy objects in lab: 0
+PASS  AgentgatewayPolicy objects in the cluster: 4
+PASS  the waypoint's dump holds a policy of key frontend/tracing: 1
+PASS  hops without a span, orchestrator (spans 69): none
+PASS  hops without a span, worker (spans 14): none
+PASS  traced work items after the restore: 2
+
+FAILS=0

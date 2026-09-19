@@ -1,0 +1,31 @@
+2026-09-19T08:50:58Z
+# restore: remove the test policy, re-apply the lab's Telemetry objects, put the parametersRef overlay back
+agentgatewaypolicy.agentgateway.dev "tracing" deleted from lab namespace
+telemetry.telemetry.istio.io/mesh-tracing created
+telemetry.telemetry.istio.io/waypoint-tracing created
+telemetry.telemetry.istio.io/waypoint-orch-tracing created
+gateway.gateway.networking.k8s.io/agentgateway-waypoint patched
+deployment "agentgateway-waypoint" successfully rolled out
+2026-09-19T08:51:02Z
+NS                     NAME                         CLASS                         PARAMS                         PROGRAMMED
+agentgateway-egress    agw-egress                   agentgateway                  agw-egress-params              True
+agentgateway-ingress   agentgateway-ingress         agentgateway                  agentgateway-ingress-params    True
+lab                    agentgateway-waypoint        istio-agentgateway-waypoint   waypoint-tracing-config        True
+lab                    agentgateway-waypoint-orch   istio-agentgateway-waypoint   waypoint-orch-tracing-config   True
+NAMESPACE      NAME                    AGE
+istio-system   mesh-tracing            4s
+lab            waypoint-orch-tracing   4s
+lab            waypoint-tracing        4s
+NAMESPACE              NAME          ACCEPTED   ATTACHED   AGE
+agentgateway-egress    access-logs   True       True       8h
+agentgateway-egress    tracing       True       True       8h
+agentgateway-ingress   access-logs   True       True       8h
+agentgateway-ingress   tracing       True       True       8h
+policies: 1
+  key= frontend/tracing name= None target= {"gateway": {"gatewayName": "agentgateway-waypoint", "gatewayNamespace": "lab", "listenerName": null}}
+config.tracing: {"endpoint": "http://otel-collector.telemetry.svc.cluster.local:4317", "headers": {}, "protocol": "grpc", "fields": {"remove": [], "add": {}}, "random_sampling": "true", "client_sampling": "true", "path": "/v1/traces"}
+xds: {"xds": {"address": "https://istiod.istio-system.svc:15012", "auth": {"token": ["./var/run/secrets/xds-tokens/xds-token", "Kubernetes"]}, "caCert": {"File": "./var/run/secrets/xds/root-cert.pem"}, "headers": [], "namespace": "lab", "gateway": "agentgateway-waypoint", "localConfig": "static"}}
+== summary ==
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+orchestrator,a3t-rc4-r1-orchestrator,2,69,agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=3|mockllm=1|orchestrator=54|worker=3,none,no:8/69
+worker,a3t-rc4-r1-worker,2,14,agentgateway-waypoint=4|agw-egress=2|loadgen=3|mockllm=1|worker=4,none,no:5/14

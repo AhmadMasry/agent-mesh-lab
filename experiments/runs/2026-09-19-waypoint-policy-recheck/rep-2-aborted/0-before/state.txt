@@ -1,0 +1,34 @@
+2026-09-19T09:07:53Z
+NAME                          CONTROLLER                                  ACCEPTED
+agentgateway                  agentgateway.dev/agentgateway               True
+istio                         istio.io/gateway-controller                 True
+istio-agentgateway            istio.io/agentgateway-controller            True
+istio-agentgateway-waypoint   istio.io/agentgateway-waypoint-controller   True
+istio-remote                  istio.io/unmanaged-gateway                  True
+istio-waypoint                istio.io/mesh-controller                    True
+
+NAME           IMAGE                                   READY
+agentgateway   cr.agentgateway.dev/controller:v1.5.0   1
+NAME                         IMAGE                                     READY
+agentgateway-waypoint        cr.agentgateway.dev/agentgateway:v1.5.0   1
+agentgateway-waypoint-orch   cr.agentgateway.dev/agentgateway:v1.5.0   1
+NAME     IMAGE                                     READY
+istiod   docker.io/istio/pilot:1.31.0-distroless   1
+
+# 2026-09-19T09:07:54Z
+NS                     NAME                         CLASS                         PARAMS                         PROGRAMMED
+agentgateway-egress    agw-egress                   agentgateway                  agw-egress-params              True
+agentgateway-ingress   agentgateway-ingress         agentgateway                  agentgateway-ingress-params    True
+lab                    agentgateway-waypoint        istio-agentgateway-waypoint   waypoint-tracing-config        True
+lab                    agentgateway-waypoint-orch   istio-agentgateway-waypoint   waypoint-orch-tracing-config   True
+NS             NAME
+istio-system   mesh-tracing
+lab            waypoint-orch-tracing
+lab            waypoint-tracing
+NS                     NAME          ACCEPTED   ATTACHED
+agentgateway-egress    access-logs   True       True
+agentgateway-egress    tracing       True       True
+agentgateway-ingress   access-logs   True       True
+agentgateway-ingress   tracing       True       True
+args lab/agentgateway-waypoint: ["--config","{\"config\":{\"tracing\":{\"otlpEndpoint\":\"http://otel-collector.telemetry.svc.cluster.local:4317\",\"otlpProtocol\":\"grpc\",\"randomSampling\":true,\"clientSampling\":true}}}"]
+args lab/agentgateway-waypoint-orch: ["--config","{\"config\":{\"tracing\":{\"otlpEndpoint\":\"http://otel-collector.telemetry.svc.cluster.local:4317\",\"otlpProtocol\":\"grpc\",\"randomSampling\":true,\"clientSampling\":true}}}"]

@@ -1,0 +1,23 @@
+2026-09-19T08:49:59Z
+# remove every custom piece around lab/agentgateway-waypoint: the doc policy (to re-create it after), the three Istio Telemetry objects, then a fresh pod
+agentgatewaypolicy.agentgateway.dev "tracing" deleted from lab namespace
+telemetry.telemetry.istio.io "mesh-tracing" deleted from istio-system namespace
+telemetry.telemetry.istio.io "waypoint-tracing" deleted from lab namespace
+telemetry.telemetry.istio.io "waypoint-orch-tracing" deleted from lab namespace
+No resources found
+deployment.apps/agentgateway-waypoint restarted
+deployment "agentgateway-waypoint" successfully rolled out
+args: ["--config","{}"]
+gateway annotations: {"gateway.istio.io/agentgatewayImage": "cr.agentgateway.dev/agentgateway:v1.5.0"}
+gateway spec.infrastructure: {}
+2026-09-19T08:50:01Z
+# dump before the policy
+policies: 0
+config.tracing: null
+xds: {"xds": {"address": "https://istiod.istio-system.svc:15012", "auth": {"token": ["./var/run/secrets/xds-tokens/xds-token", "Kubernetes"]}, "caCert": {"File": "./var/run/secrets/xds/root-cert.pem"}, "headers": [], "namespace": "lab", "gateway": "agentgateway-waypoint", "localConfig": "static"}}
+# apply the documentation's policy again
+agentgatewaypolicy.agentgateway.dev/tracing created
+2026-09-19T08:50:01Z
+controller=agentgateway.dev/agentgateway
+  Accepted=True reason=Valid message=Policy accepted
+  Attached=True reason=Attached message=Attached to all targets

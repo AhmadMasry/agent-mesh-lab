@@ -1,0 +1,69 @@
+{
+  "agentgateway_version": {
+    "build_profile": "release",
+    "build_target": "aarch64-unknown-linux-gnu",
+    "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+    "rust_version": "1.98.0",
+    "version": "1.5.0"
+  },
+  "config": {
+    "tracing": {
+      "client_sampling": "true",
+      "endpoint": "http://otel-collector.telemetry.svc.cluster.local:4317",
+      "fields": {
+        "add": {},
+        "remove": []
+      },
+      "headers": {},
+      "path": "/v1/traces",
+      "protocol": "grpc",
+      "random_sampling": "true"
+    },
+    "xds": {
+      "address": "https://istiod.istio-system.svc:15012",
+      "auth": {
+        "token": [
+          "./var/run/secrets/xds-tokens/xds-token",
+          "Kubernetes"
+        ]
+      },
+      "caCert": {
+        "File": "./var/run/secrets/xds/root-cert.pem"
+      },
+      "gateway": "agentgateway-waypoint",
+      "headers": [],
+      "localConfig": "static",
+      "namespace": "lab"
+    }
+  },
+  "policies": [
+    {
+      "key": "frontend/tracing",
+      "name": null,
+      "policy": {
+        "frontend": {
+          "tracing": {
+            "attributes": {},
+            "clientSampling": "true",
+            "inlineBackend": "otel-collector.telemetry.svc.cluster.local:4317",
+            "path": "/v1/traces",
+            "protocol": "grpc",
+            "randomSampling": "true",
+            "remove": [],
+            "resources": {}
+          }
+        }
+      },
+      "target": {
+        "gateway": {
+          "gatewayName": "agentgateway-waypoint",
+          "gatewayNamespace": "lab",
+          "listenerName": null
+        }
+      }
+    }
+  ],
+  "policies_count": 1,
+  "source_bytes": 47683,
+  "source_sha256": "e123292f0df47f11bced02ac699f470df9a334599d02940f24dde7accb71e077"
+}

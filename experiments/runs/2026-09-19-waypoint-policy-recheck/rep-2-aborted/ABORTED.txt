@@ -1,0 +1,35 @@
+The first attempt at repetition 2, 2026-09-19T09:07:53Z-09:08:31Z. It stopped at step 2 on a defect of
+reproduce.sh, not on anything the cluster did. Kept because it changed the cluster and restored it: it is a
+run that happened. This directory was written as rep-2/ and renamed after the abort; no file in it was edited,
+so run.txt still reads REP=rep-2. Its readings are not counted as a repetition in findings.md.
+
+What it did, by its own records:
+  09:07:54Z  lifted the parametersRef overlay from lab/agentgateway-waypoint; args ["--config","{}"]
+  09:07:57Z  dump of the waypoint: policies 0, config.tracing null, xDS istiod.istio-system.svc:15012
+  09:07:57Z  applied 2-doc-policy/policy.yaml; status written in the same second:
+             Accepted=True (Valid), Attached=True ("Attached to all targets"), controller agentgateway.dev/agentgateway
+  09:07:58Z  fixed settle of 30 s
+  09:08:28Z  the waypoint's dump after the settle FAILED to start: reproduce.sh exit 1, stderr (whole):
+               dump: port-forward to lab/agentgateway-waypoint-7d5d8f4f56-l5smb did not come up: Unable to listen on
+               port 15999: Listeners failed to create with the following errors: [unable to create listener: Error
+               listen tcp4 127.0.0.1:15999: bind: address already in use unable to create listener: Error listen tcp6
+               [::1]:15999: bind: address already in use]
+               error: unable to listen on any of the requested ports: [{15999 15000}]
+  09:08:28Z  the EXIT trap ran the restore once; 09:08:31Z "state at exit EQUALS the state captured at preflight"
+             (4-restored/restore.txt, 4-restored/state-at-exit.txt)
+
+No traced work item was sent: no Job, no ledger line, no span belongs to this attempt. The dump after the settle,
+the ingress dump, the controller's log extract and everything after them were not taken.
+
+The defect. dump() started the port-forward as `K ... &`, where K is a shell function. bash backgrounds a
+subshell for that, `$!` is the subshell's pid, and `kill` ended the subshell while its kubectl child kept running
+and kept 127.0.0.1:15999. Step 1's dump therefore left a kubectl port-forward behind (pid 43161, parent 1,
+started 09:07:57Z, target the step-1 pod), and step 2's dump could not bind the port. A test made before the run
+had called kubectl directly and once, so it could not show this.
+
+After the abort, 09:09:56Z-09:10Z: the cluster was read independently of the script and was in the standard
+state (both Gateways' parametersRef, the three Telemetry objects, no lab/tracing policy, the waypoint's args
+carrying config.tracing, one Running pod started 09:08:28Z); the leftover kubectl was ended by its pid and the
+port read free. The fix: dump() starts kubectl directly, and preflight refuses to start while the port is in use,
+before anything is changed. Three consecutive reads on the same port were then made with the fixed start and
+stop, the port free after each. Repetition 2 proper is rep-2/, run once after the fix.

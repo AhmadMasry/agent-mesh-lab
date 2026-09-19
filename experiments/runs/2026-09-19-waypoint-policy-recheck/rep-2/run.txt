@@ -1,0 +1,39 @@
+== 2026-09-19T09:12:04Z | reproduce.sh | REP=rep-2 | SETTLE=30 | ID_PREFIX=r2 ==
+branch=followups-17 head=0e5b818817f60e5db32a3f0d94016588b6aaa0dc
+git status --short (the load client is built by ko from this tree; anything listed here makes Go stamp vcs.modified=true):
+  ?? experiments/runs/2026-09-19-waypoint-policy-recheck/
+git diff --stat HEAD -- agents fixtures internal go.mod go.sum (the sources the images are built from):
+  (end)
+kubectl: Client Version: v1.37.0
+istioctl: client version: 1.31.0
+ko: 0.19.1
+go: go1.27.1 darwin/arm64
+curl: curl 8.7.1, every read with --retry 0
+policy file: experiments/runs/2026-09-19-waypoint-policy-recheck/2-doc-policy/policy.yaml sha256=2c1b5ae14743ee220dcc54325cdd8e092b6073ac28d07c97fa7dfe6fb00bdae4
+2026-09-19T09:12:04Z 0 preflight
+2026-09-19T09:12:04Z preflight done: standard state, VALID CERT true
+2026-09-19T09:12:04Z 1 lift the parametersRef overlay from lab/agentgateway-waypoint
+2026-09-19T09:12:08Z 2 apply the page's policy to lab/agentgateway-waypoint
+2026-09-19T09:12:08Z settle 30 s after the status read of 2026-09-19T09:12:08Z (fixed sleep; nothing to poll)
+2026-09-19T09:12:39Z traced work item(s): RUN_ID=r2v2 RECEIVERS=worker
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+worker,a3t-r2v2-r1-worker,2,10,agw-egress=2|loadgen=3|mockllm=1|worker=4,agentgateway-waypoint,no:5/10
+work_item,spans,trace_ids,dangling_parents,children_of_missing_parent
+a3t-r2v2-r1-worker,10,2,2,worker:GET /.well-known/agent-card.json|worker:POST /
+2026-09-19T09:13:11Z 3 nothing custom around lab/agentgateway-waypoint: the policy, the three Telemetry objects, the pod
+2026-09-19T09:13:15Z settle 30 s after the status read of 2026-09-19T09:13:15Z (fixed sleep; nothing to poll)
+2026-09-19T09:13:45Z traced work item(s): RUN_ID=r2v3 RECEIVERS=worker
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+worker,a3t-r2v3-r1-worker,2,10,agw-egress=2|loadgen=3|mockllm=1|worker=4,agentgateway-waypoint,no:5/10
+work_item,spans,trace_ids,dangling_parents,children_of_missing_parent
+a3t-r2v3-r1-worker,10,2,2,worker:GET /.well-known/agent-card.json|worker:POST /
+2026-09-19T09:14:15Z 4 restore
+2026-09-19T09:14:19Z traced work item(s): RUN_ID=r2v4 RECEIVERS=worker orchestrator
+receiver,work_item,trace_ids,spans,spans_by_service,hops_without_span,lab_work_item_on_all
+orchestrator,a3t-r2v4-r1-orchestrator,2,69,agentgateway-ingress=2|agentgateway-waypoint=2|agentgateway-waypoint-orch=2|agw-egress=2|loadgen=3|mockllm=1|orchestrator=54|worker=3,none,no:8/69
+worker,a3t-r2v4-r1-worker,2,14,agentgateway-waypoint=4|agw-egress=2|loadgen=3|mockllm=1|worker=4,none,no:5/14
+work_item,spans,trace_ids,dangling_parents,children_of_missing_parent
+a3t-r2v4-r1-orchestrator,69,2,0,none
+a3t-r2v4-r1-worker,14,2,0,none
+2026-09-19T09:15:44Z readback
+2026-09-19T09:15:44Z done: started 2026-09-19T09:12:04Z, FAILS=0

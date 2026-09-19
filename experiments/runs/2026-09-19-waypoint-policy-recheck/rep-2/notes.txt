@@ -1,0 +1,56 @@
+Repetition 2: reproduce.sh, run once after its fix, 2026-09-19T09:12:03Z-09:15:44Z, the script's own exit 0,
+its stderr empty. (A first attempt at 09:07:53Z stopped at step 2 on a defect of the script and restored the lab
+from its EXIT trap; it is kept as ../rep-2-aborted/ and is not counted. ABORTED.txt there says what happened.)
+
+Written by the script: run.txt, 0-before/, 1-workaround-lifted/, 2-doc-policy/, 3-doc-policy-nothing-custom/,
+4-restored/ (readback.txt: 10 checks, FAILS=0). Added after the run, from its records only: this file and
+requests-carried.csv (requests-carried.py over the seven full dumps; the dumps are left out of the commit).
+
+Things a reader should know that the script's records do not say by themselves:
+
+1. The tree while ko built the load client. run.txt lists `git status --short` at the start: the untracked run
+   directory only, and an empty diff for agents, fixtures, internal, go.mod and go.sum. At 09:12:59Z, between
+   the builds of step 2 (09:12:43Z) and step 3 (09:13:48Z), versions.yaml was edited in the working tree (the key
+   for the tracing page). No source an image is built from was touched at any point. ko printed "git is in a
+   dirty state" before all four builds, the first one included (trace-stderr.txt in 2-, 3- and 4-), so the load
+   client images of this repetition carry vcs.modified=true, as repetition 1's did by the controller's account;
+   repetition 1 kept no record of that line, this repetition does. Worker, mock and orchestrator images were not
+   rebuilt by either repetition.
+
+2. Delays are stated from stamps. The settle is a fixed 30 s after the status read. 2-doc-policy: policy created
+   and status written 09:12:08Z, dump 09:12:39Z (31 s), dump after the work item 09:13:11Z (63 s).
+   3-doc-policy-nothing-custom: created 09:13:15Z, dump 09:13:45Z (30 s), dump after the work item 09:14:15Z
+   (60 s). Repetition 1's 2-doc-policy/config-dumps.txt says "25+ s after the policy reported Attached"; its own
+   stamps give apply 08:48:21Z, status 08:48:22Z, dump 08:48:31Z: 10 s. In its variant 3 the dump is 11 s after the
+   policy (08:50:01Z, 08:50:12Z).
+
+3. Every difference between two dumps of the same pod is accounted for. 2-doc-policy: the dump 31 s after the
+   policy is the same bytes as the dump before it (sha256 7ec264bb...). After the work item the dump differs in
+   two places and nowhere else: the worker Service's endpoint counter totalRequests 0 -> 3 (requestLatency with it),
+   and one more workload, the trace script's control pod a3t-curl. 3-doc-policy-nothing-custom: before and after
+   the policy differ by one workload, step 2's a3t-curl, still terminating in the first; after the work item,
+   totalRequests 0 -> 3 again. `policies` and `config` are equal across every pair. In repetition 1 both pairs
+   (before and after the policy) are the same bytes (rep-1-extracts.txt).
+
+4. "Nothing custom" in step 3, exactly: no AgentgatewayPolicy but the page's; 0 Telemetry objects in the cluster;
+   the Gateway's spec.infrastructure {}; the pod new, args ["--config","{}"]. The Gateway keeps two annotations:
+   gateway.istio.io/agentgatewayImage (step 2's image pin, which selects the proxy istiod deploys) and kubectl's
+   last-applied-configuration, which is kubectl's own bookkeeping and still holds the parametersRef of the last
+   `kubectl apply`; the live spec does not. Repetition 1's steps.txt prints the first of the two only.
+
+5. The controller-log extract of step 3 holds two pushes whose cause names the policy: 09:13:11.658Z is the
+   deletion of step 2's policy, 09:13:15.075Z the re-creation. Step 2's extract holds one, 09:12:08.808Z.
+
+6. No host sleep: pmset's log has no Sleep, DarkWake or Wake line between 09:05Z and 09:20Z, and the largest
+   gap between two stamps of run.txt is 85 s, the two traced work items of step 4.
+
+7. Left in the cluster, as every run of the trace script leaves them: the completed Jobs loadgen-a3t-r2v2-r1-worker,
+   loadgen-a3t-r2v3-r1-worker, loadgen-a3t-r2v4-r1-worker and loadgen-a3t-r2v4-r1-orchestrator in lab. The control
+   pod a3t-curl is removed by the trace script. No port-forward process and no listener on 15999 were left
+   (read 09:16:29Z).
+
+Appended 2026-09-19T09:54:09Z, after the review; nothing above this line was edited.
+- Correction to the first line: the script's own record starts repetition 2 at 09:12:04Z (run.txt line 1, "== 2026-09-19T09:12:04Z | reproduce.sh | ..."). The 09:12:03Z above is the stamp of the shell wrapper that started the script, which no committed record holds. The end, 09:15:44Z, is the script's (readback.txt and the last line of run.txt).
+- Added beside item 1: ../loadgen-job-images.csv, read live at 09:48:45Z. All nine completed load client Jobs of the two repetitions ran one image, digest 5f6ccb6f..., one kubelet-resolved imageID. So the versions.yaml edit of 09:12:59Z changed no binary, and repetition 1's load client is the same binary as this repetition's, whose four builds are on record as dirty.
+- Added beside item 3: of the 3 requests the counter shows, 2 are the work item's (the Agent Card GET and the SendMessage POST) and 1 is the trace script's POST /control/reset to the worker from a3t-curl (experiments/gate3-trace-per-work-item.sh lines 103-110), which the ingress ledger excludes by design.
+- Added beside item 4: what else stayed in place through step 3, and the restartedAt annotation step 3 itself writes on the Deployment's pod template (left in place; not part of the state the readback compares), are in ../sources.md section 8.

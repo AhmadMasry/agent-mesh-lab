@@ -1,0 +1,22 @@
+# The manifest of https://agentgateway.dev/docs/kubernetes/latest/documentation/observability/traces/configs/otel/
+# (Version 1.5.x, fetched 2026-09-19T08:45:39Z), field for field. Changed: only the names — the
+# policy's namespace and the Gateway it targets (the istiod-managed waypoint lab/agentgateway-waypoint,
+# GatewayClass istio-agentgateway-waypoint), and the collector Service this lab runs.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: tracing
+  namespace: lab
+spec:
+  targetRefs:
+    - kind: Gateway
+      name: agentgateway-waypoint
+      group: gateway.networking.k8s.io
+  frontend:
+    tracing:
+      backendRef:
+        name: otel-collector
+        namespace: telemetry
+        port: 4317
+      protocol: GRPC
+      randomSampling: "true"

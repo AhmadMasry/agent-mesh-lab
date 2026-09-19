@@ -1,0 +1,15 @@
+# Left out of the commit, and why (the findings entry says the same):
+# *config-dump*.json   the proxies' whole admin /config_dump, about 46 KB each (every workload, service, bind and route
+#                      the proxy knows). This run reads three parts of a dump: the `policies` list, `config.tracing` and
+#                      `config.xds`. extract-config-dump.py cuts exactly those into the committed *.extract.json beside
+#                      each dump, with the dump's byte count and sha256, and prints them into the committed .txt.
+#                      Repetition 1's dumps were taken by hand as <name>-config-dump[.before|.after].json; their extracts
+#                      were cut afterwards by the same script, from the files as the controller left them.
+#                      The dumps were searched before anything was committed (2026-09-19): no PEM block, no JWT, no key
+#                      or password field; `token` and `caCert` are file paths inside the pod; `sessionEncoder` is a mode
+#                      name. They are left out for their size, not for their content.
+# *.port-forward.tmp   kubectl's port-forward output while a dump is read; removed by the script after each read.
+# __pycache__/         python's.
+*config-dump*.json
+*.port-forward.tmp
+__pycache__/
