@@ -215,9 +215,13 @@ async def test_a_card_url_with_a_malformed_ipv6_literal_still_starts_the_span(sp
 # TestServerAttributes_AURLWithoutAPort use, so the two agents are held to the same
 # answers. A port that does not read as a TCP server port -- above 65535, however
 # long, or 0 -- leaves server.port unset rather than filled with the scheme's
-# default, which would be a guess. One input differs by parser, not by rule: Go's
-# url.Parse refuses a port that is not all digits and so sets neither attribute,
-# while urlsplit accepts the URL and only .port refuses it, so server.address stays.
+# default, which would be a guess. Two inputs differ by parser, not by rule, the two
+# whose port is not all digits (`:abc`, and `:x` after an IPv6 literal): Go's
+# url.Parse refuses such a URL and so sets neither attribute, while urlsplit accepts
+# it and only .port refuses it, so server.address stays -- for the literal, without
+# its brackets, which is how .hostname reads one. Follow-ups 15 measured the IPv6
+# case by hand; it is a case here since follow-ups 19, so every input of the Go
+# table is now an input of this one.
 @pytest.mark.parametrize(
     "url, expected",
     [
@@ -227,6 +231,7 @@ async def test_a_card_url_with_a_malformed_ipv6_literal_still_starts_the_span(sp
         ("http://example.test:99999999999999999999999/v1", {"server.address": "example.test"}),
         ("http://example.test:0/v1", {"server.address": "example.test"}),
         ("http://example.test:abc/v1", {"server.address": "example.test"}),
+        ("http://[::1]:x/v1", {"server.address": "::1"}),
         ("http://example.test:65535/v1", {"server.address": "example.test", "server.port": 65535}),
     ],
 )

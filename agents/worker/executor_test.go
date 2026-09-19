@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -16,6 +17,7 @@ import (
 	"github.com/a2aproject/a2a-go/v2/a2a"
 	"github.com/a2aproject/a2a-go/v2/a2asrv"
 	otelapi "go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
@@ -343,6 +345,95 @@ func TestModelClient_AFailedCallRecordsTheStatusAsErrorType(t *testing.T) {
 		}
 	}
 	t.Error("the failed chat span carries no error.type")
+}
+
+// chatSpanOf is the one `chat mock` span a recorder holds, with its attributes
+// read as strings.
+func chatSpanOf(t *testing.T, sr *tracetest.SpanRecorder) (sdktrace.ReadOnlySpan, map[string]string) {
+	t.Helper()
+	var chat sdktrace.ReadOnlySpan
+	for _, span := range sr.Ended() {
+		if span.Name() == "chat mock" {
+			chat = span
+		}
+	}
+	if chat == nil {
+		t.Fatalf("no span named %q; spans ended: %v", "chat mock", spanNames(sr.Ended()))
+	}
+	attrs := map[string]string{}
+	for _, kv := range chat.Attributes() {
+		attrs[string(kv.Key)] = kv.Value.Emit()
+	}
+	return chat, attrs
+}
+
+// TestModelClient_AFailedCallsSpanStatusIsTheReturnedErrorsText pins what the
+// author decided on 2026-09-19 to KEEP: the chat span of a failed model call
+// carries status Error with a description equal, byte for byte, to the text of
+// the error the call returned, beside error.type = the status. The description is
+// what lets a reader match a trace to the ledgers, which carry the same text (the
+// test below this one). Nothing here changes behaviour; before this test only
+// internal/otel pinned a description, and only for an error made by hand.
+func TestModelClient_AFailedCallsSpanStatusIsTheReturnedErrorsText(t *testing.T) {
+	for _, status := range []int{http.StatusServiceUnavailable, http.StatusInternalServerError} {
+		previous := otelapi.GetTracerProvider()
+		t.Cleanup(func() { otelapi.SetTracerProvider(previous) })
+		sr := tracetest.NewSpanRecorder()
+		otelapi.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sr)))
+
+		_, srv := newFakeModel(status)
+		mc := newModelClient(srv.URL+"/v1", "mock", "unused", httpclient.New(5*time.Second))
+		_, err := mc.complete(context.Background(), identity{WorkItem: "w1", Caller: "worker"}, "hi")
+		srv.Close()
+		if err == nil {
+			t.Fatalf("a %d from the endpoint returned no error", status)
+		}
+		want := "model call: status " + strconv.Itoa(status)
+		if err.Error() != want {
+			t.Errorf("error text: got %q, want %q", err.Error(), want)
+		}
+
+		chat, attrs := chatSpanOf(t, sr)
+		if st := chat.Status(); st.Code != codes.Error || st.Description != err.Error() {
+			t.Errorf("chat span status: got %s %q, want Error and the returned error's text %q", st.Code, st.Description, err.Error())
+		}
+		if got := attrs["error.type"]; got != strconv.Itoa(status) {
+			t.Errorf("error.type: got %q, want %q", got, strconv.Itoa(status))
+		}
+	}
+}
+
+// TestExecutor_AFailedModelCallReadsTheSameInTheTraceAndTheLedger is the reason
+// the description is kept: the execution ledger's FAILED state line and the chat
+// span's status description are the same text, so a row of one finds the other.
+func TestExecutor_AFailedModelCallReadsTheSameInTheTraceAndTheLedger(t *testing.T) {
+	previous := otelapi.GetTracerProvider()
+	t.Cleanup(func() { otelapi.SetTracerProvider(previous) })
+	sr := tracetest.NewSpanRecorder()
+	otelapi.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sr)))
+
+	_, srv := newFakeModel(http.StatusServiceUnavailable)
+	defer srv.Close()
+	var out bytes.Buffer
+	lw := newLineWriter(&out)
+	ex := newLabExecutor("worker", newModelClient(srv.URL+"/v1", "mock", "unused", httpclient.New(5*time.Second)), lw)
+	if task := sendThroughSDK(t, ex, lw); task.Status.State != a2a.TaskStateFailed {
+		t.Fatalf("state = %s, want failed", task.Status.State)
+	}
+
+	var ledgerText string
+	for _, l := range executionLines(t, out.String()) {
+		if l.Event == "state" && l.State == string(a2a.TaskStateFailed) {
+			ledgerText = l.Error
+		}
+	}
+	if ledgerText != "model call: status 503" {
+		t.Fatalf("execution ledger FAILED line error: got %q, want %q", ledgerText, "model call: status 503")
+	}
+	chat, _ := chatSpanOf(t, sr)
+	if st := chat.Status(); st.Code != codes.Error || st.Description != ledgerText {
+		t.Errorf("chat span status: got %s %q, want Error and the ledger's text %q", st.Code, st.Description, ledgerText)
+	}
 }
 
 func spanNames(spans []sdktrace.ReadOnlySpan) []string {
