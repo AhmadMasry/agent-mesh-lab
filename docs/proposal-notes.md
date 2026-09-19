@@ -235,3 +235,12 @@ host. Every mesh leg reads `mutual_tls`, and plaintext is still refused. Tracing
 Istio and by one `AgentgatewayPolicy` per Gateway for agentgateway, with nothing custom. This supersedes the last
 sentence of the 2026-09-08 note and the 2026-09-09 note (one waypoint per Service). Experiment A's counts are
 re-measured on the new topology before any entry cites it. The proposal text is unchanged.
+
+## 2026-09-19 — Experiment A gains in-cluster rows for the Python receiver
+
+**2026-09-19 — Experiment A gains in-cluster rows for the Python receiver.** Decision by the author. Since the
+topology change of the same date the orchestrator's Service has its own route, `lab/orchestrator`, on the central
+agentgateway proxy. The A.3 matrix gains rows that send work items to the orchestrator in-cluster, addressed to its
+Service and not to the ingress URL its agent card advertises. The retry stanza for these rows is on that route. They
+are reported beside the existing Python-receiver rows through the ingress, not instead of them. The proposal text is
+unchanged.
