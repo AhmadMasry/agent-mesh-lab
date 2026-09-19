@@ -10,9 +10,23 @@
 # OTLP resourceSpans. Both the envelope and the bare TracesData are accepted, so a
 # chunk that arrives without the envelope is still read.
 #
-# Columns, fixed by the Gate 3 plan:
+# Columns. The first ten were fixed by the Gate 3 plan; the last two were appended
+# at the end on 2026-09-19 (follow-ups 18), so a reader that takes the first ten
+# by position, or any of them by name, reads what it read before:
 #   trace_id,span_id,parent_span_id,service,operation,start_us,duration_us,
-#   lab_work_item,lab_message_id,http_status
+#   lab_work_item,lab_message_id,http_status,route,retry_attempt
+#
+# `route` and `retry_attempt` are agentgateway's span attributes `route` and
+# `retry.attempt`, copied as written. Measured at agentgateway v1.5.0 on the
+# topology of 2026-09-19, where one proxy (`agw-central`) serves the agent routes
+# and the model route: the proxy's SERVER span, one per request it received,
+# carries `route` as <namespace>/<HTTPRoute name>, and carries `retry.attempt`
+# only when the proxy re-sent that request (value 1 after one re-send; absent on
+# a request it sent once). Its CLIENT spans, one per upstream attempt and children
+# of that SERVER span, carry neither. No other service in this lab sets either
+# attribute, so both columns are empty on every other row. The service name no
+# longer says which leg of a work item a proxy span belongs to; `route` does, and
+# experiments/lib/derive-layer.sh keys on it.
 #
 # Two shapes are handled deliberately. Identifiers arrive from this binding as
 # lowercase hex; anything else is passed through unchanged rather than guessed at,
@@ -73,13 +87,16 @@ def rows:
         duration_us:    (($s.endTimeUnixNano | us) - ($s.startTimeUnixNano | us)),
         lab_work_item:  (firstattr($sa; ["lab.work_item"])),
         lab_message_id: (firstattr($sa; ["lab.message_id"])),
-        http_status:    (firstattr($sa; ["http.response.status_code", "http.status_code"]))
+        http_status:    (firstattr($sa; ["http.response.status_code", "http.status_code"])),
+        route:          (firstattr($sa; ["route"])),
+        retry_attempt:  (firstattr($sa; ["retry.attempt"]))
       }
   ]
   | sort_by(.start_us, .span_id);
 
-"trace_id,span_id,parent_span_id,service,operation,start_us,duration_us,lab_work_item,lab_message_id,http_status",
+"trace_id,span_id,parent_span_id,service,operation,start_us,duration_us,lab_work_item,lab_message_id,http_status,route,retry_attempt",
 ( rows[]
   | [ .trace_id, .span_id, .parent_span_id, .service, .operation,
-      .start_us, .duration_us, .lab_work_item, .lab_message_id, .http_status ]
+      .start_us, .duration_us, .lab_work_item, .lab_message_id, .http_status,
+      .route, .retry_attempt ]
   | map(csv) | join(",") )

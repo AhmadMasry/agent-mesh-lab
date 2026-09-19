@@ -9,9 +9,13 @@
 # The stanza is switched on for the route under test and off again afterwards.
 # Two things are recorded separately and must not be confused:
 #
-#   the proxy HOLDS the policy   read once per route from the proxy's own
+#   the proxy HOLDS the policy   read once per route set from the proxy's own
 #                                /config_dump, which is the check the
-#                                agentgateway documentation gives
+#                                agentgateway documentation gives, and counted
+#                                PER ROUTE of that proxy: since 2026-09-19 one
+#                                proxy serves the waypoint route and the egress
+#                                route, so a count over the whole dump would not
+#                                say which leg holds the retry
 #   the proxy FIRED the retry    counted from the receiver's pre-dispatch ingress
 #                                ledger (waypoint, ingress) or the model
 #                                endpoint's invocation ledger (egress)
@@ -20,10 +24,13 @@
 #
 # The three routes and how each is stimulated:
 #
-#   waypoint  the `worker` HTTPRoute in `lab`, served by the istiod-driven
-#             agentgateway waypoint. One loadgen Job in-cluster to the worker
-#             Service, whose pod is ztunnel-captured, so the request crosses that
-#             waypoint. The worker is armed with `http503-before-dispatch` for the
+#   waypoint  the `worker` HTTPRoute in `lab`, the worker Service's hostname route
+#             on `agw-central`, the agentgateway-managed proxy in
+#             `agentgateway-waypoint` that is that Service's waypoint (until
+#             2026-09-19 an istiod-driven waypoint in `lab`). One loadgen Job
+#             in-cluster to the worker Service, whose pod is ztunnel-captured, so
+#             the request crosses that proxy on that route. The worker is armed
+#             with `http503-before-dispatch` for the
 #             repetition's work item: the arrival is counted on the ingress ledger
 #             and then answered 503, and the arming disarms itself, so a second
 #             delivery is served normally.
@@ -32,10 +39,12 @@
 #             project's stimulus-path rule: a `kind` port-forward to the ingress
 #             Service and one POST from this host, addressed to the worker by its
 #             `worker.lab.internal` hostname, with the same injection armed.
-#   egress    `model-via-agw` in `agentgateway-egress`, the route to
-#             model.lab.internal. One clean loadgen Job to the worker; the model
-#             endpoint is armed with `http500` for the work item, so the worker's
-#             one model call fails at the egress waypoint and the count that
+#   egress    `model-via-agw` in `agentgateway-waypoint`, the route to
+#             model.lab.internal on the same proxy, `agw-central`, in its egress
+#             role (until 2026-09-19 a proxy of its own, `agw-egress` in
+#             `agentgateway-egress`). One clean loadgen Job to the worker; the
+#             model endpoint is armed with `http500` for the work item, so the
+#             worker's one model call fails on the model route and the count that
 #             matters is the model endpoint's.
 #
 # No retry logic in this script, and no repetition of a delivery: each repetition
@@ -289,14 +298,30 @@ assert_single_replica mockllm
 reset_all
 
 # --- the stanza ---------------------------------------------------------------
-# Which proxy serves this route, and how many routes the stanza lands on. The
-# expected count is named per route so the apply can be checked rather than
-# trusted: `ingress` patches two routes, the other two patch one each.
+# Which proxy serves this route set, which of that proxy's routes the set names,
+# and how many routes the stanza lands on. The expected count is named per route
+# set so the apply can be checked rather than trusted: `ingress` patches two
+# routes, the other two patch one each.
+#
+# Since 2026-09-19 `waypoint` and `egress` name the SAME proxy: `agw-central`
+# serves `lab/worker`, `lab/orchestrator` and the model route. The proxy alone no
+# longer says which leg is under test, so SET_ROUTES names the routes, as
+# <namespace>/<name>, and what is read from the proxy below is counted per route.
+# The names are the ones `make retry-on` patches (deploy/step-3-stress/retry).
 case "$ROUTE" in
-waypoint) PROXY_NS="lab" PROXY_DEPLOY="agentgateway-waypoint" EXPECTED_STANZAS=1 ;;
-ingress) PROXY_NS="agentgateway-ingress" PROXY_DEPLOY="agentgateway-ingress" EXPECTED_STANZAS=2 ;;
-egress) PROXY_NS="agentgateway-egress" PROXY_DEPLOY="agw-egress" EXPECTED_STANZAS=1 ;;
+waypoint) PROXY_NS="agentgateway-waypoint" PROXY_DEPLOY="agw-central" SET_ROUTES="lab/worker" EXPECTED_STANZAS=1 ;;
+ingress) PROXY_NS="agentgateway-ingress" PROXY_DEPLOY="agentgateway-ingress" SET_ROUTES="lab/worker-ingress lab/orchestrator-ingress" EXPECTED_STANZAS=2 ;;
+egress) PROXY_NS="agentgateway-waypoint" PROXY_DEPLOY="agw-central" SET_ROUTES="agentgateway-waypoint/model-via-agw" EXPECTED_STANZAS=1 ;;
 esac
+# A proxy that is not there cannot be read, and a port-forward to a missing
+# Deployment fails in the background where nothing sees it. Checked before the
+# stanza goes on, so a stale name stops the run with no retry stanza changed (the
+# injectors have been reset and the control pod exists by then; the exit trap
+# removes the pod).
+if ! kubectl -n "$PROXY_NS" get "deployment/${PROXY_DEPLOY}" -o name >/dev/null 2>&1; then
+	echo "gate3-retry: deployment/${PROXY_DEPLOY} in ${PROXY_NS}, the proxy this script reads for ROUTE=${ROUTE}, does not exist; no retry stanza was changed" >&2
+	exit 1
+fi
 
 echo "== switching the retry stanza on for the ${ROUTE} route =="
 # Set before the apply, not after it: an apply that changed one route and then
@@ -324,29 +349,64 @@ echo "== reading ${PROXY_NS}/${PROXY_DEPLOY} /config_dump =="
 {
 	printf '%s\n' "$HEADER"
 	echo "kubectl -n ${PROXY_NS} port-forward deploy/${PROXY_DEPLOY} ${ADMIN_PORT}:15000"
-	echo "curl -s http://127.0.0.1:${ADMIN_PORT}/config_dump | jq '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value]'"
+	echo "curl -s --retry 0 http://127.0.0.1:${ADMIN_PORT}/config_dump | jq '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value]'"
+	echo "route set under test: ${ROUTE} = ${SET_ROUTES}"
 	echo
 } >>"$DUMP_FILE"
 kubectl -n "$PROXY_NS" port-forward "deploy/${PROXY_DEPLOY}" "${ADMIN_PORT}:15000" >/dev/null 2>&1 &
 PF_ADMIN=$!
 sleep 3
-if curl -s --max-time 5 "http://127.0.0.1:${ADMIN_PORT}/config_dump" -o "${RUN_DIR}/.config-dump-${ROUTE}.json"; then
+# The dump names every route by `.namespace` and `.name` (read from both proxies'
+# dumps, 2026-09-19), and a route's retry is an entry of its `.inlinePolicies`. The
+# count is taken per route, because the proxy that serves this route set may serve
+# another: PER_ROUTE is every route of this proxy as <namespace>/<name>=<count>,
+# POLICY_HELD is the count on the routes this route set names, POLICY_ELSEWHERE
+# the count on the proxy's other routes. A route of this set that the dump does
+# not list at all means this script is reading the wrong proxy, and stops the run.
+PER_ROUTE="unreadable"
+POLICY_HELD="unreadable"
+POLICY_ELSEWHERE="unreadable"
+NOT_IN_DUMP=""
+if curl -s --retry 0 --max-time 5 "http://127.0.0.1:${ADMIN_PORT}/config_dump" -o "${RUN_DIR}/.config-dump-${ROUTE}.json"; then
 	jq '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value]' \
 		"${RUN_DIR}/.config-dump-${ROUTE}.json" >>"$DUMP_FILE" 2>&1 || echo "(the routes section could not be read from the dump)" >>"$DUMP_FILE"
-	POLICY_HELD=$(jq -r '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value.inlinePolicies // [] | .[] | select(has("retry"))] | length' \
+	PER_ROUTE=$(jq -r '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value
+			| {route: "\(.namespace // "?")/\(.name // "?")", retry: ([(.inlinePolicies // [])[] | select(has("retry"))] | length)}]
+		| group_by(.route) | map("\(.[0].route)=\(map(.retry) | add)") | join(" ")' \
 		"${RUN_DIR}/.config-dump-${ROUTE}.json" 2>/dev/null || echo "unreadable")
+	if [ "$PER_ROUTE" != "unreadable" ]; then
+		POLICY_HELD=0
+		POLICY_ELSEWHERE=0
+		for set_route in $SET_ROUTES; do
+			case " ${PER_ROUTE} " in *" ${set_route}="*) ;; *) NOT_IN_DUMP="${NOT_IN_DUMP}${NOT_IN_DUMP:+ }${set_route}" ;; esac
+		done
+		for pair in $PER_ROUTE; do
+			case " ${SET_ROUTES} " in
+			*" ${pair%=*} "*) POLICY_HELD=$((POLICY_HELD + ${pair##*=})) ;;
+			*) POLICY_ELSEWHERE=$((POLICY_ELSEWHERE + ${pair##*=})) ;;
+			esac
+		done
+	fi
 else
 	echo "(the proxy's admin endpoint did not answer)" >>"$DUMP_FILE"
-	POLICY_HELD="unreadable"
 fi
 # Killed and then reaped, so bash's job control does not print a Terminated
 # notice over the next command's output.
 kill "$PF_ADMIN" >/dev/null 2>&1 || true
 wait "$PF_ADMIN" 2>/dev/null || true
 rm -f "${RUN_DIR}/.config-dump-${ROUTE}.json"
-printf '%s %s/%s holds %s retry policy/policies in its own config_dump\n' \
-	"$(date -u +%FT%TZ)" "$PROXY_NS" "$PROXY_DEPLOY" "$POLICY_HELD" | tee -a "$CONTROL_FILE" >>"$DUMP_FILE"
-echo "config_dump: ${PROXY_NS}/${PROXY_DEPLOY} holds ${POLICY_HELD} retry policy/policies"
+printf '%s %s/%s retry policies in its own config_dump, per route: %s\n' \
+	"$(date -u +%FT%TZ)" "$PROXY_NS" "$PROXY_DEPLOY" "$PER_ROUTE" | tee -a "$CONTROL_FILE" >>"$DUMP_FILE"
+printf '%s %s/%s holds %s retry policy/policies on the %s route set (%s) and %s on its other routes\n' \
+	"$(date -u +%FT%TZ)" "$PROXY_NS" "$PROXY_DEPLOY" "$POLICY_HELD" "$ROUTE" "$SET_ROUTES" "$POLICY_ELSEWHERE" | tee -a "$CONTROL_FILE" >>"$DUMP_FILE"
+echo "config_dump: ${PROXY_NS}/${PROXY_DEPLOY} per route: ${PER_ROUTE}"
+echo "config_dump: ${POLICY_HELD} retry policy/policies on the ${ROUTE} route set (${SET_ROUTES}), ${POLICY_ELSEWHERE} on the proxy's other routes"
+if [ -n "$NOT_IN_DUMP" ]; then
+	printf '%s %s/%s does not list %s among its routes; this script is reading a proxy that does not serve the %s route set\n' \
+		"$(date -u +%FT%TZ)" "$PROXY_NS" "$PROXY_DEPLOY" "$NOT_IN_DUMP" "$ROUTE" | tee -a "$CONTROL_FILE" >&2
+	echo "gate3-retry: nothing will be sent" >&2
+	exit 1
+fi
 
 if [ "$DUMP_ONLY" = "on" ]; then
 	echo "== DUMP_ONLY: the policy has been read back and nothing was sent =="
@@ -513,7 +573,8 @@ one_rep() { # $1 = work item id, $2 = summary file to append to (empty for none)
 }
 
 # send_loadgen_job runs the in-cluster load client, whose pod is ztunnel-captured,
-# so the request reaches the worker through the worker's own waypoint.
+# so the request reaches the worker through the worker Service's waypoint, which
+# is `agw-central` on route `lab/worker`.
 send_loadgen_job() { # $1 = work item, $2 = repetition directory
 	local lwi="$1" d="$2" rc=0
 	kubectl -n "$NAMESPACE" delete job "loadgen-${lwi}" --ignore-not-found --wait=true >/dev/null 2>&1 || true

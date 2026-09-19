@@ -1,0 +1,68 @@
+2026-09-19T13:14:03Z ROUTE=waypoint pre-run retry stanzas across every HTTPRoute: 0
+2026-09-19T13:14:03Z run fu18r: route=waypoint reps=1
+2026-09-19T13:14:03Z deployment/worker replicas: spec=1 ready=1
+2026-09-19T13:14:04Z deployment/mockllm replicas: spec=1 ready=1
+httproute.gateway.networking.k8s.io/worker configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/retry-mechanics/routes-on-waypoint/routes.txt
+2026-09-19T13:14:04Z retry stanzas across every HTTPRoute with ROUTE=waypoint on: 1 (expected 1)
+2026-09-19T13:14:07Z agentgateway-waypoint/agw-central retry policies in its own config_dump, per route: agentgateway-waypoint/model-via-agw=0 lab/orchestrator=0 lab/worker=1
+2026-09-19T13:14:07Z agentgateway-waypoint/agw-central holds 1 retry policy/policies on the waypoint route set (lab/worker) and 0 on its other routes
+2026-09-19T13:14:07Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3r-waypoint-fu18r-01"} -> 204
+2026-09-19T13:14:31Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3r-waypoint-fu18r-01)
+2026-09-19T13:14:31Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3r-waypoint-fu18r-01)
+httproute.gateway.networking.k8s.io/worker configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/retry-mechanics/routes-off-waypoint/routes.txt
+2026-09-19T13:14:40Z retry-off ROUTE=waypoint restored; retry stanzas across every HTTPRoute: 0
+2026-09-19T13:14:40Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:14:40Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:14:40Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:14:40Z ROUTE=ingress pre-run retry stanzas across every HTTPRoute: 0
+2026-09-19T13:15:11Z run fu18r: route=ingress reps=1
+2026-09-19T13:15:11Z deployment/worker replicas: spec=1 ready=1
+2026-09-19T13:15:11Z deployment/mockllm replicas: spec=1 ready=1
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 2
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/retry-mechanics/routes-on-ingress/routes.txt
+2026-09-19T13:15:11Z retry stanzas across every HTTPRoute with ROUTE=ingress on: 2 (expected 2)
+2026-09-19T13:15:14Z agentgateway-ingress/agentgateway-ingress retry policies in its own config_dump, per route: lab/orchestrator-ingress=1 lab/worker-ingress=1
+2026-09-19T13:15:14Z agentgateway-ingress/agentgateway-ingress holds 2 retry policy/policies on the ingress route set (lab/worker-ingress lab/orchestrator-ingress) and 0 on its other routes
+2026-09-19T13:15:15Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3r-ingress-fu18r-01"} -> 204
+2026-09-19T13:15:18Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3r-ingress-fu18r-01)
+2026-09-19T13:15:18Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3r-ingress-fu18r-01)
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/retry-mechanics/routes-off-ingress/routes.txt
+2026-09-19T13:15:27Z retry-off ROUTE=ingress restored; retry stanzas across every HTTPRoute: 0
+2026-09-19T13:15:27Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:15:27Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:15:27Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:15:28Z ROUTE=egress pre-run retry stanzas across every HTTPRoute: 0
+2026-09-19T13:15:58Z run fu18r: route=egress reps=1
+2026-09-19T13:15:58Z deployment/worker replicas: spec=1 ready=1
+2026-09-19T13:15:58Z deployment/mockllm replicas: spec=1 ready=1
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/retry-mechanics/routes-on-egress/routes.txt
+2026-09-19T13:15:59Z retry stanzas across every HTTPRoute with ROUTE=egress on: 1 (expected 1)
+2026-09-19T13:16:02Z agentgateway-waypoint/agw-central retry policies in its own config_dump, per route: agentgateway-waypoint/model-via-agw=1 lab/orchestrator=0 lab/worker=0
+2026-09-19T13:16:02Z agentgateway-waypoint/agw-central holds 1 retry policy/policies on the egress route set (agentgateway-waypoint/model-via-agw) and 0 on its other routes
+2026-09-19T13:16:02Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"a3r-egress-fu18r-01"} -> 204
+2026-09-19T13:16:25Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3r-egress-fu18r-01)
+2026-09-19T13:16:25Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3r-egress-fu18r-01)
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/retry-mechanics/routes-off-egress/routes.txt
+2026-09-19T13:16:34Z retry-off ROUTE=egress restored; retry stanzas across every HTTPRoute: 0
+2026-09-19T13:16:34Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:16:34Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:16:34Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)

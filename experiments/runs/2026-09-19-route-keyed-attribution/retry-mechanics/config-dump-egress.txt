@@ -1,0 +1,93 @@
+== 2026-09-19T13:15:27Z | ROUTE=egress | RUN_ID=fu18r | REPS=1 ==
+kubectl -n agentgateway-waypoint port-forward deploy/agw-central 15002:15000
+curl -s --retry 0 http://127.0.0.1:15002/config_dump | jq '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value]'
+route set under test: egress = agentgateway-waypoint/model-via-agw
+
+[
+  {
+    "key": "lab/orchestrator.00.inner-http",
+    "name": "orchestrator",
+    "namespace": "lab",
+    "kind": "HTTPRoute",
+    "hostnames": [
+      "orchestrator.lab.svc.cluster.local"
+    ],
+    "matches": [
+      {
+        "path": {
+          "pathPrefix": "/"
+        }
+      }
+    ],
+    "backends": [
+      {
+        "weight": 1,
+        "service": {
+          "name": "lab/orchestrator.lab.svc.cluster.local",
+          "port": 8080
+        }
+      }
+    ]
+  },
+  {
+    "key": "lab/worker.00.inner-http",
+    "name": "worker",
+    "namespace": "lab",
+    "kind": "HTTPRoute",
+    "hostnames": [
+      "worker.lab.svc.cluster.local"
+    ],
+    "matches": [
+      {
+        "path": {
+          "pathPrefix": "/"
+        }
+      }
+    ],
+    "backends": [
+      {
+        "weight": 1,
+        "service": {
+          "name": "lab/worker.lab.svc.cluster.local",
+          "port": 8080
+        }
+      }
+    ]
+  },
+  {
+    "key": "agentgateway-waypoint/model-via-agw.00.inner-http",
+    "name": "model-via-agw",
+    "namespace": "agentgateway-waypoint",
+    "kind": "HTTPRoute",
+    "hostnames": [
+      "model.lab.internal"
+    ],
+    "matches": [
+      {
+        "path": {
+          "pathPrefix": "/"
+        }
+      }
+    ],
+    "backends": [
+      {
+        "weight": 1,
+        "backend": "agentgateway-waypoint/mockllm"
+      }
+    ],
+    "inlinePolicies": [
+      {
+        "retry": {
+          "attempts": 1,
+          "backoff": "100ms",
+          "codes": [
+            "500 Internal Server Error",
+            "503 Service Unavailable"
+          ]
+        }
+      }
+    ]
+  }
+]
+2026-09-19T13:16:02Z agentgateway-waypoint/agw-central retry policies in its own config_dump, per route: agentgateway-waypoint/model-via-agw=1 lab/orchestrator=0 lab/worker=0
+2026-09-19T13:16:02Z agentgateway-waypoint/agw-central holds 1 retry policy/policies on the egress route set (agentgateway-waypoint/model-via-agw) and 0 on its other routes

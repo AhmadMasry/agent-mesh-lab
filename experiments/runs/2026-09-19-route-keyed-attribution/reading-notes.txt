@@ -1,0 +1,92 @@
+Reading notes for experiments/runs/2026-09-19-route-keyed-attribution/ (follow-ups 18, task 3).
+Written beside the records instead of editing any recorded output. Every live run here is one repetition
+(REPS=1, DRY_RUN=off) on the kind cluster the previous task built and left standing; no run is Experiment A's
+re-run on this topology, which is follow-ups 19's.
+
+THE ORDER THINGS RAN IN, which is what the sub-directories mean:
+
+ 1. stanzas-on-route-check.txt   `stanzas_on_route`, read out of two versions of experiments/gate3-matrix.sh and
+                                 called for the egress route under its present name and under the name the
+                                 script's table held. Read-only. Before: a route that does not exist reads 0 with
+                                 status 0. After: it names the route, prints kubectl's answer, returns 1; and the
+                                 per-route line built from it reads <route>=UNREADABLE for a stale table. The
+                                 functions were called alone; no row was run against a stale table.
+    py-waypoint-refusal.txt      RUN=R2 SUB=waypoint RECEIVER=py, refused with its corrected reason, exit 1,
+                                 before the script creates anything.
+ 2. probe/                       two matrix rows (R2 waypoint go, egress go) run with ONLY the matrix script's
+                                 route table fixed: exporter and derivation unchanged. They are the measurement
+                                 that decided the exporter's new columns (what a retried proxy span carries on
+                                 each leg of agw-central), so their spans.csv has the TEN old columns, and their
+                                 attribution.txt is the service-name-keyed derivation's: `gateway` on the waypoint
+                                 row, `not-attributable` on the egress row. probe/r2-waypoint-go's trace.json is,
+                                 byte for byte, experiments/fixtures/jaeger-trace-sample.json.
+ 3. make-test/                   four `make test` outputs, in order:
+                                   1-exporter-expectation-first    expected rows written (by expected-spans.py,
+                                                                   an independent reading of the same response),
+                                                                   jaeger-spans.jq unchanged: FAIL, two columns
+                                                                   absent. make stops at the first failing recipe
+                                                                   line, so the derive-layer loop did not run.
+                                   2-exporter-changed              ok; the 11 old fixtures, old derivation: ok.
+                                   3-fixtures-first-tool-unchanged 16 scenarios, derivation unchanged: 6 FAIL.
+                                   4-tool-changed                  same 16, same files, route-keyed: 16 ok.
+                                 "make test exit status: 2" is GNU make's status for any failed recipe.
+ 4. fixture-rows/                twelve matrix rows, new exporter (12 columns), derivation STILL UNCHANGED, on
+                                 purpose: the fixtures had to exist before the derivation changed, so that list 3
+                                 above could fail first. So in this sub-directory every attribution.txt, and the
+                                 second_delivery_layer and layer_reason of every summary.csv, are the
+                                 service-name-keyed derivation's live output. both-tools.csv puts that label
+                                 beside what the route-keyed derivation reads from the same five files (8 same, 4
+                                 differ: egress go/py and R3 go/py). entry-routes.csv lists every span that
+                                 carries a route, per work item. The five files of each work item are the
+                                 fixtures under experiments/fixtures/derive-layer/, byte for byte.
+ 5. retry-mechanics/             experiments/gate3-gateway-retry-mechanics.sh, once per route set.
+ 6. proof-rows/                  three matrix rows with everything as committed: R2 waypoint go, R2
+                                 ingress-incluster py, egress go. Their attribution.txt is the route-keyed
+                                 derivation's.
+ 7. cluster-after.txt            the cluster read back, then this task's 18 loadgen Jobs deleted and the Jobs
+                                 read again (the six the cluster was found with are left).
+    host-sleep.txt, windows.csv  the host over each group of live runs.
+
+WHERE A RECORD READS OTHER THAN A READER WOULD TAKE IT:
+
+ a. fixture-rows/rows.txt shows "row R3:go exit status 1 / stopping", then R3:go again sixteen seconds later with
+    exit status 0. The first is not a failed row. The row driver ran in the background and its twelve rows were
+    going to take longer than ten minutes; whether the harness that ran it ends a background command at that mark
+    could not be checked, and a row killed mid-way would have skipped its restore. So the driver was stopped
+    between rows by the matrix script's own guard: a placeholder fixture-rows/r3-go/summary.csv holding one row
+    of another nonce, which the script refuses BEFORE anything is sent or changed (its message is the line
+    above the status). The placeholder directory held that one file and was deleted; the driver was started
+    again for R3:go and R3:py. No row was run twice and no repetition was discarded. (The first driver ran
+    10 min 20 s, so the harness does not end a background command at ten minutes.) rows.log itself is not
+    committed (`*.log` under experiments/runs/ is ignored); rows.txt is its row lines, by grep.
+ b. rows.sh is the driver with one line changed (it named the checkout by an absolute path); the line says so.
+    host-sleep.sh is the previous task's recorder with its two header lines changed; its first line says so.
+ c. In every Python-receiver row the matrix script unsets DOWNSTREAM_A2A_URL for the row and puts it back, and in
+    R3 it sets the receiver's model-retry knob and puts it back: two rollouts per such row. The worker pod and the
+    orchestrator pod of cluster-after.txt are therefore not the pods the previous task's records name, and
+    those work items' ledger lines can no longer be collected from a live pod; the Deployments' knob values
+    are the ones the first row of this task found (probe/r2-waypoint-go/knobs.txt, "-- before --").
+ d. "no injection armed on the mock" is read from the mock's own log, which writes one line per inject and per
+    reset and whose pod did not restart: its last control line is a reset, after its last inject. The two
+    receivers write no such line. For them: the orchestrator pod started at 13:18:32Z, after its last arming at
+    13:17:59Z (a new process holds no arming); the worker pod started at 13:10:29Z and was armed three times
+    after that (13:14:07Z retry-mechanics waypoint, 13:15:15Z retry-mechanics ingress, 13:16:51Z proof row R2
+    waypoint go, and nothing else: every arming is a line of a control.txt here), each of those three work items
+    shows its two arrivals, which is the arming firing once and disarming itself, and every run ended with
+    POST /control/reset -> 204 on all three (each run's control.txt, and "injector resets on this exit path" in
+    each matrix row's knobs.txt).
+ e. The `http_status` column is empty on every proxy row, as it always was: agentgateway writes `http.status`,
+    and the exporter reads `http.response.status_code` / `http.status_code`. Not changed by this task; the
+    proxy's status for a span is in that work item's trace.json.
+ f. retry-mechanics took about 30 s between "pre-run" and "stanza on" for ingress and egress and 1 s for
+    waypoint: the script waits for the previous run's control pod to finish terminating before it starts its own.
+
+ADDED 2026-09-19T13:58:22Z, after the review of this commit (the lines above are as first committed and are not edited):
+ g. stanzas-on-route-check.txt and py-waypoint-refusal.txt are listed FIRST above because that is where their
+    reading belongs in the order of the work, but the two files as committed are stamped 13:27:22Z: after
+    cluster-after.txt (13:21:54Z-13:21:58Z) and after the last window of windows.csv (ends 13:21:58Z). Both were
+    regenerated whole from their scripts at that time, because a botched shell pipe of mine had appended three
+    garbage lines to the first one (and the second had been run only in the terminal until then). Both are
+    read-only: the first calls functions that only `kubectl get`, the second is a row the matrix script refuses
+    before it creates or changes anything. Neither is inside a host-sleep window, and neither changed the
+    cluster that cluster-after.txt describes.

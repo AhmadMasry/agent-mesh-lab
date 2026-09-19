@@ -22,12 +22,14 @@
 #             The failure is injected at the receiver, after its ingress ledger
 #             has counted the delivery.
 #   R2        the gateway's HTTPRoute retry, with the same receiver-side
-#             injection. SUB=waypoint switches it on for the `worker` route the
-#             istiod-driven waypoint serves, and is a Go-receiver row only: no
-#             HTTPRoute names the orchestrator Service as a parent, and the
-#             Python receiver's SendMessage POST enters through the ingress
-#             because its card advertises it, so the sub-row is refused there
-#             with that reason. SUB=ingress switches it on for the two routes on
+#             injection. SUB=waypoint switches it on for `lab/worker`, the worker
+#             Service's hostname route on `agw-central` (until 2026-09-19 the
+#             route an istiod-driven waypoint served), and is a Go-receiver row
+#             only: the `waypoint` route set is that one route, which a stimulus
+#             for the Python receiver never crosses, and that receiver's
+#             SendMessage POST enters through the ingress route because its card
+#             advertises the ingress, so the sub-row is refused there with that
+#             reason. SUB=ingress switches it on for the two routes on
 #             the agentgateway ingress and takes its stimulus from outside the
 #             cluster (see send_through_ingress below). SUB=ingress-incluster is
 #             the same route set with the in-cluster stimulus, which is the
@@ -56,8 +58,13 @@
 #   * The Python receiver refuses `close-after-read` with HTTP 400 — ASGI has no
 #     portable connection hijack — so rows that inject at the receiver use
 #     `http503-before-dispatch` there. Gate 2 measured that the istiod-driven
-#     waypoint converts a receiver's connection close into a synthesised 503
-#     anyway, so this is the same thing the client would have seen.
+#     waypoint, the proxy in front of a receiver until 2026-09-19, converts a
+#     receiver's connection close into a synthesised 503 anyway, so there this
+#     was the same thing the client would have seen. On `agw-central` it has
+#     been read once, not counted: the proxy's entry span for a delivery the Go
+#     receiver closed carries http.status 503 and reason UpstreamFailure
+#     (experiments/runs/2026-09-19-route-keyed-attribution/, the R1 go/http
+#     fixture row). Experiment A's re-run on this topology is where it is counted.
 #
 # No retry logic in this script. Each repetition is one stimulus; any second
 # delivery was made by the layer under test. A repetition whose Job failed is
@@ -201,9 +208,10 @@ INJECT_NOTE=""
 
 # The receiver-side injection mode for the rows that fail the delivery itself.
 # The Python receiver refuses close-after-read (HTTP 400; ASGI has no portable
-# connection hijack), so it is given the 503 instead; behind the waypoint the
-# two are the same thing to a client, which Gate 2 measured. Assigned rather
-# than printed, so the note it carries is not lost in a subshell.
+# connection hijack), so it is given the 503 instead; behind the istiod-driven
+# waypoint of the time the two were the same thing to a client, which Gate 2
+# measured (see the note on the injections at the top for `agw-central`).
+# Assigned rather than printed, so the note it carries is not lost in a subshell.
 RECEIVER_CLOSE_MODE="close-after-read"
 if [ "$RECEIVER" = "py" ]; then
 	RECEIVER_CLOSE_MODE="http503-before-dispatch"
@@ -256,7 +264,7 @@ R4)
 	MODEL_KNOB_VALUE="1"
 	# The gateway layer of the composition is whichever gateway is actually in
 	# front of this receiver, which is not the same object for the two: the
-	# worker's own istiod-driven waypoint, and for the orchestrator the
+	# worker Service's route on `agw-central`, and for the orchestrator the
 	# agentgateway ingress its card advertises, which is the route set R2's
 	# ingress-incluster sub-row uses. Composing with a route the stimulus never
 	# crosses would leave the gateway layer inert, and in the composition row an
@@ -282,17 +290,26 @@ egress)
 esac
 
 # No row switches the waypoint route on for the Python receiver, whichever row
-# asks. Two facts make it unmeasurable rather than merely odd: no HTTPRoute names
-# the orchestrator Service as a parent (the three that exist name the worker
-# Service and the two Gateways), so `retry-on ROUTE=waypoint` patches `lab/worker`
-# and leaves the orchestrator's path untouched; and the Task 3 baseline measured
-# that this receiver's SendMessage POST enters through the agentgateway ingress,
-# because its agent card advertises it. The per-route stanza assertion cannot
-# catch this: the stanza does land on `lab/worker`, which is a live route, just
-# not one this receiver's stimulus crosses. So the guard is here, before anything
-# is sent, rather than in one row's arm.
+# asks. Two facts make it unmeasurable rather than merely odd. The `waypoint`
+# route set is `lab/worker` and nothing else (ROUTES_WAYPOINT below; what
+# `make retry-on ROUTE=waypoint` patches), and a stimulus for this receiver never
+# crosses that route. And this receiver's SendMessage POST enters through the
+# agentgateway ingress, on `lab/orchestrator-ingress`, because its agent card
+# advertises the ingress: re-measured on the topology of 2026-09-19, where on 5
+# of 5 Python-receiver work items the route `lab/orchestrator` on `agw-central`
+# carried the agent-card GET and no POST, and the POST's proxy entry span was
+# `agentgateway-ingress` on `lab/orchestrator-ingress`
+# (experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/entry-routes.csv).
+# Until that day the first reason read "no HTTPRoute names the orchestrator
+# Service as a parent"; `lab/orchestrator` now exists, carrying that Service's
+# hostname on `agw-central`, and it is in no retry route set. Whether it should
+# be, and whether Experiment A gains in-cluster rows through it, is the author's
+# decision and not this script's. The per-route stanza assertion cannot catch
+# this: the stanza does land on `lab/worker`, which is a live route, just not one
+# this receiver's stimulus crosses. So the guard is here, before anything is
+# sent, rather than in one row's arm.
 if [ "$RECEIVER" = "py" ] && [ "$ROUTE" = "waypoint" ]; then
-	echo "gate3-matrix: RUN=${RUN}${SUB:+ SUB=$SUB} RECEIVER=py would switch the retry on for the waypoint route, which is refused: no HTTPRoute has the orchestrator Service as its parent, and this receiver's SendMessage POST enters through the agentgateway ingress, not through its own waypoint. The gateway in front of this receiver is the ingress route set (RUN=R2 SUB=ingress-incluster in-cluster, SUB=ingress out-of-cluster)." >&2
+	echo "gate3-matrix: RUN=${RUN}${SUB:+ SUB=$SUB} RECEIVER=py would switch the retry on for the waypoint route set, which is refused: that set is lab/worker alone, a route this receiver's stimulus never crosses, and this receiver's SendMessage POST enters through the agentgateway ingress on lab/orchestrator-ingress, because its agent card advertises the ingress (the route lab/orchestrator on agw-central carries its agent-card GET only, and is in no retry route set). The gateway in front of this receiver is the ingress route set (RUN=R2 SUB=ingress-incluster in-cluster, SUB=ingress out-of-cluster)." >&2
 	exit 1
 fi
 if [ "$RUN" = "R1" ] && [ "$RECEIVER" = "py" ]; then
@@ -356,9 +373,14 @@ deploy_env() { # $1 = deployment, $2 = variable name -> its value, empty if unse
 # landed on the routes this row's ROUTE names, which a cluster-wide count cannot:
 # a stanza on the wrong route passes a cluster-wide assertion and leaves the row
 # measuring a hop the stimulus never crosses.
+#
+# The route names are the ones `make retry-on` patches (deploy/step-3-stress/retry).
+# Since 2026-09-19 the waypoint route and the egress route are served by one proxy,
+# `agw-central`, and the egress route lives in that proxy's namespace,
+# `agentgateway-waypoint` (until then `agentgateway-egress`, which no longer exists).
 ROUTES_WAYPOINT="lab/worker"
 ROUTES_INGRESS="lab/worker-ingress lab/orchestrator-ingress"
-ROUTES_EGRESS="agentgateway-egress/model-via-agw"
+ROUTES_EGRESS="agentgateway-waypoint/model-via-agw"
 
 routes_for() { # $1 = waypoint|ingress|egress -> "<ns>/<name> ..."
 	case "$1" in
@@ -370,15 +392,31 @@ routes_for() { # $1 = waypoint|ingress|egress -> "<ns>/<name> ..."
 
 stanzas_total() { kubectl get httproute -A -o yaml 2>/dev/null | grep -c 'retry:' || true; }
 
-stanzas_on_route() { # $1 = <ns>/<name>
-	kubectl -n "${1%%/*}" get "httproute/${1#*/}" -o yaml 2>/dev/null | grep -c 'retry:' || true
+# A route that cannot be read has no count. Until 2026-09-19 this function threw
+# kubectl's error away and let `grep -c` count the empty output, so a route that
+# did not exist read 0 with status 0, and every row that expects 0 passed on it
+# (measured on the day the egress route's namespace changed under this table:
+# experiments/runs/2026-09-19-route-keyed-attribution/stanzas-on-route-check.txt).
+# It now says which route and what kubectl answered, and returns non-zero.
+stanzas_on_route() { # $1 = <ns>/<name> -> its `retry:` line count; non-zero when the route cannot be read
+	local out
+	if ! out=$(kubectl -n "${1%%/*}" get "httproute/${1#*/}" -o yaml 2>&1); then
+		echo "gate3-matrix: HTTPRoute ${1} could not be read, so it has no stanza count: ${out}" >&2
+		return 1
+	fi
+	printf '%s\n' "$out" | grep -c 'retry:' || true
 }
 
-stanzas_per_route_line() { # every route this lab patches, named, with its count
-	local set route line=""
+# Every route this lab patches, named, with its count. A route that cannot be read
+# is written as UNREADABLE rather than stopping the caller: this line is also the
+# after-state record, which has to be written on every exit path. The callers
+# refuse on that word.
+stanzas_per_route_line() {
+	local set route n line=""
 	for set in waypoint ingress egress; do
 		for route in $(routes_for "$set"); do
-			line="${line}${line:+ }${route}=$(stanzas_on_route "$route")"
+			n=$(stanzas_on_route "$route") || n="UNREADABLE"
+			line="${line}${line:+ }${route}=${n}"
 		done
 	done
 	printf '%s' "$line"
@@ -439,10 +477,17 @@ cleanup() {
 	# had something to put back. A row that switches no route on still has to
 	# leave a record that no route carried one when it ended, and a run that died
 	# before it changed anything still has to say what it left behind.
+	local after_per_route
+	after_per_route="$(stanzas_per_route_line 2>>"$KNOBS_FILE")"
+	case "$after_per_route" in *UNREADABLE*)
+		echo "gate3-matrix: a route this script names could not be read after the run (${after_per_route}); the after-state is not a record of zero" >&2
+		restore_failed=1
+		;;
+	esac
 	{
 		printf '%s -- after (%s) --\n' "$(date -u +%FT%TZ)" "$(if [ "$trigger_rc" = "0" ]; then echo "normal end"; else echo "exit status ${trigger_rc}"; fi)"
 		printf 'retry stanzas across every HTTPRoute: %s\n' "$(stanzas_total)"
-		printf 'retry stanzas per route: %s\n' "$(stanzas_per_route_line)"
+		printf 'retry stanzas per route: %s\n' "$after_per_route"
 		printf 'deployment/worker MODEL_RETRIES=%s\n' "$(deploy_env worker MODEL_RETRIES)"
 		printf 'deployment/orchestrator MODEL_MAX_RETRIES=%s\n' "$(deploy_env orchestrator MODEL_MAX_RETRIES)"
 		printf 'deployment/orchestrator DOWNSTREAM_A2A_URL=%s\n' "$(deploy_env orchestrator DOWNSTREAM_A2A_URL)"
@@ -614,6 +659,18 @@ if [ "$BEFORE_STANZAS" != "0" ]; then
 	echo "gate3-matrix: the cluster already carries ${BEFORE_STANZAS} retry stanza(s); run 'make retry-off' and start from the baseline" >&2
 	exit 1
 fi
+# The cluster-wide count above says nothing about whether the routes this script
+# names exist: it reads whatever routes there are. Every named route is read here,
+# for every row, before anything is changed, so a route table that has drifted
+# from the cluster stops the row instead of being recorded as `<route>=0`.
+BEFORE_PER_ROUTE="$(stanzas_per_route_line)"
+printf '%s pre-run retry stanzas per route: %s\n' "$(date -u +%FT%TZ)" "$BEFORE_PER_ROUTE" | tee -a "$KNOBS_FILE" "$CONTROL_FILE" >/dev/null
+echo "pre-run retry stanzas per route: ${BEFORE_PER_ROUTE}"
+case "$BEFORE_PER_ROUTE" in *UNREADABLE*)
+	echo "gate3-matrix: a route this script names could not be read (${BEFORE_PER_ROUTE}); its route table does not match this cluster, and a row run now would record a missing route as carrying no stanza. Nothing was sent." >&2
+	exit 1
+	;;
+esac
 
 # Every row starts from a cluster whose only retry is the one that row is about
 # to switch on, and every row asserts that rather than recording it. A knob left
@@ -800,7 +857,10 @@ if [ -n "$ROUTE" ]; then
 	# it is the live object that is checked rather than the manifest.
 	ON_SCOPED=0
 	for route in $(routes_for "$ROUTE"); do
-		n=$(stanzas_on_route "$route")
+		n=$(stanzas_on_route "$route") || {
+			echo "gate3-matrix: after 'make retry-on ROUTE=${ROUTE}' the route ${route} could not be read; nothing will be sent" >&2
+			exit 1
+		}
 		ON_SCOPED=$((ON_SCOPED + n))
 		printf '%s retry stanzas on %s: %s\n' "$(date -u +%FT%TZ)" "$route" "$n" | tee -a "$KNOBS_FILE" "$CONTROL_FILE" >/dev/null
 		echo "retry stanzas on ${route}: ${n}"
@@ -855,8 +915,11 @@ write_header() {
 }
 
 # send_loadgen_job runs the in-cluster load client, whose pod is ztunnel-captured,
-# so the request reaches the receiver through that receiver's own waypoint (and,
-# for the Python receiver, through the ingress its agent card advertises).
+# so its requests to a receiver Service cross that Service's waypoint, which since
+# 2026-09-19 is `agw-central` for both receivers: the agent-card GET and the
+# SendMessage POST on `lab/worker` for the Go receiver; for the Python receiver
+# the card GET on `lab/orchestrator`, and then the POST through the ingress its
+# agent card advertises, on `lab/orchestrator-ingress`.
 send_loadgen_job() { # $1 = work item, $2 = repetition directory
 	local lwi="$1" d="$2" rc=0
 	kubectl -n "$NAMESPACE" delete job "loadgen-${lwi}" --ignore-not-found --wait=true >/dev/null 2>&1 || true

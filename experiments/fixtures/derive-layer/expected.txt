@@ -1,21 +1,88 @@
 # Fixtures for experiments/lib/derive-layer.sh, exercised by `make test`.
 # Columns: fixture directory, receiver service, the layer the derivation must name.
-# Six fixtures are real repetitions copied from experiments/runs/: Task 2's three
-# gateway retry probes, one Task 3 baseline work item at each receiver, and one
-# Task 4 R1 py/http work item (client-http-py, below) exercising the proxy-span
-# fallback -- the Python receiver's IngressMiddleware answers a refused delivery
-# before the orchestrator's own OTel span opens, so that delivery is visible only
-# at the agentgateway-ingress in front of it and in the ledger. The rest are
-# synthetic: the lab has not yet run a row that produces them, and a derivation
-# with no test for a label it can return is a derivation nobody has read.
+#
+# Re-taken on 2026-09-19 (follow-ups 18, task 3), the day the derivation's key for a
+# proxy span's hop changed from the span's service name to its `route`: one proxy,
+# `agw-central`, now serves the agent routes and the model route under one service
+# name. Each directory holds the five files the derivation reads -- the three ledgers,
+# the client lines and spans.csv -- and nothing in any of them was edited.
+#
+# TWELVE ARE LIVE ROWS of `experiments/gate3-matrix.sh` at REPS=1 on the kind cluster
+# at the topology of that day, copied byte for byte (checked with cmp) from
+# experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/<row>/<work item>/;
+# the row is named after each. Their spans.csv has the `route` and `retry_attempt`
+# columns. They were recorded with the service-name-keyed derivation still in place,
+# so that this list could fail against it first: that run directory's make-test/
+# holds the failing and the passing output.
 gateway-waypoint worker gateway
 gateway-ingress worker gateway
+gateway-ingress-py orchestrator gateway
 gateway-egress worker gateway
+gateway-egress-py orchestrator gateway
 none-baseline worker none
 none-baseline-py orchestrator none
 client-http-waypoint worker client-http
-client-http-ingress orchestrator client-http
 client-http-py orchestrator client-http
 client-sdk worker client-sdk
 model-client worker model-client
+model-client-py orchestrator model-client
+#   gateway-waypoint      R2 go waypoint: retry on `lab/worker` of agw-central; two worker
+#                         spans under two attempts of ONE proxy entry (rule b, converging)
+#   gateway-ingress       R2 go ingress, stimulus from outside the cluster: the same shape
+#                         on `lab/worker-ingress` of agentgateway-ingress
+#   gateway-ingress-py    R2 py ingress-incluster: the refused delivery opens no
+#                         orchestrator span, so rule (b)'s fallback reads ONE entry on
+#                         `lab/orchestrator-ingress` with two upstream attempts
+#   gateway-egress(-py)   egress row: ONE entry on the model route with two upstream
+#                         attempts (rule c); the proxy's service is agw-central, which
+#                         also holds this work item's agent-route entry
+#   none-baseline(-py)    baseline row: one mock `close`, no layer re-sends anything
+#   client-http-waypoint  R1 go http: two entries on `lab/worker`, one attempt each, and a
+#                         third entry of the SAME service on the model route (rule b)
+#   client-http-py        R1 py http: rule (b)'s fallback, two entries on
+#                         `lab/orchestrator-ingress` with one attempt each
+#   client-sdk            R1 go sdk: a new JSON-RPC id under the same messageId (rule a)
+#   model-client(-py)     R3: TWO entries on the model route (rule c)
+#
+# THREE ARE OLDER RECORDS, kept on purpose and unchanged (15 files, each with the blob id
+# the previous commit holds at the old name; their old names now hold live rows):
+# real repetitions of Gate 3 Tasks 2 and 4 on the topology this lab ran until
+# 2026-09-19, whose spans.csv has NO `route` column and whose proxy rows carry the
+# service names of proxies that no longer exist. They are what "an older record"
+# means to the derivation, and they pin the LABEL it gives one. Not the reason:
+# `make test` compares `layer=` and nothing else, so a derivation that reached
+# `not-attributable` on them by another branch would pass here too. What they do
+# catch is the thing that matters: a derivation that answers from the service name
+# (the one before this day) names `gateway` and `client-http` on the last two and fails.
+older-record-shared-parent worker gateway
+older-record-model-hop worker not-attributable
+older-record-fallback orchestrator not-attributable
+#   older-record-shared-parent  was `gateway-waypoint`: two worker spans naming ONE
+#                               dangling parent, the istiod-driven waypoint's shape.
+#                               Rule (b) compares span ids and reads no route, so the
+#                               record is attributed as it was when taken. No row on
+#                               the present topology reaches this branch.
+#   older-record-model-hop      was `gateway-egress`, and the service-name key called
+#                               it `gateway`. Rule (c) needs the route, the record has
+#                               no such column, and the hop is not guessed from the
+#                               service name `agw-egress`: not-attributable.
+#   older-record-fallback       was `client-http-py`, and the service-name key called
+#                               it `client-http`. Rule (b)'s fallback needs the route
+#                               for the same reason: not-attributable.
+#
+# ONE IS SYNTHETIC, and says so: two byte-identical arrivals and a trace that matched
+# no span, which no row produces. Its four ledger files are unchanged (the blob ids the
+# previous commit holds); its spans.csv is what today's exporter writes for a response
+# with no span (`echo '{"result":{"resourceSpans":[]}}' | jq -r -s -f
+# experiments/lib/jaeger-spans.jq`), header only. It reaches the fallback's "no proxy
+# entry above the receiver" answer, which a derivation should not be able to return
+# untested.
 not-attributable worker not-attributable
+#
+# NOT HERE ANY MORE. Three synthetic fixtures were replaced by the live rows of the
+# same name or label above: `client-http-waypoint` (it imitated a proxy that exports
+# no span, which this topology does not have), `client-sdk` and `model-client`. One was
+# dropped with no successor, `client-http-ingress`: it imitated an orchestrator that
+# opens a server span for a refused delivery, and the Python receiver does not
+# (measured again on 2026-09-19: 1 orchestrator POST span for 2 deliveries), so no
+# row can produce it and a recorded trace is not edited into its shape.

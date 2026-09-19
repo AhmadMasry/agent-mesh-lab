@@ -1,0 +1,28 @@
+2026-09-19T12:59:07Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-19T12:59:07Z pre-run retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-waypoint/model-via-agw=0
+2026-09-19T12:59:08Z run fu18f: RUN=R2 RECEIVER=go SUB=waypoint REPS=1 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport MODEL_RETRIES=<left as deployed> route-retry=waypoint
+2026-09-19T12:59:08Z deployment/worker replicas: spec=1 ready=1
+2026-09-19T12:59:08Z deployment/mockllm replicas: spec=1 ready=1
+2026-09-19T12:59:08Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-19T12:59:08Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-19T12:59:08Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+httproute.gateway.networking.k8s.io/worker configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/r2-go-waypoint/routes.txt
+2026-09-19T12:59:08Z retry stanzas on lab/worker: 1
+2026-09-19T12:59:08Z retry stanzas with ROUTE=waypoint on: 1 on the waypoint routes and 1 across every HTTPRoute (expected 1 each)
+2026-09-19T12:59:09Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-19T12:59:09Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-19T12:59:09Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-19T12:59:09Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-waypoint-fu18f-01"} -> 204
+2026-09-19T12:59:32Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-waypoint-fu18f-01)
+2026-09-19T12:59:32Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-waypoint-fu18f-01)
+httproute.gateway.networking.k8s.io/worker configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/r2-go-waypoint/routes-off/routes.txt
+2026-09-19T12:59:41Z retry-off ROUTE=waypoint restored; retry stanzas across every HTTPRoute: 0
+2026-09-19T12:59:41Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T12:59:41Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T12:59:41Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)

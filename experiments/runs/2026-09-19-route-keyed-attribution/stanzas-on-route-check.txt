@@ -1,0 +1,36 @@
+# stanzas_on_route, read out of two versions of experiments/gate3-matrix.sh and called for the egress route under its
+# present name and under the name the script's table held until this task; then the per-route line the changed
+# script builds from it. Read-only against the cluster.
+
+== before: the script as the previous commit holds it (blob cee360d0c8cab889a49920c7eb4cf28e13e1323b) | 2026-09-19T13:27:22Z ==
+    stanzas_on_route() { # $1 = <ns>/<name>
+    	kubectl -n "${1%%/*}" get "httproute/${1#*/}" -o yaml 2>/dev/null | grep -c 'retry:' || true
+    }
+route agentgateway-waypoint/model-via-agw | kubectl get -o name: httproute.gateway.networking.k8s.io/model-via-agw
+  stanzas_on_route -> stdout+stderr: 0 | status 0
+route agentgateway-egress/model-via-agw | kubectl get -o name: Error from server (NotFound): namespaces "agentgateway-egress" not found
+  stanzas_on_route -> stdout+stderr: 0 | status 0
+
+== after: the script as changed by this task | 2026-09-19T13:27:22Z ==
+    stanzas_on_route() { # $1 = <ns>/<name> -> its `retry:` line count; non-zero when the route cannot be read
+    	local out
+    	if ! out=$(kubectl -n "${1%%/*}" get "httproute/${1#*/}" -o yaml 2>&1); then
+    		echo "gate3-matrix: HTTPRoute ${1} could not be read, so it has no stanza count: ${out}" >&2
+    		return 1
+    	fi
+    	printf '%s\n' "$out" | grep -c 'retry:' || true
+    }
+route agentgateway-waypoint/model-via-agw | kubectl get -o name: httproute.gateway.networking.k8s.io/model-via-agw
+  stanzas_on_route -> stdout+stderr: 0 | status 0
+route agentgateway-egress/model-via-agw | kubectl get -o name: Error from server (NotFound): namespaces "agentgateway-egress" not found
+  stanzas_on_route -> stdout+stderr: gate3-matrix: HTTPRoute agentgateway-egress/model-via-agw could not be read, so it has no stanza count: Error from server (NotFound): namespaces "agentgateway-egress" not found | status 1
+
+== stanzas_per_route_line, read out of the changed script | 2026-09-19T13:27:22Z ==
+ROUTES_EGRESS=agentgateway-waypoint/model-via-agw
+  line:   lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-waypoint/model-via-agw=0
+  stderr: 
+ROUTES_EGRESS=agentgateway-egress/model-via-agw
+  line:   lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-egress/model-via-agw=UNREADABLE
+  stderr: gate3-matrix: HTTPRoute agentgateway-egress/model-via-agw could not be read, so it has no stanza count: Error from server (NotFound): namespaces "agentgateway-egress" not found
+  the script's pre-run check and its after-state both refuse on this word
+

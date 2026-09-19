@@ -1,0 +1,78 @@
+== 2026-09-19T13:14:40Z | ROUTE=ingress | RUN_ID=fu18r | REPS=1 ==
+kubectl -n agentgateway-ingress port-forward deploy/agentgateway-ingress 15002:15000
+curl -s --retry 0 http://127.0.0.1:15002/config_dump | jq '[.binds[].listeners | to_entries[] | (.value.routes // {}) | to_entries[] | .value]'
+route set under test: ingress = lab/worker-ingress lab/orchestrator-ingress
+
+[
+  {
+    "key": "lab/orchestrator-ingress.00.http",
+    "name": "orchestrator-ingress",
+    "namespace": "lab",
+    "kind": "HTTPRoute",
+    "matches": [
+      {
+        "path": {
+          "pathPrefix": "/"
+        }
+      }
+    ],
+    "backends": [
+      {
+        "weight": 1,
+        "service": {
+          "name": "lab/orchestrator.lab.svc.cluster.local",
+          "port": 8080
+        }
+      }
+    ],
+    "inlinePolicies": [
+      {
+        "retry": {
+          "attempts": 1,
+          "backoff": "100ms",
+          "codes": [
+            "503 Service Unavailable"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "key": "lab/worker-ingress.00.http",
+    "name": "worker-ingress",
+    "namespace": "lab",
+    "kind": "HTTPRoute",
+    "hostnames": [
+      "worker.lab.internal"
+    ],
+    "matches": [
+      {
+        "path": {
+          "pathPrefix": "/"
+        }
+      }
+    ],
+    "backends": [
+      {
+        "weight": 1,
+        "service": {
+          "name": "lab/worker.lab.svc.cluster.local",
+          "port": 8080
+        }
+      }
+    ],
+    "inlinePolicies": [
+      {
+        "retry": {
+          "attempts": 1,
+          "backoff": "100ms",
+          "codes": [
+            "503 Service Unavailable"
+          ]
+        }
+      }
+    ]
+  }
+]
+2026-09-19T13:15:14Z agentgateway-ingress/agentgateway-ingress retry policies in its own config_dump, per route: lab/orchestrator-ingress=1 lab/worker-ingress=1
+2026-09-19T13:15:14Z agentgateway-ingress/agentgateway-ingress holds 2 retry policy/policies on the ingress route set (lab/worker-ingress lab/orchestrator-ingress) and 0 on its other routes

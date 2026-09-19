@@ -1,0 +1,31 @@
+2026-09-19T12:59:42Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-19T12:59:42Z pre-run retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-waypoint/model-via-agw=0
+2026-09-19T13:00:13Z run fu18f: RUN=R2 RECEIVER=go SUB=ingress REPS=1 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport MODEL_RETRIES=<left as deployed> route-retry=ingress
+2026-09-19T13:00:13Z deployment/worker replicas: spec=1 ready=1
+2026-09-19T13:00:13Z deployment/mockllm replicas: spec=1 ready=1
+2026-09-19T13:00:13Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-19T13:00:13Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-19T13:00:13Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 2
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/r2-go-ingress/routes.txt
+2026-09-19T13:00:13Z retry stanzas on lab/worker-ingress: 1
+2026-09-19T13:00:13Z retry stanzas on lab/orchestrator-ingress: 1
+2026-09-19T13:00:13Z retry stanzas with ROUTE=ingress on: 2 on the ingress routes and 2 across every HTTPRoute (expected 2 each)
+2026-09-19T13:00:14Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-19T13:00:14Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-19T13:00:14Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-19T13:00:14Z POST http://worker.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-go-ingress-fu18f-01"} -> 204
+2026-09-19T13:00:17Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-fu18f-01)
+2026-09-19T13:00:17Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-go-ingress-fu18f-01)
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/r2-go-ingress/routes-off/routes.txt
+2026-09-19T13:00:26Z retry-off ROUTE=ingress restored; retry stanzas across every HTTPRoute: 0
+2026-09-19T13:00:26Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:00:26Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T13:00:26Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)

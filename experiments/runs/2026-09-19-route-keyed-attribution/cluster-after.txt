@@ -1,0 +1,106 @@
+== 2026-09-19T13:21:54Z | the cluster after the live rows of follow-ups 18 task 3 ==
+
+-- Gateways and HTTPRoutes --
+NAMESPACE               NAME                   CLASS          ADDRESS         PROGRAMMED   AGE
+agentgateway-ingress    agentgateway-ingress   agentgateway   10.96.203.197   True         105m
+agentgateway-waypoint   agw-central            agentgateway   10.96.129.136   True         106m
+NAMESPACE               NAME                   HOSTNAMES                                AGE
+agentgateway-waypoint   model-via-agw          ["model.lab.internal"]                   105m
+lab                     orchestrator           ["orchestrator.lab.svc.cluster.local"]   105m
+lab                     orchestrator-ingress                                            105m
+lab                     worker                 ["worker.lab.svc.cluster.local"]         106m
+lab                     worker-ingress         ["worker.lab.internal"]                  105m
+
+-- retry stanzas --
+across every HTTPRoute (kubectl get httproute -A -o yaml | grep -c 'retry:'): 0
+  lab/worker: 0
+  lab/orchestrator: 0
+  lab/worker-ingress: 0
+  lab/orchestrator-ingress: 0
+  agentgateway-waypoint/model-via-agw: 0
+
+-- the mock's own control lines (it writes one per inject and per reset; it has not restarted) --
+POD                        RESTARTS   STARTED
+mockllm-5867c6988d-gtq4n   0          2026-09-19T11:36:52Z
+inject lines: 9   reset lines: 87
+the last inject line: {"ledger":"control","ts":"2026-09-19T13:19:07.193084549Z","endpoint":"/control/inject","detail":"{\"mode\":\"http500\",\"lwi\":\"a3m-egress-go-fu18x-01\"}"}
+the last control line: {"ledger":"control","ts":"2026-09-19T13:19:40.095311176Z","endpoint":"/control/reset"}
+
+-- retry knobs on the Deployments (empty means unset) --
+  deployment/worker MODEL_RETRIES=
+  deployment/orchestrator MODEL_MAX_RETRIES=0
+  deployment/orchestrator DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+  deployment/orchestrator PLAN_MODEL_CALL=off
+  CLIENT_* on any Deployment in lab: <none>
+
+-- pods that are neither Running nor Completed, every namespace --
+  (count: 0)
+
+-- control pods of the run scripts (a3m-curl, a3r-curl, a3t-curl, a2-curl) --
+  (count: 0)
+
+-- Jobs in lab, before this task's are deleted, by run nonce --
+     2 fu18c
+    11 fu18f
+     2 fu18p
+     2 fu18r
+     4 fu18t
+     3 fu18x
+deleting 18 Jobs of this task:
+  job.batch/loadgen-a3m-baseline-go-fu18f-01
+  job.batch/loadgen-a3m-baseline-py-fu18f-01
+  job.batch/loadgen-a3m-egress-go-fu18f-01
+  job.batch/loadgen-a3m-egress-go-fu18p-01
+  job.batch/loadgen-a3m-egress-go-fu18x-01
+  job.batch/loadgen-a3m-egress-py-fu18f-01
+  job.batch/loadgen-a3m-r1-go-http-fu18f-01
+  job.batch/loadgen-a3m-r1-go-sdk-fu18f-01
+  job.batch/loadgen-a3m-r1-py-http-fu18f-01
+  job.batch/loadgen-a3m-r2-go-waypoint-fu18f-01
+  job.batch/loadgen-a3m-r2-go-waypoint-fu18p-01
+  job.batch/loadgen-a3m-r2-go-waypoint-fu18x-01
+  job.batch/loadgen-a3m-r2-py-ingress-incluster-fu18f-01
+  job.batch/loadgen-a3m-r2-py-ingress-incluster-fu18x-01
+  job.batch/loadgen-a3m-r3-go-fu18f-01
+  job.batch/loadgen-a3m-r3-py-fu18f-01
+  job.batch/loadgen-a3r-egress-fu18r-01
+  job.batch/loadgen-a3r-waypoint-fu18r-01
+job.batch "loadgen-a3m-baseline-go-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-baseline-py-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-egress-go-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-egress-go-fu18p-01" deleted from lab namespace
+job.batch "loadgen-a3m-egress-go-fu18x-01" deleted from lab namespace
+job.batch "loadgen-a3m-egress-py-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-r1-go-http-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-r1-go-sdk-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-r1-py-http-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-r2-go-waypoint-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-r2-go-waypoint-fu18p-01" deleted from lab namespace
+job.batch "loadgen-a3m-r2-go-waypoint-fu18x-01" deleted from lab namespace
+job.batch "loadgen-a3m-r2-py-ingress-incluster-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-r2-py-ingress-incluster-fu18x-01" deleted from lab namespace
+job.batch "loadgen-a3m-r3-go-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3m-r3-py-fu18f-01" deleted from lab namespace
+job.batch "loadgen-a3r-egress-fu18r-01" deleted from lab namespace
+job.batch "loadgen-a3r-waypoint-fu18r-01" deleted from lab namespace
+
+-- Jobs and pods in lab after --
+NAME                                STATUS     COMPLETIONS   DURATION   AGE
+loadgen-a3t-fu18t-r1-orchestrator   Complete   1/1           3s         101m
+loadgen-a3t-fu18t-r1-worker         Complete   1/1           3s         102m
+loadgen-a3t-fu18t-r2-orchestrator   Complete   1/1           2s         100m
+loadgen-a3t-fu18t-r2-worker         Complete   1/1           2s         101m
+loadgen-g2c-fu18c-orchestrator      Complete   1/1           3s         102m
+loadgen-g2c-fu18c-worker            Complete   1/1           3s         102m
+NAME                                      READY   STATUS      RESTARTS   AGE
+loadgen-a3t-fu18t-r1-orchestrator-qf2l9   0/1     Completed   0          101m
+loadgen-a3t-fu18t-r1-worker-kbxwg         0/1     Completed   0          102m
+loadgen-a3t-fu18t-r2-orchestrator-d722t   0/1     Completed   0          100m
+loadgen-a3t-fu18t-r2-worker-t546z         0/1     Completed   0          101m
+loadgen-g2c-fu18c-orchestrator-5c52k      0/1     Completed   0          102m
+loadgen-g2c-fu18c-worker-f46p2            0/1     Completed   0          102m
+mockllm-5867c6988d-gtq4n                  1/1     Running     0          105m
+orchestrator-84bdc4b5bc-hj2vh             1/1     Running     0          3m26s
+worker-5ff8c99f5f-mfvnd                   1/1     Running     0          11m
+
+== 2026-09-19T13:21:58Z | end ==
