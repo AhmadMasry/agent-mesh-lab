@@ -519,14 +519,14 @@ export-trace:
 		exit 2; \
 	fi
 
-# retry-on ROUTE=<waypoint|ingress|egress> [OUT=<dir>]
-# retry-off [ROUTE=<waypoint|ingress|egress>] [OUT=<dir>]
+# retry-on ROUTE=<waypoint|ingress|egress|waypoint-orchestrator> [OUT=<dir>]
+# retry-off [ROUTE=<waypoint|ingress|egress|waypoint-orchestrator>] [OUT=<dir>]
 #
 # Switches the experimental HTTPRoute retry stanza on for one route set and off
 # again. The stanza is `retry: {attempts: 1, codes: [...], backoff: 100ms}`; the
-# codes are [503] on the waypoint and ingress routes and [500, 503] on the egress
-# route, because the failure injected on that hop is the model endpoint's 500.
-# The three route sets are:
+# codes are [503] on the waypoint, waypoint-orchestrator and ingress routes and
+# [500, 503] on the egress route, because the failure injected on that hop is the
+# model endpoint's 500. The four route sets are:
 #
 #   waypoint  the `worker` HTTPRoute in `lab`, the worker Service's hostname route on
 #             `agw-central`, the agentgateway-managed proxy that is its waypoint (step 2)
@@ -535,13 +535,21 @@ export-trace:
 #             (steps 2b and 2c)
 #   egress    `model-via-agw` in `agentgateway-waypoint`, the route to
 #             model.lab.internal on `agw-central` in its egress role (step 2b)
+#   waypoint-orchestrator
+#             the `orchestrator` HTTPRoute in `lab`, the orchestrator Service's
+#             hostname route on `agw-central` (step 2c). Its own set, since the
+#             author's note of 2026-09-19 in docs/proposal-notes.md ("Experiment A
+#             gains in-cluster rows for the Python receiver"); a stimulus crosses it
+#             with its POST only when the load client addresses that Service
+#             (CLIENT_DIAL=target), because the orchestrator's card advertises the
+#             ingress.
 #
 # Since 2026-09-19 the waypoint and the egress route are served by ONE proxy, where
 # until then each had its own (an istiod-driven waypoint in `lab`, and `agw-egress` in
 # `agentgateway-egress`). The route names are the same; the egress route's namespace is
 # what changed. The stanza stays per route: `retry-on ROUTE=waypoint` patches `lab/worker`
-# and nothing else on that proxy. The `orchestrator` route the same proxy serves since
-# that day (step 2c) is in no route set.
+# and nothing else on that proxy, and `retry-on ROUTE=waypoint-orchestrator` patches the
+# `orchestrator` route the same proxy serves since that day (step 2c) and nothing else.
 #
 # What these targets touch is routes and nothing else. The manifests come from
 # deploy/step-3-stress/retry/<route>/{off,on}, which read the step-2/2b/2c route
@@ -550,7 +558,7 @@ export-trace:
 # `kubectl apply`. No image is built and no Deployment is rolled: this is
 # `kubectl apply` of route objects, not `ko apply` of the overlay.
 #
-# `retry-off` with no ROUTE puts all three route sets back, which is the state
+# `retry-off` with no ROUTE puts all four route sets back, which is the state
 # every run that is not measuring a gateway retry has to start and end in. Both
 # targets then print how many `retry:` lines exist across every HTTPRoute in the
 # cluster, and with OUT they write the route objects read back from the API
@@ -561,7 +569,7 @@ export-trace:
 # from an earlier overlay instead of copying it; that is the point of the layout,
 # and the relocatability it costs is not something this repository uses.
 RETRY_DIR    := deploy/step-3-stress/retry
-RETRY_ROUTES := waypoint ingress egress
+RETRY_ROUTES := waypoint ingress egress waypoint-orchestrator
 
 define retry_readback
 	echo "== retry stanzas across every HTTPRoute in the cluster =="; \
@@ -592,8 +600,8 @@ endef
 
 retry-on:
 	@case "$(ROUTE)" in \
-	waypoint | ingress | egress) ;; \
-	*) echo "usage: make retry-on ROUTE=<waypoint|ingress|egress> [OUT=<dir>]" >&2; exit 1 ;; \
+	waypoint | ingress | egress | waypoint-orchestrator) ;; \
+	*) echo "usage: make retry-on ROUTE=<waypoint|ingress|egress|waypoint-orchestrator> [OUT=<dir>]" >&2; exit 1 ;; \
 	esac
 	@set -e; \
 	dir="$(RETRY_DIR)/$(ROUTE)/on"; \
@@ -602,8 +610,8 @@ retry-on:
 
 retry-off:
 	@case "$(ROUTE)" in \
-	'' | waypoint | ingress | egress) ;; \
-	*) echo "usage: make retry-off [ROUTE=<waypoint|ingress|egress>] [OUT=<dir>]" >&2; exit 1 ;; \
+	'' | waypoint | ingress | egress | waypoint-orchestrator) ;; \
+	*) echo "usage: make retry-off [ROUTE=<waypoint|ingress|egress|waypoint-orchestrator>] [OUT=<dir>]" >&2; exit 1 ;; \
 	esac
 	@set -e; \
 	for route in $(if $(ROUTE),$(ROUTE),$(RETRY_ROUTES)); do \
@@ -731,11 +739,13 @@ replay-ingress:
 	fi; \
 	exit $$rc
 
-# matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress>] [REPS=20]
+# matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress|ingress-incluster|service>] [REPS=20]
 #
 # One row of the A.3 retry-location matrix. RUN names the row and, with SUB, its
 # sub-row; RECEIVER names the SDK under test, `go` being the worker and `py` the
-# orchestrator. The script switches on exactly the knobs that row names, arms the
+# orchestrator. SUB=service is the Python receiver's in-cluster rows addressed to
+# its Service (RUN=baseline, R2 or R4; the author's note of 2026-09-19 in
+# docs/proposal-notes.md). The script switches on exactly the knobs that row names, arms the
 # injection that row names once per repetition, sends one stimulus per
 # repetition, and writes the three ledgers, the client lines and the exported
 # trace per work item under experiments/runs/<date>-a3-<run>-<receiver>[-<sub>]/,
@@ -750,7 +760,7 @@ replay-ingress:
 # value rather than silently spending repetitions.
 matrix:
 	@if [ -z "$(RUN)" ] || [ -z "$(RECEIVER)" ]; then \
-		echo "usage: make matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress>] [REPS=20]" >&2; \
+		echo "usage: make matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress|ingress-incluster|service>] [REPS=20]" >&2; \
 		exit 1; \
 	fi
 	RUN=$(RUN) RECEIVER=$(RECEIVER) SUB=$(SUB) REPS=$(if $(REPS),$(REPS),20) experiments/gate3-matrix.sh
@@ -840,9 +850,11 @@ test:
 		exit 1; \
 	fi
 	@# The layer derivation the matrix harness labels every second delivery with,
-	@# run against committed fixtures, eighteen since 2026-09-19. Sixteen are real:
-	@# twelve live matrix rows of that day's topology, copied from
-	@# experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/, and four
+	@# run against committed fixtures, twenty since follow-ups 19. Eighteen are real:
+	@# fourteen live matrix rows of that day's topology, twelve copied from
+	@# experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/ and two
+	@# (the Python receiver addressed to its Service) from
+	@# experiments/runs/2026-09-19-orchestrator-service-rows/fixture-rows/, and four
 	@# older records from the topology before it (three with their own export, which
 	@# has no `route` column, and one of them again, re-exported by today's
 	@# exporter). Two are synthetic and say so, because a derivation with a label no

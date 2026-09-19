@@ -66,6 +66,32 @@ model-client-py orchestrator model-client 2 calls entered route agentgateway-way
 #   client-sdk            R1 go sdk: a new JSON-RPC id under the same messageId (rule a)
 #   model-client(-py)     R3: TWO entries on the model route (rule c)
 #
+# TWO MORE ARE LIVE ROWS, of follow-ups 19 (task 4a, the author's note of 2026-09-19 in
+# docs/proposal-notes.md): the Python receiver addressed to its Service, the matrix's
+# SUB=service rows, run once each (REPS=1 DRY_RUN=off) by experiments/gate3-matrix.sh as
+# it was committed that day, on the kind cluster built at 2c082053. They are dry runs of
+# a new row and not findings. Their five files are copied byte for byte (checked with cmp)
+# from experiments/runs/2026-09-19-orchestrator-service-rows/fixture-rows/<row>/<work
+# item>/, which holds each row's records (provenance.txt there says what was left out).
+# They were added because they are the first recorded rows on which rule (b)'s fallback
+# meets a proxy that ALSO serves the model route: the POST enters `agw-central` on
+# `lab/orchestrator`, and the same proxy carries the model call's entry. Counting every
+# entry of the proxy's service there, as the fallback did until the route key of
+# 2026-09-19, reads 2 and 3 entries and answers not-attributable; no fixture before these
+# two failed on that (experiments/runs/2026-09-19-orchestrator-service-rows/
+# route-filter-mutant.txt). The derivation was not changed for them: it names both rows
+# as below.
+gateway-service-py orchestrator gateway route lab/orchestrator on the agw-central in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received
+gateway-service-r4-py orchestrator gateway route lab/orchestrator on the agw-central in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received
+#   gateway-service-py     R2 py service: retry on `lab/orchestrator`; the refused
+#                          delivery opens no orchestrator span, so rule (b)'s fallback
+#                          reads ONE entry on that route with two upstream attempts, and
+#                          leaves out the model route's entry on the same proxy
+#   gateway-service-r4-py  R4 py service: the same, with the receiver's model client
+#                          making a second call, so TWO model-route entries on the same
+#                          proxy are left out; the delivery rule answers first, as on
+#                          every R4 row
+#
 # THREE ARE OLDER RECORDS, kept on purpose and unchanged (15 files, each with the blob id
 # the previous commit holds at the old name; their old names now hold live rows):
 # real repetitions of Gate 3 Tasks 2 and 4 on the topology this lab ran until

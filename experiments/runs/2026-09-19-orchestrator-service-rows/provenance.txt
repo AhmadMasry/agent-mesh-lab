@@ -1,0 +1,34 @@
+2026-09-19-orchestrator-service-rows: the provenance of two derive-layer fixtures. NOT a
+findings record: no entry in findings.md cites this directory, and nothing here is a count
+of Experiment A.
+
+What ran. experiments/gate3-matrix.sh, blob 78d49c9a8b1b5bc4d76d2e6bbf58505e25cce330 (the
+one the commit that adds this directory carries), one repetition per row, REPS=1
+DRY_RUN=off, on the kind cluster `agent-mesh-lab` built at 2c082053. These were dry runs
+of the rows the author's note of 2026-09-19 adds (docs/proposal-notes.md, "Experiment A
+gains in-cluster rows for the Python receiver"), run to check the rows before Experiment
+A's run and to take fixtures from:
+
+  fixture-rows/r2-py-service   RUN=R2 RECEIVER=py SUB=service, 2026-09-19T20:45:12Z-20:46:02Z
+                               work item a3m-r2-py-service-t4a204512-01
+  fixture-rows/r4-py-service   RUN=R4 RECEIVER=py SUB=service, 2026-09-19T20:46:20Z-20:47:12Z
+                               work item a3m-r4-py-service-t4a204620-01
+
+What is here, per row: the files the matrix script wrote, byte for byte (certificates.txt,
+cluster-versions.txt, control.txt, knobs.txt, routes.txt, routes-off/routes.txt,
+summary.csv), and in the work item's directory the three ledgers, the client lines,
+spans.csv, trace.json and attribution.txt. Left out, as in
+experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/: each work item's
+apply.log (ko's build output) and collect.log (the collection's stderr).
+
+Where it was written. The matrix script wrote each row to a git-ignored record directory
+of the task that ran it (RUN_ITEM pointed there), not under experiments/runs/, so that no
+dry run left a run directory in the repository. That is the path control.txt names in its
+two "route objects read back into ..." lines. The files were copied here after the run,
+not edited.
+
+The fixtures. experiments/fixtures/derive-layer/gateway-service-py and
+gateway-service-r4-py are the five derivation inputs of each work item (client.jsonl,
+execution.jsonl, ingress.jsonl, invocation.jsonl, spans.csv), equal byte for byte to the
+same files under fixture-rows/ (cmp). expected.txt there says why they were added;
+route-filter-mutant.py and its output route-filter-mutant.txt here are the check it cites.

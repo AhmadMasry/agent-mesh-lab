@@ -17,6 +17,9 @@
 #             knob read back off the live Deployment. One mock `close` keyed by
 #             the work item, as Gate 1's baseline did, so the raw failure is
 #             visible: the receiver's Task fails and no layer re-sends anything.
+#             SUB=service (Python receiver only) is the same row sent to the
+#             orchestrator's Service, the control for R2 and R4 SUB=service:
+#             their stimulus path differs from every other Python-receiver row.
 #   R1        the client's own retry. SUB=http is CLIENT_RETRIES=1 with
 #             CLIENT_RETRY_ON=transport+503; SUB=sdk is CLIENT_SDK_RESEND=on.
 #             The failure is injected at the receiver, after its ingress ledger
@@ -33,7 +36,12 @@
 #             the agentgateway ingress and takes its stimulus from outside the
 #             cluster (see send_through_ingress below). SUB=ingress-incluster is
 #             the same route set with the in-cluster stimulus, which is the
-#             Python receiver's gateway row.
+#             Python receiver's gateway row through the ingress. SUB=service is
+#             that receiver's gateway row on its own Service's route: the load
+#             client addresses the orchestrator Service (CLIENT_DIAL=target), so
+#             its POST crosses `lab/orchestrator` on `agw-central`, and the
+#             `waypoint-orchestrator` route set switches the retry on for that
+#             route alone.
 #   R3        the receiver's own model client retry: MODEL_RETRIES=1 on the Go
 #             receiver, MODEL_MAX_RETRIES=1 on the Python one. The mock is armed
 #             by invocation count rather than by work item, so exactly one call
@@ -45,9 +53,20 @@
 #             same object R2's sub-rows use for each: composing with a route the
 #             stimulus never crosses would leave the gateway layer inert, and in
 #             the composition row that reads as "the layers did not compose"
-#             rather than as "the gateway did not retry".
+#             rather than as "the gateway did not retry". SUB=service (Python
+#             receiver only) addresses the orchestrator Service and composes
+#             with `lab/orchestrator`, the route R2 SUB=service uses.
 #   egress    the egress route's retry with the model endpoint armed `http500`
 #             for the work item (the author's extra row).
+#
+# SUB=service, on baseline, R2 and R4, exists because of the author's note of
+# 2026-09-19 in docs/proposal-notes.md ("Experiment A gains in-cluster rows for the
+# Python receiver"). It is the one thing that sets CLIENT_DIAL=target in the Job:
+# the load client still resolves the card at the orchestrator Service, and sends
+# its POST there instead of to the ingress the card advertises. Every other row
+# renders CLIENT_DIAL empty, and the client dials what the card advertises. The
+# Go receiver has no such sub-row: its card advertises the worker Service itself,
+# so each of its rows the load client sends already addresses that Service.
 #
 # Two things about the injections are properties of the fixtures, not choices
 # made here, and both are recorded in knobs.txt:
@@ -76,10 +95,12 @@
 #                                      orchestrator, which runs in model mode
 #                                      for its rows (DOWNSTREAM_A2A_URL unset
 #                                      for the run, recorded and restored).
-#   SUB=<http|sdk|waypoint|ingress|ingress-incluster>
+#   SUB=<http|sdk|waypoint|ingress|ingress-incluster|service>
 #                                      required for R1 (http, sdk) and R2
-#                                      (waypoint, ingress, ingress-incluster),
-#                                      refused elsewhere.
+#                                      (waypoint, ingress, ingress-incluster,
+#                                      service); optional for baseline and R4
+#                                      (service); refused elsewhere. service
+#                                      is RECEIVER=py only.
 #   REPS=<n>                           default 20. An empty or non-numeric value
 #                                      is an error; a silent default here spends
 #                                      repetitions that cannot be taken back.
@@ -122,7 +143,7 @@ INGRESS_PORT=18080
 JOB_TEMPLATE="deploy/base/loadgen-a2-job.yaml"
 
 usage() {
-	echo "usage: RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress|ingress-incluster>] [REPS=20] [DRY_RUN=on|off] [RUN_ID=<nonce>] [RUN_ITEM=<name>] $0" >&2
+	echo "usage: RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress|ingress-incluster|service>] [REPS=20] [DRY_RUN=on|off] [RUN_ID=<nonce>] [RUN_ITEM=<name>] $0" >&2
 	exit 1
 }
 
@@ -137,8 +158,8 @@ R1)
 	esac
 	;;
 R2)
-	case "$SUB" in waypoint | ingress | ingress-incluster) ;; *)
-		echo "gate3-matrix: RUN=R2 needs SUB=waypoint, SUB=ingress or SUB=ingress-incluster" >&2
+	case "$SUB" in waypoint | ingress | ingress-incluster | service) ;; *)
+		echo "gate3-matrix: RUN=R2 needs SUB=waypoint, SUB=ingress, SUB=ingress-incluster or SUB=service" >&2
 		exit 1
 		;;
 	esac
@@ -154,6 +175,14 @@ R2)
 		exit 1
 	fi
 	;;
+baseline | R4)
+	# One sub-row, SUB=service; without it these are the rows they always were.
+	case "$SUB" in '' | service) ;; *)
+		echo "gate3-matrix: RUN=${RUN} has one sub-row, SUB=service; SUB=${SUB} names nothing" >&2
+		exit 1
+		;;
+	esac
+	;;
 *)
 	if [ -n "$SUB" ]; then
 		echo "gate3-matrix: RUN=${RUN} has no sub-rows; SUB=${SUB} names nothing" >&2
@@ -161,6 +190,14 @@ R2)
 	fi
 	;;
 esac
+# SUB=service addresses the receiver's Service instead of the URL its card
+# advertises. The worker's card advertises the worker Service itself
+# (PUBLIC_URL in deploy/base/worker.yaml), so for the Go receiver the sub-row
+# would be a second name for a row that exists.
+if [ "$RECEIVER" = "go" ] && [ "$SUB" = "service" ]; then
+	echo "gate3-matrix: RUN=${RUN} RECEIVER=go SUB=service is refused: SUB=service makes the load client send to the Service it resolved the agent card at instead of the URL the card advertises, and the worker's card advertises the worker Service itself, so every Go-receiver row the load client sends already addresses that Service. Use $(if [ "$RUN" = "R2" ]; then echo "RUN=R2 SUB=waypoint"; else echo "RUN=${RUN} with no SUB"; fi) for the same row." >&2
+	exit 1
+fi
 case "$REPS" in '' | *[!0-9]*) echo "gate3-matrix: REPS=${REPS} is not a positive integer" >&2 && exit 1 ;; esac
 [ "$REPS" -ge 1 ] || {
 	echo "gate3-matrix: REPS=${REPS} is not a positive integer" >&2
@@ -191,6 +228,10 @@ fi
 JOB_RETRIES="0"
 JOB_SDK_RESEND="off"
 JOB_RETRY_ON="transport"
+# Where the client sends: empty is the URL the agent card advertises, "target"
+# is the receiver Service the card is resolved at. Not a retry knob. Only the
+# SUB=service rows set it.
+JOB_DIAL=""
 # The receiver's model-retry knob value this row wants. Empty means "leave the
 # Deployment alone", which is not the same as setting it to 0.
 MODEL_KNOB_VALUE=""
@@ -223,6 +264,15 @@ baseline)
 	# this work item, as Gate 1's baseline did, so the failure is raw.
 	MOCK_INJECT_TEMPLATE='{"mode":"close","lwi":"__LWI__"}'
 	;;
+baseline/service)
+	# The baseline, sent to the orchestrator Service rather than to the ingress
+	# its card advertises: the no-retry control of the two rows below, whose
+	# stimulus path no other Python-receiver row takes. Nothing else differs
+	# from the baseline row.
+	JOB_DIAL="target"
+	STIMULUS="loadgen-job-to-the-service"
+	MOCK_INJECT_TEMPLATE='{"mode":"close","lwi":"__LWI__"}'
+	;;
 R1/http)
 	JOB_RETRIES="1"
 	JOB_RETRY_ON="transport+503"
@@ -249,6 +299,16 @@ R2/ingress-incluster)
 	# SendMessage POST through the ingress and crosses the patched route.
 	ROUTE="ingress"
 	EXPECTED_STANZAS=2
+	RECEIVER_INJECT="http503-before-dispatch"
+	;;
+R2/service)
+	# The orchestrator Service's own route. The client addresses that Service, so
+	# its card GET and its SendMessage POST both cross `lab/orchestrator` on
+	# `agw-central`, and the stanza is on that route and no other.
+	JOB_DIAL="target"
+	STIMULUS="loadgen-job-to-the-service"
+	ROUTE="waypoint-orchestrator"
+	EXPECTED_STANZAS=1
 	RECEIVER_INJECT="http503-before-dispatch"
 	;;
 R3)
@@ -281,6 +341,21 @@ R4)
 	MOCK_INJECT_TEMPLATE='{"mode":"close","at_count":1}'
 	INJECT_NOTE="one receiver mode per work item, so the 503 stands for both R1's and R2's injection"
 	;;
+R4/service)
+	# R4 for the Python receiver addressed to its Service: R1's http knob, R3's
+	# model knob and the route that stimulus crosses, `lab/orchestrator`, the one
+	# R2 SUB=service uses. Everything else is the R4 row above.
+	JOB_DIAL="target"
+	STIMULUS="loadgen-job-to-the-service"
+	JOB_RETRIES="1"
+	JOB_RETRY_ON="transport+503"
+	MODEL_KNOB_VALUE="1"
+	ROUTE="waypoint-orchestrator"
+	EXPECTED_STANZAS=1
+	RECEIVER_INJECT="http503-before-dispatch"
+	MOCK_INJECT_TEMPLATE='{"mode":"close","at_count":1}'
+	INJECT_NOTE="one receiver mode per work item, so the 503 stands for both R1's and R2's injection"
+	;;
 egress)
 	ROUTE="egress"
 	EXPECTED_STANZAS=1
@@ -289,34 +364,49 @@ egress)
 *) usage ;;
 esac
 
-# No row switches the waypoint route on for the Python receiver, whichever row
-# asks. Two facts make it unmeasurable rather than merely odd. The `waypoint`
-# route set is `lab/worker` and nothing else (ROUTES_WAYPOINT below; what
-# `make retry-on ROUTE=waypoint` patches), and a stimulus for this receiver never
-# crosses that route. And this receiver's SendMessage POST enters through the
-# agentgateway ingress, on `lab/orchestrator-ingress`, because its agent card
-# advertises the ingress: re-measured on the topology of 2026-09-19, where on 5
-# of 5 Python-receiver work items the route `lab/orchestrator` on `agw-central`
-# carried the agent-card GET and no POST, and the POST's proxy entry span was
-# `agentgateway-ingress` on `lab/orchestrator-ingress`
+# A route set switched on for a receiver whose stimulus never crosses it is
+# refused here, before anything is sent, rather than in one row's arm: the
+# per-route stanza assertion further down cannot catch it, because the stanza
+# does land on a live route, just not one this row's stimulus crosses. Two route
+# sets have one receiver's route in them, and each is refused for the other case.
+#
+# `waypoint` is `lab/worker` and nothing else (ROUTES_WAYPOINT below; what
+# `make retry-on ROUTE=waypoint` patches), a route no stimulus for the Python
+# receiver crosses, so it is refused for that receiver whichever row asks. When
+# that receiver's client dials what its card advertises, its SendMessage POST
+# enters through the agentgateway ingress, on `lab/orchestrator-ingress`, because
+# the card advertises the ingress: re-measured on the topology of 2026-09-19,
+# where on 5 of 5 Python-receiver work items the route `lab/orchestrator` on
+# `agw-central` carried the agent-card GET and no POST, and the POST's proxy
+# entry span was `agentgateway-ingress` on `lab/orchestrator-ingress`
 # (experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/entry-routes.csv).
 # Until that day the first reason read "no HTTPRoute names the orchestrator
 # Service as a parent"; `lab/orchestrator` now exists, carrying that Service's
-# hostname on `agw-central`, and it is in no retry route set. Whether it should
-# be, and whether Experiment A gains in-cluster rows through it, is the author's
-# decision and not this script's. The per-route stanza assertion cannot catch
-# this: the stanza does land on `lab/worker`, which is a live route, just not one
-# this receiver's stimulus crosses. So the guard is here, before anything is
-# sent, rather than in one row's arm.
+# hostname on `agw-central`. By the author's note of the same day
+# (docs/proposal-notes.md) it has a route set of its own, `waypoint-orchestrator`,
+# and the rows that cross it are the SUB=service rows, whose client addresses the
+# Service (CLIENT_DIAL=target). That is where this refusal points.
+#
+# `waypoint-orchestrator` is `lab/orchestrator` and nothing else, which a
+# stimulus crosses with its POST only when the client addresses the orchestrator
+# Service. It is refused for any row that does not: the Go receiver, and any
+# Python-receiver row that dials the card's ingress. No row in the table above
+# asks for that; the check is here so a row added later cannot.
 if [ "$RECEIVER" = "py" ] && [ "$ROUTE" = "waypoint" ]; then
-	echo "gate3-matrix: RUN=${RUN}${SUB:+ SUB=$SUB} RECEIVER=py would switch the retry on for the waypoint route set, which is refused: that set is lab/worker alone, a route this receiver's stimulus never crosses, and this receiver's SendMessage POST enters through the agentgateway ingress on lab/orchestrator-ingress, because its agent card advertises the ingress (the route lab/orchestrator on agw-central carries its agent-card GET only, and is in no retry route set). The gateway in front of this receiver is the ingress route set (RUN=R2 SUB=ingress-incluster in-cluster, SUB=ingress out-of-cluster)." >&2
+	echo "gate3-matrix: RUN=${RUN}${SUB:+ SUB=$SUB} RECEIVER=py would switch the retry on for the waypoint route set, which is refused: that set is lab/worker alone, a route this receiver's stimulus never crosses, and this receiver's SendMessage POST enters through the agentgateway ingress on lab/orchestrator-ingress, because its agent card advertises the ingress (the route lab/orchestrator on agw-central carries its agent-card GET only, unless the row addresses the orchestrator Service). The gateway in front of this receiver is its own Service's route lab/orchestrator for a row that addresses that Service (RUN=R2 SUB=service, route set waypoint-orchestrator), and the ingress route set otherwise (RUN=R2 SUB=ingress-incluster in-cluster, SUB=ingress out-of-cluster)." >&2
+	exit 1
+fi
+if [ "$ROUTE" = "waypoint-orchestrator" ] && { [ "$RECEIVER" != "py" ] || [ "$JOB_DIAL" != "target" ]; }; then
+	echo "gate3-matrix: RUN=${RUN}${SUB:+ SUB=$SUB} RECEIVER=${RECEIVER} would switch the retry on for the waypoint-orchestrator route set, which is refused: that set is lab/orchestrator alone, and a stimulus crosses it with its SendMessage POST only when the load client addresses the orchestrator Service (CLIENT_DIAL=target, the SUB=service rows)." >&2
 	exit 1
 fi
 if [ "$RUN" = "R1" ] && [ "$RECEIVER" = "py" ]; then
 	INJECT_NOTE="the Python receiver refuses close-after-read (HTTP 400), so http503-before-dispatch is armed instead"
 fi
 
-KNOB_LABEL="CLIENT_RETRIES=${JOB_RETRIES} CLIENT_SDK_RESEND=${JOB_SDK_RESEND} CLIENT_RETRY_ON=${JOB_RETRY_ON} ${MODEL_KNOB}=${MODEL_KNOB_VALUE:-<left as deployed>} route-retry=${ROUTE:-none}"
+# CLIENT_DIAL is written <empty> when the row renders it empty: the client then
+# dials the URL the agent card advertises.
+KNOB_LABEL="CLIENT_RETRIES=${JOB_RETRIES} CLIENT_SDK_RESEND=${JOB_SDK_RESEND} CLIENT_RETRY_ON=${JOB_RETRY_ON} CLIENT_DIAL=${JOB_DIAL:-<empty>} ${MODEL_KNOB}=${MODEL_KNOB_VALUE:-<left as deployed>} route-retry=${ROUTE:-none}"
 
 # Work-item ids are lowercased and checked before anything uses one: they become
 # Job names, which reject an uppercase letter, and they are the key every ledger
@@ -378,15 +468,21 @@ deploy_env() { # $1 = deployment, $2 = variable name -> its value, empty if unse
 # Since 2026-09-19 the waypoint route and the egress route are served by one proxy,
 # `agw-central`, and the egress route lives in that proxy's namespace,
 # `agentgateway-waypoint` (until then `agentgateway-egress`, which no longer exists).
+# The same proxy serves `lab/orchestrator`, the orchestrator Service's route, whose
+# set `waypoint-orchestrator` was added on that day for the SUB=service rows. It is
+# last in every per-route line, so the lines written before it existed are a
+# prefix of the lines written since.
 ROUTES_WAYPOINT="lab/worker"
 ROUTES_INGRESS="lab/worker-ingress lab/orchestrator-ingress"
 ROUTES_EGRESS="agentgateway-waypoint/model-via-agw"
+ROUTES_WAYPOINT_ORCHESTRATOR="lab/orchestrator"
 
-routes_for() { # $1 = waypoint|ingress|egress -> "<ns>/<name> ..."
+routes_for() { # $1 = waypoint|ingress|egress|waypoint-orchestrator -> "<ns>/<name> ..."
 	case "$1" in
 	waypoint) printf '%s' "$ROUTES_WAYPOINT" ;;
 	ingress) printf '%s' "$ROUTES_INGRESS" ;;
 	egress) printf '%s' "$ROUTES_EGRESS" ;;
+	waypoint-orchestrator) printf '%s' "$ROUTES_WAYPOINT_ORCHESTRATOR" ;;
 	esac
 }
 
@@ -413,7 +509,7 @@ stanzas_on_route() { # $1 = <ns>/<name> -> its `retry:` line count; non-zero whe
 # refuse on that word.
 stanzas_per_route_line() {
 	local set route n line=""
-	for set in waypoint ingress egress; do
+	for set in waypoint ingress egress waypoint-orchestrator; do
 		for route in $(routes_for "$set"); do
 			n=$(stanzas_on_route "$route") || n="UNREADABLE"
 			line="${line}${line:+ }${route}=${n}"
@@ -648,8 +744,8 @@ image_fresh_or_die mockllm
 	echo "CLIENT_* on any Deployment in ${NAMESPACE} (empty means none):"
 	kubectl -n "$NAMESPACE" get deploy -o json |
 		jq -r '.items[] | .metadata.name as $n | (.spec.template.spec.containers[0].env // [])[] | select(.name | startswith("CLIENT_")) | "  \($n) \(.name)=\(.value)"'
-	printf 'the Job this run renders: CLIENT_RETRIES=%s CLIENT_SDK_RESEND=%s CLIENT_RETRY_ON=%s\n' \
-		"$JOB_RETRIES" "$JOB_SDK_RESEND" "$JOB_RETRY_ON"
+	printf 'the Job this run renders: CLIENT_RETRIES=%s CLIENT_SDK_RESEND=%s CLIENT_RETRY_ON=%s CLIENT_DIAL=%s\n' \
+		"$JOB_RETRIES" "$JOB_SDK_RESEND" "$JOB_RETRY_ON" "${JOB_DIAL:-<empty>}"
 } >>"$KNOBS_FILE" 2>&1
 
 BEFORE_STANZAS=$(kubectl get httproute -A -o yaml | grep -c 'retry:' || true)
@@ -701,9 +797,9 @@ if [ -n "$fail" ]; then
 	echo "gate3-matrix: RUN=${RUN} requires every retry knob it does not set to be off and this cluster is not: ${fail}" >&2
 	exit 1
 fi
-printf '%s pre-run knob assertion passed for RUN=%s: stanzas=0 %s=%s (this row sets it: %s) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=%s CLIENT_SDK_RESEND=%s CLIENT_RETRY_ON=%s\n' \
+printf '%s pre-run knob assertion passed for RUN=%s: stanzas=0 %s=%s (this row sets it: %s) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=%s CLIENT_SDK_RESEND=%s CLIENT_RETRY_ON=%s CLIENT_DIAL=%s\n' \
 	"$(date -u +%FT%TZ)" "$RUN" "$MODEL_KNOB" "${LIVE_MODEL_KNOB:-<unset>}" "${MODEL_KNOB_VALUE:-no}" \
-	"$JOB_RETRIES" "$JOB_SDK_RESEND" "$JOB_RETRY_ON" | tee -a "$KNOBS_FILE"
+	"$JOB_RETRIES" "$JOB_SDK_RESEND" "$JOB_RETRY_ON" "${JOB_DIAL:-<empty>}" | tee -a "$KNOBS_FILE"
 
 # --- control pod --------------------------------------------------------------
 echo "== starting the control pod =="
@@ -919,13 +1015,15 @@ write_header() {
 # 2026-09-19 is `agw-central` for both receivers: the agent-card GET and the
 # SendMessage POST on `lab/worker` for the Go receiver; for the Python receiver
 # the card GET on `lab/orchestrator`, and then the POST through the ingress its
-# agent card advertises, on `lab/orchestrator-ingress`.
+# agent card advertises, on `lab/orchestrator-ingress` -- or, on a SUB=service row,
+# where the Job renders CLIENT_DIAL=target, the POST to the orchestrator Service
+# as well, on `lab/orchestrator`.
 send_loadgen_job() { # $1 = work item, $2 = repetition directory
 	local lwi="$1" d="$2" rc=0
 	kubectl -n "$NAMESPACE" delete job "loadgen-${lwi}" --ignore-not-found --wait=true >/dev/null 2>&1 || true
 	sed -e "s/\${LWI}/${lwi}/g" -e "s#\${TARGET_URL}#${RECEIVER_URL}#g" \
 		-e "s/\${CLIENT_RETRIES}/${JOB_RETRIES}/g" -e "s/\${CLIENT_SDK_RESEND}/${JOB_SDK_RESEND}/g" \
-		-e "s/\${CLIENT_RETRY_ON}/${JOB_RETRY_ON}/g" \
+		-e "s/\${CLIENT_RETRY_ON}/${JOB_RETRY_ON}/g" -e "s/\${CLIENT_DIAL}/${JOB_DIAL}/g" \
 		"$JOB_TEMPLATE" \
 		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply --platform="linux/$(go env GOARCH)" -f - >"${d}/apply.log" 2>&1 || rc=$?
 	[ "$rc" = "0" ] || return "$rc"
@@ -1145,6 +1243,15 @@ one_rep() { # $1 = work item id, $2 = summary file to append to (empty for none)
 	local errs
 	errs=$(jqs '[.[] | select((.error // "") != "") | "a\(.attempt // 1):\((.error // "") | gsub("[,;]"; " ") | .[0:120])"] | join(" ")' "${d}/client.jsonl")
 	[ -z "$errs" ] || notes="${notes}client_errors=${errs};"
+	# A SUB=service row addressed the Service only if the client says it dialled
+	# it: its line records the URL it was built to send to. Anything else goes in
+	# the notes column rather than being assumed. Rows that render CLIENT_DIAL
+	# empty are not read here, so their notes are what they always were.
+	if [ "$JOB_DIAL" = "target" ]; then
+		local dialled
+		dialled=$(jqs '[.[] | .dialled_url // ""] | unique | join(" ")' "${d}/client.jsonl")
+		[ "$dialled" = "$RECEIVER_URL" ] || notes="${notes}dialled_url=${dialled:-none};"
+	fi
 
 	# --- the layer that made any second delivery ------------------------------
 	# Derived by experiments/lib/derive-layer.sh, which reads this repetition's

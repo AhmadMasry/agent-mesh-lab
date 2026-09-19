@@ -35,9 +35,12 @@
 #                   server span that exists, by walking its parents. It is read
 #                   from the trace, not named here, because which proxy and route
 #                   front a receiver differs by stimulus path (`lab/worker`
-#                   in-cluster, `lab/worker-ingress` from outside, and
-#                   `lab/orchestrator-ingress` for the Python receiver, whose
-#                   card advertises the ingress). Rule (b)'s fallback reads it.
+#                   in-cluster, `lab/worker-ingress` from outside,
+#                   `lab/orchestrator-ingress` for the Python receiver when its
+#                   client dials the ingress its card advertises, and
+#                   `lab/orchestrator` when the client addresses that receiver's
+#                   Service, the matrix's SUB=service rows). Rule (b)'s fallback
+#                   reads it.
 #
 # A TRACE WITH NO `route` COLUMN is a record exported before the exporter wrote
 # that column, which the follow-ups 18 exporter of 2026-09-19 is the first to do.
@@ -112,10 +115,16 @@
 #       entries on THAT route of that proxy, not every entry of its service: a
 #       proxy that also serves the model route has the model call's entry under
 #       the same service name. On this topology the fallback is reached by the
-#       Python receiver only, whose POST enters through `agentgateway-ingress`
-#       on `lab/orchestrator-ingress`, a proxy that serves no model route, so no
-#       recorded row here has an entry the route test removes; it is the same
-#       count on those rows, and the right count on a shared proxy. The
+#       Python receiver only. When its POST enters through `agentgateway-ingress`
+#       on `lab/orchestrator-ingress`, a proxy that serves no model route, the
+#       route test removes nothing. When the client addresses the orchestrator
+#       Service (the matrix's SUB=service rows, follow-ups 19), the POST enters
+#       `agw-central` on `lab/orchestrator`, the proxy that also carries the model
+#       call, and the route test is what keeps the model route's entries out of
+#       the count: every entry of the service reads 2 on R2 and 3 on R4 and names
+#       no layer (fixtures gateway-service-py and gateway-service-r4-py; the check
+#       is experiments/runs/2026-09-19-orchestrator-service-rows/
+#       route-filter-mutant.txt). The
 #       discriminator is the number of upstream attempts PER inbound span, not
 #       whether the inbound spans have distinct parents: measured on the
 #       agentgateway ingress at Task 4 R1 py/http, in 20 of 20 the two inbound

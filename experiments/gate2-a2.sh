@@ -417,9 +417,12 @@ one_rep() { # $1 = repetition number
 	}
 
 	kubectl -n "$NAMESPACE" delete job "loadgen-${lwi}" --ignore-not-found --wait=true >/dev/null 2>&1 || true
+	# CLIENT_DIAL (added to the template on 2026-09-19) is rendered empty: A.2's
+	# client dials what the card advertises, as it did when these rows were run.
+	# Left unsubstituted, the client would refuse to start.
 	sed -e "s/\${LWI}/${lwi}/g" -e "s#\${TARGET_URL}#${TARGET_URL}#g" \
 		-e "s/\${CLIENT_RETRIES}/${JOB_RETRIES}/g" -e "s/\${CLIENT_SDK_RESEND}/${JOB_SDK_RESEND}/g" \
-		-e "s/\${CLIENT_RETRY_ON}/${JOB_RETRY_ON}/g" \
+		-e "s/\${CLIENT_RETRY_ON}/${JOB_RETRY_ON}/g" -e "s/\${CLIENT_DIAL}//g" \
 		"$JOB_TEMPLATE" \
 		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply --platform="linux/$(go env GOARCH)" -f - >"${d}/apply.log" 2>&1 || rc=$?
 	if [ "$rc" != "0" ]; then notes="${notes}ko_apply_rc=${rc};"; fi

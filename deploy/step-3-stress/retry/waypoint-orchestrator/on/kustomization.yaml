@@ -1,0 +1,29 @@
+# The same route with the experimental HTTPRoute retry stanza, applied by
+# `make retry-on ROUTE=waypoint-orchestrator` for one measured run and removed after it.
+#
+# attempts 1, codes [503], backoff 100ms: the value the `waypoint` set puts on
+# `lab/worker`, on the other receiver's route of the same proxy, so the two rows differ
+# in the receiver and in nothing about the gateway. 503 is the status the receiver's
+# `http503-before-dispatch` injection answers with. What the fields are, and where the
+# Gateway API says 503 must be supported as retriable, is in ../../waypoint/on and in
+# experiments/runs/2026-09-09-a3-pipeline/sources.md section 3.
+#
+# A JSON 6902 patch, not a strategic merge, for the reason given there: `rules` is a
+# list in a custom resource with no merge key.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../off
+patches:
+  - target:
+      group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator
+      namespace: lab
+    patch: |
+      - op: add
+        path: /spec/rules/0/retry
+        value:
+          attempts: 1
+          codes: [503]
+          backoff: 100ms

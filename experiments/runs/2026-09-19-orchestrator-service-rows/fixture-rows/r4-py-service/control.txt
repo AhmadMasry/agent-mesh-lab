@@ -1,0 +1,29 @@
+2026-09-19T20:46:21Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-19T20:46:21Z pre-run retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-waypoint/model-via-agw=0 lab/orchestrator=0
+2026-09-19T20:46:32Z run t4a204620: RUN=R4 RECEIVER=py SUB=service REPS=1 knobs: CLIENT_RETRIES=1 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport+503 CLIENT_DIAL=target MODEL_MAX_RETRIES=1 route-retry=waypoint-orchestrator
+2026-09-19T20:46:32Z deployment/orchestrator replicas: spec=1 ready=1
+2026-09-19T20:46:32Z deployment/mockllm replicas: spec=1 ready=1
+2026-09-19T20:46:33Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-19T20:46:33Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-19T20:46:33Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+httproute.gateway.networking.k8s.io/orchestrator configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/../../.superpowers/sdd/followups-19/task-4a-dry-run/rows/r4-py-service/routes.txt
+2026-09-19T20:46:36Z retry stanzas on lab/orchestrator: 1
+2026-09-19T20:46:36Z retry stanzas with ROUTE=waypoint-orchestrator on: 1 on the waypoint-orchestrator routes and 1 across every HTTPRoute (expected 1 each)
+2026-09-19T20:46:36Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-19T20:46:36Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-19T20:46:36Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-19T20:46:36Z POST http://orchestrator.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r4-py-service-t4a204620-01"} -> 204
+2026-09-19T20:46:37Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"close","at_count":1} -> 204
+2026-09-19T20:47:00Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r4-py-service-t4a204620-01)
+2026-09-19T20:47:00Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r4-py-service-t4a204620-01)
+httproute.gateway.networking.k8s.io/orchestrator configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/../../.superpowers/sdd/followups-19/task-4a-dry-run/rows/r4-py-service/routes-off/routes.txt
+2026-09-19T20:47:11Z retry-off ROUTE=waypoint-orchestrator restored; retry stanzas across every HTTPRoute: 0
+2026-09-19T20:47:11Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T20:47:11Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-19T20:47:12Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)

@@ -3,21 +3,28 @@
 # Same Job as loadgen-job.yaml, and deliberately the same Job NAME
 # (loadgen-${LWI}), so `make ledgers LWI=<id>` collects its client lines from
 # the pods labelled job-name=loadgen-<id> without knowing which template
-# produced them. The one difference is the two environment variables below.
+# produced them. The one difference is the CLIENT_* environment variables below.
 #
 # Like loadgen-job.yaml it is NOT listed in the base kustomization: a Job in the
 # overlay would run on every apply, and each repetition needs its own Job named
-# after its work item. experiments/gate2-a2.sh substitutes ${LWI},
-# ${TARGET_URL}, ${CLIENT_RETRIES}, ${CLIENT_SDK_RESEND} and ${CLIENT_RETRY_ON}
-# and pipes the result to `ko apply -f -`.
+# after its work item. experiments/gate2-a2.sh and experiments/gate3-matrix.sh
+# substitute ${LWI}, ${TARGET_URL}, ${CLIENT_RETRIES}, ${CLIENT_SDK_RESEND},
+# ${CLIENT_RETRY_ON} and ${CLIENT_DIAL} and pipe the result to `ko apply -f -`.
 #
-# All three are always rendered, and the values that mean "off" (0, off, and the
-# default mode transport) are what every substitution that is not the layer under
-# test writes, so a run can never leave a knob on by omitting it. The loadgen
-# binary treats anything that is not a positive integer, or not exactly "on", or
-# not exactly "transport+503", as the default; that is asserted by
-# TestKnobs_DefaultOff, TestKnobs_UnreadableValuesLeaveTheKnobOff and
+# All four are always rendered, and the values that mean "off" (0, off, the
+# default mode transport, and an empty CLIENT_DIAL) are what every substitution
+# that is not the layer under test writes, so a run can never leave a knob on by
+# omitting it. The loadgen binary treats anything that is not a positive integer,
+# or not exactly "on", or not exactly "transport+503", as the default; that is
+# asserted by TestKnobs_DefaultOff, TestKnobs_UnreadableValuesLeaveTheKnobOff and
 # TestKnobs_RetryOnModeIsAskedForByName.
+#
+# CLIENT_DIAL is not a retry knob: it says where the one send goes. Empty, the
+# client dials the URL the agent card advertises, which is what every run before
+# 2026-09-19 did; "target" dials TARGET_URL, for the matrix's SUB=service rows.
+# Unlike the three above, any other value, an unsubstituted placeholder included,
+# stops the Job before it sends (TestDialFromEnv), so a template rendered by a
+# script that does not know this variable fails loudly rather than sending.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -97,3 +104,5 @@ spec:
               value: "${CLIENT_SDK_RESEND}"
             - name: CLIENT_RETRY_ON
               value: "${CLIENT_RETRY_ON}"
+            - name: CLIENT_DIAL
+              value: "${CLIENT_DIAL}"

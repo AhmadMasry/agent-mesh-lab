@@ -1,0 +1,24 @@
+# The orchestrator's waypoint route with no retry stanza: the baseline state of the
+# `orchestrator` HTTPRoute in `lab`, the orchestrator Service's hostname route on
+# `agw-central` (step 2c, new on 2026-09-19). `make retry-off ROUTE=waypoint-orchestrator`
+# applies exactly this, and so does `make retry-off` with no ROUTE: the object goes back
+# to what step 2c declared.
+#
+# A route set of its own, and this route alone (the author's note of 2026-09-19 in
+# docs/proposal-notes.md, "Experiment A gains in-cluster rows for the Python receiver").
+# It is not added to the `waypoint` set, which stays `lab/worker` alone: every row that
+# names `waypoint` keeps its meaning and its expected stanza count of 1, and a row that
+# names this set patches the one route its own stimulus crosses.
+#
+# Which stimulus crosses it: a load client that ADDRESSES the orchestrator Service
+# (CLIENT_DIAL=target, the matrix's SUB=service rows). The orchestrator's agent card
+# advertises the agentgateway ingress, so a client that dials what the card says sends
+# only its card GET over this route, and a stanza here would sit on a hop its POST never
+# takes.
+#
+# The file is read from the step-2c overlay rather than copied, so this cannot drift
+# from the route the cluster is running.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../../step-2c-gate2/orchestrator-route.yaml
