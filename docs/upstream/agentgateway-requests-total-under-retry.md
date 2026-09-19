@@ -1,6 +1,7 @@
 # Draft issue — agentgateway docs: say that `agentgateway_requests_total` counts downstream requests at their final status, and that retry attempts are counted only by `agentgateway_retries_total`
 
-Status: **draft, not filed.** Text for a human to review and file. No link until it is filed.
+Status: **withdrawn, not to be filed** (the author's decision, 2026-09-19). The file is kept because the findings entry
+on metrics per hop cites it; nothing below is proposed upstream.
 
 Project: agentgateway/agentgateway (documentation). Version observed: agentgateway **v1.5.0**, as istiod-provisioned
 waypoints (GatewayClass `istio-agentgateway-waypoint`, Istio 1.31.0) and as a control-plane-provisioned egress,

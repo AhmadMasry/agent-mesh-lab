@@ -61,3 +61,9 @@ Prerequisite: A.1 and A.2 results exist, so every matrix row can be interpreted.
 - Numbers first, interpretation second, no adjective without a count behind it.
 - Any behaviour that looks like a project gap gets a minimal reproduction and a draft issue the same day. File it only when the reproduction holds against the pinned version; link it only once filed.
 - Anything that would change the *proposal* is written here as a note and left for after the runs. The proposal is frozen.
+
+---
+
+Closed 2026-09-19: all 22 boxes above are ticked, each with its `findings.md` entry. Later work on Experiment A — re-runs
+at later versions and on the topology of 2026-09-19 — is recorded in `findings.md` and `docs/proposal-notes.md`, not
+here.

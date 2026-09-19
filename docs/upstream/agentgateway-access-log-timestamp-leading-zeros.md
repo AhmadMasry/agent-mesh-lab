@@ -1,9 +1,12 @@
 # Draft issue — agentgateway: log timestamps drop leading zeros in the sub-second field
 
-Status: **filed and fixed.** Issue agentgateway/agentgateway#3369 (filed 2026-09-08, closed); fix merged the same day as
-pull request agentgateway/agentgateway#3370 (`fix(telemetry): zero-pad the sub-second part of log timestamps`, merge
+Status: **filed and fixed.** Issue agentgateway/agentgateway#3369 (filed 2026-09-07, closed 2026-09-08); fix merged on
+2026-09-08 as pull request agentgateway/agentgateway#3370 (`fix(telemetry): zero-pad the sub-second part of log timestamps`, merge
 commit 98ada8a496613339d9e9a0f3b4d3e865ee28b79c on `main`). Versions up to v1.5.0 carry the defect; the first release
 containing the fix is recorded here when it is published.
+2026-09-19: the first release containing the fix is v1.6.0-alpha.1, a prerelease published 2026-09-14 (GitHub compare:
+the merge commit is 64 commits behind that tag and 70 commits ahead of v1.5.0, so v1.5.0 does not contain it). No
+stable release contains it at this date; the lab runs v1.5.0, the latest stable release.
 - https://github.com/agentgateway/agentgateway/issues/3369
 - https://github.com/agentgateway/agentgateway/pull/3370
 

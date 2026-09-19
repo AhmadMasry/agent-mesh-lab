@@ -87,7 +87,7 @@ step-3` with helm on PATH is committed as
 | --- | --- |
 | Gateway API CRDs | `kubectl apply --server-side -f <release>/experimental-install.yaml` — the project publishes no chart |
 | Istio (base, istiod, cni, ztunnel) | four charts at `1.31.0` from `https://blob.istio.io/istio-release/charts`; istiod takes `deploy/step-2-ambient-agw/istio-values.yaml`, ztunnel `ztunnel-values.yaml`, cni `--set profile=ambient` |
-| agentgateway control plane | two OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts`, with `deploy/step-2b-agw-ingress-egress/agentgateway-values.yaml` — the project documents no other install |
+| agentgateway control plane | two OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts`, with `deploy/step-2-ambient-agw/agentgateway-values.yaml` — the project documents no other install |
 | Collector | chart `opentelemetry-collector` `0.173.1` with `deploy/step-3-stress/otel-collector-values.yaml` |
 | Trace backend | chart `jaeger` `4.13.1` with `deploy/step-3-stress/jaeger-values.yaml` |
 | Prometheus | chart `prometheus` `29.31.1` with `deploy/step-3-stress/prometheus-values.yaml` |

@@ -204,3 +204,20 @@ NOTES
     validation creates its own client pods and Jobs and does not touch those three. A message from the controller
     asking this task to hold before `make teardown` reached this agent only after the rebuild and the readings were
     done (teardown had run at 19:36:14Z); nothing was undone or attempted.
+
+2026-09-19, added by the follow-ups 19 cleanup commit after this record's review (verdict APPROVE, three Minor
+points, none moving a count). The entry is not edited; these are the corrections.
+  1. The entry and note 4 say the scanned binaries are not the running ones' bytes. That holds for the worker and
+     the mock. It does not hold for the load client: its Job images are built at run time from the same checkout
+     state, and the 10 load-client builds of the readings and the scan's load-client build carry one ko digest tag
+     (scan/ko-build.txt l.30).
+  2. The commit subject and the bold Result say every standard count reads as task 3 recorded it. That is true of
+     the brief's list of standard counts. standard-counts-vs-task-3.txt has 7 rows reading DIFFERS, all inside the
+     entry's differences 1 to 3 (the probe's source attribution, one leg's connection count, ztunnel's warning
+     lines), which the entry states beside it.
+  3. cluster-after.sh l.2 says Experiment A runs on this cluster. That was the brief when the script ran; the
+     cluster was handed to a validation at 20:00:02Z, and Experiment A is re-run after its own rebuild. The as-run
+     file is left as it ran.
+  Observation of the review, recorded and not acted on: 11 ko builds at one (commit, modified) state gave one
+  digest, which fits the vcs stamp as the cause of a changed digest and does not fit the Makefile's older sentence
+  (l.12-14) that a ko image's digest changes on every `ko apply` even from an unchanged tree.

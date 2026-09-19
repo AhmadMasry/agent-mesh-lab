@@ -1,7 +1,8 @@
 # Draft comment — istio/ztunnel#1481, "Certificate renewal doesn't take into account time while machine is asleep"
 
-Status: **draft, not filed.** The text of a **comment** on an existing issue, not a new issue, for a human to review
-and post. No link until it is posted.
+Status: **posted** by the author on 2026-09-19T14:59:32Z as a comment on the existing issue:
+https://github.com/istio/ztunnel/issues/1481#issuecomment-5742868160. The posted text is a first-person version of
+the text below; this file keeps the text as drafted, with its record table.
 
 Issue re-read 2026-09-19T02:27:12Z (`gh api repos/istio/ztunnel/issues/1481`): **open**, created 2025-03-10 by
 howardjohn (MEMBER), no labels, last updated 2025-03-10. Its body: *"We set a timer for 12hr to renew. If the machine
