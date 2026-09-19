@@ -221,3 +221,17 @@ filed, and no link until a human files it.
 
 Nothing was tuned to get past a refusal: the mesh-wide policy's text is identical in both attempts,
 and no retry was added anywhere. The proposal text is unchanged.
+
+## 2026-09-19 — All agentic L7 traffic goes through agentgateway; Istio is L4 only
+
+**2026-09-19 — All agentic L7 traffic goes through agentgateway; Istio is L4 only.** Decision by the author. Every
+agentic L7 traffic is using agentgateway, under agentgateway's own control plane. This mainly covers LLM
+communication, A2A and MCP traffic. Istio keeps ztunnel capture, identity and mesh-wide STRICT mTLS. The
+istiod-driven agentgateway waypoints (GatewayClass `istio-agentgateway-waypoint`) are retired. Measured at Istio
+1.31.0 and agentgateway v1.5.0: Istio's APIs do not reach those waypoints, and agentgateway's own policies do not
+either — an `AgentgatewayPolicy` reads Attached and is never delivered. One agentgateway-managed proxy in its own
+namespace, not enrolled in ambient, is the waypoint for the worker and the orchestrator and the egress for the model
+host. Every mesh leg reads `mutual_tls`, and plaintext is still refused. Tracing is set by Helm `meshConfig` for
+Istio and by one `AgentgatewayPolicy` per Gateway for agentgateway, with nothing custom. This supersedes the last
+sentence of the 2026-09-08 note and the 2026-09-09 note (one waypoint per Service). Experiment A's counts are
+re-measured on the new topology before any entry cites it. The proposal text is unchanged.

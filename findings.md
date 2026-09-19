@@ -2,6 +2,38 @@
 
 One entry per gate, receiver, and mode or run. Numbers first, interpretation second. No entry without a run.
 
+**Note, 2026-09-19 — history rewritten after `33147a6c`; how to read a commit citation in an earlier record.** On
+2026-09-19 the author rewrote the pushed history of every commit after `33147a6c` (`feat(telemetry): GenAI and agent
+semantic conventions …`), that is from `docs(findings): GenAI and agent spans counted per work item …` onward: ten
+commits, seven on this line and three on the unmerged spike branch. One thing was cut: the value of `product:` on
+the WindowServer `UserIsActive` lines of four host-sleep records, 15 lines in all, each now reading `product:<cut>`
+with one dated line per file saying so — `experiments/runs/2026-09-16-genai-spans/rebuild/host-sleep.txt` (3),
+`experiments/runs/2026-09-19-failed-model-call/host-sleep.txt` (2),
+`experiments/runs/2026-09-19-failed-model-call/rebuild-2/host-sleep.txt` (6) and
+`experiments/runs/2026-09-19-metrics-per-hop/host-sleep.txt` (4). Those values named the host's peripherals and no
+reading uses them. What this changes for a reader: a commit SHA or a root tree id that an earlier record or entry
+cites for one of those commits no longer resolves in this repository. What it does not change: the deployed subtree
+and blob ids, the counts, and every other byte. Checked on 2026-09-19 for the commit
+`fix(telemetry): the four nits from the follow-ups 14 review`: its root tree id went from `57bd67ac` to `22f7be26`,
+and its ten deployed ids (`deploy`, `Makefile`, `agents`, `fixtures`, `experiments/lib`, `.ko.yaml`, `go.mod`,
+`go.sum`, `internal`, `kind-config.yaml`) equal, one for one, the ids
+`experiments/runs/2026-09-19-failed-model-call/rebuild-2/build.txt` wrote down before the rewrite. Commits up to and
+including `33147a6c` are untouched. From here on a record names a commit by its subject and by its deployed subtree
+and script blob ids, which survive a rewrite, and not by SHA alone. Old → new:
+
+```
+ef66a3f8 -> 0a289175
+0e5b8188 -> b2f6fb6f
+bd56d29c -> c3730215
+67dab2b3 -> 0e417854
+706485c9 -> 433e199f
+caff4fbb -> dd0467ea
+156b2e46 -> 4ac6d4f8
+5f514e43 -> 2545ed4c
+57e74b46 -> 32d49daf
+09051b17 -> e120e40c
+```
+
 <!-- Entry template — copy, do not edit in place:
 
 ## <Gate or Experiment> / <receiver> / <mode or run> — <question>
