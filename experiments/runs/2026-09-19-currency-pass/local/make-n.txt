@@ -152,3 +152,9 @@ echo
 echo "trace backend query Service: jaeger.telemetry.svc.cluster.local:16686 (its own UI and API; nothing else is installed)"
 echo "read it from this host with: kubectl -n telemetry port-forward svc/jaeger 16686:16686  then open http://127.0.0.1:16686"
 exit=0
+# NOTE added 2026-09-19T17:20:23Z (follow-ups 19, task 2; appended, nothing above this line was changed): the header above says "at the final tree",
+# and this dry run was in fact taken on the tree BEFORE it was committed. Two things in it show that: the check-go-sources-clean guard
+# lists three uncommitted files (' M go.mod  M go.sum  M internal/otel/otel.go'; a real step target would have refused to run on that
+# tree), and the lab.agent-mesh/go-sources stamp is a hash of the git index as it stood then, which changed when those files were
+# committed. The dry run at the committed tree is in local/fix-round-1-proofs.txt (its "make -n" block): exit 0, 152 lines, the guard
+# empty, 14 lines differing from this file (7 on each side: 2 the guard, 5 the stamp) and every version-bearing line identical.

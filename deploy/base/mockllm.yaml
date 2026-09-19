@@ -16,10 +16,13 @@ spec:
       labels:
         app: mockllm
         # The mock stands in for an external model provider, so it is deliberately kept
-        # out of the ambient data plane: the egress waypoint's call to it is this lab's
-        # external plaintext leg by design, and under a STRICT PeerAuthentication a
+        # out of the ambient data plane: the call the egress proxy makes to it is this
+        # lab's external plaintext leg by design, and under a STRICT PeerAuthentication a
         # captured mock would refuse it (measured on 2026-09-12; the counts are in
         # findings.md under `## Gate 3 / both receivers / mTLS enforced`, first attempt).
+        # That proxy is `agw-central` since 2026-09-19, the one agentgateway-managed
+        # proxy that is also both agents' waypoint; when the refusal was measured it was
+        # a proxy of its own, the egress waypoint `agw-egress`, since retired.
         #
         # The per-pod opt-out is documented on
         # https://istio.io/latest/docs/ambient/usage/add-workloads/ (read 2026-09-12),

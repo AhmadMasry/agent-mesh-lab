@@ -822,9 +822,14 @@ ledgers:
 test:
 	go test ./...
 	@# The jq program that `make export-trace` turns a query response into
-	@# spans.csv with, run against a response captured from the running trace
-	@# backend in the Task 0 probe. A change that stops it reading a real
-	@# response fails here.
+	@# spans.csv with, run against a response the running trace backend gave: since
+	@# 2026-09-19 the sample is, byte for byte, the trace.json of work item
+	@# a3m-r2-go-waypoint-fu18p-01 in experiments/runs/2026-09-19-route-keyed-attribution/
+	@# probe/r2-waypoint-go/ (before that day it was the Task 0 probe's). The rows it
+	@# must produce were not written by this program: they come from an independent
+	@# reading of the same response in Python, expected-spans.py in
+	@# experiments/runs/2026-09-19-attribution-reasons/. A change that stops it
+	@# reading a real response fails here.
 	@out=$$(jq -r -s -f experiments/lib/jaeger-spans.jq experiments/fixtures/jaeger-trace-sample.json) || \
 		{ echo "jaeger-spans.jq: could not read experiments/fixtures/jaeger-trace-sample.json" >&2; exit 1; }; \
 	if [ "$$out" = "$$(cat experiments/fixtures/jaeger-trace-sample.spans.csv)" ]; then \
@@ -835,12 +840,15 @@ test:
 		exit 1; \
 	fi
 	@# The layer derivation the matrix harness labels every second delivery with,
-	@# run against committed fixtures. Six are real repetitions copied from
-	@# experiments/runs/ (Task 2's three gateway retry probes, one Task 3 baseline
-	@# work item per receiver, and one Task 4 R1 py/http work item); the rest are
-	@# synthetic, because a derivation with a
-	@# label no test can reach is a derivation nobody has read. The expected
-	@# labels are in experiments/fixtures/derive-layer/expected.txt.
+	@# run against committed fixtures, eighteen since 2026-09-19. Sixteen are real:
+	@# twelve live matrix rows of that day's topology, copied from
+	@# experiments/runs/2026-09-19-route-keyed-attribution/fixture-rows/, and four
+	@# older records from the topology before it (three with their own export, which
+	@# has no `route` column, and one of them again, re-exported by today's
+	@# exporter). Two are synthetic and say so, because a derivation with a label no
+	@# test can reach is a derivation nobody has read. What each one is, the label
+	@# it must get and the reason it must give are in
+	@# experiments/fixtures/derive-layer/expected.txt.
 	@# Both lines a caller reads are compared, `layer=` and `reason=`, the reason
 	@# whole and unmasked: it is the rest of the fixture's line in expected.txt. A
 	@# right label reached by the wrong branch fails here, and so does a line that

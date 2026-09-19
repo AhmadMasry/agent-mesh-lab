@@ -257,8 +257,9 @@ func (id Identity) attributes() []attribute.KeyValue {
 // behind any intermediaries, for example proxies, if it's available". What is
 // available to a lab client is the URL it was told to dial and nothing more, and
 // in this lab that is usually an intermediary's: MODEL_BASE_URL names
-// model.lab.internal:8080, the external-looking host the egress waypoint fronts,
-// and the mock behind it is never named to the caller; an agent card can
+// model.lab.internal:8080, the external-looking host a proxy fronts as the egress
+// for the model (`agw-central` since 2026-09-19, a proxy of its own, `agw-egress`,
+// until then), and the mock behind it is never named to the caller; an agent card can
 // advertise the agentgateway ingress, and a client sent there never learns the
 // agent's own address. Where the card names the agent's own Service, as the
 // worker's does, the address is the agent's. Nothing is inferred either way:

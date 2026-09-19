@@ -62,8 +62,10 @@ ORCH_URL="http://orchestrator.lab.svc.cluster.local:8080"
 # holds the worker's route, the orchestrator's and the model host's): one proxy has one
 # service.name, so this list can say whether that proxy produced a span, not which of its
 # legs did. How many spans it produced per work item is in spans_by_service. Telling its
-# legs apart needs something other than the service name, which is what
-# experiments/lib/derive-layer.sh keys on (EGRESS_SERVICE); that is a later task's.
+# legs apart needs something other than the service name: the span's `route`, a column
+# of spans.csv since 2026-09-19, which is what experiments/lib/derive-layer.sh keys on
+# (MODEL_ROUTE for the model leg, and the route read from the trace for an agent leg).
+# This script still counts hops by service name and reads no route.
 # Until 2026-09-19 the lists named five and eight hops: `agentgateway-waypoint` and
 # `agw-egress` on the worker path, and those two plus `agentgateway-waypoint-orch` on the
 # orchestrator path.
