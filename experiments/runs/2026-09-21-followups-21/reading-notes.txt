@@ -1,0 +1,178 @@
+Follow-ups 21 — reading notes. Every reading carries the command that produced it and its read stamp; the counts
+below are the files' own. Written 2026-09-20T23:27Z (local date 2026-09-21).
+
+WHAT THIS DIRECTORY HOLDS
+  preflight.txt                     the preflight at the branch's parent, and the two checks re-run after the changes
+  local-evidence.txt                the off-cluster evidence for the sel() change, taken before the rebuild
+  rebuild.sh / build.txt / timings.csv   the rebuild from a deleted cluster: seven make targets, each timed
+  proof.sh / checks-driver.txt / checks.txt   the standard proof, by the last record's checks.sh run unedited
+  checks-as-run/                    the byte copies checks.sh keeps of itself, one per invocation (its own behaviour)
+  clean-check/ trace/ prometheus-targets.txt strict/ proxies/ cluster/ retry-knobs/ versions-readback.txt
+                                    the standard proof's own outputs, written by that script
+  standard-counts-vs-rebuild-2.py / standard-counts-vs-last-proof.txt   this rebuild's standard counts beside the
+                                    last proof's, file by file, by the last record's comparison program, unedited
+  baseline-reset.sh / baseline-reset.txt / baseline-reset/   reading 1
+  stream-resub.sh / stream-resub.txt / stream/               readings 2 and 3
+  cluster-after.txt                 the state the cluster is left in
+  windows.csv / host-sleep.txt / own-keepawake-lines.txt     the host-sleep counts and this task's own files
+  i1-fix-evidence.sh / i1-fix-evidence.txt   the review round of 2026-09-21: the anonymity clause on the taskId
+                                    arm and the taskId pass's jq guard, on the live pods and on a synthetic log
+  accounting below                  what could not be read, and every difference
+
+THE THREE COUNTED READINGS
+
+1. Does experiments/gate1-baseline.sh leave the mock as it found it?
+   experiments/runs/2026-09-21-followups-21/baseline-reset.sh, both sides, 2026-09-20T23:20:43Z..23:23:31Z.
+   Each side: the committed run type 3 as the record of 2026-09-19 ran it (STEP=3 RUNS=3 REPS=1), then the mock's
+   own control log after a watermark, then one clean work item per receiver by gate2-single-clean.sh, unedited.
+     PARENT (blob f56199646533e595e7dcf724c0cf5346a0ceba23, the version before this branch):
+       control lines 2 — /control/reset then /control/inject; LAST LINE endpoint /control/inject;
+       work items still armed after the script: 1 (b3-fu21p-r3-01, delay-then-close 8000 ms)
+       clean work item after it: worker 1/1/1/1/1 COMPLETED, orchestrator 1/1/1/1/1 COMPLETED
+     BRANCH (blob 5cc6554d8b8378c2a22367fc90cbad07825cf666):
+       control lines 3 — /control/reset, /control/inject, /control/reset; LAST LINE endpoint /control/reset;
+       work items still armed after the script: 0
+       clean work item after it: worker 1/1/1/1/1 COMPLETED, orchestrator 1/1/1/1/1 COMPLETED
+     Both sides' run row itself is unchanged: b3-fu21p-r3-01 and b3-fu21n-r3-01 each read
+     1,0,1,1,worker=1,task/TASK_STATE_FAILED — the delay-then-close row as it has always read. The added reset is
+     taken after the repetition's counts are collected, so it moves no count.
+     How the parent side was run: `git show HEAD^:experiments/gate1-baseline.sh > experiments/gate1-baseline.sh`,
+     the side, then `git checkout -- experiments/gate1-baseline.sh`. The file's sha256 is printed before each side
+     and after the restore (fa15c3df… for the parent blob, e025eee0… for the branch's, and e025eee0… again after
+     the restore), and `git status --short` with it: during the parent side the checkout carried
+     ` M experiments/gate1-baseline.sh`, and after the restore that path is clean. No step target ran during either
+     side and no image of the three lab Deployments was rebuilt by this script; the two committed scripts build
+     their own loadgen Job images, as they always do.
+     The clean work item does NOT distinguish the two sides, and is not meant to: the mock's arming is keyed by
+     work item and a clean work item carries a different one, so it would read 1/1/1/1/1 with the parent's arming
+     still in place. What distinguishes them is the control log, which is why it is read first — gate2-single-clean.sh
+     resets the mock itself, before and after.
+
+2. Does `make ledgers` collect a resubscription's ingress AND execution lines together?
+   experiments/runs/2026-09-21-followups-21/stream-resub.sh, 2026-09-20T23:24:51Z..23:25:02Z, work item
+   fu21-stream-go-022452, Go receiver, through agw-central.
+   One SendStreamingMessage and, onto the Task it created and while that Task was still WORKING, one
+   SubscribeToTask — the shape B-3 needs, not a refusal. Both bodies are printed whole in stream-resub.txt; both
+   carry `A2A-Version: 1.0` and `X-Logical-Work-Item-Id`, and the resubscription's taskId was READ from the
+   execution ledger, not guessed. One send per request, every curl `--retry 0`, no retry logic anywhere.
+     collected with the PARENT commit's Makefile (blob 2ca1dae46172cc920c97d3699bab33aab212f529):
+       ingress 4  execution 9  invocation 1  client 0; of those, SubscribeToTask: ingress 2, execution 0
+     collected with the BRANCH's Makefile (blob a28b45f9f4ab4212d45f72df6746f8b4f8225476):
+       ingress 4  execution 13 invocation 1  client 0; of those, SubscribeToTask: ingress 2, execution 4
+     The four lines the branch adds and the parent drops are the resubscription's whole execution record, each
+     carrying taskId 01a0c123-02fb-7d34-b8bf-ef7b591c8bf8 and an EMPTY logical_work_item_id:
+       received   SubscribeToTask                         23:24:52.692471012Z
+       delivered  result_kind task,          TASK_STATE_WORKING  23:24:52.692605804Z  (the attach, mid-flight)
+       delivered  result_kind status-update, TASK_STATE_FAILED   23:25:00.352875668Z  (the model call was cut)
+       result     stream_end complete                     23:25:00.352926543Z
+     The two ingress lines were collected on BOTH sides, through the header fallback B-1 added
+     (`lwi_source":"header"`), which is what made the parent's collection show an arrival with nothing behind it.
+     No ledger line's content changed: the four lines above are byte for byte what the worker wrote.
+     The Task failed because the mock was armed with the committed delay-then-close mode at 8000 ms, which is how
+     the Task was kept running long enough to resubscribe onto it. That is a recorded outcome, not a retry. The
+     mock was reset afterwards (204 recorded) and the curl pod deleted.
+
+3. Does `make ledgers` stay byte-identical for an existing UNARY work item?
+   Same script, same run, one work item of EACH receiver — the clean work items reading 1 sent:
+     g2c-fu21nc-worker        parent exit=0, branch exit=0, 10 lines; stdout BYTE-IDENTICAL,
+                              sha256 70f02d708a693fa6a58c7f9db87604f4ee6f3c5e5450045303cd08cca78a28cc; stderr identical
+     g2c-fu21nc-orchestrator  parent exit=0, branch exit=0, 18 lines; stdout BYTE-IDENTICAL,
+                              sha256 fe3985b9bb717bdb78d16466263125f367e49a674ab1495e14cf19fc71ab3cee; stderr identical
+   Beside it, the off-cluster reading of local-evidence.txt (a committed unary collection replayed through both
+   recipes): identical, 10 lines, sha256 1567f797….
+
+THE REBUILD AND THE STANDARD PROOF
+  Rebuild 2026-09-20T23:09:14Z..23:15:51Z, seven make targets, each exit 0, from a deleted cluster, no manual step:
+    teardown 1.449 s, cluster-kind 19.495 s, step-1 70.527 s, step-2 125.404 s, step-2b 58.749 s, step-2c 19.182 s,
+    step-3 99.861 s (timings.csv). The checkout was clean before every target (build.txt).
+  The tree it proves also carries B-1's three commits (agents/worker and agents/orchestrator), which no rebuild had
+  proved before: build.txt lists both subtrees as CHANGED beside the last rebuild's tree.
+  Standard proof 23:16:15Z..23:19:51Z, by the last record's checks.sh (sha256 8ee90f7de5d8a64d3a93fbfaa269e747…)
+  run unedited with its own part1 and knobs switches, then that record's versions-readback.sh. Its counts beside the
+  last proof's, by that record's standard-counts-vs-rebuild-2.py run unedited: 64 rows same, 3 DIFFERS.
+    clean check          worker 1/1/1/1/1, orchestrator 1/1/1/1/1 — same
+    trace per work item  spans 14 (worker) and 81 (orchestrator), 2 trace ids each — same
+    dangling parents     0 on all four rows — same
+    GenAI spans          0 missing Required, 0 missing expected — same
+    Prometheus targets   7 of 7 up — same
+    STRICT               24 legs = 14 mutual_tls + 10 unknown (an end outside the mesh) — same
+    plaintext probe      both receivers http=000 curl_exit=56; 2 policy-rejection lines — same
+    retry knobs          1>0>2>0>1>0>0 across every route, ending at 0 — same
+  The three DIFFERS are the two cells the author ruled on 2026-09-20 stay as recorded, with no cause established:
+    (i) one Prometheus scrape leg's connection count — `destination,prometheus,telemetry,unknown,
+        agentgateway-ingress,agentgateway-ingress` 17 here against 16 there; every other common leg equal;
+    (ii) ztunnel's other error/denied/reject lines 21 here against 14, of them `no healthy upstream` 18 against 11.
+    Cause not established for either; no count of any reading above depends on them.
+
+WHAT COULD NOT BE READ, AND WHAT IS NOT CLAIMED
+  - Part two of the last record's checks.sh — readings (a)-(d) of follow-ups 19's task 4b, which are about the
+    commit THAT rebuild proved — was not run: the script's own switch selects part1 and knobs, so the file is
+    unedited. With it, the A2A-Version capture is not taken here, and the comparison program prints that row as
+    "not taken here".
+  - Two committed tools print the task they were written for: standard-counts-vs-rebuild-2.py labels the other side
+    "REBUILD-2" although the directory given is the last proof's, host-sleep.txt's first line and cluster-after.txt's
+    first line name follow-ups 19 task 4b. A committed tool output is what the committed tool prints; the files were
+    run unedited and are left as they printed.
+  - host-sleep.sh reads the directory it LIVES in for the "THIS DIRECTORY'S OWN LINES" section, so that section in
+    host-sleep.txt lists the last record's files, not this one's. This task's own files are counted separately in
+    own-keepawake-lines.txt: 5 files, 0 lines naming caffeinate or pmset, 0 that would start a keep-awake or set a
+    power value.
+  - Keep-awake: this task's scripts and commands START none and change no power setting. Keep-awake is NOT claimed
+    absent: the agent harness holds its own rolling caffeinate per session, which this task neither starts nor stops,
+    and whether one was held at every moment is not read from the log. Per window, counts only (host-sleep.txt):
+    Sleep=0, Wake=0, DarkWake=0, Maintenance=0, Wake Requests=0 in all six windows; assertion lines 14 over the whole
+    task, 10 of them naming caffeinate, all 10 of type PreventUserIdleSystemSleep. The six windows are in windows.csv;
+    every count above comes from the same read of the log, so no denominator is mixed across windows.
+  - A first attempt at readings 2 and 3, 23:24:01Z..23:24:15Z, did not take reading 2: stream-resub.sh read the
+    worker's pod log with jq in JSON mode, and the log also carries lines that are not JSON, so no taskId was found
+    and the resubscription went out with an empty id. The receiver answered it inside a 200 with no execution line
+    at all, and both collections then agreed. The script was corrected to read the log as raw text (`jq -R`) and to
+    stop if no taskId is found, and readings 2 and 3 were re-run WHOLE on a fresh work item; the committed
+    stream-resub.txt is that run, and the committed stream-resub.sh is the file that produced it. Nothing from the
+    first attempt is committed.
+  - The cluster is left at step 3 (cluster-after.txt, read 23:25:33Z): 2 Gateways, 5 HTTPRoutes, 0 retry stanzas on
+    every one of the five, the mock's last control line a reset (22 control lines in all: 4 injects, 18 resets), 0
+    curl pods, and 12 loadgen Jobs kept for their pod logs. Pods, finished and failed counted apart:
+    Completed=12, Running=25, and 0 pods neither Running nor Completed — so 0 failed Job pods.
+
+DATED NOTE, 2026-09-21 — the review round. Nothing above is edited; these are the additions and the corrections.
+
+  1. I-1, and what the tree now carries. The review found that the taskId arm, as this branch first wrote it, did
+     not require the matched line to be anonymous: a line naming a DIFFERENT work item was collected whenever it
+     carried one of this work item's task ids, and symmetrically. No committed script sends that shape today; the
+     shape that does is a resubscription or a GetTask given its own work-item id, which is a natural way to write
+     a B-3 row. The arm now reads "carries the work item, OR carries a taskId a work-item line minted AND names no
+     work item of its own". Counted in i1-fix-evidence.txt: on the live pods the shipped form is byte-identical to
+     the first form on all three work items the record cites, and equal to the files already committed here, with
+     all four resubscription execution lines kept; on a synthetic log the over-collection is gone (WI-A 5 lines ->
+     3, WI-FOLLOWUP 4 -> 3, none of them another work item's) while the anonymous line is still collected.
+  2. M-2. A jq failure in the taskId pass was not detected: the `||` took `sort -u`'s status. Measured with a
+     stand-in jq that fails on that one call and delegates afterwards — the first form exits 0 having collected on
+     an empty map and says nothing; the shipped form exits 2 and names the failure (i1-fix-evidence.txt, part 3).
+  3. The rotation limit the review hit and named separately, now stated in the Makefile comment and in the entry:
+     the map can only be built from lines `kubectl logs` still holds, so if the minting line has aged out, an
+     anonymous line is dropped again. A script that counts a resubscription collects before the log rotates, or
+     carries the taskId itself. Not tested by anyone, here or in the review.
+  4. M-4, a correction to the entry (this file did not state a count): the entry said "three live places" and
+     then named four locations.
+     There are FOUR live locations of the older digest sentence besides the Makefile's own — the step-2c comment,
+     the step-3 comment, README.md's step-3 section, and experiments/scan-images.sh. Of them scan-images.sh is the
+     one that states the claim as a universal rule and prints it into every new scan record, so it takes a dated
+     note of 2026-09-21 beside its own paragraph, which is not rewritten; the other three are dated, scoped
+     observations of 2026-09-09 and are left as each was taken, by the controller's ruling.
+  5. M-5. The Makefile comment now says which half of the 2026-09-19 reading rests on what: the "one digest at one
+     (commit, vcs.modified) state" half is 11 builds; the "moved with vcs.revision" half is ONE pair in that same
+     record. One pair is what there is; it is not a series.
+  6. M-1: the entry now states the discarded first attempt at reading 2, which until this round only this file
+     stated.
+  7. THE BUILT TREE, said plainly. The rebuild above was taken at commit ae84fe6d, tree 93946cad, and build.txt
+     records the deployed subtree and blob ids of that tree. This round changes two files on deployed paths AFTER
+     that rebuild — Makefile and experiments/scan-images.sh — so two of those ids no longer match the commit that
+     carries this record, and the rebuild is NOT a proof of the two changed blobs. What the rebuild proves is
+     unchanged: neither change can reach anything a step target applies. The Makefile change is a comment plus the
+     `ledgers` recipe, and no step target invokes `ledgers`; GO_SOURCES_HASH hashes agents/worker, fixtures/mockllm,
+     internal, go.mod and go.sum, not the Makefile, so the image stamp both Deployments carry is the same value it
+     was; and the scan-images.sh change is echo lines in a script no step target runs. The `ledgers` change is
+     proven directly instead, against the live pods of that same rebuilt cluster and against the files this
+     directory already committed (i1-fix-evidence.txt, part 1) — for this target that is a closer proof than a
+     rebuild, which never exercises it. No cluster action was taken this round beyond read-only `make ledgers`.

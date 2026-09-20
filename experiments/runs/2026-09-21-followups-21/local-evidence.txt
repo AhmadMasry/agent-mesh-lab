@@ -1,0 +1,34 @@
+# Follow-ups 21, the local evidence for the `make ledgers` sel() change, taken 2026-09-20T23:06Z-23:07Z, BEFORE the
+# rebuild and off any cluster. `make ledgers` reads pod logs through `kubectl logs`; a stand-in `kubectl` on PATH
+# served fixture files instead, so the recipe itself -- the committed one and the parent commit's, by `make -f` on
+# a copy of the parent blob -- is what ran. Scratch only; nothing here touched a cluster.
+#
+# (a) An existing UNARY work item, its four collected ledgers turned back into pod logs (the `source` field removed,
+#     each line returned to the pod that wrote it): experiments/runs/2026-09-20-experiment-a-agentgateway-only/
+#     a3-baseline-go/a3m-baseline-go-022306-01/ -> 10 lines, worker 8, mockllm 1, loadgen 1.
+#       parent recipe exit=0, branch recipe exit=0
+#       stdout IDENTICAL, 10 lines, sha256 1567f7974b8da07b488688c51d3bb2a8a2709abf35babbd5943a3061b55736d8
+#       stderr identical
+#
+# (b) A synthetic worker log holding one streamed work item w1 (ingress arrival + 3 execution lines + ingress
+#     response), its resubscription (ingress arrival, 2 execution lines with an EMPTY work item and taskId t-1,
+#     ingress response), and two decoys: an execution line with an empty work item AND an empty taskId, and another
+#     work item's execution line (w2, taskId t-8). One mockllm invocation line for w1.
+#       parent: 8 lines; ingress 4, execution 3, invocation 1; SubscribeToTask lines 2, of them execution 0
+#       branch: 10 lines; ingress 4, execution 5, invocation 1; SubscribeToTask lines 4, of them execution 2
+#       lines of another work item (w2 / t-8) collected: 0 on both sides
+#     The empty-taskId decoy is not collected on either side, which is what the "empty taskId is never a key" guard
+#     is for: without it, every line without a task would match every other.
+#
+# (c) 2026-09-21, the review round. The case (a) and (b) do not cover, named by the review of this branch's first
+#     form: TWO work items touching ONE Task, the second naming a work item of its own. (b)'s decoy uses a
+#     DIFFERENT taskId, so it exercises the ordinary separation and not this. Taken by i1-fix-evidence.sh beside
+#     this file, whose output is i1-fix-evidence.txt; it compares four forms of the same recipe -- the parent's,
+#     this branch's first form, that form with the taskId pass's jq guard restored, and the shipped one -- on the
+#     live pods (read-only) and on a synthetic log. Its counts, from the synthetic log:
+#       LWI=WI-A         parent 2 lines | first form 5 (2 of them another work item's) | shipped 3, none foreign
+#       LWI=WI-FOLLOWUP  parent 2       | first form 4 (1 foreign)                      | shipped 3, none foreign
+#       LWI=WI-B         2 | 2 | 2      (a second, interleaved Task: clean in all three)
+#       LWI=WI-NOTASK    2 | 2 | 2      (no Task at all: the empty-taskId guard holds, as (b) already showed)
+#     The anonymous resubscription line is collected by the first form AND by the shipped one, 1 of 1 on both --
+#     the fix removes the foreign lines and keeps the line the arm exists for.

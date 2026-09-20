@@ -1,0 +1,47 @@
+# follow-ups 21, readings 2 and 3. start 2026-09-20T23:24:51Z
+# HEAD ae84fe6d99f20a21c4fce349c404fc3aa95fbc85; parent 386fef54076414a1691d2597f865be3b7e311446
+# branch Makefile blob a28b45f9f4ab4212d45f72df6746f8b4f8225476
+# parent Makefile blob 2ca1dae46172cc920c97d3699bab33aab212f529, written to the scratch copy this script collects with
+# scratch copy sha256 aee57cc7d34082777a46bec89c87f2e144cb3ee32449320383acbecac7975a95
+# curl pod fu21-curl ready 2026-09-20T23:24:52Z
+# work item: fu21-stream-go-022452
+# arm the mock: 204  2026-09-20T23:24:52Z
+# SendStreamingMessage body (whole): {"jsonrpc":"2.0","method":"SendStreamingMessage","params":{"message":{"messageId":"01a06f19-cf55-7daf-af2b-a251c81a0375","metadata":{"logical_work_item_id":"fu21-stream-go-022452"},"parts":[{"text":"lwi:fu21-stream-go-022452 hello"}],"role":"ROLE_USER"}},"id":"rpc-stream-1"}
+# SendStreamingMessage sent in the background, pid 96578  2026-09-20T23:24:52Z
+# taskId read from the execution ledger: 01a0c123-02fb-7d34-b8bf-ef7b591c8bf8  2026-09-20T23:24:52Z
+# SubscribeToTask body (whole): {"jsonrpc":"2.0","method":"SubscribeToTask","params":{"id":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8"},"id":"rpc-sub-1"}
+# SubscribeToTask returned, exit=0  2026-09-20T23:25:00Z
+# SendStreamingMessage finished, exit=0  2026-09-20T23:25:00Z
+# reset the mock: 204  2026-09-20T23:25:00Z
+===== reading 2: make ledgers for fu21-stream-go-022452, parent Makefile then branch Makefile =====
+# parent collection exit=0
+# branch collection exit=0
+# parent: ingress 4  execution 9  invocation 1  client 0
+#   of those, SubscribeToTask: ingress 2  execution 0
+# new: ingress 4  execution 13  invocation 1  client 0
+#   of those, SubscribeToTask: ingress 2  execution 4
+# lines the branch collects that the parent does not:
+10a11,12
+> {"ledger":"execution","ts":"2026-09-20T23:24:52.692471012Z","event":"received","method":"SubscribeToTask","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","logical_work_item_id":"","source":"worker"}
+> {"ledger":"execution","ts":"2026-09-20T23:24:52.692605804Z","event":"delivered","method":"SubscribeToTask","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","contextId":"01a0c123-02fb-7d81-9b12-9f14899841d9","logical_work_item_id":"","result_kind":"task","state":"TASK_STATE_WORKING","source":"worker"}
+11a14
+> {"ledger":"execution","ts":"2026-09-20T23:25:00.352875668Z","event":"delivered","method":"SubscribeToTask","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","contextId":"01a0c123-02fb-7d81-9b12-9f14899841d9","logical_work_item_id":"","result_kind":"status-update","state":"TASK_STATE_FAILED","source":"worker"}
+13a17
+> {"ledger":"execution","ts":"2026-09-20T23:25:00.352926543Z","event":"result","method":"SubscribeToTask","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","contextId":"01a0c123-02fb-7d81-9b12-9f14899841d9","logical_work_item_id":"","result_kind":"task","state":"TASK_STATE_WORKING","stream_end":"complete","source":"worker"}
+# (diff exit=1)
+# the branch's execution lines for the resubscription, whole:
+{"ledger":"execution","ts":"2026-09-20T23:24:52.692471012Z","event":"received","method":"SubscribeToTask","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","logical_work_item_id":"","source":"worker"}
+{"ledger":"execution","ts":"2026-09-20T23:24:52.692605804Z","event":"delivered","method":"SubscribeToTask","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","contextId":"01a0c123-02fb-7d81-9b12-9f14899841d9","logical_work_item_id":"","result_kind":"task","state":"TASK_STATE_WORKING","source":"worker"}
+{"ledger":"execution","ts":"2026-09-20T23:25:00.352875668Z","event":"delivered","method":"SubscribeToTask","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","contextId":"01a0c123-02fb-7d81-9b12-9f14899841d9","logical_work_item_id":"","result_kind":"status-update","state":"TASK_STATE_FAILED","source":"worker"}
+{"ledger":"execution","ts":"2026-09-20T23:25:00.352926543Z","event":"result","method":"SubscribeToTask","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","contextId":"01a0c123-02fb-7d81-9b12-9f14899841d9","logical_work_item_id":"","result_kind":"task","state":"TASK_STATE_WORKING","stream_end":"complete","source":"worker"}
+# the branch's ingress lines for the resubscription, whole:
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-20T23:24:52.692389012Z","remote":"10.244.1.13:46159","method":"SubscribeToTask","id":"rpc-sub-1","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","logical_work_item_id":"fu21-stream-go-022452","a2a_version":"1.0","content_type":"application/json","body_sha256":"45c8c02e1e58985423e745d4a947d88da228cbcd50eab14ed27de347ff03b122","body_len":116,"lwi_source":"header","source":"worker"}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-20T23:24:52.692389012Z","remote":"10.244.1.13:46159","method":"SubscribeToTask","id":"rpc-sub-1","messageId":"","taskId":"01a0c123-02fb-7d34-b8bf-ef7b591c8bf8","logical_work_item_id":"fu21-stream-go-022452","a2a_version":"1.0","content_type":"application/json","body_sha256":"45c8c02e1e58985423e745d4a947d88da228cbcd50eab14ed27de347ff03b122","body_len":116,"status":200,"lwi_source":"header","ts_end":"2026-09-20T23:25:00.353012043Z","stream_end":"complete","source":"worker"}
+===== reading 3: the unary comparison, one work item per receiver =====
+# g2c-fu21nc-worker: parent exit=0  branch exit=0  lines 10
+#   stdout byte-identical; sha256 70f02d708a693fa6a58c7f9db87604f4ee6f3c5e5450045303cd08cca78a28cc
+#   stderr byte-identical
+# g2c-fu21nc-orchestrator: parent exit=0  branch exit=0  lines 18
+#   stdout byte-identical; sha256 fe3985b9bb717bdb78d16466263125f367e49a674ab1495e14cf19fc71ab3cee
+#   stderr byte-identical
+# readings 2 and 3 done 2026-09-20T23:25:02Z

@@ -1,0 +1,15 @@
+# Follow-ups 21, preflight at the branch's parent (386fef54 = main = origin/main), read 2026-09-20T23:03Z-23:07Z.
+# Commands and what they printed (tails only; every one exited 0).
+$ go build ./...                      -> build ok
+$ go vet ./...                        -> vet ok
+$ gofmt -l .                          -> (no files listed)
+$ go test ./... -count=1              -> 7 packages, every line "ok":
+    agents/worker  fixtures/loadgen  fixtures/mockllm  fixtures/replay
+    internal/a2areq  internal/httpclient  internal/otel
+$ make test                           -> exit 0; 28 lines beginning "ok  "
+$ uv lock --check (agents/orchestrator) -> Resolved 66 packages (unchanged)
+$ uv run --frozen pytest -q           -> 86 passed
+
+# After the three changes, at the tree this rebuild proves:
+$ bash -n experiments/gate1-baseline.sh -> ok
+$ make test                           -> exit 0; 28 lines beginning "ok  "

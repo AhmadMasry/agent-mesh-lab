@@ -119,6 +119,12 @@ run_type() { # $1 = run id, $2 = label, $3 = target, $4 = injection JSON templat
 		echo "  $lwi: $c"
 		ROWS+=("$id,$label,$lwi,$c,${notes}${JOB_NOTE:+ ${JOB_NOTE}}")
 	done
+	# The reset above happens before each repetition, so until 2026-09-21 the arming
+	# of the LAST repetition outlived the script and reached whatever ran next. This
+	# reset is what leaves the mock as the script found it. It is taken after the
+	# repetition's counts have been collected, so no count moves; a run type that
+	# arms nothing needs it no more than it needed the one above.
+	if [ -n "$tpl" ]; then reset_mock; fi
 }
 
 for r in $RUNS; do
@@ -146,7 +152,10 @@ for r in $RUNS; do
 	   	c=$(counts "$lwi"); echo "  $lwi: $c"
 	   	stale_closed=$(jq -s '[.[] | select(.outcome=="stale-closed")] | length' "${RUN_DIR}/$lwi/invocation.jsonl")
 	   	ROWS+=("7,stale: two sequential requests on one keep-alive connection; loadgen->worker,$lwi,$c,stale_closed_lines=$stale_closed (second Job replaces the first; client.jsonl holds the second request)${JOB_NOTE:+ ${JOB_NOTE}}")
-	   done ;;
+	   done
+	   # As in run_type: run 7 arms by work item too, so it disarms after its last
+	   # repetition rather than leaving the arming behind.
+	   reset_mock ;;
 	esac
 done
 

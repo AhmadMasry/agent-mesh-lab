@@ -1,0 +1,73 @@
+# Host sleep during the follow-ups 19 task 4b rebuild, standard proof and Experiment A re-run. Written 2026-09-20T23:25:53Z.
+#
+# The selection, by pmset's event-kind column (field $4), over the whole of `pmset -g log`:
+#   $4=="Sleep" || $4=="Wake" || $4=="DarkWake" || $4=="Maintenance"
+# pmset stamps in the host local zone (shown per line); the windows are given in UTC and compared after
+# converting each stamp with its own offset. No Assertions line is listed anywhere in this file.
+#
+# EVERY COUNTED WINDOW, and the lines of each kept kind whose stamp falls inside it:
+
+   window followups-21: 2026-09-20T23:09:14Z .. 2026-09-20T23:25:34Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=14   (Assertions: counted, never listed)
+
+   window rebuild: 2026-09-20T23:09:14Z .. 2026-09-20T23:15:51Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=8   (Assertions: counted, never listed)
+
+   window standard-proof: 2026-09-20T23:16:15Z .. 2026-09-20T23:19:51Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=2   (Assertions: counted, never listed)
+
+   window reading-1-baseline-reset: 2026-09-20T23:20:43Z .. 2026-09-20T23:23:31Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=1   (Assertions: counted, never listed)
+
+   window reading-2-3-stream-resub: 2026-09-20T23:24:51Z .. 2026-09-20T23:25:02Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=0   (Assertions: counted, never listed)
+
+   window cluster-after: 2026-09-20T23:25:33Z .. 2026-09-20T23:25:34Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=0   (Assertions: counted, never listed)
+
+# kept lines whose tail was cut by the guard: 0
+# the earliest stamped line pmset holds: 2026-09-15T17:25:40+03:00 (the log covers the windows only if this is before them)
+# Sleep lines pmset holds in all: 897; the last one stamped 2026-09-20T23:11:28+03:00
+# Wake lines pmset holds in all:  5; the last one stamped 2026-09-20T23:14:25+03:00
+
+# ASSERTION COUNTS PER WINDOW. Counts only: no Assertions line is listed here. How counted:
+#   pmset -g log | python3 host-sleep-assertion-counts.py windows.csv   (the same read of the log as above)
+# The method is in that program's header: field $4 == "Assertions"; stamps compared in UTC, both ends inclusive;
+# the substring "caffeinate"; the type substring; the action word after the process token, printed only if it is
+# one of pmset's own action words. It prints numbers and those words, never a line, a pid or a name other than
+# that process name.
+   window followups-21: 2026-09-20T23:09:14Z .. 2026-09-20T23:25:34Z
+     Assertions lines=14  naming caffeinate=10  of those with type PreventUserIdleSystemSleep=10  by action word: Created=0, ClientDied=8, Summary=2
+   window rebuild: 2026-09-20T23:09:14Z .. 2026-09-20T23:15:51Z
+     Assertions lines=8  naming caffeinate=5  of those with type PreventUserIdleSystemSleep=5  by action word: Created=0, ClientDied=3, Summary=2
+   window standard-proof: 2026-09-20T23:16:15Z .. 2026-09-20T23:19:51Z
+     Assertions lines=2  naming caffeinate=1  of those with type PreventUserIdleSystemSleep=1  by action word: Created=0, ClientDied=1
+   window reading-1-baseline-reset: 2026-09-20T23:20:43Z .. 2026-09-20T23:23:31Z
+     Assertions lines=1  naming caffeinate=1  of those with type PreventUserIdleSystemSleep=1  by action word: Created=0, ClientDied=1
+   window reading-2-3-stream-resub: 2026-09-20T23:24:51Z .. 2026-09-20T23:25:02Z
+     Assertions lines=0  naming caffeinate=0  of those with type PreventUserIdleSystemSleep=0  by action word: Created=0
+   window cluster-after: 2026-09-20T23:25:33Z .. 2026-09-20T23:25:34Z
+     Assertions lines=0  naming caffeinate=0  of those with type PreventUserIdleSystemSleep=0  by action word: Created=0
+
+# KEEP-AWAKE PROCESSES, read by `ps` at 2026-09-20T23:25:53Z, after the windows: the process's arguments and its
+# PARENT's command name only (no pid, no user, no terminal):
+#      2 caffeinate -i -t 300   <- parent command name: claude
+# (no line above means no such process at that moment)
+
+# THIS DIRECTORY'S OWN LINES that run caffeinate or a pmset setter: non-comment lines of the .sh and .py files
+# beside this script that match `caffeinate` or `pmset`, counted; the counting program's match strings and
+# this script's own reads are what is expected to match:
+#   checks.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   cluster-after.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   host-sleep.sh: lines naming either = 14; of them lines that would START a keep-awake or SET a power value = 0
+#   proof.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   rebuild.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   versions-readback.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   compare.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   event-spans.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   host-sleep-assertion-counts.py: lines naming either = 14; of them lines that would START a keep-awake or SET a power value = 0
+#   new-rows.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   proxy-entry-spans.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   spans_diff.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   standard-counts-vs-rebuild-2.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   table.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0

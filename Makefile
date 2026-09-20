@@ -9,9 +9,25 @@ ORCHESTRATOR_IMAGE := orchestrator:dev
 
 # GO_SOURCES_HASH: a content hash of the tracked Go sources the worker and mock
 # Deployments are built from (test files excluded: ko does not compile them, and a
-# test-only commit must not force a rebuild). Time-independent, unlike a ko-built
-# image's own tag or digest, which this repository has measured to change on every
-# `ko apply` even from an unchanged tree (see step-2c's and step-3's comments below).
+# test-only commit must not force a rebuild). It exists because a ko-built image's
+# own tag and digest are NOT a content hash of those sources: Go stamps the build's
+# vcs.revision and vcs.modified into the binary, so the same sources built at another
+# commit are another image, and the digest alone cannot say which sources went in.
+# What this repository has counted, on 2026-09-19: 11 ko builds taken at one
+# (commit, vcs.modified) state carried one digest (the dated note at the end of
+# experiments/runs/2026-09-19-worker-span-rebuild/reading-notes.txt). The other half
+# -- that the digests which moved moved with vcs.revision -- rests on ONE pair in that
+# same record: its images/ko-vcs-stamp.txt against reading (e), two builds with
+# different vcs.revision and vcs.modified=true on both sides, all three ko digests
+# moved. One pair is what there is; it is not a series. Until
+# 2026-09-21 this comment said instead that the digest changes on every `ko apply`
+# even from an unchanged tree, which that reading contradicts. The step-2c and step-3
+# comments below record what was observed on 2026-09-09: a repeat run of a setup
+# target rolled the worker and the mock. Whether the commit had moved between the two
+# applies is not established in that record, so the two readings are left as each was
+# taken. README.md's step-3 section says the same of the same day, and
+# experiments/scan-images.sh carries a dated note of 2026-09-21 beside its own copy of
+# the sentence: four live locations in all, this one and those three.
 # Every step target that runs `ko apply` stamps both Deployments with this value as
 # a metadata annotation (no rollout of its own) so a later check can tell "this
 # image was built from this source" without rebuilding anything itself; see
@@ -785,6 +801,34 @@ teardown:
 # finding nothing at all for the work item is an error. With OUT, each
 # ledger is written as <OUT>/<name>.jsonl containing exactly the matching lines.
 #
+# A line is collected when it carries the work item, OR when it carries a taskId
+# that a line carrying the work item minted AND names no work item of its own. The
+# second arm was added on 2026-09-21. Until then the collection selected on
+# logical_work_item_id alone, which drops every execution line of a resubscription:
+# SubscribeToTask carries no Message and so no metadata (A2A v1.0), the taskId it
+# names is the whole of its identity, and the execution ledger sits inside the SDK
+# where no HTTP header is visible, so it cannot carry the work item itself. The
+# ingress ledger has the header fallback and was collected; its execution lines were
+# not, and the collection showed an arrival with nothing behind it.
+#
+# Two guards on that second arm, both of them about not merging two work items:
+#   - an empty taskId is never a key, or every line without a task would match
+#     every other;
+#   - the line must be anonymous. Without that clause a line naming a DIFFERENT work
+#     item is collected whenever it carries one of this work item's task ids, and
+#     symmetrically, so a later operation on the same Task given its own work-item id
+#     -- a resubscription or a GetTask, which is a natural way to write a row -- would
+#     silently merge the two collections. No committed script sends one today; the
+#     clause is what keeps it that way. Measured 2026-09-21 in
+#     experiments/runs/2026-09-21-followups-21/i1-fix-evidence.txt.
+# The map is built from this collection's own lines, in one pass over the same logs.
+#
+# The limit this has: the map can only be built from lines `kubectl logs` still
+# holds. If the line that minted the taskId has aged out of the pod's log, the map is
+# empty and an anonymous line -- a resubscription's -- is dropped again, exactly as
+# it was before this arm existed. A script that counts a resubscription therefore
+# collects before the log rotates, or carries the taskId itself.
+#
 # One exception to that last sentence: an existing non-empty <OUT>/client.jsonl
 # is kept rather than written, and the fact is reported on stderr. `make replay VIA=ingress
 # OUT=<dir>` runs the harness on this host, where no Job and so no pod log
@@ -804,7 +848,11 @@ ledgers:
 	LOADGEN=$$(quiet -l job-name=loadgen-$(LWI) --tail=-1); \
 	REPLAY=$$(quiet -l job-name=replay-$(LWI) --tail=-1); \
 	if [ -z "$$LOADGEN$$REPLAY" ]; then echo "ledgers: warning: no pod logs for job loadgen-$(LWI) or replay-$(LWI) (no such Job, its pods are gone, or the work item was sent from this host)" >&2; fi; \
-	sel() { jq -R -c --arg lwi "$(LWI)" --arg ledger "$$1" --arg src "$$2" 'fromjson? | select(.ledger == $$ledger and .logical_work_item_id == $$lwi) | . + {source: $$src}' || { echo "ledgers: jq failed" >&2; exit 1; }; }; \
+	TASKIDS_RAW=$$( { printf '%s\n' "$$WORKER"; printf '%s\n' "$$ORCH"; printf '%s\n' "$$MOCK"; printf '%s\n' "$$LOADGEN"; printf '%s\n' "$$REPLAY"; } \
+		| jq -R -r --arg lwi "$(LWI)" 'fromjson? | select(.logical_work_item_id == $$lwi) | .taskId // "" | select(. != "")' ) \
+		|| { echo "ledgers: jq failed while mapping the work item's taskIds" >&2; exit 1; }; \
+	TASKIDS=$$(printf '%s\n' "$$TASKIDS_RAW" | sort -u); \
+	sel() { jq -R -c --arg lwi "$(LWI)" --arg tids "$$TASKIDS" --arg ledger "$$1" --arg src "$$2" '($$tids | split("\n") | map(select(. != ""))) as $$t | fromjson? | select(.ledger == $$ledger) | select(.logical_work_item_id == $$lwi or ((.logical_work_item_id // "") == "" and ((.taskId // "") as $$id | $$id != "" and ($$t | index($$id)) != null))) | . + {source: $$src}' || { echo "ledgers: jq failed" >&2; exit 1; }; }; \
 	INGRESS=$$( { printf '%s\n' "$$WORKER" | sel ingress worker; printf '%s\n' "$$ORCH" | sel ingress orchestrator; } ); \
 	EXECUTION=$$( { printf '%s\n' "$$WORKER" | sel execution worker; printf '%s\n' "$$ORCH" | sel execution orchestrator; } ); \
 	INVOCATION=$$(printf '%s\n' "$$MOCK" | sel invocation mockllm); \

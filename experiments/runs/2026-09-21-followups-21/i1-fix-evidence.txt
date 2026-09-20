@@ -1,0 +1,74 @@
+# B built from C by deleting exactly one substring:
+#   -  or ((.logical_work_item_id // "") == "" and ((.taskId // "") as $$id | $$id != "" and ($$t | index($$id)) != null)))
+#   +  or ((.taskId // "") as $$id | $$id != "" and ($$t | index($$id)) != null))
+# M built from C by four line edits and nothing else:
+#   TASKIDS_RAW=  ->  TASKIDS=
+#   jq line: the subshell no longer closes on it
+#   guard line: sort -u moved back inside the substitution, before the ||
+#   dropped: the separate sort -u assignment
+# follow-ups 21, I-1 and M-2 evidence. start 2026-09-20T23:48:34Z
+# HEAD 2deb80c8467609c5b6eb9ee7f98cab8a3f997eaa; parent 386fef54076414a1691d2597f865be3b7e311446
+# A = parent blob 2ca1dae46172cc920c97d3699bab33aab212f529   B = shipped minus the anonymity clause
+# M = shipped with the reviewed jq guard              C = the working tree's Makefile
+# sha256  A aee57cc7d34082777a46bec89c87f2e144cb3ee32449320383acbecac7975a95
+# sha256  B bb6c66228211bbc5d5467b3b4b7049bea25e6de79b0c2d06b35fd7f2ebff4f0e
+# sha256  M 980d8125d311a5b49ff498ad2992f7043e75ded3e22970f7db5ca67e2580c44d
+# sha256  C f4e28edb02d4f74bac062abb4592bdc4c6d94b7092ec5b6bf6a728c64819cd98
+
+===== part 1: the live pods, read-only, 2026-09-20T23:48:34Z =====
+# fu21-stream-go-022452      A exit=0 lines=14 sha256=062b32276d4f9b2b5d8d2c0075281baa644b698f1ded652b63f27409f3088b3b
+# fu21-stream-go-022452      B exit=0 lines=18 sha256=4578f894c2d843584a2ab40dacf44209e13750e3ef8523292fd76b2009cf5e8a
+# fu21-stream-go-022452      C exit=0 lines=18 sha256=4578f894c2d843584a2ab40dacf44209e13750e3ef8523292fd76b2009cf5e8a
+#   B vs C: BYTE-IDENTICAL
+#   SubscribeToTask execution lines: A 0 B 4 C 4
+# g2c-fu21nc-worker          A exit=0 lines=10 sha256=70f02d708a693fa6a58c7f9db87604f4ee6f3c5e5450045303cd08cca78a28cc
+# g2c-fu21nc-worker          B exit=0 lines=10 sha256=70f02d708a693fa6a58c7f9db87604f4ee6f3c5e5450045303cd08cca78a28cc
+# g2c-fu21nc-worker          C exit=0 lines=10 sha256=70f02d708a693fa6a58c7f9db87604f4ee6f3c5e5450045303cd08cca78a28cc
+#   B vs C: BYTE-IDENTICAL
+#   SubscribeToTask execution lines: A 0 B 0 C 0
+# g2c-fu21nc-orchestrator    A exit=0 lines=18 sha256=fe3985b9bb717bdb78d16466263125f367e49a674ab1495e14cf19fc71ab3cee
+# g2c-fu21nc-orchestrator    B exit=0 lines=18 sha256=fe3985b9bb717bdb78d16466263125f367e49a674ab1495e14cf19fc71ab3cee
+# g2c-fu21nc-orchestrator    C exit=0 lines=18 sha256=fe3985b9bb717bdb78d16466263125f367e49a674ab1495e14cf19fc71ab3cee
+#   B vs C: BYTE-IDENTICAL
+#   SubscribeToTask execution lines: A 0 B 0 C 0
+# and against what this run directory already committed:
+#   fu21-stream-go-022452: C equals the committed experiments/runs/2026-09-21-followups-21/stream/new-stdout.txt, byte for byte
+#   g2c-fu21nc-worker: C equals the committed experiments/runs/2026-09-21-followups-21/stream/unary-g2c-fu21nc-worker/new-stdout.txt, byte for byte
+#   g2c-fu21nc-orchestrator: C equals the committed experiments/runs/2026-09-21-followups-21/stream/unary-g2c-fu21nc-orchestrator/new-stdout.txt, byte for byte
+
+===== part 2: the shared-Task case, synthetic log, no cluster, 2026-09-20T23:48:37Z =====
+# the synthetic worker log, whole:
+#   {"ledger":"ingress","phase":"arrival","method":"SendMessage","id":"r1","messageId":"m-a","taskId":"","logical_work_item_id":"WI-A"}
+#   {"ledger":"execution","event":"received","method":"SendMessage","messageId":"m-a","taskId":"T-A","logical_work_item_id":"WI-A"}
+#   {"ledger":"ingress","phase":"arrival","method":"GetTask","id":"r2","messageId":"","taskId":"T-A","logical_work_item_id":"WI-FOLLOWUP","lwi_source":"header"}
+#   {"ledger":"execution","event":"received","method":"GetTask","messageId":"","taskId":"T-A","logical_work_item_id":"WI-FOLLOWUP"}
+#   {"ledger":"execution","event":"received","method":"SubscribeToTask","messageId":"","taskId":"T-A","logical_work_item_id":""}
+#   {"ledger":"ingress","phase":"arrival","method":"SendMessage","id":"r3","messageId":"m-b","taskId":"","logical_work_item_id":"WI-B"}
+#   {"ledger":"execution","event":"received","method":"SendMessage","messageId":"m-b","taskId":"T-B","logical_work_item_id":"WI-B"}
+#   {"ledger":"ingress","phase":"arrival","method":"SendMessage","id":"r4","messageId":"m-n","taskId":"","logical_work_item_id":"WI-NOTASK"}
+#   {"ledger":"execution","event":"received","method":"SendMessage","messageId":"m-n","taskId":"","logical_work_item_id":"WI-NOTASK"}
+# collection LWI=WI-A
+#     A: 2 lines = own 2 + anonymous 0 + OTHER work items 0
+#     B: 5 lines = own 2 + anonymous 1 + OTHER work items 2
+#     C: 3 lines = own 2 + anonymous 1 + OTHER work items 0
+# collection LWI=WI-FOLLOWUP
+#     A: 2 lines = own 2 + anonymous 0 + OTHER work items 0
+#     B: 4 lines = own 2 + anonymous 1 + OTHER work items 1
+#     C: 3 lines = own 2 + anonymous 1 + OTHER work items 0
+# collection LWI=WI-B
+#     A: 2 lines = own 2 + anonymous 0 + OTHER work items 0
+#     B: 2 lines = own 2 + anonymous 0 + OTHER work items 0
+#     C: 2 lines = own 2 + anonymous 0 + OTHER work items 0
+# collection LWI=WI-NOTASK
+#     A: 2 lines = own 2 + anonymous 0 + OTHER work items 0
+#     B: 2 lines = own 2 + anonymous 0 + OTHER work items 0
+#     C: 2 lines = own 2 + anonymous 0 + OTHER work items 0
+
+===== part 3: M-2, a failing jq in the taskId pass, 2026-09-20T23:48:39Z =====
+# M: exit=0; lines collected=2; the taskId pass reported its failure: NO
+#     jq calls made: 8
+# C: exit=2; lines collected=0; the taskId pass reported its failure: yes
+#     jq calls made: 1
+# M is the reviewed shape, whose || took the status of sort -u; C is the shipped one, whose || takes the status of jq.
+# With the failure confined to the taskId pass, M collects on an empty map and says nothing; C stops.
+# done 2026-09-20T23:48:39Z

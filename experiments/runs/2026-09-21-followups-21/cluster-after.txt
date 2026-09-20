@@ -1,0 +1,52 @@
+# The cluster as this task leaves it, read 2026-09-20T23:25:33Z. Reads only.
+== 2026-09-20T23:25:33Z Gateways and HTTPRoutes ==
+gateways: 2 ; httproutes: 5
+== 2026-09-20T23:25:33Z retry stanzas: across every HTTPRoute, and per route ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=0
+== 2026-09-20T23:25:33Z the mock's mode: its own control lines; an inject arms, a reset clears, the last line decides ==
+control lines since the mock started: 22; injects: 4; resets: 18
+the last inject: {"ledger":"control","ts":"2026-09-20T23:24:52.290679053Z","endpoint":"/control/inject","detail":"{\"mode\":\"delay-then-close\",\"lwi\":\"fu21-stream-go-022452\",\"delay_ms\":8000}"}
+the last line:   {"ledger":"control","ts":"2026-09-20T23:25:00.423619626Z","endpoint":"/control/reset"}
+resets after the last inject: 1
+== 2026-09-20T23:25:34Z the two receivers' injectors ==
+  (a receiver writes no LEDGER line for a control call and holds its armed mode in process memory, so there is no mode to read
+   back from it. What there is: the rows of this task that arm a receiver are A.2's and A.3's R1, R2 and R4 rows; each script
+   resets the injectors it armed itself and records the 204s in its own run directory (control.txt / control-reset.txt), and
+   the last invocation of this task, A.3 R4 py service, is one of them. The worker's process log, which is not a ledger, prints a
+   line only for a close-after-read that could NOT take its connection or could not close it (agents/worker/ingress.go); a taken
+   and closed connection prints none. Such lines:)
+  worker log lines naming close-after-read: 0
+== 2026-09-20T23:25:34Z every Deployment in lab: env names starting MODEL_, CLIENT_, DOWNSTREAM_ or PLAN_; generation, ready ==
+  deploy/mockllm generation=4 ready=1/1: (none)
+  deploy/orchestrator generation=5 ready=1/1: MODEL_BASE_URL=http://model.lab.internal:8080/v1 DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080 PLAN_MODEL_CALL=off MODEL_NAME=mock MODEL_API_KEY=unused MODEL_MAX_RETRIES=0
+  deploy/worker generation=9 ready=1/1: MODEL_BASE_URL=http://model.lab.internal:8080/v1 MODEL_NAME=mock MODEL_API_KEY=unused
+== 2026-09-20T23:25:34Z pods: every namespace, phase counts; pods neither Running nor Succeeded; control pods left ==
+  Completed=12
+  Running=25
+pods neither Running nor Completed: 0
+pods of a curl image (the scripts' control and probe pods): 0
+loadgen Jobs left in lab (each a finished single send, kept for its pod log): 12
+mockllm-6d59fb76b7-pgvjv                  Running     0     2026-09-20T23:14:28Z
+orchestrator-5cf7d655b8-8v62d             Running     0     2026-09-20T23:14:28Z
+worker-59b9d577cf-r9sdh                   Running     0     2026-09-20T23:22:44Z
+== 2026-09-20T23:25:34Z helm releases ==
+  agentgateway         agentgateway-system  deployed   agentgateway-v1.5.0
+  agentgateway-crds    agentgateway-system  deployed   agentgateway-crds-v1.5.0
+  istio-base           istio-system         deployed   base-1.31.0
+  istio-cni            istio-system         deployed   cni-1.31.0
+  istiod               istio-system         deployed   istiod-1.31.0
+  jaeger               telemetry            deployed   jaeger-4.13.1
+  otel-collector       telemetry            deployed   opentelemetry-collector-0.173.1
+  prometheus           telemetry            deployed   prometheus-29.31.1
+  ztunnel              istio-system         deployed   ztunnel-1.31.0
+== 2026-09-20T23:25:34Z ztunnel's certificates, worker node ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           487f399a733b0157ca825e0523139ab2     2026-09-27T23:13:50Z     2026-09-20T23:11:50Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           cdce070e68137aa1ea4c94472984467c     2036-09-17T23:11:47Z     2026-09-20T23:11:47Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           d80c35a31fa99f454dca23264084d823     2026-09-27T23:12:43Z     2026-09-20T23:10:43Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           cdce070e68137aa1ea4c94472984467c     2036-09-17T23:11:47Z     2026-09-20T23:11:47Z
