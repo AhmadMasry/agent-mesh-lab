@@ -1,0 +1,28 @@
+$ sh_c 
+  echo "## retry stanzas across every HTTPRoute"
+  kubectl get httproute -A -o yaml | grep -c "retry:"
+  echo
+  echo "## client and model retry knobs on the lab Deployments"
+  kubectl -n lab get deploy -o json | jq -r ".items[] | .metadata.name as \$n | ((.spec.template.spec.containers[0].env // [])[] | select(.name | startswith(\"CLIENT_\") or . == \"MODEL_RETRIES\" or . == \"MODEL_MAX_RETRIES\") | \"\(\$n): \(.name)=\(.value)\")"
+  echo
+  echo "## the orchestrator downstream URL"
+  kubectl -n lab get deploy orchestrator -o json | jq -r ".spec.template.spec.containers[0].env[] | select(.name==\"DOWNSTREAM_A2A_URL\") | \"\(.name)=\(.value)\""
+  echo
+  echo "## Jobs and finished pods left in lab"
+  kubectl -n lab get jobs --no-headers | wc -l | tr -d " " | sed "s/^/jobs: /"
+  kubectl -n lab get pods --no-headers | awk "{print \$3}" | sort | uniq -c
+## retry stanzas across every HTTPRoute
+0
+
+## client and model retry knobs on the lab Deployments
+orchestrator: MODEL_MAX_RETRIES=0
+
+## the orchestrator downstream URL
+DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+
+## Jobs and finished pods left in lab
+jobs: 24
+  24 Completed
+   3 Running
+   1 Terminating
+wall 0.174s exit 0

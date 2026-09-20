@@ -1,0 +1,46 @@
+$ env RUN=R2 RECEIVER=py SUB=service REPS=2 RUN_ID=wta3s RUN_ITEM=2026-09-20-walkthrough/a3-r2-py-service experiments/gate3-matrix.sh
+== certificate check ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           c7185078773276549416492a82a50903     2026-09-27T03:50:35Z     2026-09-20T03:48:35Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           d2665a2c0e34cbe6328436a5f3175614     2036-09-17T03:47:12Z     2026-09-20T03:47:12Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           59c4d52af9209668bc697fdfe5f17d90     2026-09-27T03:48:06Z     2026-09-20T03:46:06Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           d2665a2c0e34cbe6328436a5f3175614     2036-09-17T03:47:12Z     2026-09-20T03:47:12Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+2026-09-20T04:07:30Z image freshness: deployment/worker checkout-go-sources-hash=b31cd24596e8ecbbcf3b029a7eaaa5c3de157a6f annotation=b31cd24596e8ecbbcf3b029a7eaaa5c3de157a6f pod-imageIDs: worker-547766fb69-qfvgf=sha256:ee1a669c7016f6949d81ac6c3224f06babb03f8fea2a9783d1e535e5796cbb51 
+2026-09-20T04:07:30Z image freshness: deployment/mockllm checkout-go-sources-hash=b31cd24596e8ecbbcf3b029a7eaaa5c3de157a6f annotation=b31cd24596e8ecbbcf3b029a7eaaa5c3de157a6f pod-imageIDs: mockllm-5dd896d5db-4fc27=sha256:4006503738cb15b8c4e701adc69d382ed43c16b1464cfd6b5377a352e0f1bac8 
+pre-run retry stanzas across every HTTPRoute: 0
+pre-run retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-waypoint/model-via-agw=0 lab/orchestrator=0
+2026-09-20T04:07:31Z pre-run knob assertion passed for RUN=R2: stanzas=0 MODEL_MAX_RETRIES=0 (this row sets it: no) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport CLIENT_DIAL=target
+== starting the control pod ==
+2026-09-20T04:08:01Z run wta3s: RUN=R2 RECEIVER=py SUB=service REPS=2 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport CLIENT_DIAL=target MODEL_MAX_RETRIES=<left as deployed> route-retry=waypoint-orchestrator
+2026-09-20T04:08:01Z deployment/orchestrator replicas: spec=1 ready=1
+2026-09-20T04:08:01Z deployment/mockllm replicas: spec=1 ready=1
+2026-09-20T04:08:01Z pre-run DOWNSTREAM_A2A_URL on deployment/orchestrator: http://worker.lab.svc.cluster.local:8080
+2026-09-20T04:08:01Z setting deployment/orchestrator: DOWNSTREAM_A2A_URL=<unset>; if this script dies without restoring them, put them back with: kubectl -n lab set env deployment/orchestrator DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+2026-09-20T04:08:03Z live after the rollout: MODEL_MAX_RETRIES=0 DOWNSTREAM_A2A_URL=<unset>
+== switching the retry stanza on for the waypoint-orchestrator route ==
+httproute.gateway.networking.k8s.io/orchestrator configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-20-walkthrough/a3-r2-py-service/routes.txt
+retry stanzas on lab/orchestrator: 1
+retry stanzas with ROUTE=waypoint-orchestrator on: 1 on the waypoint-orchestrator routes, 1 cluster-wide (expected 1 each)
+== dry run: one repetition, its directory deleted afterwards ==
+== R2/service py: logical_work_item_id=a3m-r2-py-service-wta3s-dry ==
+  py,R2,service,a3m-r2-py-service-wta3s-dry,2,1,1,1,1,task/TASK_STATE_COMPLETED,75,agw-central=7|loadgen=3|mockllm=1|orchestrator=64,gateway,client_lines=1;layer_reason=route lab/orchestrator on the agw-central in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received;
+== dry run done; experiments/runs/2026-09-20-walkthrough/a3-r2-py-service/a3m-r2-py-service-wta3s-dry removed ==
+== R2/service py: 2 repetitions ==
+== R2/service py: logical_work_item_id=a3m-r2-py-service-wta3s-01 ==
+  py,R2,service,a3m-r2-py-service-wta3s-01,2,1,1,1,1,task/TASK_STATE_COMPLETED,75,agw-central=7|loadgen=3|mockllm=1|orchestrator=64,gateway,client_lines=1;layer_reason=route lab/orchestrator on the agw-central in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received;
+== R2/service py: logical_work_item_id=a3m-r2-py-service-wta3s-02 ==
+  py,R2,service,a3m-r2-py-service-wta3s-02,2,1,1,1,1,task/TASK_STATE_COMPLETED,75,agw-central=7|loadgen=3|mockllm=1|orchestrator=64,gateway,client_lines=1;layer_reason=route lab/orchestrator on the agw-central in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received;
+== summary ==
+receiver,run,sub,work_item,deliveries,dispatched,distinct_messageIds,tasks,invocations,client_result,trace_spans,spans_by_service,second_delivery_layer,notes
+py,R2,service,a3m-r2-py-service-wta3s-01,2,1,1,1,1,task/TASK_STATE_COMPLETED,75,agw-central=7|loadgen=3|mockllm=1|orchestrator=64,gateway,client_lines=1;layer_reason=route lab/orchestrator on the agw-central in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received;
+py,R2,service,a3m-r2-py-service-wta3s-02,2,1,1,1,1,task/TASK_STATE_COMPLETED,75,agw-central=7|loadgen=3|mockllm=1|orchestrator=64,gateway,client_lines=1;layer_reason=route lab/orchestrator on the agw-central in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received;
+== restoring deployment/orchestrator: DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080 ==
+2026-09-20T04:09:45Z restored deployment/orchestrator: DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+2026-09-20T04:09:45Z live after the restore: MODEL_MAX_RETRIES=0 DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+== restoring the waypoint-orchestrator route: removing the retry stanza ==
+restored: retry stanzas across every HTTPRoute: 0
+wall 135.853s exit 0

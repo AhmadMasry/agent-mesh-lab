@@ -1,0 +1,31 @@
+$ env RUN=baseline RECEIVER=go REPS=2 RUN_ID=wta3b RUN_ITEM=2026-09-20-walkthrough/a3-baseline-go experiments/gate3-matrix.sh
+== certificate check ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           c7185078773276549416492a82a50903     2026-09-27T03:50:35Z     2026-09-20T03:48:35Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           d2665a2c0e34cbe6328436a5f3175614     2036-09-17T03:47:12Z     2026-09-20T03:47:12Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           59c4d52af9209668bc697fdfe5f17d90     2026-09-27T03:48:06Z     2026-09-20T03:46:06Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           d2665a2c0e34cbe6328436a5f3175614     2036-09-17T03:47:12Z     2026-09-20T03:47:12Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+2026-09-20T04:02:05Z image freshness: deployment/worker checkout-go-sources-hash=b31cd24596e8ecbbcf3b029a7eaaa5c3de157a6f annotation=b31cd24596e8ecbbcf3b029a7eaaa5c3de157a6f pod-imageIDs: worker-547766fb69-qfvgf=sha256:ee1a669c7016f6949d81ac6c3224f06babb03f8fea2a9783d1e535e5796cbb51 
+2026-09-20T04:02:05Z image freshness: deployment/mockllm checkout-go-sources-hash=b31cd24596e8ecbbcf3b029a7eaaa5c3de157a6f annotation=b31cd24596e8ecbbcf3b029a7eaaa5c3de157a6f pod-imageIDs: mockllm-5dd896d5db-4fc27=sha256:4006503738cb15b8c4e701adc69d382ed43c16b1464cfd6b5377a352e0f1bac8 
+pre-run retry stanzas across every HTTPRoute: 0
+pre-run retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-waypoint/model-via-agw=0 lab/orchestrator=0
+2026-09-20T04:02:05Z pre-run knob assertion passed for RUN=baseline: stanzas=0 MODEL_RETRIES=<unset> (this row sets it: no) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport CLIENT_DIAL=<empty>
+== starting the control pod ==
+2026-09-20T04:02:06Z run wta3b: RUN=baseline RECEIVER=go SUB=none REPS=2 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport CLIENT_DIAL=<empty> MODEL_RETRIES=<left as deployed> route-retry=none
+2026-09-20T04:02:06Z deployment/worker replicas: spec=1 ready=1
+2026-09-20T04:02:06Z deployment/mockllm replicas: spec=1 ready=1
+== dry run: one repetition, its directory deleted afterwards ==
+== baseline go: logical_work_item_id=a3m-baseline-go-wta3b-dry ==
+  go,baseline,none,a3m-baseline-go-wta3b-dry,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+== dry run done; experiments/runs/2026-09-20-walkthrough/a3-baseline-go/a3m-baseline-go-wta3b-dry removed ==
+== baseline go: 2 repetitions ==
+== baseline go: logical_work_item_id=a3m-baseline-go-wta3b-01 ==
+  go,baseline,none,a3m-baseline-go-wta3b-01,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+== baseline go: logical_work_item_id=a3m-baseline-go-wta3b-02 ==
+  go,baseline,none,a3m-baseline-go-wta3b-02,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+== summary ==
+receiver,run,sub,work_item,deliveries,dispatched,distinct_messageIds,tasks,invocations,client_result,trace_spans,spans_by_service,second_delivery_layer,notes
+go,baseline,none,a3m-baseline-go-wta3b-01,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+go,baseline,none,a3m-baseline-go-wta3b-02,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+wall 99.009s exit 0

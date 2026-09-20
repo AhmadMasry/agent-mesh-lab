@@ -1,0 +1,19 @@
+$ sh_c echo "## routes on agw-central and the ingress"; kubectl get httproute -A; echo; echo "## the Services and the waypoint they name"; kubectl -n lab get svc -o json | jq -r ".items[] | \"\(.metadata.name)  istio.io/use-waypoint=\(.metadata.labels[\"istio.io/use-waypoint\"] // \"-\")  istio.io/waypoint-for=\(.metadata.labels[\"istio.io/waypoint-for\"] // \"-\")\""; echo; echo "## gateways"; kubectl get gateway -A
+## routes on agw-central and the ingress
+NAMESPACE               NAME                   HOSTNAMES                                AGE
+agentgateway-waypoint   model-via-agw          ["model.lab.internal"]                   71s
+lab                     orchestrator           ["orchestrator.lab.svc.cluster.local"]   0s
+lab                     orchestrator-ingress                                            71s
+lab                     worker                 ["worker.lab.svc.cluster.local"]         3m39s
+lab                     worker-ingress         ["worker.lab.internal"]                  0s
+
+## the Services and the waypoint they name
+mockllm  istio.io/use-waypoint=-  istio.io/waypoint-for=-
+orchestrator  istio.io/use-waypoint=agw-central  istio.io/waypoint-for=-
+worker  istio.io/use-waypoint=agw-central  istio.io/waypoint-for=-
+
+## gateways
+NAMESPACE               NAME                   CLASS          ADDRESS        PROGRAMMED   AGE
+agentgateway-ingress    agentgateway-ingress   agentgateway   10.96.17.72    True         72s
+agentgateway-waypoint   agw-central            agentgateway   10.96.126.94   True         3m40s
+wall 0.104s exit 0

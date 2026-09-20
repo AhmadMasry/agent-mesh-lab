@@ -1,0 +1,7 @@
+$ sh_c echo '## agw-central request line'; kubectl -n agentgateway-waypoint logs deploy/agw-central | grep 'http.path=/ ' | head -1; echo; echo '## ztunnel access line'; kubectl -n istio-system logs -l app=ztunnel --tail=-1 | grep 'loadgen-g2c-wt2-worker' | grep access
+## agw-central request line
+2026-09-20T03:48:33.444751Z	info	request gateway=agentgateway-waypoint/agw-central listener=inner-http route=lab/worker endpoint=10.244.1.14:8080 src.addr=10.244.1.19:52994 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=worker.lab.svc.cluster.local http.path=/ http.version=HTTP/1.1 http.status=200 trace.id=fd03633305ca99e7116f8e4ee02e57cd span.id=6946ee039bf96a00 protocol=http duration=209ms
+
+## ztunnel access line
+2026-09-20T03:48:33.451489Z	info	access	connection complete	src.addr=10.244.1.19:50210 src.workload="loadgen-g2c-wt2-worker-kt4tn" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.17:15008 dst.hbone_addr=10.96.123.148:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="agw-central-67c797bcb-4nntf" dst.namespace="agentgateway-waypoint" dst.identity="spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central" dst.cluster="Kubernetes" direction="outbound" bytes_sent=861 bytes_recv=1259 duration="218ms"
+wall 0.091s exit 0

@@ -1,0 +1,40 @@
+2026-09-20T04:07:30Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-20T04:07:31Z pre-run retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-waypoint/model-via-agw=0 lab/orchestrator=0
+2026-09-20T04:08:01Z run wta3s: RUN=R2 RECEIVER=py SUB=service REPS=2 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport CLIENT_DIAL=target MODEL_MAX_RETRIES=<left as deployed> route-retry=waypoint-orchestrator
+2026-09-20T04:08:01Z deployment/orchestrator replicas: spec=1 ready=1
+2026-09-20T04:08:01Z deployment/mockllm replicas: spec=1 ready=1
+2026-09-20T04:08:01Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-20T04:08:01Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-20T04:08:01Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+httproute.gateway.networking.k8s.io/orchestrator configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-20-walkthrough/a3-r2-py-service/routes.txt
+2026-09-20T04:08:04Z retry stanzas on lab/orchestrator: 1
+2026-09-20T04:08:04Z retry stanzas with ROUTE=waypoint-orchestrator on: 1 on the waypoint-orchestrator routes and 1 across every HTTPRoute (expected 1 each)
+2026-09-20T04:08:04Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-20T04:08:04Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-20T04:08:04Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-20T04:08:04Z POST http://orchestrator.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-py-service-wta3s-dry"} -> 204
+2026-09-20T04:08:28Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-py-service-wta3s-dry)
+2026-09-20T04:08:28Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-py-service-wta3s-dry)
+2026-09-20T04:08:37Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-20T04:08:37Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-20T04:08:37Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-20T04:08:37Z POST http://orchestrator.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-py-service-wta3s-01"} -> 204
+2026-09-20T04:09:00Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-py-service-wta3s-01)
+2026-09-20T04:09:00Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-py-service-wta3s-01)
+2026-09-20T04:09:09Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-20T04:09:09Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-20T04:09:09Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-20T04:09:09Z POST http://orchestrator.lab.svc.cluster.local:8080/control/inject {"mode":"http503-before-dispatch","lwi":"a3m-r2-py-service-wta3s-02"} -> 204
+2026-09-20T04:09:33Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-py-service-wta3s-02)
+2026-09-20T04:09:33Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-r2-py-service-wta3s-02)
+httproute.gateway.networking.k8s.io/orchestrator configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/2026-09-20-walkthrough/a3-r2-py-service/routes-off/routes.txt
+2026-09-20T04:09:45Z retry-off ROUTE=waypoint-orchestrator restored; retry stanzas across every HTTPRoute: 0
+2026-09-20T04:09:45Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-20T04:09:45Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-20T04:09:45Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)

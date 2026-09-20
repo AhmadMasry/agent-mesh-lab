@@ -1,0 +1,15 @@
+$ sh_c 
+  kubectl -n lab run wt-cleanup --image=curlimages/curl:8.22.0 --restart=Never --command -- sleep 60
+  kubectl -n lab wait --for=condition=Ready pod/wt-cleanup --timeout=60s
+  for u in mockllm worker orchestrator; do
+    kubectl -n lab exec wt-cleanup -- curl -s -o /dev/null -w "$u/control/reset -> %{http_code}\n" \
+      -X POST "http://$u.lab.svc.cluster.local:8080/control/reset"
+  done
+  kubectl -n lab delete pod wt-cleanup
+pod/wt-cleanup created
+pod/wt-cleanup condition met
+mockllm/control/reset -> 204
+worker/control/reset -> 204
+orchestrator/control/reset -> 204
+pod "wt-cleanup" deleted from lab namespace
+wall 32.385s exit 0

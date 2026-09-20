@@ -1,0 +1,4 @@
+$ sh_c kubectl -n lab get deploy orchestrator worker -o json | jq -r ".items[] | .metadata.name + \": \" + ([.spec.template.spec.containers[0].env[]? | select(.name==\"MODEL_BASE_URL\" or .name==\"PUBLIC_URL\") | \"\(.name)=\(.value)\"] | join(\" \"))"
+orchestrator: MODEL_BASE_URL=http://model.lab.internal:8080/v1 PUBLIC_URL=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local
+worker: MODEL_BASE_URL=http://model.lab.internal:8080/v1 PUBLIC_URL=http://worker.lab.svc.cluster.local:8080
+wall 0.053s exit 0

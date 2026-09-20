@@ -1,0 +1,41 @@
+$ sh_c 
+  set -uo pipefail
+  S="${TMPDIR:-/tmp}"
+  kubectl -n agentgateway-ingress port-forward svc/agentgateway-ingress 18080:80 >/dev/null 2>&1 &
+  PF=$!
+  for i in $(seq 1 30); do
+    curl -sS -o /dev/null --max-time 2 http://127.0.0.1:18080/.well-known/agent-card.json && break
+    python3 -c "import time;time.sleep(1)"
+  done
+  echo "## the card the ingress serves"
+  curl -s http://127.0.0.1:18080/.well-known/agent-card.json | jq -c "{name, supportedInterfaces}"
+  echo
+  echo "## the advertised address, resolved from this host"
+  curl -sS -o /dev/null --max-time 5 http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ ; echo "exit=$?"
+  echo
+  echo "## the send, by hand"
+  LWI=wt2b-ingress
+  curl -s -o "$S/ingress-resp.json" -w "http=%{http_code}\n" -X POST http://127.0.0.1:18080/ \
+    -H "Host: orchestrator.lab.internal" -H "Content-Type: application/json" -H "A2A-Version: 1.0" \
+    -H "X-Logical-Work-Item-Id: $LWI" \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":\"$(uuidgen)\",\"method\":\"SendMessage\",\"params\":{\"message\":{\"messageId\":\"$(uuidgen)\",\"role\":\"ROLE_USER\",\"parts\":[{\"text\":\"lwi:$LWI hello\"}],\"metadata\":{\"logical_work_item_id\":\"$LWI\"}}}}"
+  echo
+  echo "## the answer"
+  jq -c "{taskId: .result.task.id, contextId: .result.task.contextId, state: .result.task.status.state}" "$S/ingress-resp.json"
+  kill $PF 2>/dev/null; wait $PF 2>/dev/null
+  echo "## port-forward closed"
+curl: (7) Failed to connect to 127.0.0.1 port 18080 after 0 ms: Couldn't connect to server
+## the card the ingress serves
+{"name":"orchestrator","supportedInterfaces":[{"url":"http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","protocolBinding":"JSONRPC","protocolVersion":"1.0"}]}
+
+## the advertised address, resolved from this host
+curl: (28) Resolving timed out after 5004 milliseconds
+exit=28
+
+## the send, by hand
+http=200
+
+## the answer
+{"taskId":"88b0bc94-1789-4e36-a330-91e6270d4758","contextId":"cef6aae8-328b-40a5-8ec7-1ab8c2be003f","state":"TASK_STATE_COMPLETED"}
+## port-forward closed
+wall 6.389s exit 0
