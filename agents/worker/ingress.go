@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,7 +48,42 @@ type ingressLine struct {
 	// Injection names the receiver-side mode that fired for this delivery, on
 	// the response line only. Absent on every request that was served normally.
 	Injection string `json:"injection,omitempty"`
+	// LWISource is written only when logical_work_item_id did not come from the
+	// body. A2A v1.0's SubscribeToTask carries no Message and therefore no
+	// metadata (specification v1.0.1 §9.4.6), so the only identity such a
+	// delivery can be collected by is the header the load client puts on every
+	// request. Absent means the body carried the id, so a line never implies a
+	// body field that was not there.
+	LWISource string `json:"lwi_source,omitempty"`
+	// TSEnd and StreamEnd are written on the response line of a streamed
+	// response only, which is a response this receiver actually sent as
+	// text/event-stream. A unary response's line carries neither, so its shape
+	// is what it was before streaming was served at all.
+	//
+	// The response line of a stream is written when the handler returns, which
+	// for SSE is when the stream ended, so ts_arrival alone cannot say when that
+	// was; ts_end is that stamp. stream_end says how it ended, from what this
+	// boundary can observe: write-failed when a write to the client returned an
+	// error, client-gone when the request context was cancelled (net/http
+	// cancels it when the client's connection closes), complete otherwise. A
+	// write error is reported ahead of a cancellation because it is the more
+	// specific observation: the bytes did not leave.
+	//
+	// complete says only that this receiver's handler returned with neither of
+	// those observed. It is not evidence that a terminal event was sent: this
+	// boundary counts bytes and never reads the events, so a handler that
+	// stopped early and a task that reached a terminal state look the same here.
+	// What the stream carried is the execution ledger's delivered lines, and
+	// what the Task did is its state lines.
+	TSEnd     string `json:"ts_end,omitempty"`
+	StreamEnd string `json:"stream_end,omitempty"`
 }
+
+const (
+	streamEndComplete    = "complete"
+	streamEndClientGone  = "client-gone"
+	streamEndWriteFailed = "write-failed"
+)
 
 // responseLine turns an arrival line into the matching response line. Every
 // response line carries a status, including 0 for a connection closed before
@@ -109,6 +146,17 @@ func parseIngress(r *http.Request, body []byte) ingressLine {
 		if v, ok := env.Params.Message.Metadata["logical_work_item_id"].(string); ok {
 			line.LogicalWorkItemID = v
 		}
+		// Only a JSON-RPC delivery whose body carried no work item falls back to
+		// the header, and it says so. A request that is not JSON-RPC — the agent
+		// card fetch above all — keeps the empty work item it has always had, so
+		// what a work item's collection contains does not change for any traffic
+		// that existed before streaming was served.
+		if line.LogicalWorkItemID == "" {
+			if v := r.Header.Get("X-Logical-Work-Item-Id"); v != "" {
+				line.LogicalWorkItemID = v
+				line.LWISource = "header"
+			}
+		}
 		return line
 	}
 	if r.Method != http.MethodPost || len(body) == 0 {
@@ -134,21 +182,110 @@ func rawIDString(raw json.RawMessage) string {
 	return string(raw)
 }
 
+// deadlineKey carries a request's write-deadline lift down the handler chain.
+type deadlineKey struct{}
+
+// newWriteDeadlineLift must wrap the OUTERMOST handler, because it is the only
+// place where the ResponseWriter is still net/http's own: measured through this
+// process's chain, http.NewResponseController inside the handler answers
+// "feature not supported", since neither the tracing instrumentation's wrapper
+// nor this ledger's recorder offers SetWriteDeadline or Unwrap. So the lift is
+// taken here, where it works, and handed on for the recorder to use when — and
+// only when — the response actually goes out as Server-Sent Events.
+//
+// Why it is needed: http.Server.WriteTimeout bounds the whole response and is
+// set once, when the request's header is read (net/http server.go), so a stream
+// that outlives it is cut by this receiver itself. That cut is
+// indistinguishable at every ledger from a transport that went away: the
+// request context is cancelled and the SDK answers "queue read failed: context
+// canceled", which is exactly the shape Experiment B counts as a lost
+// transport. Lifting it per streaming request, rather than lowering the
+// server's default for every request, keeps the bound on unary traffic where it
+// is useful and removes this receiver from the list of things that can end a
+// stream.
+func newWriteDeadlineLift(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		controller := http.NewResponseController(w)
+		lift := func() error { return controller.SetWriteDeadline(time.Time{}) }
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), deadlineKey{}, lift)))
+	})
+}
+
+func liftFrom(ctx context.Context) func() error {
+	lift, _ := ctx.Value(deadlineKey{}).(func() error)
+	return lift
+}
+
 type statusRecorder struct {
 	http.ResponseWriter
 	status int
+	// liftWriteDeadline removes this response's write deadline, or is nil when
+	// nothing upstream could offer one. Called once, when the response turns out
+	// to be a stream.
+	liftWriteDeadline func() error
+	deadlineLifted    bool
+	// contentType is the type this receiver actually sent, read when the header
+	// was written. It is what says a response was a stream: the ledger records
+	// the response that left, not the one the method name implies.
+	contentType string
+	// writeErr is the first error a write to the client returned. The SDK's SSE
+	// writer reports it and stops; keeping it here is how the response line can
+	// say the stream ended because its bytes did not leave.
+	writeErr error
 }
 
 func (s *statusRecorder) WriteHeader(code int) {
 	s.status = code
+	s.contentType = s.Header().Get("Content-Type")
+	s.liftDeadlineIfStreaming()
 	s.ResponseWriter.WriteHeader(code)
+}
+
+// liftDeadlineIfStreaming removes this response's write deadline once the
+// response turns out to be a stream, so that the server's own WriteTimeout
+// cannot end one. A failure is logged and nothing else: the ledger's job is to
+// record what happened, and the run that follows reads the line.
+func (s *statusRecorder) liftDeadlineIfStreaming() {
+	if s.deadlineLifted || !s.streamed() || s.liftWriteDeadline == nil {
+		return
+	}
+	s.deadlineLifted = true
+	if err := s.liftWriteDeadline(); err != nil {
+		log.Printf("ingress: could not lift the write deadline for a streamed response: %v", err)
+	}
 }
 
 func (s *statusRecorder) Write(b []byte) (int, error) {
 	if s.status == 0 {
 		s.status = http.StatusOK
+		s.contentType = s.Header().Get("Content-Type")
 	}
-	return s.ResponseWriter.Write(b)
+	s.liftDeadlineIfStreaming()
+	n, err := s.ResponseWriter.Write(b)
+	if err != nil && s.writeErr == nil {
+		s.writeErr = err
+	}
+	return n, err
+}
+
+// streamed says this response left as Server-Sent Events, which is the
+// transport A2A v1.0's JSON-RPC binding streams over.
+func (s *statusRecorder) streamed() bool {
+	return strings.HasPrefix(s.contentType, "text/event-stream")
+}
+
+// streamEnd reads how a streamed response ended from the two things this
+// boundary can see: whether a write to the client failed, and whether the
+// request context was cancelled under the handler.
+func (s *statusRecorder) streamEnd(r *http.Request) string {
+	switch {
+	case s.writeErr != nil:
+		return streamEndWriteFailed
+	case r.Context().Err() != nil:
+		return streamEndClientGone
+	default:
+		return streamEndComplete
+	}
 }
 
 // Flush lets the SDK's streaming responses flush through the recorder.
@@ -255,11 +392,16 @@ func newIngressMiddleware(next http.Handler, lw *lineWriter, inj *injector) http
 				log.Printf("ingress: armed mode %q is not served here; serving the request normally", mode)
 			}
 		}
-		rec := &statusRecorder{ResponseWriter: w}
+		rec := &statusRecorder{ResponseWriter: w, liftWriteDeadline: liftFrom(r.Context())}
 		next.ServeHTTP(rec, r)
 		if rec.status == 0 {
 			rec.status = http.StatusOK
 		}
-		lw.write(responseLine(line, rec.status, ""))
+		response := responseLine(line, rec.status, "")
+		if rec.streamed() {
+			response.TSEnd = time.Now().UTC().Format(time.RFC3339Nano)
+			response.StreamEnd = rec.streamEnd(r)
+		}
+		lw.write(response)
 	})
 }

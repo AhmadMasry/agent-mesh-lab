@@ -86,6 +86,23 @@ func newRootMux(a2a http.Handler, lw *lineWriter, inj *injector) *http.ServeMux 
 	return root
 }
 
+// newServerHandler is the whole handler chain this process serves, in the order
+// the order matters in: the write-deadline lift outermost, then the tracing
+// instrumentation, then the root mux with the ingress ledger inside it.
+//
+// It is a function, and not four lines inside main, because the order is a
+// property worth asserting. http.Server.WriteTimeout bounds a whole response
+// and is set when the request's header is read, so a stream that outlives it is
+// cut by this receiver — and cut in exactly the shape a lost transport has, the
+// observation Experiment B is built on. The lift removes that bound for a
+// streamed response only, and it can only be taken at the outermost handler,
+// where the ResponseWriter is still net/http's own. Both halves of that
+// sentence are tested against this function: a stream past the deadline
+// completes, and a unary response past the deadline does not.
+func newServerHandler(name string, a2aHandler http.Handler, lw *lineWriter, inj *injector) http.Handler {
+	return newWriteDeadlineLift(labotel.Handler(name, newRootMux(a2aHandler, lw, inj)))
+}
+
 func main() {
 	name := getenv("AGENT_NAME", "worker")
 	modelBase := getenv("MODEL_BASE_URL", "http://mockllm.lab.svc.cluster.local:8080/v1")
@@ -146,11 +163,10 @@ func main() {
 	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(card))
 	a2aMux.Handle("/", a2asrv.NewJSONRPCHandler(handler))
 	inj := newInjector()
-	root := newRootMux(a2aMux, ledger, inj)
 
 	srv := &http.Server{
 		Addr:              listen,
-		Handler:           labotel.Handler("worker", root),
+		Handler:           newServerHandler(name, a2aMux, ledger, inj),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      120 * time.Second,

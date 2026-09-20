@@ -11,10 +11,53 @@ import hashlib
 import json
 import sys
 import threading
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Any, TextIO
 
 from orchestrator.control import MODE_HTTP503_BEFORE_DISPATCH, Injector
+
+# How a streamed response ended, as this boundary can observe it. complete and
+# client-gone are the two the Go receiver also writes; send-failed is this
+# receiver's counterpart to its write-failed, and incomplete is the case an ASGI
+# application can produce and a net/http handler cannot: the application stopped
+# without a final body message and without the client having gone away.
+STREAM_END_COMPLETE = "complete"
+STREAM_END_CLIENT_GONE = "client-gone"
+STREAM_END_SEND_FAILED = "send-failed"
+STREAM_END_INCOMPLETE = "incomplete"
+
+SSE_CONTENT_TYPE = "text/event-stream"
+
+
+class Delivery:
+    """What the ASGI boundary observed about one delivery, readable by code
+    further in.
+
+    The ASGI server's http.disconnect is the authoritative word that the client
+    went away, and only this middleware sees it: by the time a streamed request
+    reaches the request handler, a disconnect has become an ended generator with
+    no exception of any kind. The handler reads this object so its own ledger
+    line can say a stream was cut rather than that it ran out.
+    """
+
+    __slots__ = ("client_gone",)
+
+    def __init__(self) -> None:
+        self.client_gone = False
+
+
+_current_delivery: ContextVar[Delivery | None] = ContextVar("current_delivery", default=None)
+
+
+def current_delivery() -> Delivery | None:
+    """The Delivery of the request being served, or None outside one.
+
+    The middleware sets it before the application is called, so every task the
+    application starts inherits the same object; marking it is visible to all of
+    them, which is what lets the disconnect reach the request handler.
+    """
+    return _current_delivery.get()
 
 
 def now() -> str:
@@ -92,6 +135,19 @@ def parse_ingress(*, method: str, path: str, headers: dict[str, str], remote: st
         if message.get("contextId"):
             line["contextId"] = str(message["contextId"])
         line["logical_work_item_id"] = work_item_of(message.get("metadata"))
+        # Only a JSON-RPC delivery whose body carried no work item falls back to
+        # the header, and it says so. A2A v1.0's SubscribeToTask carries no
+        # Message and therefore no metadata (specification v1.0.1 §9.4.6), so the
+        # header the load client puts on every request is the only identity it
+        # can be collected by. A request that is not JSON-RPC — the agent card
+        # fetch above all — keeps the empty work item it has always had, so what a
+        # work item's collection contains does not change for any traffic that
+        # existed before streaming was served.
+        if not line["logical_work_item_id"]:
+            from_header = headers.get("x-logical-work-item-id", "")
+            if from_header:
+                line["logical_work_item_id"] = from_header
+                line["lwi_source"] = "header"
         return line
     if method != "POST" or not body:
         line["method"] = f"{method} {path}"
@@ -161,6 +217,17 @@ class IngressMiddleware:
 
         status = {"code": 0}
 
+        # What this boundary saw of a streamed response. streamed is set from the
+        # content type the application actually sent, so the ledger records the
+        # response that left rather than the one the method name implies; the
+        # other three are the observations stream_end is read from.
+        seen: dict[str, bool] = {"streamed": False, "final_body": False, "client_gone": False,
+                                 "send_failed": False}
+        # Set before the application runs, so every task it starts inherits this
+        # object and the request handler can read what this boundary saw.
+        delivery = Delivery()
+        _current_delivery.set(delivery)
+
         replayed = {"done": False}
 
         async def receive_replay():
@@ -181,12 +248,48 @@ class IngressMiddleware:
                 return {"type": "http.request", "body": body, "more_body": disconnect is not None}
             if disconnect is not None:
                 return disconnect
-            return await receive()
+            # A streaming response awaits receive() to learn that the client
+            # went away; that message is passed on untouched and noted, because
+            # it is the one thing that says a stream ended at the client's end
+            # and not at the agent's.
+            message = await receive()
+            if message["type"] == "http.disconnect":
+                seen["client_gone"] = True
+                delivery.client_gone = True
+            return message
 
         async def send_capture(message):
             if message["type"] == "http.response.start":
                 status["code"] = int(message.get("status", 0))
-            await send(message)
+                for key, value in message.get("headers", []):
+                    if key.decode("latin-1").lower() == "content-type":
+                        seen["streamed"] = value.decode("latin-1").startswith(SSE_CONTENT_TYPE)
+            try:
+                await send(message)
+            except BaseException:
+                # The bytes did not leave. Recorded and re-raised: the ledger
+                # says what happened, and nothing here turns a failed send into
+                # a response the application thinks it sent.
+                seen["send_failed"] = True
+                raise
+            if message["type"] == "http.response.body" and not message.get("more_body", False):
+                seen["final_body"] = True
+
+        def stream_end() -> str:
+            # final_body is read before client_gone on purpose. sse-starlette
+            # consumes an http.disconnect at the end of every request, so a
+            # stream that was sent to its last byte reports both, and ranking
+            # the disconnect first made a completed stream read client-gone with
+            # the socket still open — a transport loss that never happened.
+            # A response whose last body message went out is complete whatever
+            # the client did afterwards.
+            if seen["send_failed"]:
+                return STREAM_END_SEND_FAILED
+            if seen["final_body"]:
+                return STREAM_END_COMPLETE
+            if seen["client_gone"]:
+                return STREAM_END_CLIENT_GONE
+            return STREAM_END_INCOMPLETE
 
         try:
             await self.app(scope, receive_replay, send_capture)
@@ -201,6 +304,13 @@ class IngressMiddleware:
             response = dict(line)
             response["phase"] = "response"
             response["status"] = status["code"]
+            # A streamed response's line is written when the stream ended, which
+            # ts_arrival cannot say; ts_end is that stamp, and stream_end says
+            # how it ended. A unary response's line carries neither, so its
+            # shape is what it was before streaming was served at all.
+            if seen["streamed"]:
+                response["ts_end"] = now()
+                response["stream_end"] = stream_end()
             self.writer.write(response)
 
 
