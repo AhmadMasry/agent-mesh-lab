@@ -244,3 +244,61 @@ agentgateway proxy. The A.3 matrix gains rows that send work items to the orches
 Service and not to the ingress URL its agent card advertises. The retry stanza for these rows is on that route. They
 are reported beside the existing Python-receiver rows through the ingress, not instead of them. The proposal text is
 unchanged.
+
+## 2026-09-20 — Experiment B on the agentgateway-only topology: which proxy, which client, and how it is removed
+
+Decision by the author. §4.4 B says "the proxy on the path is removed or replaced". Since the note of 2026-09-19 one proxy,
+`agw-central`, carries the agent leg and the model leg, so removing it cuts the model call as well and the Task fails, every retry
+being off (rule 4). B is therefore run on both proxies and each is named: the agentgateway ingress, where only the A2A stream is
+cut and the task can continue, as the main rows; and `agw-central` as one further variant, which is the case the second clause of
+the proposal's sentence names — whether infrastructure recovery converts a lost connection into a lost task.
+
+The streaming client is the load client (`a2a-go`) in every row, so that only the receiver changes between rows, as in A.1;
+`a2a-python` is exercised as a receiver and not as a reconnecting client, and that is recorded rather than left to be assumed.
+
+Removal: what each method does to an open stream is measured first — a graceful delete, a forced delete and a rollout — and the
+experiment then uses the forced delete, the abrupt case the question is about; a rollout variant is added if it fits. Both SDKs
+keep the keep-alive settings they ship with (`a2a-go` none, `a2a-python` a 15 s ping), recorded and not aligned, so that an
+idle-timer result can be attributed.
+
+B gains one row the proposal does not list: `SubscribeToTask` against a task that has already reached a terminal state, per
+receiver. The specification requires one error for it and the two SDKs return different ones, so the row records what each
+answers. The proposal text is unchanged.
+
+## 2026-09-20 — Experiment C on the agentgateway-only topology: what it asks now
+
+Decision by the author. §4.4 C rests on two facts. The first stands: binding matters, and JSON-RPC is the
+primary case. The second described a layer this lab no longer runs — agentgateway proxies programmed by istiod
+through Gateway API resources alone, which neither Istio's policy APIs nor agentgateway's own policies reach.
+That boundary was tested before the layer was retired, at Istio 1.31.0 and agentgateway v1.5.0: an
+`AgentgatewayPolicy` on an istiod-managed waypoint read Attached and was never delivered (`findings.md`, "the
+documented AgentgatewayPolicy tracing on an istiod-managed agentgateway waypoint"). It stays on record as
+measured. Since the note of 2026-09-19 every L7 proxy is agentgateway's own, so C's question — what can each
+layer actually distinguish about an A2A interaction — is put to the layers that exist, each with the control
+plane that drives it:
+
+- **ztunnel** (istiod; `AuthorizationPolicy`, `PeerAuthentication`): workload identity and L4 policy. Behind a
+  proxy the receiver's ztunnel sees the proxy's identity, not the caller's.
+- **Gateway API routes on the agentgateway proxies** (agentgateway's controller; `HTTPRoute`): host, path,
+  headers, query parameters, HTTP method. Nothing in the body.
+- **agentgateway's own policy** (agentgateway's controller; `AgentgatewayPolicy`): CEL rules over the caller's
+  SPIFFE identity, the request's headers and the request's body. For a backend marked A2A it reads the JSON-RPC
+  `method` into its logs and spans; it gives rules no A2A variable, where MCP has one for the tool.
+- **the application** (no control plane; `a2a-go`'s call interceptor, `a2a-python`'s per-operation request
+  handler, the agent card's security schemes).
+
+C has two halves. **Observation**: one map, layer by layer, of what each can tell apart when a `SendMessage`
+and a second operation arrive at the same JSON-RPC endpoint — caller identity, target Service, path and
+headers, the `method` in the body, `messageId` and `taskId`. Every cell is a measured reading or a documented
+limit with its source; cells the lab already holds are cited, not re-run. **Enforcement**: one deny attempted
+at each layer that documents a mechanism, the same rule each time — one operation refused and another allowed
+on one endpoint — counted by the three ledgers and by the layer's own record of the refusal. A layer that
+cannot express the rule is recorded as that, with the sentence that says so. C is still not forced to produce
+a deny.
+
+Consequences the author accepts: (1) the map names the control plane behind each hop, as the 2026-09-08 note
+required; there are now two and they do not overlap — istiod for L4, agentgateway's controller for L7;
+(2) the REST binding is tested only if the JSON-RPC result needs the comparison (§12.2, unchanged); (3) nothing
+is added: no external authorization service, no rate-limit service, no token issuer, no Envoy waypoint for
+comparison (rule 6) — a mechanism that needs one is recorded as documented and not attempted. The proposal
+text is unchanged.
