@@ -19,13 +19,51 @@ from a2a.types import (
     Part,
     SendMessageRequest,
     Task,
+    TaskArtifactUpdateEvent,
     TaskState,
     TaskStatus,
+    TaskStatusUpdateEvent,
 )
 
 from orchestrator.forward import Forwarder
-from orchestrator.ledger import LineWriter, execution_line
+from orchestrator.ledger import LineWriter, current_delivery, execution_line
+
+# How a streamed sequence of events ended, as the handler can observe it:
+# complete when the SDK's generator ran out, consumer-gone when the transport
+# stopped reading it (which is what a cut stream looks like from in here), error
+# when the generator raised. The Go receiver writes all three by these names.
+# A consumer-gone line carries no error string here, because GeneratorExit is
+# not an error; the Go receiver's may carry the cancellation its SDK answers a
+# cut with. Both receivers agree on stream_end, which is the field to count.
+#
+# complete says the generator ran out, not that a terminal event was sent:
+# whether the last state was terminal is read from the executor's state lines,
+# and what the stream carried from the delivered lines.
+STREAM_END_COMPLETE = "complete"
+STREAM_END_CONSUMER_GONE = "consumer-gone"
+STREAM_END_ERROR = "error"
 from orchestrator.model import Identity, ModelClient
+
+
+def ended(stream_end: str) -> str:
+    """The ending, corrected by what the ASGI boundary saw.
+
+    A cut stream reaches this handler as nothing at all: measured over a socket,
+    a real disconnect ends the SDK's generator normally, with no GeneratorExit
+    and no exception, so the loop runs out and the ending would read complete —
+    a lost transport recorded as a stream that finished, which is the count
+    Experiment B exists to make. The middleware is the only part of this process
+    that sees the ASGI server's http.disconnect, so its observation is what
+    decides: a delivery whose client went away is consumer-gone whatever the
+    generator did. An ending the handler observed itself (an exception, an
+    explicit close) is kept, because it says more than the disconnect does.
+    """
+    if stream_end != STREAM_END_COMPLETE:
+        return stream_end
+    delivery = current_delivery()
+    if delivery is not None and delivery.client_gone:
+        return STREAM_END_CONSUMER_GONE
+    return STREAM_END_COMPLETE
 
 
 def struct_get(struct: Any, key: str) -> str:
@@ -139,7 +177,12 @@ class LedgerRequestHandler(DefaultRequestHandler):
         self.writer.write(line)
         return line
 
-    def _result(self, base: dict[str, Any], result: Any, error: str = "") -> None:
+    def _result(self, base: dict[str, Any], result: Any, error: str = "", stream_end: str = "") -> None:
+        """Write the result line. On a streamed request its state is the last
+        Task or Message the stream carried, which is the submitted Task the
+        stream opens with, not the task's final state: a Task object is sent
+        once and the transitions that follow are status updates. Final state is
+        the executor's state lines."""
         line = dict(base)
         line["ts"] = execution_line("result")["ts"]
         line["event"] = "result"
@@ -150,7 +193,37 @@ class LedgerRequestHandler(DefaultRequestHandler):
             line.update(result_kind="message", taskId=result.task_id, contextId=result.context_id)
         if error:
             line["error"] = error
+        if stream_end:
+            line["stream_end"] = stream_end
         self.writer.write(line)
+
+    def _delivered(self, base: dict[str, Any], event: Any) -> None:
+        """Record one event handed on for the transport to write.
+
+        The line is written before the event reaches sse-starlette and before
+        any byte leaves the socket, so it counts what this handler produced,
+        never what a client received: a delivered line and a lost stream are not
+        a contradiction.
+
+        Not a Task state line either: the executor writes those from inside its
+        own task, once per transition whether anyone is reading or not, and
+        doubling them here would make "the Task continued" uncountable the
+        moment a second stream reads the same task.
+        """
+        kind, task_id, context_id, state = "", base.get("taskId", ""), "", ""
+        if isinstance(event, Task):
+            kind, task_id, context_id = "task", event.id, event.context_id
+            state = state_name(event.status.state)
+        elif isinstance(event, Message):
+            kind, task_id, context_id = "message", event.task_id, event.context_id
+        elif isinstance(event, TaskStatusUpdateEvent):
+            kind, task_id, context_id = "status-update", event.task_id, event.context_id
+            state = state_name(event.status.state)
+        elif isinstance(event, TaskArtifactUpdateEvent):
+            kind, task_id, context_id = "artifact-update", event.task_id, event.context_id
+        self.writer.write(execution_line(
+            "delivered", method=base.get("method", ""), message_id=base.get("messageId", ""), task_id=task_id,
+            context_id=context_id, work_item=base.get("logical_work_item_id", ""), result_kind=kind, state=state))
 
     async def on_message_send(self, params: SendMessageRequest, context: ServerCallContext) -> Message | Task:
         base = self._received("SendMessage", params)
@@ -163,13 +236,42 @@ class LedgerRequestHandler(DefaultRequestHandler):
         return result
 
     async def on_message_send_stream(self, params: SendMessageRequest, context: ServerCallContext) -> AsyncGenerator[Event]:
+        """One "delivered" line per event that leaves for the transport, then
+        one "result" line saying what the last Task or Message was and how the
+        sequence ended.
+
+        The result line is written from a finally, so a stream whose consumer
+        went away leaves a record too. Until this, the line sat after the loop
+        and a cut stream wrote none, where the Go receiver wrote one: the two
+        execution ledgers would have disagreed on a cut stream for a reason that
+        is this lab's, not either SDK's.
+
+        The loop is written out here rather than delegated to a shared generator
+        because a consumer closes *this* generator: an inner generator wrapped
+        in an `async for` is not closed with it, and its finally would then run
+        whenever the event loop finalised it. Nothing may be awaited after the
+        GeneratorExit, and nothing is — the ledger writer is synchronous. It
+        records; it does not repeat. When the consumer stops, so does this.
+        """
         base = self._received("SendStreamingMessage", params)
         last: Any = None
-        async for event in super().on_message_send_stream(params, context):
-            if isinstance(event, (Task, Message)):
-                last = event
-            yield event
-        self._result(base, last)
+        error = ""
+        stream_end = STREAM_END_COMPLETE
+        try:
+            async for event in super().on_message_send_stream(params, context):
+                self._delivered(base, event)
+                if isinstance(event, (Task, Message)):
+                    last = event
+                yield event
+        except GeneratorExit:
+            stream_end = STREAM_END_CONSUMER_GONE
+            raise
+        except Exception as exc:
+            error = str(exc)
+            stream_end = STREAM_END_ERROR
+            raise
+        finally:
+            self._result(base, last, error=error, stream_end=ended(stream_end))
 
 
 def build_card(name: str, public_url: str) -> AgentCard:
@@ -178,7 +280,13 @@ def build_card(name: str, public_url: str) -> AgentCard:
         description="agent-mesh-lab agent: one model call per message",
         version="0.0.0",
         supported_interfaces=[AgentInterface(url=public_url, protocol_binding="JSONRPC", protocol_version="1.0")],
-        capabilities=AgentCapabilities(streaming=False),
+        # This SDK gates both streaming operations on the card: V2's
+        # on_message_send_stream and on_subscribe_to_task carry
+        # @validate(lambda self: self._agent_card.capabilities.streaming)
+        # (a2a-sdk 1.1.4, default_request_handler_v2.py l.335, l.426), so with
+        # streaming=False this receiver refused them. A2A v1.0 requires the same
+        # pairing from the other side (specification v1.0.1 l.574).
+        capabilities=AgentCapabilities(streaming=True),
         default_input_modes=["text/plain"],
         default_output_modes=["text/plain"],
         skills=[AgentSkill(id="answer", name="answer", description="returns the model's answer to the message text", tags=["lab"])],

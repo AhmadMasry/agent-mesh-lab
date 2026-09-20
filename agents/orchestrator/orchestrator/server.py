@@ -60,11 +60,18 @@ def app_from_env() -> Starlette:
                      plan_model_call=plan)
 
 
+# The uvicorn arguments this agent is served with, in one place so that a test
+# harness can serve the app the same way and an argument that matters cannot
+# drift between the two. Host and port are not here: they are per-deployment,
+# and a harness binds a loopback port of its own.
+SERVER_SETTINGS: dict[str, object] = {"log_level": "warning", "timeout_keep_alive": 120}
+
+
 def main() -> None:
     import uvicorn
 
     uvicorn.run(app_from_env(), host="0.0.0.0", port=int(os.environ.get("PORT", "8080")),
-                log_level="warning", timeout_keep_alive=120)
+                **SERVER_SETTINGS)
 
 
 if __name__ == "__main__":

@@ -86,6 +86,33 @@ func newRootMux(a2a http.Handler, lw *lineWriter, inj *injector) *http.ServeMux 
 	return root
 }
 
+// buildCard is this agent's card. It declares streaming because this handler
+// serves both streaming operations: a2asrv.NewHandler without
+// WithCapabilityChecks serves SendStreamingMessage and SubscribeToTask whatever
+// the card says (a2a-go v2.5.0, a2asrv/handler.go l.341, l.362), and a client
+// built from a card that does not declare it sends a unary SendMessage instead
+// (a2aclient/client.go l.109-118). Undeclared-but-served is the pairing A2A
+// v1.0 forbids (specification v1.0.1 l.574), and it is what this receiver had.
+func buildCard(name, publicURL string) *a2a.AgentCard {
+	return &a2a.AgentCard{
+		Name:         name,
+		Description:  "agent-mesh-lab agent: one model call per message",
+		Version:      "0.0.0",
+		Capabilities: a2a.AgentCapabilities{Streaming: true},
+		SupportedInterfaces: []*a2a.AgentInterface{
+			a2a.NewAgentInterface(publicURL, a2a.TransportProtocolJSONRPC),
+		},
+		DefaultInputModes:  []string{"text/plain"},
+		DefaultOutputModes: []string{"text/plain"},
+		Skills: []a2a.AgentSkill{{
+			ID:          "answer",
+			Name:        "answer",
+			Description: "returns the model's answer to the message text",
+			Tags:        []string{"lab"},
+		}},
+	}
+}
+
 // newServerHandler is the whole handler chain this process serves, in the order
 // the order matters in: the write-deadline lift outermost, then the tracing
 // instrumentation, then the root mux with the ingress ledger inside it.
@@ -142,22 +169,7 @@ func main() {
 	executor := newLabExecutor(name, newModelClient(modelBase, modelName, modelKey, modelHTTP), ledger)
 	handler := newExecutionLedger(a2asrv.NewHandler(executor), ledger)
 
-	card := &a2a.AgentCard{
-		Name:        name,
-		Description: "agent-mesh-lab agent: one model call per message",
-		Version:     "0.0.0",
-		SupportedInterfaces: []*a2a.AgentInterface{
-			a2a.NewAgentInterface(publicURL, a2a.TransportProtocolJSONRPC),
-		},
-		DefaultInputModes:  []string{"text/plain"},
-		DefaultOutputModes: []string{"text/plain"},
-		Skills: []a2a.AgentSkill{{
-			ID:          "answer",
-			Name:        "answer",
-			Description: "returns the model's answer to the message text",
-			Tags:        []string{"lab"},
-		}},
-	}
+	card := buildCard(name, publicURL)
 
 	a2aMux := http.NewServeMux()
 	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(card))
