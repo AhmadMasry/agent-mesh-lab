@@ -1,0 +1,152 @@
+# Follow-ups 19, task 4b: what each part of this directory is, and the thirteen places where a file in it says less, or
+# other, than a reader would take it to say. Written 2026-09-20 after the run, by the agent that took it, and extended
+# in that day's fix round (note 13). The recorded files are left as they were written; nothing below changes a count.
+
+WHAT THIS RECORD IS
+  Experiment A re-run whole, on the topology of 2026-09-19 (all agentic L7 through agentgateway-managed proxies) and at
+  the pins of that day, from a deleted cluster, at the tip of branch followups-19 — the commit whose subject is
+  `feat(experiments): a retry route set for lab/orchestrator and the matrix's Service-addressed Python rows`. It is the
+  re-run follow-ups 10 took on 2026-09-12 (`experiments/runs/2026-09-12-current-versions/`, entry "Experiment A / both
+  receivers / re-run against current versions"), the same committed scripts unedited, at the same REPS=20, PLUS the
+  three Service-addressed Python rows the author's note of 2026-09-19 adds (`docs/proposal-notes.md`). Every cell is
+  compared with that record's COMMITTED summary.csv files; no old run is re-derived or re-exported.
+
+WHAT IS WHERE
+  preflight/            step 0, before any cluster action: builds and tests at the tip (preflight.sh, its output, and
+                        make test's log, which preflight.sh writes as <out>.make-test.txt and which is kept here as
+                        make-test.txt, the name REBUILD-2's record used).
+  rebuild.sh build.txt timings.csv driver.txt accounting.txt
+                        the rebuild: the driver, its log (written outside the repository while it ran), one row per
+                        make target, and where every second of the build's and the proof's logs went (task 3's
+                        accounting.py, run unedited).
+  proof.sh checks.sh checks.txt checks-driver.txt checks-as-run/ versions-readback.sh versions-readback.txt
+                        the standard proof: checks.sh is REBUILD-2's file, byte for byte, run twice by proof.sh —
+                        `part1` then `knobs`, the two parts of the standard proof — with this directory's name as its
+                        second argument; part two (REBUILD-2's readings (a)-(d), which are about the commit that
+                        rebuild proved) is not run, and that is the only reading of that proof missing here.
+                        versions-readback.sh, read-only, holds the version lines of that record's reading (c), which
+                        is where the entry's Versions line is read from.
+  clean-check/ trace/ prometheus-targets.txt strict/ proxies/ cluster/ retry-knobs/
+                        part one and the knobs: the same files the last proofs hold.
+  standard-counts-vs-rebuild-2.py / .txt
+                        every count of part one and of the knobs beside REBUILD-2's, and the masked diff of
+                        cluster/facts.txt.
+  logs/                 the Experiment A phases: experiment-a.sh (the driver, one phase per invocation of it), the
+                        three phase logs as it wrote them, and the three driver outputs (one line per invocation).
+  a1-*/ a2-*/ a3-*/     the invocations' own run directories, as the committed scripts write them: one directory per
+                        repetition with the three ledgers, the client lines, spans.csv, trace.json and attribution,
+                        plus summary.csv, knobs.txt and the control files of the row.
+  compare.py comparison.csv
+                        the cell-by-cell comparison against the 2026-09-12 record's committed summary.csv files.
+  spans_diff.py spans-diff.txt
+                        what each matrix row's span multiset gained or lost per (service, operation).
+  proxy-entry-spans.py proxy-entry-spans.txt
+                        four readings the summary.csv columns do not carry, counted per row from the committed
+                        trace.json files: the proxies' entry spans (method, route, http.status, reason,
+                        retry.attempt), their attempt spans, every span carrying `lab.injection`, and the chat spans'
+                        status and error.type.
+  event-spans.py event-spans.txt
+                        the a2a-python event-queue spans per repetition, on this run's Python rows and on the
+                        2026-09-12 record's, from every committed spans.csv (note 9; written in the fix round).
+  table.py table.md     the entry's row-by-row table, rendered from comparison.csv.
+  cluster-after.sh cluster-after.txt
+                        the state the cluster is left in, reads only.
+  host-sleep.sh host-sleep.txt windows.csv host-sleep-assertion-counts.py
+                        Sleep, Wake, DarkWake and Maintenance lines in each counted window, and the counts of
+                        assertion lines naming `caffeinate`. No Assertions line is listed anywhere in this record.
+  timeline.txt          every second of this task's wall clock, from the rebuild's first line to the last reading.
+  Not committed (the repository ignores experiments/runs/**/raw/ and *.log): proxies/raw/ (the two config dumps; their
+  sizes and sha256 are in the extracts) and each matrix repetition's apply.log and collect.log.
+
+NOTES
+
+1. The drivers, and what ran once. Five background drivers, each run once, each exit 0: rebuild.sh (its log driver.txt
+   ends `driver exit=0`), proof.sh (checks-driver.txt), and logs/experiment-a.sh a1, a2, a3 (logs/driver-a*.txt, each
+   ending `phase <p> done exit=0`). No invocation was repeated and none was re-run by hand; there is no attempt 2 in
+   this record. checks.sh here is byte for byte REBUILD-2's file (one sha256 for the committed copy, the two as-run
+   copies and the value checks.txt prints, 8ee90f7d…47fb00), so its own first printed line still says "Follow-ups 19
+   task 3c readings": the file is that task's, unedited, and the only run-directory paths it holds are its arguments.
+2. Part two of checks.sh (REBUILD-2's readings (a)-(d): the running images, the A2A-Version capture, the worker's span
+   on its own injected close, the ingress ledger's line shape) was NOT run, as the brief allows: those readings are
+   about the commit that rebuild proved. Two consequences visible in this directory: `standard-counts-vs-rebuild-2.txt`
+   prints "not taken here" for the A2A-Version section and compares nothing there; and checks.sh's `mkdir -p` line
+   leaves `images/`, `ingress-shape/` and `worker-span/` empty, so git, which does not track an empty directory, holds
+   no such directory in the commit.
+3. The Versions line. It is read from the cluster by versions-readback.sh, which holds the version lines of REBUILD-2's
+   reading (c), lifted out because that reading is not taken here, plus the agentgateway images and the a2a-spec value,
+   which is not on the cluster and is read from versions.yaml (the file says so where it prints it). Its header says
+   "Reads only", and one of its lines is a `kubectl -n lab exec deploy/orchestrator -- python -c` that imports
+   `importlib.metadata` and prints two version strings (l.30): it writes nothing and changes nothing, so the label is
+   accurate in effect, but a reader checking "no cluster write" should know an `exec` is among the reads. The script is
+   an as-run file and is left as it ran. In accounting.txt
+   the 0.673 s gap between "cluster facts" and "retry knobs" is that script; it is the only thing that ran between the
+   two parts of checks.sh.
+4. What compare.py compares, and what it does not. Its committed side is the 2026-09-12 record's own output directory
+   for each item, read as committed. With that change two items moved as well, both stated in the tool's own docstring:
+   the item labelled "Gate 2 clean check (vs followups-9 rebuild #2)" is DROPPED, because its committed side would then
+   be the same file as the item above it and every row of it would print twice, and the trace item's label loses the
+   same parenthesis, it being the only trace item. No compared cell is lost by either: the dropped item's rows are the
+   kept item's rows. Items whose output this task does not produce print "not yet run": the three Gate 1
+   baselines, the openai runs 5-6, the wire version, the three ledgers, the mock's determinism check and the gateway
+   retry mechanics. Two items do compare this task's standard proof with 2026-09-12's: "Gate 2 clean check" (same in
+   every column) and "Gate 3 trace per work item" (6 differing cells, the topology and the two instruments; see the
+   entry). compare-run.txt is what the tool printed.
+5. Dry runs. A.1 and A.2 ran none, as the 2026-09-12 run did not: gate2-a1.sh and gate2-a2.sh have no dry-run mode.
+   Each of A.3's 19 invocations ran its own one-repetition dry run first, the script's own (gate3-matrix.sh l.1284-1290,
+   DRY_RUN default on): 19 `== dry run: one repetition, its directory deleted afterwards ==` lines in
+   logs/experiment-a-a3.txt, 19 distinct `a3m-…-dry` ids named there, and 0 such directories left in this record.
+6. Three read-only kubectl calls outside a script. Between the last invocation and cluster-after.txt (the 22 s gap in
+   timeline.txt) the agent ran `kubectl get pods -n lab`, `kubectl get pods -A` and `kubectl get pod a3m-curl -n lab`,
+   read-only, to explain two lines of cluster-after.txt. What they showed: `a3m-curl`, the matrix script's control pod,
+   was already gone (the script deletes it with `--wait=false` at the end of a row, gate3-matrix.sh l.596), so the pod
+   that reads Terminating and the one pod "of a curl image" in cluster-after.txt are that pod on its way out; and the
+   20 pods in phase Error are the 20 loadgen Jobs of the A.2 go-http row, whose client fails by design (`job_failed` in
+   20 of 20 rows of a2-go-http/summary.csv, as in the committed 2026-09-12 row). Nothing was written to the cluster.
+7. Finished Job pods are counted apart. cluster-after.txt reads 25 Running, 586 Completed, 20 Error, 1 Terminating;
+   486 loadgen Jobs are kept for their pod logs, and A.1's replay Jobs are among the Completed pods. A completed Job pod
+   reads ready=false, which is what a finished pod reads.
+8. A.3 r1-py-sdk gained an ingress span pair and a client POST span, and this is why. In the committed row the client's
+   two SDK-layer attempts were two ROOT spans in two traces (spans.csv there holds 2 trace ids, one the card GET, one the
+   POST that succeeded), and `make export-trace` searches Jaeger by the attribute `lab.work_item` (Makefile l.508); no
+   span of the refused attempt's trace carried it — the client's own POST span carries none (lab_work_item empty on both
+   sides) and the orchestrator opens no span for a delivery it refuses before dispatch. Since follow-ups 14 the load
+   client opens one `invoke_agent` span around the whole send, it carries `lab.work_item`, and both attempts are its
+   children in ONE trace, so the export now returns the refused attempt too: +1 loadgen `HTTP POST`, +1
+   `agentgateway-ingress POST /*` (503) and +1 `agentgateway-ingress POST orchestrator…:8080` (503). No ledger count
+   moves with it: both rows count 2 deliveries, and the committed row's client.jsonl already held attempt 1 and attempt 2.
+9. `_deliver_to_sink` is +12 on four Python rows and +10 on two. In every Python row the count of that span equals the
+   count of `…EventQueueSource.enqueue_event` in the same trace (12 and 12, or 10 and 10), and the two rows with 10 are
+   exactly the two whose Task ends FAILED (baseline py, egress py). The 10-vs-12 split is older than the moved pin:
+   counted in event-spans.txt over both records, 20 of 20 repetitions per row, the committed 2026-09-12 rows already
+   read `enqueue_event` 10 on baseline py and egress py and 12 on the other six, with `_deliver_to_sink` 0 (the method
+   does not exist at a2a-sdk 1.1.2). So the pin adds one span per event delivered to a sink and does not change how
+   many events a row enqueues. Why a failed Task enqueues two events fewer is not read from any span: cause not
+   established beyond those equalities.
+10. The chat span on a failed model call has no committed side. The GenAI spans arrived in follow-ups 14, after the
+   2026-09-12 run, so no row there has one. Read here (proxy-entry-spans.txt), 20 of 20 repetitions per row: on the Go
+   receiver the chat span reads Error with `error.type` 503 (baseline, where the mock closes and the proxy synthesises
+   503) and 500 (egress go, where the mock answers http500); on the Python receiver it reads Error with NO `error.type`
+   (baseline py, baseline py service, egress py). That is the openai-v2 instrumentation at openai 3.16.2; whether 3.13.0
+   would have set one was not measured, here or anywhere in this lab.
+11. Keep-awake. This task's scripts and commands start none and change no power setting. Keep-awake is NOT claimed
+   absent on the host: the agent harness holds its own rolling `caffeinate` per session, which this task neither starts
+   nor stops. host-sleep.txt carries the counts per window, never an Assertions line: over the whole window 284
+   assertion lines, 115 of them naming `caffeinate`, all of type PreventUserIdleSystemSleep, by action word 92
+   ClientDied + 23 Summary + 0 Created. Whether one was held at every moment is not read from the log, and no count in
+   this record depends on it. Sleep, Wake, DarkWake and Maintenance are 0 in each of the 7 windows, so no invocation
+   was cut by a host sleep.
+12. proxy-entry-spans-2026-09-12.txt is a reading of the 2026-09-12 record's committed trace.json files, not a
+   re-derivation of any compared cell: every cell of comparison.csv comes from compare.py over the two summary.csv
+   files. It exists because no summary.csv carries what the brief asks to count — a proxy entry span's http.status and
+   reason — and because that count is only meaningful beside what those older traces said.
+13. Fix round 1, 2026-09-20, one `git commit --amend` after the review of this task: no count moved, no cluster call,
+   no deployed path, and no file of the run itself rewritten. findings.md: the Comparison paragraph now names the two
+   items compare.py moved with its paths (note 4); the standard-proof bullet says it is a separate comparison and not
+   among the 49; the "row by row" sentence says a row's two trace cells share one table line; the `_deliver_to_sink`
+   bullet carries the bound of note 9; and the Interpretation ends with what the entry does not cover. This file: the
+   header's count, the WHAT IS WHERE line for event-spans, the `exec` in note 3, the dropped item in note 4, the bound
+   in note 9, and this note. Added: event-spans.py and event-spans.txt, the count note 9 cites. One observation of the
+   review is recorded and NOT acted on, by the controller's ruling: ten committed files of this record hold the
+   absolute home path and three a scratchpad path with a session identifier, most inherited from the last proof's
+   byte-identical files; the next record's drivers are to use a repository-relative `cd` and a scratch path taken from
+   the environment.

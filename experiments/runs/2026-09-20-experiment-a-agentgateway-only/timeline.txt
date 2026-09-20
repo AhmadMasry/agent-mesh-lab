@@ -1,0 +1,34 @@
+# Follow-ups 19 task 4b wall clock, 2026-09-19T21:17:16Z to 2026-09-20T02:57:15Z = 20399 s (5 h 39 min 59 s), every
+# second accounted for. Each phase ran as one background driver whose log is named; each gap between two drivers held
+# only reads of local files on this host (the driver's log, compare.py over committed and new summaries, the copies
+# into this run directory) and the start of the next driver. No cluster write happened outside a driver; the three
+# read-only kubectl calls named in reading-notes.txt note 6 fall inside the last gap.
+#
+# phase                                               from                   to                     seconds  log
+  rebuild (7 make targets)                            2026-09-19T21:17:16Z   2026-09-19T21:23:27Z      371   build.txt (per-target table in timings.csv; accounting.txt to the millisecond)
+  gap                                                 2026-09-19T21:23:27Z   2026-09-19T21:23:47Z       20
+  standard proof: checks.sh part1, versions read-back,
+    checks.sh knobs                                   2026-09-19T21:23:47Z   2026-09-19T21:27:16Z      209   checks.txt, checks-driver.txt (accounting.txt to the millisecond)
+  gap                                                 2026-09-19T21:27:16Z   2026-09-19T21:27:40Z       24
+  A.1 (6 invocations)                                 2026-09-19T21:27:40Z   2026-09-19T22:23:45Z     3365   logs/experiment-a-a1.txt
+  gap                                                 2026-09-19T22:23:45Z   2026-09-19T22:23:58Z       13
+  A.2 (7 invocations)                                 2026-09-19T22:23:58Z   2026-09-19T23:22:54Z     3536   logs/experiment-a-a2.txt
+  gap                                                 2026-09-19T23:22:54Z   2026-09-19T23:23:06Z       12
+  A.3 (19 invocations)                                2026-09-19T23:23:06Z   2026-09-20T02:56:51Z    12825   logs/experiment-a-a3.txt
+  gap                                                 2026-09-20T02:56:51Z   2026-09-20T02:57:13Z       22
+  cluster-after (reads only)                          2026-09-20T02:57:13Z   2026-09-20T02:57:15Z        2   cluster-after.txt
+# sum: 371 + 20 + 209 + 24 + 3365 + 13 + 3536 + 12 + 12825 + 22 + 2 = 20399
+#
+# per invocation (wall seconds, from logs/driver-a*.txt; 2026-09-12's own figure beside each, from that record's
+# timeline.txt; the three Service-addressed rows are new and have none):
+#   A.1  M1 go 520 (531), M1 py 562 (569), M2 go 567 (559), M2 py 581 (575), M3 go 565 (553), M3 py 570 (566)
+#   A.2  go http 480 (477), go sdk 510 (512), py http retries 513 (520), py http resend 509 (516), py sdk 506 (513),
+#        go http 503 506 (504), py http resend 503 512 (510)
+#   A.3  baseline go 693 (697), baseline py 729 (733), R1 go http 724 (716), R1 go sdk 713 (716), R1 py http 722 (717),
+#        R1 py sdk 723 (711), R2 go waypoint 713 (722), R2 go ingress 284 (282), R2 py ingress 289 (289),
+#        R2 py ingress-incluster 723 (727), R3 go 717 (716), R3 py 727 (724), R4 go 727 (724), R4 py 728 (725),
+#        egress go 724 (718), egress py 726 (737), baseline py service 719 (-), R2 py service 717 (-), R4 py service 727 (-)
+# every invocation exited 0 on its first run; none was repeated; every A.3 invocation ran its own one-repetition dry
+# run first (the script's DRY_RUN default), inside the figures above.
+# after: cluster-after.txt read at 2026-09-20T02:57:13Z (read-only), host-sleep.txt written at 02:57:56Z from
+# `pmset -g log` and `ps`.

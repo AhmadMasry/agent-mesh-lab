@@ -1,0 +1,175 @@
+# The cluster as this task leaves it, read 2026-09-20T02:57:13Z. Reads only.
+== 2026-09-20T02:57:13Z Gateways and HTTPRoutes ==
+gateways: 2 ; httproutes: 5
+== 2026-09-20T02:57:13Z retry stanzas: across every HTTPRoute, and per route ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=0
+== 2026-09-20T02:57:14Z the mock's mode: its own control lines; an inject arms, a reset clears, the last line decides ==
+control lines since the mock started: 1439; injects: 210; resets: 1229
+the last inject: {"ledger":"control","ts":"2026-09-20T02:56:16.232574467Z","endpoint":"/control/inject","detail":"{\"mode\":\"close\",\"at_count\":1}"}
+the last line:   {"ledger":"control","ts":"2026-09-20T02:56:51.118258969Z","endpoint":"/control/reset"}
+resets after the last inject: 2
+== 2026-09-20T02:57:14Z the two receivers' injectors ==
+  (a receiver writes no LEDGER line for a control call and holds its armed mode in process memory, so there is no mode to read
+   back from it. What there is: the rows of this task that arm a receiver are A.2's and A.3's R1, R2 and R4 rows; each script
+   resets the injectors it armed itself and records the 204s in its own run directory (control.txt / control-reset.txt), and
+   the last invocation of this task, A.3 R4 py service, is one of them. The worker's process log, which is not a ledger, prints a
+   line only for a close-after-read that could NOT take its connection or could not close it (agents/worker/ingress.go); a taken
+   and closed connection prints none. Such lines:)
+  worker log lines naming close-after-read: 0
+== 2026-09-20T02:57:14Z every Deployment in lab: env names starting MODEL_, CLIENT_, DOWNSTREAM_ or PLAN_; generation, ready ==
+  deploy/mockllm generation=4 ready=1/1: (none)
+  deploy/orchestrator generation=41 ready=1/1: MODEL_BASE_URL=http://model.lab.internal:8080/v1 PLAN_MODEL_CALL=off MODEL_NAME=mock MODEL_API_KEY=unused MODEL_MAX_RETRIES=0 DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+  deploy/worker generation=9 ready=1/1: MODEL_BASE_URL=http://model.lab.internal:8080/v1 MODEL_NAME=mock MODEL_API_KEY=unused
+== 2026-09-20T02:57:14Z pods: every namespace, phase counts; pods neither Running nor Succeeded; control pods left ==
+  Completed=586
+  Error=20
+  Running=25
+  Terminating=1
+pods neither Running nor Completed: 21
+pods of a curl image (the scripts' control and probe pods): 1
+loadgen Jobs left in lab (each a finished single send, kept for its pod log): 486
+a3m-curl                                              Running     0     2026-09-20T02:45:15Z
+mockllm-65bb4dd4c9-dcz2g                              Running     0     2026-09-19T21:22:14Z
+orchestrator-749d688d67-rx6qc                         Running     0     2026-09-20T02:56:47Z
+replay-a1-m1-go-waypoint-002740-01-fbt8t              Succeeded   0     2026-09-19T21:27:57Z
+replay-a1-m1-go-waypoint-002740-02-6kgzl              Succeeded   0     2026-09-19T21:28:19Z
+replay-a1-m1-go-waypoint-002740-03-bs4pn              Succeeded   0     2026-09-19T21:28:41Z
+replay-a1-m1-go-waypoint-002740-04-7wr7q              Succeeded   0     2026-09-19T21:29:03Z
+replay-a1-m1-go-waypoint-002740-05-gdsnj              Succeeded   0     2026-09-19T21:29:26Z
+replay-a1-m1-go-waypoint-002740-06-qlvxb              Succeeded   0     2026-09-19T21:29:48Z
+replay-a1-m1-go-waypoint-002740-07-9kktx              Succeeded   0     2026-09-19T21:30:10Z
+replay-a1-m1-go-waypoint-002740-08-2mwps              Succeeded   0     2026-09-19T21:30:31Z
+replay-a1-m1-go-waypoint-002740-09-lc8bj              Succeeded   0     2026-09-19T21:30:53Z
+replay-a1-m1-go-waypoint-002740-10-88pt4              Succeeded   0     2026-09-19T21:31:14Z
+replay-a1-m1-go-waypoint-002740-11-g4rd7              Succeeded   0     2026-09-19T21:31:36Z
+replay-a1-m1-go-waypoint-002740-12-bwjhl              Succeeded   0     2026-09-19T21:31:58Z
+replay-a1-m1-go-waypoint-002740-13-8gwbf              Succeeded   0     2026-09-19T21:32:19Z
+replay-a1-m1-go-waypoint-002740-14-llnfg              Succeeded   0     2026-09-19T21:32:41Z
+replay-a1-m1-go-waypoint-002740-15-8b4p8              Succeeded   0     2026-09-19T21:33:04Z
+replay-a1-m1-go-waypoint-002740-16-94jx2              Succeeded   0     2026-09-19T21:33:25Z
+replay-a1-m1-go-waypoint-002740-17-m4qbj              Succeeded   0     2026-09-19T21:33:47Z
+replay-a1-m1-go-waypoint-002740-18-zbkcs              Succeeded   0     2026-09-19T21:34:09Z
+replay-a1-m1-go-waypoint-002740-19-z4wkw              Succeeded   0     2026-09-19T21:34:30Z
+replay-a1-m1-go-waypoint-002740-20-8npgn              Succeeded   0     2026-09-19T21:34:52Z
+replay-a1-m1-py-waypoint-003620-01-cw9tt              Succeeded   0     2026-09-19T21:37:10Z
+replay-a1-m1-py-waypoint-003620-02-dtzbp              Succeeded   0     2026-09-19T21:37:32Z
+replay-a1-m1-py-waypoint-003620-03-tdz22              Succeeded   0     2026-09-19T21:37:54Z
+replay-a1-m1-py-waypoint-003620-04-nrnsx              Succeeded   0     2026-09-19T21:38:16Z
+replay-a1-m1-py-waypoint-003620-05-8kvc4              Succeeded   0     2026-09-19T21:38:38Z
+replay-a1-m1-py-waypoint-003620-06-6zbjs              Succeeded   0     2026-09-19T21:39:00Z
+replay-a1-m1-py-waypoint-003620-07-r54br              Succeeded   0     2026-09-19T21:39:21Z
+replay-a1-m1-py-waypoint-003620-08-qj9pq              Succeeded   0     2026-09-19T21:39:44Z
+replay-a1-m1-py-waypoint-003620-09-b5xs5              Succeeded   0     2026-09-19T21:40:06Z
+replay-a1-m1-py-waypoint-003620-10-6t8dv              Succeeded   0     2026-09-19T21:40:27Z
+replay-a1-m1-py-waypoint-003620-11-2kdr6              Succeeded   0     2026-09-19T21:40:50Z
+replay-a1-m1-py-waypoint-003620-12-mkzdk              Succeeded   0     2026-09-19T21:41:12Z
+replay-a1-m1-py-waypoint-003620-13-cqcdd              Succeeded   0     2026-09-19T21:41:34Z
+replay-a1-m1-py-waypoint-003620-14-59p2t              Succeeded   0     2026-09-19T21:41:57Z
+replay-a1-m1-py-waypoint-003620-15-rstgm              Succeeded   0     2026-09-19T21:42:20Z
+replay-a1-m1-py-waypoint-003620-16-4cwpl              Succeeded   0     2026-09-19T21:42:42Z
+replay-a1-m1-py-waypoint-003620-17-bh4m6              Succeeded   0     2026-09-19T21:43:04Z
+replay-a1-m1-py-waypoint-003620-18-g2ldd              Succeeded   0     2026-09-19T21:43:27Z
+replay-a1-m1-py-waypoint-003620-19-24c7s              Succeeded   0     2026-09-19T21:43:49Z
+replay-a1-m1-py-waypoint-003620-20-kw75q              Succeeded   0     2026-09-19T21:44:11Z
+replay-a1-m2-go-waypoint-004542-01-9r6k8              Succeeded   0     2026-09-19T21:46:29Z
+replay-a1-m2-go-waypoint-004542-02-bwcv2              Succeeded   0     2026-09-19T21:46:51Z
+replay-a1-m2-go-waypoint-004542-03-vqssx              Succeeded   0     2026-09-19T21:47:14Z
+replay-a1-m2-go-waypoint-004542-04-fb2tl              Succeeded   0     2026-09-19T21:47:37Z
+replay-a1-m2-go-waypoint-004542-05-gzcrm              Succeeded   0     2026-09-19T21:48:00Z
+replay-a1-m2-go-waypoint-004542-06-k45hh              Succeeded   0     2026-09-19T21:48:22Z
+replay-a1-m2-go-waypoint-004542-07-4w48t              Succeeded   0     2026-09-19T21:48:44Z
+replay-a1-m2-go-waypoint-004542-08-vw9dj              Succeeded   0     2026-09-19T21:49:06Z
+replay-a1-m2-go-waypoint-004542-09-djkxm              Succeeded   0     2026-09-19T21:49:28Z
+replay-a1-m2-go-waypoint-004542-10-q6lf8              Succeeded   0     2026-09-19T21:49:50Z
+replay-a1-m2-go-waypoint-004542-11-jn4bx              Succeeded   0     2026-09-19T21:50:15Z
+replay-a1-m2-go-waypoint-004542-12-ljrbd              Succeeded   0     2026-09-19T21:50:38Z
+replay-a1-m2-go-waypoint-004542-13-42nqc              Succeeded   0     2026-09-19T21:51:01Z
+replay-a1-m2-go-waypoint-004542-14-qqdhs              Succeeded   0     2026-09-19T21:51:24Z
+replay-a1-m2-go-waypoint-004542-15-mxn2z              Succeeded   0     2026-09-19T21:51:46Z
+replay-a1-m2-go-waypoint-004542-16-mx578              Succeeded   0     2026-09-19T21:52:08Z
+replay-a1-m2-go-waypoint-004542-17-6scpg              Succeeded   0     2026-09-19T21:52:31Z
+replay-a1-m2-go-waypoint-004542-18-fvqlx              Succeeded   0     2026-09-19T21:52:55Z
+replay-a1-m2-go-waypoint-004542-19-gz9b8              Succeeded   0     2026-09-19T21:53:18Z
+replay-a1-m2-go-waypoint-004542-20-b8v7n              Succeeded   0     2026-09-19T21:53:41Z
+replay-a1-m2-py-waypoint-005509-01-cnfgt              Succeeded   0     2026-09-19T21:56:00Z
+replay-a1-m2-py-waypoint-005509-02-pqm2x              Succeeded   0     2026-09-19T21:56:24Z
+replay-a1-m2-py-waypoint-005509-03-vlqxl              Succeeded   0     2026-09-19T21:56:48Z
+replay-a1-m2-py-waypoint-005509-04-n5hdl              Succeeded   0     2026-09-19T21:57:11Z
+replay-a1-m2-py-waypoint-005509-05-tk6n8              Succeeded   0     2026-09-19T21:57:35Z
+replay-a1-m2-py-waypoint-005509-06-tn78z              Succeeded   0     2026-09-19T21:57:58Z
+replay-a1-m2-py-waypoint-005509-07-9qv4r              Succeeded   0     2026-09-19T21:58:21Z
+replay-a1-m2-py-waypoint-005509-08-cfk6h              Succeeded   0     2026-09-19T21:58:43Z
+replay-a1-m2-py-waypoint-005509-09-zfk74              Succeeded   0     2026-09-19T21:59:06Z
+replay-a1-m2-py-waypoint-005509-10-2fp6h              Succeeded   0     2026-09-19T21:59:28Z
+replay-a1-m2-py-waypoint-005509-11-r9pgh              Succeeded   0     2026-09-19T21:59:53Z
+replay-a1-m2-py-waypoint-005509-12-m976z              Succeeded   0     2026-09-19T22:00:16Z
+replay-a1-m2-py-waypoint-005509-13-hffg4              Succeeded   0     2026-09-19T22:00:38Z
+replay-a1-m2-py-waypoint-005509-14-wj8q8              Succeeded   0     2026-09-19T22:01:01Z
+replay-a1-m2-py-waypoint-005509-15-jnnkk              Succeeded   0     2026-09-19T22:01:24Z
+replay-a1-m2-py-waypoint-005509-16-sgxs2              Succeeded   0     2026-09-19T22:01:46Z
+replay-a1-m2-py-waypoint-005509-17-kbvqb              Succeeded   0     2026-09-19T22:02:09Z
+replay-a1-m2-py-waypoint-005509-18-nx6rz              Succeeded   0     2026-09-19T22:02:32Z
+replay-a1-m2-py-waypoint-005509-19-ms29h              Succeeded   0     2026-09-19T22:02:56Z
+replay-a1-m2-py-waypoint-005509-20-rhvz8              Succeeded   0     2026-09-19T22:03:19Z
+replay-a1-m3-go-waypoint-010450-01-j5w72              Succeeded   0     2026-09-19T22:05:35Z
+replay-a1-m3-go-waypoint-010450-02-kzjhm              Succeeded   0     2026-09-19T22:05:57Z
+replay-a1-m3-go-waypoint-010450-03-b7wlh              Succeeded   0     2026-09-19T22:06:20Z
+replay-a1-m3-go-waypoint-010450-04-92t8d              Succeeded   0     2026-09-19T22:06:43Z
+replay-a1-m3-go-waypoint-010450-05-lpmdp              Succeeded   0     2026-09-19T22:07:06Z
+replay-a1-m3-go-waypoint-010450-06-hjb8m              Succeeded   0     2026-09-19T22:07:28Z
+replay-a1-m3-go-waypoint-010450-07-6f8vh              Succeeded   0     2026-09-19T22:07:51Z
+replay-a1-m3-go-waypoint-010450-08-mv8qp              Succeeded   0     2026-09-19T22:08:14Z
+replay-a1-m3-go-waypoint-010450-09-2z22j              Succeeded   0     2026-09-19T22:08:37Z
+replay-a1-m3-go-waypoint-010450-10-jggt6              Succeeded   0     2026-09-19T22:08:59Z
+replay-a1-m3-go-waypoint-010450-11-qh9jf              Succeeded   0     2026-09-19T22:09:21Z
+replay-a1-m3-go-waypoint-010450-12-q6gsf              Succeeded   0     2026-09-19T22:09:43Z
+replay-a1-m3-go-waypoint-010450-13-8xj4z              Succeeded   0     2026-09-19T22:10:06Z
+replay-a1-m3-go-waypoint-010450-14-7znht              Succeeded   0     2026-09-19T22:10:29Z
+replay-a1-m3-go-waypoint-010450-15-c84pr              Succeeded   0     2026-09-19T22:10:52Z
+replay-a1-m3-go-waypoint-010450-16-9jn2w              Succeeded   0     2026-09-19T22:11:15Z
+replay-a1-m3-go-waypoint-010450-17-56phf              Succeeded   0     2026-09-19T22:11:38Z
+replay-a1-m3-go-waypoint-010450-18-scj7q              Succeeded   0     2026-09-19T22:12:01Z
+replay-a1-m3-go-waypoint-010450-19-q9mhl              Succeeded   0     2026-09-19T22:12:24Z
+replay-a1-m3-go-waypoint-010450-20-k6vjv              Succeeded   0     2026-09-19T22:12:46Z
+replay-a1-m3-py-waypoint-011415-01-srg2z              Succeeded   0     2026-09-19T22:15:08Z
+replay-a1-m3-py-waypoint-011415-02-lv284              Succeeded   0     2026-09-19T22:15:30Z
+replay-a1-m3-py-waypoint-011415-03-sbpp9              Succeeded   0     2026-09-19T22:15:52Z
+replay-a1-m3-py-waypoint-011415-04-77hq2              Succeeded   0     2026-09-19T22:16:14Z
+replay-a1-m3-py-waypoint-011415-05-g4mpp              Succeeded   0     2026-09-19T22:16:37Z
+replay-a1-m3-py-waypoint-011415-06-kdx2c              Succeeded   0     2026-09-19T22:16:59Z
+replay-a1-m3-py-waypoint-011415-07-ngdl2              Succeeded   0     2026-09-19T22:17:22Z
+replay-a1-m3-py-waypoint-011415-08-8wp6p              Succeeded   0     2026-09-19T22:17:46Z
+replay-a1-m3-py-waypoint-011415-09-g7mgt              Succeeded   0     2026-09-19T22:18:08Z
+replay-a1-m3-py-waypoint-011415-10-6ngbp              Succeeded   0     2026-09-19T22:18:30Z
+replay-a1-m3-py-waypoint-011415-11-bw5zh              Succeeded   0     2026-09-19T22:18:53Z
+replay-a1-m3-py-waypoint-011415-12-zlp5x              Succeeded   0     2026-09-19T22:19:15Z
+replay-a1-m3-py-waypoint-011415-13-qbhj4              Succeeded   0     2026-09-19T22:19:38Z
+replay-a1-m3-py-waypoint-011415-14-wddpj              Succeeded   0     2026-09-19T22:20:00Z
+replay-a1-m3-py-waypoint-011415-15-jvlzk              Succeeded   0     2026-09-19T22:20:22Z
+replay-a1-m3-py-waypoint-011415-16-4tvsc              Succeeded   0     2026-09-19T22:20:44Z
+replay-a1-m3-py-waypoint-011415-17-rfn2f              Succeeded   0     2026-09-19T22:21:07Z
+replay-a1-m3-py-waypoint-011415-18-8wf7q              Succeeded   0     2026-09-19T22:21:29Z
+replay-a1-m3-py-waypoint-011415-19-zhgkb              Succeeded   0     2026-09-19T22:21:51Z
+replay-a1-m3-py-waypoint-011415-20-zfm7g              Succeeded   0     2026-09-19T22:22:14Z
+worker-75f69b8d59-gjzqb                               Running     0     2026-09-20T01:44:28Z
+== 2026-09-20T02:57:15Z helm releases ==
+  agentgateway         agentgateway-system  deployed   agentgateway-v1.5.0
+  agentgateway-crds    agentgateway-system  deployed   agentgateway-crds-v1.5.0
+  istio-base           istio-system         deployed   base-1.31.0
+  istio-cni            istio-system         deployed   cni-1.31.0
+  istiod               istio-system         deployed   istiod-1.31.0
+  jaeger               telemetry            deployed   jaeger-4.13.1
+  otel-collector       telemetry            deployed   opentelemetry-collector-0.173.1
+  prometheus           telemetry            deployed   prometheus-29.31.1
+  ztunnel              istio-system         deployed   ztunnel-1.31.0
+== 2026-09-20T02:57:15Z ztunnel's certificates, worker node ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           f4180ecf283e9ff7d63b3718bc3b5882     2026-09-26T21:21:34Z     2026-09-19T21:19:34Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           e846e866cec8c63c5d949178f9030f80     2036-09-16T21:19:35Z     2026-09-19T21:19:35Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           747f12e48d3800aae848836e67087f17     2026-09-26T21:20:26Z     2026-09-19T21:18:26Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           e846e866cec8c63c5d949178f9030f80     2036-09-16T21:19:35Z     2026-09-19T21:19:35Z

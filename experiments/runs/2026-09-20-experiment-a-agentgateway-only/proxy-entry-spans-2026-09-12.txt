@@ -1,0 +1,256 @@
+== a3-baseline-go: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 503 | UpstreamFailure | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | - | Error
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure on route agentgateway-egress/model-via-agw: 20 in all, over 20 of 20 reps (retry.attempt=-)
+
+== a3-baseline-py: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/orchestrator-ingress | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET | lab/_waypoint-default | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 503 | UpstreamFailure | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | - | Error
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure on route agentgateway-egress/model-via-agw: 20 in all, over 20 of 20 reps (retry.attempt=-)
+
+== a3-egress-go: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 500 | - | 1
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  40 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 500 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure: 0
+
+== a3-egress-py: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/orchestrator-ingress | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET | lab/_waypoint-default | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 500 | - | 1
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  40 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 500 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure: 0
+
+== a3-r1-go-http: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST | lab/worker | 503 | UpstreamFailure | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | - | Error
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure on route lab/worker: 20 in all, over 20 of 20 reps (retry.attempt=-)
+
+== a3-r1-go-sdk: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST | lab/worker | 503 | UpstreamFailure | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | - | Error
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure on route lab/worker: 20 in all, over 20 of 20 reps (retry.attempt=-)
+
+== a3-r1-py-http: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/orchestrator-ingress | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/orchestrator-ingress | 503 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET | lab/_waypoint-default | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 503 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure: 0
+
+== a3-r1-py-sdk: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/orchestrator-ingress | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET | lab/_waypoint-default | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure: 0
+
+== a3-r2-go-ingress: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/worker-ingress | 200 | - | 1
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST worker.lab.svc.cluster.local:8080 | 503 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure: 0
+
+== a3-r2-go-waypoint: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST | lab/worker | 200 | - | 1
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | 503 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure: 0
+
+== a3-r2-py-ingress: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/orchestrator-ingress | 200 | - | 1
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 503 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure: 0
+
+== a3-r2-py-ingress-incluster: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/orchestrator-ingress | 200 | - | 1
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET | lab/_waypoint-default | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 503 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure: 0
+
+== a3-r3-go: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 503 | UpstreamFailure | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | - | Error
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure on route agentgateway-egress/model-via-agw: 20 in all, over 20 of 20 reps (retry.attempt=-)
+
+== a3-r3-py: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/orchestrator-ingress | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET | lab/_waypoint-default | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 503 | UpstreamFailure | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | - | Error
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure on route agentgateway-egress/model-via-agw: 20 in all, over 20 of 20 reps (retry.attempt=-)
+
+== a3-r4-go: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET | lab/worker | 200 | - | -
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST | lab/worker | 200 | - | 1
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 503 | UpstreamFailure | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | GET worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint | POST worker.lab.svc.cluster.local:8080 | 503 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | - | Error
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure on route agentgateway-egress/model-via-agw: 20 in all, over 20 of 20 reps (retry.attempt=-)
+
+== a3-r4-py: 20 repetitions with a trace.json
+  proxy ENTRY spans (service, method, route, http.status, reason, retry.attempt):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST | lab/orchestrator-ingress | 200 | - | 1
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET | lab/_waypoint-default | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 200 | - | -
+    in 20 of 20 reps,  20 in all: agw-egress | POST | agentgateway-egress/model-via-agw | 503 | UpstreamFailure | -
+  proxy ATTEMPT spans (service, name, http.status, span status):
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-ingress | POST orchestrator.lab.svc.cluster.local:8080 | 503 | Unset
+    in 20 of 20 reps,  20 in all: agentgateway-waypoint-orch | GET orchestrator.lab.svc.cluster.local:8080 | 200 | Unset
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | - | Error
+    in 20 of 20 reps,  20 in all: agw-egress | POST mockllm.lab.svc.cluster.local:8080 | 200 | Unset
+  spans carrying lab.injection (service, name, lab.injection, span status, status message, http.response.status_code):
+    (none)
+  chat spans (service, span status, error.type):
+    (none)
+  entry spans reading 503 / UpstreamFailure on route agentgateway-egress/model-via-agw: 20 in all, over 20 of 20 reps (retry.attempt=-)
+

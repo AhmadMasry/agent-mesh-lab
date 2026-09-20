@@ -1,0 +1,217 @@
+# A.3 matrix rows: spans gained (+) and lost (-) per repetition, current against committed, by (service, operation).
+# Built by spans_diff.py from every a3m-*/spans.csv of both run directories.
+
+== A.3 baseline-go: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 12 -> 14
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET worker.lab.svc.cluster.local:8080
+      + 2  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  agw-central                  POST worker.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent worker
+      + 1  worker                       chat mock
+      - 1  agentgateway-waypoint        GET /*
+      - 1  agentgateway-waypoint        GET worker.lab.svc.cluster.local:8080
+      - 1  agentgateway-waypoint        POST /*
+      - 1  agentgateway-waypoint        POST worker.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 baseline-py: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 55 -> 67
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET orchestrator.lab.svc.cluster.local:8080
+      + 1  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent orchestrator
+      + 10  orchestrator                 a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink
+      + 1  orchestrator                 chat mock
+      - 1  agentgateway-waypoint-orch   GET /*
+      - 1  agentgateway-waypoint-orch   GET orchestrator.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r1-go-http: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 15 -> 17
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET worker.lab.svc.cluster.local:8080
+      + 3  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 2  agw-central                  POST worker.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent worker
+      + 1  worker                       chat mock
+      - 1  agentgateway-waypoint        GET /*
+      - 1  agentgateway-waypoint        GET worker.lab.svc.cluster.local:8080
+      - 2  agentgateway-waypoint        POST /*
+      - 2  agentgateway-waypoint        POST worker.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r1-go-sdk: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 16 -> 18
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET worker.lab.svc.cluster.local:8080
+      + 3  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 2  agw-central                  POST worker.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent worker
+      + 1  worker                       chat mock
+      - 1  agentgateway-waypoint        GET /*
+      - 1  agentgateway-waypoint        GET worker.lab.svc.cluster.local:8080
+      - 2  agentgateway-waypoint        POST /*
+      - 2  agentgateway-waypoint        POST worker.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r1-py-http: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 62 -> 76
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET orchestrator.lab.svc.cluster.local:8080
+      + 1  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent orchestrator
+      + 12  orchestrator                 a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink
+      + 1  orchestrator                 chat mock
+      - 1  agentgateway-waypoint-orch   GET /*
+      - 1  agentgateway-waypoint-orch   GET orchestrator.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r1-py-sdk: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 60 -> 77
+      + 1  agentgateway-ingress         POST /*
+      + 1  agentgateway-ingress         POST orchestrator.lab.svc.cluster.local:8080
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET orchestrator.lab.svc.cluster.local:8080
+      + 1  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  loadgen                      HTTP POST
+      + 1  loadgen                      invoke_agent orchestrator
+      + 12  orchestrator                 a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink
+      + 1  orchestrator                 chat mock
+      - 1  agentgateway-waypoint-orch   GET /*
+      - 1  agentgateway-waypoint-orch   GET orchestrator.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r2-go-waypoint: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 14 -> 16
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET worker.lab.svc.cluster.local:8080
+      + 2  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 2  agw-central                  POST worker.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent worker
+      + 1  worker                       chat mock
+      - 1  agentgateway-waypoint        GET /*
+      - 1  agentgateway-waypoint        GET worker.lab.svc.cluster.local:8080
+      - 1  agentgateway-waypoint        POST /*
+      - 2  agentgateway-waypoint        POST worker.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r2-go-ingress: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 9 -> 10
+      + 1  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  worker                       chat mock
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r2-py-ingress: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 54 -> 67
+      + 1  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 12  orchestrator                 a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink
+      + 1  orchestrator                 chat mock
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r2-py-ingress-incluster: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 61 -> 75
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET orchestrator.lab.svc.cluster.local:8080
+      + 1  agw-central                  POST /*
+      + 1  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent orchestrator
+      + 12  orchestrator                 a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink
+      + 1  orchestrator                 chat mock
+      - 1  agentgateway-waypoint-orch   GET /*
+      - 1  agentgateway-waypoint-orch   GET orchestrator.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 1  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r3-go: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 15 -> 17
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET worker.lab.svc.cluster.local:8080
+      + 3  agw-central                  POST /*
+      + 2  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  agw-central                  POST worker.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent worker
+      + 1  worker                       chat mock
+      - 1  agentgateway-waypoint        GET /*
+      - 1  agentgateway-waypoint        GET worker.lab.svc.cluster.local:8080
+      - 1  agentgateway-waypoint        POST /*
+      - 1  agentgateway-waypoint        POST worker.lab.svc.cluster.local:8080
+      - 2  agw-egress                   POST /*
+      - 2  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r3-py: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 64 -> 78
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET orchestrator.lab.svc.cluster.local:8080
+      + 2  agw-central                  POST /*
+      + 2  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent orchestrator
+      + 12  orchestrator                 a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink
+      + 1  orchestrator                 chat mock
+      - 1  agentgateway-waypoint-orch   GET /*
+      - 1  agentgateway-waypoint-orch   GET orchestrator.lab.svc.cluster.local:8080
+      - 2  agw-egress                   POST /*
+      - 2  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r4-go: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 17 -> 19
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET worker.lab.svc.cluster.local:8080
+      + 3  agw-central                  POST /*
+      + 2  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 2  agw-central                  POST worker.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent worker
+      + 1  worker                       chat mock
+      - 1  agentgateway-waypoint        GET /*
+      - 1  agentgateway-waypoint        GET worker.lab.svc.cluster.local:8080
+      - 1  agentgateway-waypoint        POST /*
+      - 2  agentgateway-waypoint        POST worker.lab.svc.cluster.local:8080
+      - 2  agw-egress                   POST /*
+      - 2  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 r4-py: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 65 -> 79
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET orchestrator.lab.svc.cluster.local:8080
+      + 2  agw-central                  POST /*
+      + 2  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent orchestrator
+      + 12  orchestrator                 a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink
+      + 1  orchestrator                 chat mock
+      - 1  agentgateway-waypoint-orch   GET /*
+      - 1  agentgateway-waypoint-orch   GET orchestrator.lab.svc.cluster.local:8080
+      - 2  agw-egress                   POST /*
+      - 2  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 egress-go: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 14 -> 16
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET worker.lab.svc.cluster.local:8080
+      + 2  agw-central                  POST /*
+      + 2  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  agw-central                  POST worker.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent worker
+      + 1  worker                       chat mock
+      - 1  agentgateway-waypoint        GET /*
+      - 1  agentgateway-waypoint        GET worker.lab.svc.cluster.local:8080
+      - 1  agentgateway-waypoint        POST /*
+      - 1  agentgateway-waypoint        POST worker.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 2  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
+== A.3 egress-py: committed 20 spans.csv (1 distinct span multisets), current 20 (1 distinct)
+   current x20 vs committed x20: spans 57 -> 69
+      + 1  agw-central                  GET /*
+      + 1  agw-central                  GET orchestrator.lab.svc.cluster.local:8080
+      + 1  agw-central                  POST /*
+      + 2  agw-central                  POST mockllm.lab.svc.cluster.local:8080
+      + 1  loadgen                      invoke_agent orchestrator
+      + 10  orchestrator                 a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink
+      + 1  orchestrator                 chat mock
+      - 1  agentgateway-waypoint-orch   GET /*
+      - 1  agentgateway-waypoint-orch   GET orchestrator.lab.svc.cluster.local:8080
+      - 1  agw-egress                   POST /*
+      - 2  agw-egress                   POST mockllm.lab.svc.cluster.local:8080
