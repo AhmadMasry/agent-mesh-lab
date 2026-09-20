@@ -1,7 +1,5 @@
 # agent-mesh-lab
 
-> **2026-09-19 — the topology changed on branch `followups-18` and this text is being re-taken.** Every L7 proxy is now under agentgateway's own control plane (one proxy, `agw-central`, is the waypoint for both agents and the egress for the model host); the istiod-driven waypoints, the separate egress proxy and the step-3 Telemetry objects are retired. Until this banner is removed, what is below describes the previous topology: read `docs/proposal-notes.md` (the note of that day) and the newest entry in `findings.md` instead of following it.
-
 Can you retry an agent? A reproducible lab for A2A failure semantics on Kubernetes.
 
 ## What this is
@@ -11,12 +9,12 @@ An experiment lab that produces counted, traced findings about how A2A agent tra
 ## Read in this order
 
 1. `docs/PROPOSAL.md` — the experiment design, v6, frozen. It is not edited; anything that would change it goes to `docs/proposal-notes.md` for a human decision.
-2. `docs/experiment-a-checklist.md` — the working checklist for Experiment A, gate by gate. Every box ends with something recorded, not something built.
+2. `docs/experiment-a-checklist.md` — Experiment A's checklist, gate by gate, closed on 2026-09-19 with every box ticked. It is history; the Experiment A work done since is in `findings.md`.
 3. `findings.md` — one entry per gate, receiver, and mode or run. Numbers first, interpretation second. No entry without a run.
 4. `versions.yaml` — every pin with the URL it was verified from. No value without a source.
-5. `docs/walkthrough.md` — the step-by-step lab: from a deleted cluster to five Experiment A rows, every command runnable as written and every output taken from one run.
+5. `docs/walkthrough.md` — the step-by-step lab: from a deleted cluster to six Experiment A rows, every command runnable as written and every output taken from one run.
 
-Progress is read from the checklist and `findings.md`, not from this file.
+Progress is read from `findings.md` and the dated notes in `docs/proposal-notes.md`, not from this file.
 
 ## Method in one paragraph
 
@@ -75,12 +73,17 @@ it is committed.
 
 Istio, the agentgateway control plane and the three telemetry components are
 installed by Helm and by no other route. Helm is a requirement: without `helm` on
-PATH, a `make` command line that names `step-2`, `step-2b` or `step-3` stops while
-make reads the Makefile, with a message naming those goals, so no goal on that line
-runs — `make step-1 step-2` runs neither, and `make -n` stops the same way. The
-demonstration, before and after the check moved there, is
-`experiments/runs/2026-09-15-ingress-namespace/guard/`, and `make -n step-2 step-2b
-step-3` with helm on PATH is committed as
+PATH, a `make` command line that names `step-2` or `step-3` — the two goals whose
+recipes call helm — stops while make reads the Makefile, with a message naming
+those goals, so no goal on that line runs: `make step-1 step-2` runs neither, and
+`make -n` stops the same way. `step-2b` left that list on 2026-09-19, when its two
+Helm installs moved to step 2 and its recipe stopped calling helm; it parses and
+runs without helm on PATH, and it still needs a host that has helm, because it
+applies on top of step 2. The demonstration of the check, before and after it
+moved to parse time, is `experiments/runs/2026-09-15-ingress-namespace/guard/`,
+taken on 2026-09-15 when the list also held `step-2b`, which is why its last two
+readings show that goal stopping too; and `make -n step-2 step-2b step-3` with
+helm on PATH, as the targets were that day, is committed as
 `experiments/runs/2026-09-15-ingress-namespace/make-n.txt`.
 
 | Component | Route |
@@ -137,15 +140,15 @@ The agentgateway **controller** is outside the mesh because its namespace is.
 `agentgateway-system` holds the control plane only and is not labelled ambient; the
 ingress Gateway and its proxy run in a namespace of their own, `agentgateway-ingress`,
 which the step-2b overlay creates with the ambient label. Three clients reach the
-controller. Two are outside the mesh and speak plaintext to it: the egress waypoint's XDS
+controller. Two are outside the mesh and speak plaintext to it: `agw-central`'s XDS
 on 9978, and Prometheus's scrape of 9092. The third is the ingress proxy, which since
 this change dials XDS from inside the mesh, across the namespace boundary.
 Until follow-ups 12 (2026-09-15) the ingress ran in `agentgateway-system`, as in the
 example on agentgateway's ambient-ingress page, and `make step-2b` labelled that whole
 namespace for the ingress *proxy*'s sake, which captured the controller too. On the
 from-scratch rebuild of 2026-09-12 ztunnel refused the scrape under mesh-wide STRICT,
-naming the policy, and the egress waypoint's XDS dial was reset, so it never became
-ready; the older cluster had masked it because that XDS stream predated the policy and
+naming the policy, and the then-separate egress proxy's XDS dial was reset, so it never
+became ready; the older cluster had masked it because that XDS stream predated the policy and
 ztunnel enforces per connection. The remedy then was a per-pod opt-out,
 `istio.io/dataplane-mode: none` through the chart's `podLabels`; the namespace of its
 own replaced it, and the controller pod carries no label of this lab's. The page's
@@ -347,9 +350,9 @@ Service and therefore the waypoint; run types 5-7 exercise the orchestrator's
 own model client or a keep-alive connection to the model, neither of which is
 behind it, and were counted once in the step-1 entry.)
 
-Step 2b adds two more agentgateway proxies under agentgateway's own control
-plane, an ingress in front of Agent A and an egress waypoint between Agent B and
-the model, and counts the same four run types through them (`RUN4_URL` sends run
+Step 2b adds the agentgateway ingress in front of Agent A and gives `agw-central`
+the model host as well, so both agents' model calls leave through the same proxy,
+and counts the same four run types through them (`RUN4_URL` sends run
 4 in through the ingress; the other three enter at the worker):
 
 ```
@@ -358,11 +361,11 @@ make step-2b && STEP=2b REPS=5 RUNS="1 2 3 4" \
   experiments/gate1-baseline.sh
 ```
 
-Step 2c adds the Gate 2 stimulus paths. It gives the orchestrator Service a
-second istiod-driven waypoint of its own, so an in-cluster stimulus to either
-receiver traverses a waypoint, and gives the worker its own hostname on the
-step-2b ingress, so an out-of-cluster stimulus can reach either receiver. It
-applies on top of step 2b:
+Step 2c adds the Gate 2 stimulus paths. It gives the orchestrator Service its own
+hostname route on `agw-central` and binds that Service to it, so an in-cluster
+stimulus to either receiver crosses the waypoint, and gives the worker its own
+hostname on the step-2b ingress, so an out-of-cluster stimulus can reach either
+receiver. It applies on top of step 2b:
 
 ```
 make step-2c
@@ -382,20 +385,23 @@ make ledgers LWI=<id> OUT=<dir>
 ```
 
 `VIA=waypoint` runs the harness as an in-cluster Job, whose pod is
-ztunnel-captured, so the request traverses the receiver's own istiod-driven
-waypoint; `make ledgers` reads its two client lines from the pod log. `VIA=ingress`
+ztunnel-captured, so the request traverses `agw-central` on the receiving
+Service's own route; `make ledgers` reads its two client lines from the pod log. `VIA=ingress`
 runs the harness on this host through a `kubectl port-forward` to the ingress
 Service, and with `OUT` writes the two client lines to `<OUT>/client.jsonl`,
 which `make ledgers OUT=<dir>` then keeps rather than overwriting. The name is
 `VIA` and not `PATH` because a command-line `PATH=` assignment is exported into
 every recipe's shell.
 
-Each receiver Service has a waypoint of its own rather than the two sharing one,
-and the out-of-cluster path carries no waypoint at all because the agentgateway
-ingress dials the backend pod rather than the Service VIP. Both facts were
-measured; they are recorded in `deploy/step-2c-gate2/kustomization.yaml`, in a
-dated note in `docs/proposal-notes.md`, and as a draft issue in
-`docs/upstream/`.
+Both receiver Services are bound to the one proxy `agw-central`, each with a
+hostname-matched route of its own, and the out-of-cluster path carries no waypoint
+at all because the agentgateway ingress dials the backend pod rather than the
+Service VIP. Until 2026-09-19 the two receivers had one istiod-driven waypoint
+each, because a single shared istiod-driven waypoint was measured to misroute;
+that class of waypoint is retired here by the author's decision of that day, and
+the measurement, the draft issue in `docs/upstream/` and what supersedes them are
+recorded in `deploy/step-2c-gate2/kustomization.yaml` and in the dated notes in
+`docs/proposal-notes.md`.
 
 mTLS is enforced, not merely available. `deploy/step-2-ambient-agw/peer-authentication.yaml`
 is a mesh-wide STRICT `PeerAuthentication` in the root namespace, with the
@@ -406,9 +412,9 @@ policy and `Recv failure: Connection reset by peer` under it, for both agents.
 Three other choices make that hold for the lab's own traffic, and all three are
 deliberate rather than incidental. The mock model **opts out of ambient**
 (`istio.io/dataplane-mode: none` in `deploy/base/mockllm.yaml`): it stands in for
-an external provider, so the egress waypoint's call to it is this lab's external
-plaintext leg, and a captured mock refused that call when STRICT was first
-applied. The agentgateway ingress pod's metrics port gets one port-level
+an external provider, so `agw-central`'s call to it on the model route is this
+lab's external plaintext leg, and a captured mock refused that call when STRICT
+was first applied. The agentgateway ingress pod's metrics port gets one port-level
 exception (`deploy/step-2b-agw-ingress-egress/peer-authentication-ingress-metrics.yaml`,
 `portLevelMtls: {15020: PERMISSIVE}`, in the ingress's namespace), because Prometheus
 runs outside the mesh and its scrape is plaintext into a captured pod; without it that
@@ -418,15 +424,15 @@ current Istio page — it is measured here, and the file says so. And the agentg
 `agentgateway-ingress`, which is enrolled, and `agentgateway-system`, which holds only
 the controller, is not. The controller is infrastructure, not the traffic path — it
 serves XDS over its own TLS and carries no agentgateway traffic. Two of its three clients
-speak plaintext to it from outside the mesh: the egress proxy, outside by agentgateway's
-documented egress shape, and Prometheus. The third is the ingress proxy, which dials it
-from inside the mesh, across the namespace boundary.
+speak plaintext to it from outside the mesh: `agw-central`, whose own namespace is
+unenrolled by agentgateway's documented egress shape, and Prometheus. The third is the
+ingress proxy, which dials it from inside the mesh, across the namespace boundary.
 
 This was found late, on a from-scratch rebuild on 2026-09-12, when the ingress
 still shared the controller's namespace and that namespace was enrolled: ztunnel
 refused Prometheus's scrape of the controller under STRICT, naming the policy,
-and the egress proxy's XDS dial was reset, so it never became ready. The earlier
-cluster had hidden it, because the egress proxy's XDS stream there had been
+and the then-separate egress proxy's XDS dial was reset, so it never became ready. The
+earlier cluster had hidden it, because that proxy's XDS stream there had been
 opened before the policy — on 2026-09-12 itself, after the controller's last
 restart — and ztunnel enforces per connection; so a rebuild from a deleted
 cluster is the test for any change to who is captured. The fix then was a
@@ -435,8 +441,8 @@ moved to its own namespace and the opt-out went.
 
 The `telemetry` namespace stays **out** of the mesh on purpose. An in-mesh
 collector would enforce mTLS on inbound OTLP and so refuse the spans of every
-emitter that is not ztunnel-captured — the mock, the egress proxy and both
-waypoints — and the trace would lose exactly the hops step 3 works to light up.
+emitter that is not ztunnel-captured — the mock and `agw-central` — and the trace
+would lose exactly the hops step 3 works to light up.
 
 The counts, both attempts, and the per-hop connection security from ztunnel's
 `istio_tcp_connections_opened_total` are the findings entry
@@ -445,8 +451,10 @@ The counts, both attempts, and the per-hop connection security from ztunnel's
 flows reads `mutual_tls`, the two agentgateway-terminated legs have no ztunnel
 series at all because each proxy terminates HBONE under its own identity, and
 under the shipped shape the model leg has no receiving ztunnel to report. Traces
-are unchanged at 66 and 12 spans with no dangling parent and no dark hop, so
-enforcement cost no observability.
+were unchanged at 66 and 12 spans with no dangling parent and no dark hop, the
+figures of that date, so enforcement cost no observability. The same shape was counted again on the
+topology of 2026-09-19 in `## Gate 3 / both receivers / topology`: every mesh leg
+reads `mutual_tls` there too, and plaintext is still refused.
 
 `experiments/gate2-a1.sh` runs one A.1 box end to end: for one mode and one
 receiver it sends the duplicate `REPS` times over each path and writes one row
@@ -483,10 +491,11 @@ CLIENT=go LAYER=http RETRY_ON=transport+503 REPS=20 experiments/gate2-a2.sh
 CLIENT=py LAYER=http PY_HTTP_KNOB=resend REPS=20 experiments/gate2-a2.sh
 ```
 
-Neither SDK offers a retry, so the retry is the lab's own and it is opt-in.
-`CLIENT_RETRIES`, `CLIENT_TRANSPORT_RESEND` and `CLIENT_SDK_RESEND` all default
-to off, each has a unit test that fails if that default changes, and this script
-is the only thing that switches one on — through the Job template
+Neither SDK offers a retry, so the retry is the lab's own and it is opt-in. The
+three retry knobs are `CLIENT_RETRIES` and `CLIENT_SDK_RESEND`, which both
+clients have, and `CLIENT_TRANSPORT_RESEND`, which is the orchestrator's alone;
+they all default to off, each has a unit test that fails if that default changes,
+and this script is the only thing that switches one on — through the Job template
 `deploy/base/loadgen-a2-job.yaml` for the Go client, and through
 `kubectl set env` on the orchestrator, with the pre-run values recorded and
 restored on exit, for the Python one. The failure the client is asked to retry is
@@ -494,13 +503,24 @@ one `close-after-read` armed at the worker for the repetition's work item, which
 counts the arrival and then takes the connection away.
 
 `CLIENT_RETRY_ON` says what the HTTP-layer resend acts on, and it matters here
-because of what the waypoint does: `transport`, the default, is a transport error
-only, and a receiver-side connection close never reaches the client as one,
-because the worker's waypoint answers 503 for it (measured on both hops in
+because of what the proxy in front of the receiver does: `transport`, the default,
+is a transport error only, and a receiver-side connection close never reaches the
+client as one, because that proxy answers 503 for it (measured on both hops in
 `experiments/runs/2026-09-09-a2-go-http/waypoint-503-probe.txt`). `transport+503`
 also re-sends once on a 503, and on no other status. Both modes are run and both
 are recorded. The mode is not a switch: with no HTTP-layer resend on there is
 nothing to widen, and the script refuses the mode on rows that have none.
+
+The load client reads four `CLIENT_*` variables — `CLIENT_RETRIES`,
+`CLIENT_SDK_RESEND` and `CLIENT_RETRY_ON` above, and `CLIENT_DIAL`. The fourth is
+**not** a retry knob and re-sends nothing. It says where the client sends after
+it has resolved the agent card: unset or empty — its value on every row but the matrix's
+`SUB=service` ones — the client sends to the URL the card advertises, which is
+what it has always done; `target` makes it send to the address it resolved the
+card at instead. It takes those two values and no others, and an unknown value
+stops the Job with exit 2 before anything is sent, where an unknown retry-knob
+value would not. The Job template renders all four of these variables at every
+row, so no row can leave one on by forgetting it.
 
 Rows land in
 `experiments/runs/<date>-a2-<client>-<layer>[-<knob>]/summary.csv`, each carrying
@@ -518,9 +538,9 @@ step 2c and adds only new objects: a `telemetry` namespace holding an
 OpenTelemetry Collector, a Jaeger v2 trace backend and Prometheus.
 
 The three components are installed from their charts. `deploy/step-3-stress`
-carries step 3's *configuration* — the namespace, the Istio `Telemetry` resources,
-the two agentgateway policies, the waypoint ConfigMap and the three Deployment
-patches — and `make step-3` applies it before the three `helm upgrade -i` calls.
+carries step 3's *configuration* — the namespace, the two `AgentgatewayPolicy`
+pairs and the three Deployment patches — and `make step-3` applies it before the
+three `helm upgrade -i` calls.
 No OpenTelemetry Operator is installed: the Python agent starts under the
 OpenTelemetry distro's `opentelemetry-instrument` launcher, installed in its own
 image (see below), and the Operator's injection route was measured in four states
@@ -547,10 +567,10 @@ What it leaves running:
 | Trace backend | `jaeger.telemetry` | 4317 and 4318 in, 16686 its own query UI and API |
 | Prometheus | `prometheus.telemetry` | 9090 |
 
-Prometheus scrapes four jobs: `istiod` on `:15014/metrics`, `ztunnel` on
-`:15020/metrics`, `agentgateway-proxies` on `:15020/metrics` (the two
-istiod-driven waypoints, the ingress and the egress, selected by the
-`gateway.networking.k8s.io/gateway-name` label the controllers put on them), and
+Prometheus scrapes five jobs: `istiod` on `:15014/metrics`, `ztunnel` on
+`:15020/metrics`, `agentgateway-proxies` on `:15020/metrics` (`agw-central` and
+the ingress, selected by the `gateway.networking.k8s.io/gateway-name` label the
+controller puts on them), `agentgateway-controlplane` on `:9092/metrics`, and
 the collector's own endpoint. Read them with
 `curl http://prometheus.telemetry.svc.cluster.local:9090/api/v1/targets` from
 inside the cluster, or through a port-forward.
@@ -570,7 +590,7 @@ step-3`, which pipes through `ko`.
 
 The agentgateway-driven proxies report on three channels, and only two of
 them are OTLP at v1.5.0. Traces and access logs go to the collector: each of
-the ingress and the egress waypoint carries an `AgentgatewayPolicy` with
+the ingress and `agw-central` carries an `AgentgatewayPolicy` with
 `frontend.tracing` and one with `frontend.accessLog.otlp`, and the collector
 grew a `logs` pipeline whose only exporter is `debug`, so records are counted
 rather than stored. Turning OTLP access logs on takes nothing away, because the
@@ -584,41 +604,26 @@ carrying `gateway.networking.k8s.io/gateway-name` and the controller pod carries
 none. The control plane documents no tracing of its own, so it contributes
 metrics and nothing else.
 
-Istio's own tracing configuration is here too, in two pieces. The mesh
-configuration, the `meshConfig` block of `deploy/step-2-ambient-agw/istio-values.yaml`
-that `make step-2` installs with the istiod chart, declares one OpenTelemetry
-extension provider named `otel-tracing` pointing at the collector's OTLP gRPC port,
-in the shape the Istio OpenTelemetry task gives for it.
-The Telemetry resources in `deploy/step-3-stress/istio-tracing.yaml` select that
-provider at 100% sampling: one mesh-wide in `istio-system`, the root namespace
-this cluster reports, and one per waypoint in `lab` naming its Gateway, because
-the Telemetry reference says waypoints are targeted by `targetRefs` and that
-selector policies are ignored for them. What this covers is narrower than it
-looks. ztunnel emits no spans, by design: it is the L4 layer, and the L7 hop is
-the waypoint. The agentgateway ingress and the egress waypoint are not covered
-either and stay on their `AgentgatewayPolicy`, since agentgateway's own control
-plane drives them, not istiod. That leaves the two istiod-driven waypoints as
-the hops this configuration is aimed at, and measured on 2026-09-12 it reaches
-neither: the counts did not move and `/config_dump` still read `"tracing": null`
-on both. That is what Istio documents, its agentgateway page listing `Telemetry`
-among the configuration APIs "not applied to agentgateway proxies", so the
-provider and the Telemetry resources stay as the documented default rather than
-being removed.
+Istio's own tracing configuration is entirely in the `meshConfig` block of
+`deploy/step-2-ambient-agw/istio-values.yaml`, which `make step-2` installs with
+the istiod chart: one OpenTelemetry extension provider named `otel-tracing`
+pointing at the collector's OTLP gRPC port, in the shape the Istio OpenTelemetry
+task gives for it, named under `defaultProviders.tracing` at 100% sampling.
+What it covers is narrower than it looks. ztunnel emits no spans, by design: it
+is the L4 layer, and since 2026-09-19 every L7 hop belongs to a proxy under
+agentgateway's own control plane, which istiod does not configure. So no Istio
+`Telemetry` resource ships here at all; the step-3 overlay carries none, and the
+provider stays as the documented default.
 
-What does make those two waypoints emit is
-`deploy/step-3-stress/waypoint-tracing-config.yaml`: istiod starts each waypoint
-with `--config {}`, an empty agentgateway configuration document, and this fills
-it with the `config.tracing` block agentgateway's own documentation describes,
-delivered by the `parametersRef` Deployment overlay Istio's Gateway API page
-documents. The reference is added by a step-3 patch,
-`waypoint-parameters-patch.yaml`, because the Gateways themselves belong to
-step 2 and step 2c and no overlay edits an earlier one in place. With it the
-worker path counts 12 spans instead of 8 and the orchestrator path 66 instead of
-62, and the dangling parents per work item go from 2 to **0** — the trace closes.
-Neither project documents that combination; it was established by measurement
-here, and `findings.md` carries the counts and says so. Being undocumented, it is
-the part of this pipeline most likely to need rechecking when either project
-moves.
+Until 2026-09-19 step 3 also carried two `Telemetry` resources and a
+`config.tracing` document delivered through each istiod-driven waypoint's
+`parametersRef`, because the Telemetry API was measured on 2026-09-12 not to
+reach those waypoints — the counts did not move and `/config_dump` still read
+`"tracing": null` on both — while that document did, taking the worker path from
+8 spans to 12 and the orchestrator path from 62 to 66 and closing every dangling
+parent. That class of waypoint is retired, so both files went with it; the counts
+they produced stay in `findings.md`. What makes the proxies emit now is the one
+`AgentgatewayPolicy` per Gateway described just above.
 
 The collector lifts one work item's identity onto one set of names. The Python
 auto-instrumentation records the four identity headers as
@@ -637,10 +642,8 @@ named in its image's `CMD`, configured only by the environment the step-3
 overlay sets. `make step-3` installs no Operator and the step-3 overlay holds no
 `Instrumentation` resource; that route was measured in four states, not kept,
 and removed from step 3 on 2026-09-10 and from the cluster the same day, and
-`findings.md` carries the counts. The ingress and the
-egress proxies export because one `AgentgatewayPolicy` each says so; the
-istiod-driven waypoints export because the `config.tracing` block described above
-says so, which is what closed the dangling parents. Because an A2A request keeps the work item
+`findings.md` carries the counts. The ingress and `agw-central` export because
+one `AgentgatewayPolicy` each says so. Because an A2A request keeps the work item
 inside `Message.metadata`, where no HTTP instrumentation can see it, every lab
 client also sends it as a header, and the Go handler wrappers and the Python
 header capture put it on the span, so a work item is queryable. Reading one
@@ -685,14 +688,12 @@ file rather than inheriting a default: the three Go binaries set
 `OTEL_TRACES_SAMPLER=always_on` in
 `deploy/step-3-stress/orchestrator-instrumentation.yaml` (replacing the SDK
 default `parentbased_always_on`, which was the one inherited setting), the
-agentgateway ingress and the egress waypoint set `randomSampling: "true"` and
-`clientSampling: "true"` in `deploy/step-3-stress/agentgateway-tracing.yaml`, the
-two istiod-driven waypoints set the same pair as `config.tracing` booleans in
-`deploy/step-3-stress/waypoint-tracing-config.yaml`, and Istio's Telemetry
-resources set `randomSamplingPercentage: 100` in
-`deploy/step-3-stress/istio-tracing.yaml` — with the collector's traces pipeline
-carrying no `probabilistic_sampler` or `tail_sampling`, only the `filter` that
-drops health-probe spans by design.
+agentgateway ingress and `agw-central` set `randomSampling: "true"` and
+`clientSampling: "true"` in `deploy/step-3-stress/agentgateway-tracing.yaml`, one
+policy each, and Istio's `meshConfig` sets `defaultConfig.tracing.sampling: 100`
+in `deploy/step-2-ambient-agw/istio-values.yaml` — with the collector's traces
+pipeline carrying no `probabilistic_sampler` or `tail_sampling`, only the
+`filter` that drops health-probe spans by design.
 
 Traces come out of the backend one work item at a time:
 
@@ -703,7 +704,7 @@ make export-trace LWI=<logical_work_item_id> OUT=<dir>
 It opens a short-lived port-forward, queries the backend's `/api/v3/traces`
 binding for spans carrying `lab.work_item=<id>`, and writes the raw response as
 `<dir>/trace.json` and one row per span as `<dir>/spans.csv`, with the columns
-`trace_id,span_id,parent_span_id,service,operation,start_us,duration_us,lab_work_item,lab_message_id,http_status`.
+`trace_id,span_id,parent_span_id,service,operation,start_us,duration_us,lab_work_item,lab_message_id,http_status,route,retry_attempt`.
 `LOOKBACK` sets how many seconds back the search window opens (default 3600).
 The recipe exits 2 when no span matched, so a run script can tell that from a
 failed query; GNU make reports any recipe failure as its own exit 2, so read the
@@ -730,23 +731,26 @@ experimental Gateway API `HTTPRouteRule.retry` field goes on for one measured ru
 and comes off again:
 
 ```
-make retry-on ROUTE=<waypoint|ingress|egress> [OUT=<dir>]
-make retry-off [ROUTE=<waypoint|ingress|egress>] [OUT=<dir>]
+make retry-on ROUTE=<waypoint|ingress|egress|waypoint-orchestrator> [OUT=<dir>]
+make retry-off [ROUTE=<waypoint|ingress|egress|waypoint-orchestrator>] [OUT=<dir>]
 ```
 
-`waypoint` is the `worker` route the istiod-driven agentgateway waypoint serves,
-`ingress` is both routes on the agentgateway ingress, and `egress` is the route
-to the model endpoint on the egress waypoint. The stanza is `attempts: 1`,
-`backoff: 100ms`, and `codes: [503]`, except on the egress route, where it is
-`[500, 503]` because the failure injected on that hop is the model endpoint's
-500. Both targets are `kubectl apply` of route objects and nothing else: the
-manifests under `deploy/step-3-stress/retry/<route>/{off,on}` read the step-2,
+All four name routes on the two agentgateway proxies. `waypoint` is `lab/worker`,
+the worker Service's hostname route on `agw-central`; `waypoint-orchestrator` is
+`lab/orchestrator`, the orchestrator Service's route on the same proxy, which a
+stimulus crosses only when the client addresses that Service rather than the
+ingress URL the card advertises; `ingress` is both routes on the agentgateway
+ingress; and `egress` is the model route on `agw-central`. The stanza is
+`attempts: 1`, `backoff: 100ms`, and `codes: [503]`, except on the model route,
+where it is `[500, 503]` because the failure injected on that hop is the model
+endpoint's 500. Both targets are `kubectl apply` of route objects and nothing
+else: the manifests under `deploy/step-3-stress/retry/<route>/{off,on}` read the step-2,
 2b and 2c route files rather than copying them, and the rendered stream is cut
 down to its `HTTPRoute` documents by `experiments/lib/httproute-only.awk`. No
 image is built and no Deployment is rolled. Both print how many `retry:` lines
 exist across every HTTPRoute in the cluster, and with `OUT` they write the route
 objects read back from the API server into `<dir>/routes.txt`. `retry-off` with
-no `ROUTE` puts all three route sets back, which is the state every run that is
+no `ROUTE` puts all four route sets back, which is the state every run that is
 not measuring a gateway retry has to start and end in.
 
 What each route's retry does to a request is counted by:
@@ -756,7 +760,9 @@ ROUTE=<waypoint|ingress|egress> REPS=5 experiments/gate3-gateway-retry-mechanics
 ROUTE=<waypoint|ingress|egress> DUMP_ONLY=on experiments/gate3-gateway-retry-mechanics.sh
 ```
 
-It switches the stanza on, injects one failure per repetition on the hop that
+That script takes three of the four sets and not `waypoint-orchestrator`, which
+it refuses; the matrix is where that route set is counted. It switches the
+stanza on, injects one failure per repetition on the hop that
 route serves, and counts what the receiver's pre-dispatch ledger or the model
 endpoint's invocation ledger recorded, then switches the stanza off again and
 disarms every injector. `DUMP_ONLY=on` reads the proxy's own `/config_dump`,
@@ -771,28 +777,39 @@ if that default changes.
 One row of the matrix per invocation:
 
 ```
-make matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress|ingress-incluster>] [REPS=20]
+make matrix RUN=<baseline|R1|R2|R3|R4|egress> RECEIVER=<go|py> [SUB=<http|sdk|waypoint|ingress|ingress-incluster|service>] [REPS=20]
 RUN=<row> RECEIVER=<go|py> [SUB=<sub>] [REPS=20] [DRY_RUN=on|off] [RUN_ID=<nonce>] [RUN_ITEM=<name>] experiments/gate3-matrix.sh
 ```
 
-`RUN` names the row and `SUB` its sub-row, which `R1` (`http`, `sdk`) and `R2`
-(`waypoint`, `ingress`, `ingress-incluster`) have and the others do not.
+`RUN` names the row and `SUB` its sub-row: `R1` has `http` and `sdk`, `R2` has
+`waypoint`, `ingress`, `ingress-incluster` and `service`, `baseline` and `R4`
+have the one sub-row `service`, and `R3` and `egress` have none.
 `RECEIVER` names the SDK under test: `go` is the worker, `py` the orchestrator,
 which is put into model mode for its rows by unsetting `DOWNSTREAM_A2A_URL` for
-the run and is put back afterwards.
+the run and is put back afterwards. `SUB=service` is the author's addition of
+2026-09-19: it sets `CLIENT_DIAL=target` in the Job, so the load client still
+resolves the agent card at the orchestrator Service and then sends its POST
+there instead of to the ingress URL the card advertises.
 
-Which gateway a row means is not the same object for the two receivers, because
-the two are not behind the same proxy: the worker sits behind its own
-istiod-driven waypoint, and the orchestrator behind the agentgateway ingress its
-agent card advertises. So `R2`'s gateway sub-row is `waypoint` for the Go
-receiver and `ingress-incluster` for the Python one, and `R4` composes with the
-waypoint route at the Go receiver and the ingress route at the Python one. Rows
-that would switch a retry on for a route the stimulus never crosses are refused
-before anything is sent, each with its reason: any row naming the waypoint route
-for the Python receiver, because no `HTTPRoute` names the orchestrator Service
-as a parent; and `ingress-incluster` on the Go receiver, because an in-cluster
-Job to the worker Service crosses the worker's waypoint rather than the ingress.
-The per-route stanza assertion cannot catch either case on its own, since the
+Which gateway a row means is not the same route for the two receivers, although
+both are behind `agw-central`: a stimulus for the worker enters on `lab/worker`,
+while the Python receiver's `SendMessage` POST enters through the agentgateway
+ingress on `lab/orchestrator-ingress`, because its agent card advertises the
+ingress — and enters on its own Service's route `lab/orchestrator` only when the
+row addresses that Service. So `R2`'s gateway sub-row is `waypoint` for the Go
+receiver and, for the Python one, `ingress-incluster` in-cluster, `ingress` from
+outside, or `service` for the route on its own Service; and `R4` composes with
+the worker route at the Go receiver and the ingress or Service route at the
+Python one. Rows that would switch a retry on for a route the stimulus never
+crosses are refused before anything is sent, each with its reason: any row naming
+the `waypoint` route set for the Python receiver, because that set is `lab/worker`
+alone, with the refusal pointing at `SUB=service` or at the ingress sets;
+`waypoint-orchestrator` for any row that does not address the orchestrator
+Service; `ingress-incluster` on the Go receiver, because an in-cluster Job to the
+worker Service crosses `lab/worker` rather than the ingress; and `SUB=service` on
+the Go receiver, because the worker's card advertises the worker Service itself,
+so every Go-receiver row the load client sends already addresses that Service.
+The per-route stanza assertion cannot catch these cases on its own, since the
 stanza does land on a live route, just not one that receiver's stimulus
 crosses. Each row switches on exactly the knobs it names — the client's
 through the Job template, the receiver's model client through `kubectl set env`,
@@ -817,26 +834,33 @@ service names, because at step 3 a proxy always sits between the client and the
 receiver: two receiver server spans under one parent span id, or under two
 parents that are themselves one proxy span, is the gateway, and anything else is
 the client's HTTP layer. A second model call is the receiver's if two calls
-entered the egress waypoint and the proxy's if one call entered it and was sent
-upstream twice. `make test` runs the derivation against committed fixtures in
-`experiments/fixtures/derive-layer/`, three of them real gateway retries from
-the Task 2 probes.
+entered the model route and the proxy's if one call entered it and was sent
+upstream twice; since 2026-09-19 the proxy span's hop is keyed on its `route`
+rather than on its service name, because one proxy now serves the agent routes
+and the model route. `make test` runs the derivation against the twenty committed
+fixtures in `experiments/fixtures/derive-layer/` — eighteen taken from real rows,
+two synthetic and saying so — comparing both the label and the reason, whole and
+unmasked.
 
 The `baseline` row asserts rather than assumes: zero `retry:` stanzas across
 every HTTPRoute, no `CLIENT_*` on any Deployment, the receiver's model-retry knob
-read back off the live object, and the Job rendered with all three client knobs
-off. Its injection is one `close` at the model endpoint, as Gate 1's baseline
+read back off the live object, and the Job rendered with all four `CLIENT_*`
+variables at their off values — the three retry knobs off and `CLIENT_DIAL`
+empty. Its injection is one `close` at the model endpoint, as Gate 1's baseline
 used, so the failure is raw and any second delivery would be somebody's retry.
 Every invocation runs its own one-repetition dry run first, under a scratch work
 item whose directory is deleted, and every work-item id carries the run's
 wall-clock nonce, because the trace backend and the pod logs both outlive a run.
 
-**A cluster that has been up for a day on a laptop.** ztunnel's workload certificates live 24 hours and, at Istio
-1.31.0, are renewed on a timer that does not advance while the Docker Desktop VM is paused by host sleep. Observed
-on 2026-09-08: after a day of sleep/wake cycles every mesh hop failed with "certificate expired" while the
-agentgateway proxies had renewed their own. Before any mesh run on a cluster older than about a day since `make step-2`,
-check `istioctl ztunnel-config certificates --node agent-mesh-lab-worker` and, if `VALID CERT` is false, run
-`kubectl -n istio-system rollout restart ds/ztunnel`.
+**A cluster that has been up for a while on a laptop.** ztunnel renews a workload certificate on a deadline it
+computes once, from a monotonic clock that does not advance while the Docker Desktop VM is paused by host sleep, so
+every renewal after the first is late by all the sleep accumulated since ztunnel started, and stays late until
+ztunnel restarts. Observed on 2026-09-08 with the then 24-hour leaves — after a day of sleep/wake cycles every mesh
+hop failed with "certificate expired" while the agentgateway proxies had renewed their own — and reproduced with its
+cause on 2026-09-19 (`## Gate 3 / both receivers / ztunnel certificate renewal across host sleep`). At the seven-day
+leaves this lab now issues the margin is 84 h 01 min of accumulated sleep. Before any mesh run on a cluster that has
+been standing, check `istioctl ztunnel-config certificates --node agent-mesh-lab-worker` and, if `VALID CERT` is
+false, run `kubectl -n istio-system rollout restart ds/ztunnel` and record it.
 
 ## Working rules
 
