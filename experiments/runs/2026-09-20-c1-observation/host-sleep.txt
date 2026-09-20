@@ -1,0 +1,36 @@
+# Host sleep during the C-1 observation run of 2026-09-20. Written by the committed script experiments/runs/2026-09-20-walkthrough/host-sleep.sh, run unchanged with this run's window; "this directory" in the last section is that script's directory, not this one.
+#
+# The selection, by pmset's event-kind column (field $4), over the whole of `pmset -g log`:
+#   $4=="Sleep" || $4=="Wake" || $4=="DarkWake" || $4=="Maintenance"
+# pmset stamps in the host local zone (shown per line); the windows are given in UTC and compared after
+# converting each stamp with its own offset. No Assertions line is listed anywhere in this file.
+#
+# EVERY COUNTED WINDOW, and the lines of each kept kind whose stamp falls inside it:
+
+   window run: 2026-09-20T20:34:18Z .. 2026-09-20T20:41:00Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=3   (Assertions: counted, never listed)
+
+# kept lines whose tail was cut by the guard: 0
+# the earliest stamped line pmset holds: 2026-09-15T17:25:40+03:00 (the log covers the windows only if this is before them)
+# Sleep lines pmset holds in all: 897; the last one stamped 2026-09-20T23:11:28+03:00
+# Wake lines pmset holds in all:  5; the last one stamped 2026-09-20T23:14:25+03:00
+
+# ASSERTION COUNTS PER WINDOW. Counts only: no Assertions line is listed here. How counted:
+#   pmset -g log | python3 host-sleep-assertion-counts.py windows.csv   (the same read of the log as above)
+# The method is in that program's header: field $4 == "Assertions"; stamps compared in UTC, both ends inclusive;
+# the substring "caffeinate"; the type substring; the action word after the process token, printed only if it is
+# one of pmset's own action words. It prints numbers and those words, never a line, a pid or a name other than
+# that process name.
+   window run: 2026-09-20T20:34:18Z .. 2026-09-20T20:41:00Z
+     Assertions lines=3  naming caffeinate=3  of those with type PreventUserIdleSystemSleep=3  by action word: Created=0, ClientDied=3
+
+# KEEP-AWAKE PROCESSES, read by `ps` at 2026-09-20T20:44:18Z, after the windows: the process's arguments and its
+# PARENT's command name only (no pid, no user, no terminal):
+#      2 caffeinate -i -t 300   <- parent command name: claude
+# (no line above means no such process at that moment)
+
+# THIS DIRECTORY'S OWN LINES that run caffeinate or a pmset setter: non-comment lines of the .sh and .py files
+# beside this script that match `caffeinate` or `pmset`, counted; the counting program's match strings and
+# this script's own reads are what is expected to match:
+#   host-sleep.sh: lines naming either = 14; of them lines that would START a keep-awake or SET a power value = 0
+#   host-sleep-assertion-counts.py: lines naming either = 14; of them lines that would START a keep-awake or SET a power value = 0

@@ -1,0 +1,29 @@
+# C-1 / istio_tcp_connections_opened_total, by the committed promq.sh
+
+$ bash experiments/runs/2026-09-12-mtls-enforced/promq.sh query 'istio_tcp_connections_opened_total'
+  series returned: 99; label names per series: 30 (identical on every series)
+  the label names: __name__ connection_security_policy destination_app destination_canonical_revision destination_canonical_service destination_cluster destination_principal destination_region destination_service destination_service_name destination_service_namespace destination_version destination_workload destination_workload_namespace destination_zone instance job reporter request_protocol response_flags source_app source_canonical_revision source_canonical_service source_cluster source_principal source_region source_version source_workload source_workload_namespace source_zone
+
+$ promq.sh query '(istio_tcp_connections_opened_total - istio_tcp_connections_opened_total offset 7m) > 0'  # the run window
+  1	destination	mutual_tls	agentgateway-ingress/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress	-> orchestrator.lab.svc.cluster.local	orchestrator/spiffe://cluster.local/ns/lab/sa/default
+  1	destination	mutual_tls	agw-central/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central	-> orchestrator.lab.svc.cluster.local	orchestrator/spiffe://cluster.local/ns/lab/sa/default
+  1	destination	mutual_tls	agw-central/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central	-> worker.lab.svc.cluster.local	worker/spiffe://cluster.local/ns/lab/sa/default
+  28	destination	unknown	prometheus/unknown	-> unknown	agentgateway-ingress/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress
+  1	source	mutual_tls	agentgateway-ingress/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress	-> unknown	orchestrator/spiffe://cluster.local/ns/lab/sa/default
+  3	source	mutual_tls	gate2-curl/spiffe://cluster.local/ns/lab/sa/default	-> orchestrator.lab.svc.cluster.local	agw-central/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  3	source	mutual_tls	gate2-curl/spiffe://cluster.local/ns/lab/sa/default	-> worker.lab.svc.cluster.local	agw-central/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  1	source	mutual_tls	orchestrator/spiffe://cluster.local/ns/lab/sa/default	-> worker.lab.svc.cluster.local	agw-central/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  1	source	mutual_tls	worker/spiffe://cluster.local/ns/lab/sa/default	-> model.lab.internal	agw-central/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  1	source	unknown	agentgateway-ingress/unknown	-> unknown	otel-collector/spiffe://cluster.local/ns/telemetry/sa/otel-collector
+  3	source	unknown	gate2-curl/unknown	-> mockllm.lab.svc.cluster.local	mockllm/spiffe://cluster.local/ns/lab/sa/default
+  (the two loadgen pods did not exist 7m before the query, so their series carry no offset match and are read below at their absolute value, which is this run only -- each pod sent one work item and was deleted)
+
+$ bash experiments/runs/2026-09-12-mtls-enforced/promq.sh query \
+    'istio_tcp_connections_opened_total{source_workload=~"loadgen-g2c-c1-2035.*"}
+     or istio_tcp_connections_opened_total{destination_workload=~"loadgen-g2c-c1-2035.*"}'
+  1	destination	mutual_tls	loadgen-g2c-c1-2035-orchestrator/spiffe://cluster.local/ns/lab/sa/default	-> agentgateway-ingress.agentgateway-ingress.svc.cluster.local	agentgateway-ingress/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress
+  1	source	mutual_tls	loadgen-g2c-c1-2035-orchestrator/spiffe://cluster.local/ns/lab/sa/default	-> agentgateway-ingress.agentgateway-ingress.svc.cluster.local	agentgateway-ingress/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress
+  1	source	mutual_tls	loadgen-g2c-c1-2035-orchestrator/spiffe://cluster.local/ns/lab/sa/default	-> orchestrator.lab.svc.cluster.local	agw-central/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  1	source	mutual_tls	loadgen-g2c-c1-2035-worker/spiffe://cluster.local/ns/lab/sa/default	-> worker.lab.svc.cluster.local	agw-central/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  1	source	unknown	loadgen-g2c-c1-2035-orchestrator/unknown	-> otel-collector.telemetry.svc.cluster.local	otel-collector/spiffe://cluster.local/ns/telemetry/sa/otel-collector
+  1	source	unknown	loadgen-g2c-c1-2035-worker/unknown	-> otel-collector.telemetry.svc.cluster.local	otel-collector/spiffe://cluster.local/ns/telemetry/sa/otel-collector

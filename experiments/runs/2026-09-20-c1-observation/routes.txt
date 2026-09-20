@@ -1,0 +1,24 @@
+# C-1 / the Gateway API routes on the two agentgateway proxies, as they stand
+# read 2026-09-20T20:40:51Z; nothing was applied
+
+$ while read -r ns name; do kubectl -n "$ns" get httproute "$name" -o json \
+    | jq -c '{parents:[.spec.parentRefs[]|"\(.namespace // "-")/\(.name)"], hostnames:(.spec.hostnames // []),
+             rules:[.spec.rules[]|{matches:(.matches // []), filters:([(.filters//[])[].type]),
+                                   backends:[(.backendRefs//[])[]|"\(.name):\(.port // "-")"], retry:(.retry // null)}]}'
+  done < <(kubectl get httproute -A -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}{end}')
+--- agentgateway-waypoint/model-via-agw ---
+{"parents":["-/agw-central"],"hostnames":["model.lab.internal"],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["mockllm:-"],"retry":null}]}
+--- lab/orchestrator ---
+{"parents":["agentgateway-waypoint/agw-central"],"hostnames":["orchestrator.lab.svc.cluster.local"],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["orchestrator:8080"],"retry":null}]}
+--- lab/orchestrator-ingress ---
+{"parents":["agentgateway-ingress/agentgateway-ingress"],"hostnames":[],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["orchestrator:8080"],"retry":null}]}
+--- lab/worker ---
+{"parents":["agentgateway-waypoint/agw-central"],"hostnames":["worker.lab.svc.cluster.local"],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["worker:8080"],"retry":null}]}
+--- lab/worker-ingress ---
+{"parents":["agentgateway-ingress/agentgateway-ingress"],"hostnames":["worker.lab.internal"],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["worker:8080"],"retry":null}]}
+
+$ kubectl -n lab get svc worker orchestrator mockllm -o json \
+    | jq -r '.items[] | "\(.metadata.name): " + ([.spec.ports[] | "name=\(.name // "-") port=\(.port) appProtocol=\(.appProtocol // "<none>")"] | join("; "))'
+worker: name=http port=8080 appProtocol=<none>
+orchestrator: name=http port=8080 appProtocol=<none>
+mockllm: name=http port=8080 appProtocol=<none>

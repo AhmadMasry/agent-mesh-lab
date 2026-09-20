@@ -1,0 +1,32 @@
+# C-1 / every policy each agentgateway proxy holds in its own /config_dump
+# read 2026-09-20T20:40:51Z
+
+$ kubectl -n agentgateway-waypoint port-forward deploy/agw-central          15901:15000 &
+  curl -s --retry 0 --max-time 2 http://127.0.0.1:15901/config_dump -o dump-agw-central.json
+$ kubectl -n agentgateway-ingress  port-forward deploy/agentgateway-ingress 15902:15000 &
+  curl -s --retry 0 --max-time 2 http://127.0.0.1:15902/config_dump -o dump-ingress.json
+  (each port-forward killed straight after its read; the two dumps are then read by the jq below)
+--- agw-central: 2 policy/policies ---
+  kind=AgentgatewayPolicy name=agentgateway-waypoint/access-logs target=gateway:agentgateway-waypoint/agw-central fields=accessLog
+  kind=AgentgatewayPolicy name=agentgateway-waypoint/tracing target=gateway:agentgateway-waypoint/agw-central fields=tracing
+  string counts in the whole dump: "a2a"=0 "authorization"=0 "jwt"=0 "extAuth"=0 "rateLimit"=0 "mcp"=1 
+  routes the proxy holds, with their matches and inline policies:
+    {"route":"lab/worker","hostnames":["worker.lab.svc.cluster.local"],"matches":[{"path":{"pathPrefix":"/"}}],"inlinePolicies":[]}
+    {"route":"lab/orchestrator","hostnames":["orchestrator.lab.svc.cluster.local"],"matches":[{"path":{"pathPrefix":"/"}}],"inlinePolicies":[]}
+    {"route":"agentgateway-waypoint/model-via-agw","hostnames":["model.lab.internal"],"matches":[{"path":{"pathPrefix":"/"}}],"inlinePolicies":[]}
+--- ingress: 2 policy/policies ---
+  kind=AgentgatewayPolicy name=agentgateway-ingress/access-logs target=gateway:agentgateway-ingress/agentgateway-ingress fields=accessLog
+  kind=AgentgatewayPolicy name=agentgateway-ingress/tracing target=gateway:agentgateway-ingress/agentgateway-ingress fields=tracing
+  string counts in the whole dump: "a2a"=0 "authorization"=0 "jwt"=0 "extAuth"=0 "rateLimit"=0 "mcp"=1 
+  routes the proxy holds, with their matches and inline policies:
+    {"route":"lab/worker-ingress","hostnames":["worker.lab.internal"],"matches":[{"path":{"pathPrefix":"/"}}],"inlinePolicies":[]}
+    {"route":"lab/orchestrator-ingress","hostnames":null,"matches":[{"path":{"pathPrefix":"/"}}],"inlinePolicies":[]}
+
+$ kubectl get agentgatewaypolicy -A ; kubectl get authorizationpolicy -A ; kubectl get peerauthentication -A
+  AgentgatewayPolicy agentgateway-ingress    access-logs   True   True   16h
+  AgentgatewayPolicy agentgateway-ingress    tracing       True   True   16h
+  AgentgatewayPolicy agentgateway-waypoint   access-logs   True   True   16h
+  AgentgatewayPolicy agentgateway-waypoint   tracing       True   True   16h
+  AuthorizationPolicy objects in the cluster: 0
+  PeerAuthentication agentgateway-ingress   agentgateway-ingress-metrics   STRICT   16h
+  PeerAuthentication istio-system           default                        STRICT   16h

@@ -1,0 +1,64 @@
+# C-1 / ztunnel on the node that runs every lab pod: its own lines for this run
+
+$ kubectl -n istio-system get pods -l app=ztunnel -o wide
+ztunnel-fsg6l   1/1   Running   0     16h   10.244.0.6    agent-mesh-lab-control-plane   <none>   <none>
+ztunnel-tmzz9   1/1   Running   0     16h   10.244.1.12   agent-mesh-lab-worker          <none>   <none>
+
+$ kubectl -n istio-system logs ztunnel-tmzz9 --since=30m | grep -E "10\.244\.1\.(32|69|72|73)"
+2026-09-20T20:14:25.329649Z	info	access	connection complete	src.addr=10.244.1.32:54370 src.workload="worker-565f64dbb7-cp9hj" src.namespace="lab" src.cluster="Kubernetes" dst.addr=10.244.1.33:4318 dst.service="otel-collector.telemetry.svc.cluster.local" dst.workload="otel-collector-6ff7b444f6-xk4j6" dst.namespace="telemetry" dst.cluster="Kubernetes" direction="outbound" bytes_sent=28449 bytes_recv=2070 duration="90025ms"
+2026-09-20T20:34:39.434720Z	info	access	connection complete	src.addr=10.244.1.72:54384 src.workload="loadgen-g2c-c1-2035-worker-hd7m4" src.namespace="lab" src.cluster="Kubernetes" dst.addr=10.244.1.33:4318 dst.service="otel-collector.telemetry.svc.cluster.local" dst.workload="otel-collector-6ff7b444f6-xk4j6" dst.namespace="telemetry" dst.cluster="Kubernetes" direction="outbound" bytes_sent=1703 bytes_recv=115 duration="1ms"
+2026-09-20T20:34:39.434863Z	info	access	connection complete	src.addr=10.244.1.72:59212 src.workload="loadgen-g2c-c1-2035-worker-hd7m4" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.18:15008 dst.hbone_addr=10.96.30.221:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="agw-central-6b54d4fbf4-cjz57" dst.namespace="agentgateway-waypoint" dst.identity="spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central" dst.cluster="Kubernetes" direction="outbound" bytes_sent=877 bytes_recv=1267 duration="209ms"
+2026-09-20T20:35:02.374914Z	info	access	connection complete	src.addr=10.244.1.73:49602 src.workload="loadgen-g2c-c1-2035-orchestrator-sgw8h" src.namespace="lab" src.cluster="Kubernetes" dst.addr=10.244.1.33:4318 dst.service="otel-collector.telemetry.svc.cluster.local" dst.workload="otel-collector-6ff7b444f6-xk4j6" dst.namespace="telemetry" dst.cluster="Kubernetes" direction="outbound" bytes_sent=1800 bytes_recv=115 duration="2ms"
+2026-09-20T20:35:02.375047Z	info	access	connection complete	src.addr=10.244.1.73:47226 src.workload="loadgen-g2c-c1-2035-orchestrator-sgw8h" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.18:15008 dst.hbone_addr=10.96.88.48:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="agw-central-6b54d4fbf4-cjz57" dst.namespace="agentgateway-waypoint" dst.identity="spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central" dst.cluster="Kubernetes" direction="outbound" bytes_sent=286 bytes_recv=612 duration="273ms"
+2026-09-20T20:35:02.375079Z	info	access	connection complete	src.addr=10.244.1.73:40972 src.workload="loadgen-g2c-c1-2035-orchestrator-sgw8h" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.26:15008 dst.hbone_addr=10.244.1.26:80 dst.service="agentgateway-ingress.agentgateway-ingress.svc.cluster.local" dst.workload="agentgateway-ingress-75dbd8897c-6q52b" dst.namespace="agentgateway-ingress" dst.identity="spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress" dst.cluster="Kubernetes" direction="inbound" bytes_sent=813 bytes_recv=647 duration="270ms"
+2026-09-20T20:35:02.375244Z	info	access	connection complete	src.addr=10.244.1.73:35744 src.workload="loadgen-g2c-c1-2035-orchestrator-sgw8h" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.26:15008 dst.hbone_addr=10.244.1.26:80 dst.service="agentgateway-ingress.agentgateway-ingress.svc.cluster.local" dst.workload="agentgateway-ingress-75dbd8897c-6q52b" dst.namespace="agentgateway-ingress" dst.identity="spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress" dst.cluster="Kubernetes" direction="outbound" bytes_sent=647 bytes_recv=813 duration="270ms"
+2026-09-20T20:36:32.363287Z	info	access	connection complete	src.addr=10.244.1.32:58470 src.workload="worker-565f64dbb7-cp9hj" src.namespace="lab" src.identity="spiffe://cluster.local/ns/lab/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.18:15008 dst.hbone_addr=240.240.0.1:8080 dst.service="model.lab.internal" dst.workload="agw-central-6b54d4fbf4-cjz57" dst.namespace="agentgateway-waypoint" dst.identity="spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central" dst.cluster="Kubernetes" direction="outbound" bytes_sent=1078 bytes_recv=802 duration="113135ms"
+2026-09-20T20:37:02.372228Z	info	access	connection complete	src.addr=10.244.1.26:59510 src.workload="agentgateway-ingress-75dbd8897c-6q52b" src.namespace="agentgateway-ingress" src.identity="spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress" src.cluster="Kubernetes" dst.addr=10.244.1.69:15008 dst.hbone_addr=10.244.1.69:8080 dst.workload="orchestrator-b4b7fdbb6-hzbqz" dst.namespace="lab" dst.identity="spiffe://cluster.local/ns/lab/sa/default" dst.cluster="Kubernetes" direction="outbound" bytes_sent=647 bytes_recv=813 duration="120266ms"
+2026-09-20T20:37:02.372594Z	info	access	connection complete	src.addr=10.244.1.26:41972 src.workload="agentgateway-ingress-75dbd8897c-6q52b" src.namespace="agentgateway-ingress" src.identity="spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress" src.cluster="Kubernetes" dst.addr=10.244.1.69:15008 dst.hbone_addr=10.244.1.69:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-b4b7fdbb6-hzbqz" dst.namespace="lab" dst.identity="spiffe://cluster.local/ns/lab/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=813 bytes_recv=647 duration="120266ms"
+2026-09-20T20:37:05.622175Z	error	access	connection complete	src.addr=10.244.1.18:49048 src.workload="agw-central-6b54d4fbf4-cjz57" src.namespace="agentgateway-waypoint" src.identity="spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central" src.cluster="Kubernetes" dst.addr=10.244.1.32:15008 dst.hbone_addr=10.244.1.32:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="worker-565f64dbb7-cp9hj" dst.namespace="lab" dst.identity="spiffe://cluster.local/ns/lab/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=2738 bytes_recv=2402 duration="166030ms" error="while closing connection: receive: io error: broken pipe"
+2026-09-20T20:37:05.622461Z	error	access	connection complete	src.addr=10.244.1.18:34316 src.workload="agw-central-6b54d4fbf4-cjz57" src.namespace="agentgateway-waypoint" src.identity="spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central" src.cluster="Kubernetes" dst.addr=10.244.1.69:15008 dst.hbone_addr=10.244.1.69:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-b4b7fdbb6-hzbqz" dst.namespace="lab" dst.identity="spiffe://cluster.local/ns/lab/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=855 bytes_recv=847 duration="165981ms" error="while closing connection: receive: io error: broken pipe"
+
+$ for s in messageId taskId SendMessage http.method http.path agent-card; do
+      kubectl -n istio-system logs ztunnel-tmzz9 --since=30m | grep -c "$s"; done
+  (the same --since=30m window as the block above, counted for strings the application knows)
+  lines naming messageId    0
+  lines naming taskId       0
+  lines naming SendMessage  0
+  lines naming http.method  0
+  lines naming http.path    0
+  lines naming agent-card   0
+  lines naming g2c-c1-2035  18 -- all of them inside a pod name (src.workload= or a workload lifecycle line), none as a property of a request
+
+$ istioctl ztunnel-config certificates --node agent-mesh-lab-worker  (the cluster-care check, taken before the run)
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           509bd5391600694365d3cfcd191ccbcf     2026-09-27T04:33:31Z     2026-09-20T04:31:31Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           6dc9daf9b5e212aeed718814287f28a0     2036-09-17T04:29:33Z     2026-09-20T04:29:33Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           e68ed492630a5da223d8b4a96bd1ab12     2026-09-27T04:30:30Z     2026-09-20T04:28:30Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           6dc9daf9b5e212aeed718814287f28a0     2036-09-17T04:29:33Z     2026-09-20T04:29:33Z
+
+$ kubectl -n istio-system logs ztunnel-tmzz9 --since=30m | wc -l
+  THE DENOMINATOR, ADDED 2026-09-20T21:04Z. The counted block above was taken with a RELATIVE window, so its
+  line total depends on the minute the command ran and was not written down at the time. Both readings are
+  recorded here rather than one being replaced:
+
+  (a) as taken during the run, relative windows, no finer stamp kept than the bounds of the reading pass
+      (2026-09-20T20:36:14Z, when the trace export finished, to 2026-09-20T20:40:51Z, the stamp
+      config-dump-policies.txt carries):
+        --since=25m | wc -l            -> 150 lines
+        --since=30m                    -> the window the six string counts and the 18 above were taken over;
+                                          its line total was not recorded at the time
+  (b) re-read 2026-09-20T21:04Z, the same windows pinned absolutely so the numbers can be re-run; the log still
+      holds every line from 2026-09-20T04:29:57Z, so both windows are complete:
+        $ kubectl -n istio-system logs ztunnel-tmzz9 --since-time=2026-09-20T20:12:30Z \
+            | awk '$1 <= "2026-09-20T20:37:30Z"' | wc -l
+          -> 151 lines   (the 25m window; one more than the relative read, a boundary effect -- --since-time is
+                          inclusive of the instant given, while --since=25m subtracts to sub-second precision)
+        $ kubectl -n istio-system logs ztunnel-tmzz9 --since-time=2026-09-20T20:10:51Z \
+            | awk '$1 <= "2026-09-20T20:40:51Z"' | wc -l
+          -> 165 lines   (the 30m window: THE DENOMINATOR of the six zeroes and the 18 above)
+        the same pinned 30m window, re-counted: messageId 0, taskId 0, SendMessage 0, http.method 0,
+        http.path 0, agent-card 0, g2c-c1-2035 18, and of those 18, the number where the string is NOT inside a
+        workload or pod token (src.workload=, name=, wl=lab/) is 0.
+
+  So the six zeroes and the 18 are 0 and 18 of 165, not of 150; 150 is the 25m read and is the smaller window.
+  No reading changes -- the counts are the same in either window -- only the denominator the entry may cite.
