@@ -18,6 +18,7 @@ from a2a.types import (
     Message,
     Part,
     SendMessageRequest,
+    SubscribeToTaskRequest,
     Task,
     TaskArtifactUpdateEvent,
     TaskState,
@@ -27,6 +28,7 @@ from a2a.types import (
 
 from orchestrator.forward import Forwarder
 from orchestrator.ledger import LineWriter, current_delivery, execution_line
+from orchestrator.model import Identity, ModelClient
 
 # How a streamed sequence of events ended, as the handler can observe it:
 # complete when the SDK's generator ran out, consumer-gone when the transport
@@ -42,7 +44,6 @@ from orchestrator.ledger import LineWriter, current_delivery, execution_line
 STREAM_END_COMPLETE = "complete"
 STREAM_END_CONSUMER_GONE = "consumer-gone"
 STREAM_END_ERROR = "error"
-from orchestrator.model import Identity, ModelClient
 
 
 def ended(stream_end: str) -> str:
@@ -159,7 +160,8 @@ class LabExecutor(AgentExecutor):
 
 
 class LedgerRequestHandler(DefaultRequestHandler):
-    """DefaultRequestHandler with the execution ledger around the two send methods."""
+    """DefaultRequestHandler with the execution ledger around the two send
+    methods and the resubscription."""
 
     def __init__(self, *args: Any, writer: LineWriter, card: AgentCard, **kwargs: Any) -> None:
         super().__init__(*args, agent_card=card, **kwargs)
@@ -259,6 +261,41 @@ class LedgerRequestHandler(DefaultRequestHandler):
         stream_end = STREAM_END_COMPLETE
         try:
             async for event in super().on_message_send_stream(params, context):
+                self._delivered(base, event)
+                if isinstance(event, (Task, Message)):
+                    last = event
+                yield event
+        except GeneratorExit:
+            stream_end = STREAM_END_CONSUMER_GONE
+            raise
+        except Exception as exc:
+            error = str(exc)
+            stream_end = STREAM_END_ERROR
+            raise
+        finally:
+            self._result(base, last, error=error, stream_end=ended(stream_end))
+
+    async def on_subscribe_to_task(self, params: SubscribeToTaskRequest, context: ServerCallContext) -> AsyncGenerator[Event]:
+        """Record a resubscription as an arrival of its own.
+
+        Without this the call goes straight to the SDK and the execution ledger
+        holds no line for it at all, so a second stream onto a running task
+        would be invisible here and countable only at the ingress boundary.
+
+        The request carries no Message and so no messageId, contextId or work
+        item (A2A v1.0, specification v1.0.1 §9.4.6): the taskId it names is the
+        whole of its identity, and the line says only that. What the server
+        answered first is the first "delivered" line after it — a Task for a
+        task still running, an error on the result line otherwise. The loop is
+        written out for the reason on_message_send_stream gives.
+        """
+        base = execution_line("received", method="SubscribeToTask", task_id=params.id)
+        self.writer.write(base)
+        last: Any = None
+        error = ""
+        stream_end = STREAM_END_COMPLETE
+        try:
+            async for event in super().on_subscribe_to_task(params, context):
                 self._delivered(base, event)
                 if isinstance(event, (Task, Message)):
                     last = event

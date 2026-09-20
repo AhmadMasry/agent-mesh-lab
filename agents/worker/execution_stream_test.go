@@ -286,19 +286,11 @@ func waitForExecutionLines(t *testing.T, buf *syncBuffer, want func([]executionL
 // model call is in flight, and the Task is then counted to completion — from
 // the executor's own state lines, not inferred from a stream that stopped.
 func TestStreamedRequest_TaskContinuesAfterTheClientIsGone(t *testing.T) {
-	release := make(chan struct{})
-	modelCalls := make(chan struct{}, 4)
-	model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		modelCalls <- struct{}{}
-		<-release
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"chatcmpl-x","object":"chat.completion","created":1,"model":"mock","choices":[{"index":0,"message":{"role":"assistant","content":"the fixed answer"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`))
-	}))
-	defer model.Close()
+	modelURL, modelCalls, release := newBlockingModel(t)
 
 	out := &syncBuffer{}
 	lw := newLineWriter(out)
-	executor := newLabExecutor("worker", newModelClient(model.URL+"/v1", "mock", "unused", httpclient.New(30*time.Second)), lw)
+	executor := newLabExecutor("worker", newModelClient(modelURL+"/v1", "mock", "unused", httpclient.New(30*time.Second)), lw)
 	a2aMux := http.NewServeMux()
 	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker")))
 	a2aMux.Handle("/", a2asrv.NewJSONRPCHandler(newExecutionLedger(a2asrv.NewHandler(executor), lw)))
@@ -313,11 +305,7 @@ func TestStreamedRequest_TaskContinuesAfterTheClientIsGone(t *testing.T) {
 		t.Fatalf("first event is not a JSON-RPC result: %v", first)
 	}
 	stream.next(t)
-	select {
-	case <-modelCalls:
-	case <-time.After(10 * time.Second):
-		t.Fatal("the model was never called")
-	}
+	awaitModelCall(t, modelCalls)
 
 	// The cut, with the model call still in flight.
 	stream.close()
@@ -326,7 +314,7 @@ func TestStreamedRequest_TaskContinuesAfterTheClientIsGone(t *testing.T) {
 	}
 
 	// The model answers after the client is gone.
-	close(release)
+	release()
 	lines := waitForExecutionLines(t, out, func(lines []executionLine) bool {
 		for _, l := range lines {
 			if l.Event == "state" && l.State == string(a2a.TaskStateCompleted) {

@@ -245,3 +245,22 @@ func (e *executionLedger) SendStreamingMessage(ctx context.Context, req *a2a.Sen
 	base := e.received("SendStreamingMessage", req)
 	return e.streamEvents(ctx, base, e.RequestHandler.SendStreamingMessage(ctx, req))
 }
+
+// SubscribeToTask records a resubscription as an arrival of its own. Without
+// this the call falls through the embedded handler and the execution ledger
+// holds no line for it at all, so a second stream onto a running task would be
+// invisible here and countable only at the ingress boundary.
+//
+// The request carries no Message and so no messageId, contextId or work item
+// (A2A v1.0, specification v1.0.1 §9.4.6): the taskId it names is the whole of
+// its identity, and the line says only that. What the server answered first is
+// the first "delivered" line after it — a Task for a task still running, an
+// error on the result line otherwise.
+func (e *executionLedger) SubscribeToTask(ctx context.Context, req *a2a.SubscribeToTaskRequest) iter.Seq2[a2a.Event, error] {
+	base := executionLine{Ledger: "execution", TS: now(), Event: "received", Method: "SubscribeToTask"}
+	if req != nil {
+		base.TaskID = string(req.ID)
+	}
+	e.lw.write(base)
+	return e.streamEvents(ctx, base, e.RequestHandler.SubscribeToTask(ctx, req))
+}

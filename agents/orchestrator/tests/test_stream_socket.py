@@ -189,3 +189,82 @@ def test_error_from_the_sdk_reads_error_at_the_execution_ledger():
     assert result["stream_end"] == "error", result
     assert result["error"], result
     print(f"a2a-sdk 1.1.4 surfaced the producer error as: {result['error']}")
+
+
+SUBSCRIBE_BODY = '{"jsonrpc":"2.0","method":"SubscribeToTask","params":{"id":"%s"},"id":"rpc-sub"}'
+
+
+def test_refused_resubscription_is_recorded_and_is_not_answered_as_a_stream():
+    """Resubscriptions to a task that has already finished.
+
+    Two texts come back from this SDK, and which one depends on whether the
+    ActiveTask is still registered when the resubscription arrives. While it is,
+    ActiveTask.subscribe raises "Task <id> is already completed." (a2a-sdk
+    1.1.4, active_task.py l.625-627); once it has been evicted, get_or_create
+    re-creates it and start() raises "Task <id> is in terminal state: 3"
+    (l.471-474). Eviction follows the original stream's tap closing and the
+    registry letting the finished task go, not a previous refusal, so a
+    resubscription sent a couple of seconds after the Task reached a terminal
+    state answers the second text on its first attempt. Both orders have been
+    reproduced from the same client sequence, so this test asserts what is
+    invariant — the code and the set of texts — and records which came back.
+
+    Both are -32602, so nothing in the answer distinguishes the two paths: only
+    the message text does. B-3's row therefore records the wire text together
+    with how many resubscriptions preceded it AND the time from the Task
+    reaching a terminal state to the resubscription's arrival. At B-3's timing,
+    where the resubscription follows a disruption and a proxy replacement, the
+    expected answer is "is in terminal state: 3".
+
+    And the refusal is not SSE at all: it is a JSON body, so the delivery's
+    ingress line carries no stream_end. A script that keyed on stream_end to
+    find resubscriptions would drop this arrival.
+    """
+    known = ("is already completed.", "is in terminal state")
+    out = io.StringIO()
+    with ServedApp(app_for(out)) as served:
+        client = StreamClient(served.port, STREAM_BODY, headers=A2A_HEADERS)
+        task_id = ""
+        states = []
+        while "TASK_STATE_COMPLETED" not in states:
+            event = client.next_event()
+            task_id = task_id or ((event.get("result", {}).get("task") or {}).get("id", ""))
+            states.append(state_of(event))
+        client.close()
+        assert task_id
+
+        answers = []
+        for _ in range(2):
+            refused = StreamClient(served.port, SUBSCRIBE_BODY % task_id,
+                                   headers=A2A_HEADERS + "X-Logical-Work-Item-Id: w-socket\r\n")
+            answers.append(refused.read_unary_response())
+            refused.close()
+        wait_for(out, lambda _: len(response_lines(out)) == 3, "three ingress response lines")
+
+    for status, body in answers:
+        assert status.startswith("HTTP/1.1 200"), status
+        assert '"code":-32602' in body, body
+        assert any(text in body for text in known), body
+    print("a2a-sdk 1.1.4 answered the two refusals with: "
+          + " | ".join(next(text for text in known if text in body) for _, body in answers))
+
+    arrivals = ledger(out, "ingress", phase="arrival", method="SubscribeToTask")
+    assert len(arrivals) == 2
+    for arrival in arrivals:
+        assert arrival["taskId"] == task_id
+        assert arrival["logical_work_item_id"] == "w-socket" and arrival["lwi_source"] == "header"
+        assert arrival["messageId"] == ""
+    refusals = [line for line in response_lines(out) if line["method"] == "SubscribeToTask"]
+    assert len(refusals) == 2
+    for refusal in refusals:
+        assert "stream_end" not in refusal and "ts_end" not in refusal, refusal
+        assert refusal["status"] == 200
+
+    received = [line["method"] for line in ledger(out, "execution") if line.get("event") == "received"]
+    assert received == ["SendStreamingMessage", "SubscribeToTask", "SubscribeToTask"]
+    refused_results = [line for line in result_lines(out) if line["method"] == "SubscribeToTask"]
+    assert len(refused_results) == 2
+    for result in refused_results:
+        assert result["stream_end"] == "error" and result["error"], result
+    # A refusal starts nothing: one dispatch for the whole work item.
+    assert len([line for line in ledger(out, "execution") if line.get("event") == "execute"]) == 1
