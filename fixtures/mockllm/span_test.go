@@ -210,7 +210,10 @@ func TestInjectedClose_ThatCouldNotCloseSaysSoOnTheSpan(t *testing.T) {
 // ends in a connection close; the review of 2026-09-19 found that without it a
 // marking added to the stale branch passed this whole package, and
 // experiments/runs/2026-09-19-mock-span-on-injected-close/ keeps this test
-// passing on the code as it is and failing on that change.
+// passing on the code as it is and failing on that change. The delay mode, which
+// answers, carries its own marking (lab.injection=delay, Error only when the
+// answer did not leave), pinned by delay_test.go's
+// TestDelay_ServerSpanSaysWhatHappened.
 func TestInjectedClose_MarkingIsAbsentFromEveryOtherCall(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

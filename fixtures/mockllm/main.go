@@ -25,6 +25,17 @@ const (
 	// in findings.md. Generous relative to the configurable latency and
 	// delay_ms values used in Gate 1 runs (hundreds of milliseconds), so a
 	// deliberately slow response is never mistaken for a hung server.
+	//
+	// writeTimeout is counted from when a request's header is read, so it would
+	// cut any answer written more than 10 s later. The delay mode's answer is
+	// the one exception: when its delay ends it gets a write deadline of its
+	// own, writeTimeout from that moment (delayThenAnswer, answerDeadline). Its
+	// delay_ms is bounded by the callers' ceilings, not by this value.
+	//
+	// The default path has no such deadline and does not check its writes: with
+	// MOCKLLM_LATENCY_MS past writeTimeout its answer never leaves and its line
+	// still reads ok (measured on the tree before the delay mode). A slow call
+	// that answers is the delay mode, never MOCKLLM_LATENCY_MS.
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 10 * time.Second
 	writeTimeout      = 10 * time.Second
@@ -72,13 +83,21 @@ func main() {
 	s.configureHTTPServer(httpServer)
 	// Wrapped here rather than inside configureHTTPServer, so the connection
 	// tracking that stale mode depends on stays exactly as the tests exercise it.
-	httpServer.Handler = labotel.Handler("mockllm", httpServer.Handler)
+	httpServer.Handler = servedHandler(httpServer.Handler)
 
 	log.Printf("mockllm: listening on %s (latency_ms=%d, response_text_len=%d)",
 		httpServer.Addr, cfg.LatencyMs, len(cfg.ResponseText))
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("mockllm: server error: %v", err)
 	}
+}
+
+// servedHandler is the chain main serves around the fixture's own mux: the
+// tracing instrumentation, outermost. It is a function so that the delay tests,
+// which depend on what this chain lets a handler reach (see delayThenAnswer),
+// run through the chain itself and not a copy of it.
+func servedHandler(inner http.Handler) http.Handler {
+	return labotel.Handler("mockllm", inner)
 }
 
 func getEnv(key, def string) string {

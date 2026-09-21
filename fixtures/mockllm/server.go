@@ -49,6 +49,11 @@ type server struct {
 	// sets to ask for that connection to be closed the next time it goes
 	// idle. Populated in connContext, read and cleaned up in connState.
 	connFlags sync.Map
+
+	// answerDeadline is the write deadline a delay-mode answer is given when
+	// its delay ends (see delayThenAnswer). A field only so a test can put it
+	// in the past and make the write fail on a real socket.
+	answerDeadline func() time.Time
 }
 
 // connFlag is stale mode's per-connection state. armStaleClose sets
@@ -66,6 +71,12 @@ type connFlag struct {
 
 func newServer(cfg Config, ledgerOut io.Writer) *server {
 	s := &server{cfg: cfg, ledger: ledgerWriter{out: ledgerOut}}
+	s.answerDeadline = func() time.Time {
+		if cfg.WriteTimeout <= 0 {
+			return time.Time{} // no deadline, as net/http reads a zero WriteTimeout
+		}
+		return time.Now().Add(cfg.WriteTimeout)
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/chat/completions", s.handleChatCompletions)
 	mux.HandleFunc("/control/inject", s.handleInject)
@@ -235,6 +246,133 @@ func (s *server) writeNormalResponse(w http.ResponseWriter, req chatCompletionRe
 	writeJSONResponse(w, http.StatusOK, buildResponse(s.cfg.ResponseText, bodySHA256, req))
 }
 
+// The three outcomes of a delay-mode call. Each is read from one thing:
+//
+//   - outcomeClientGone: the request context was done before the answer was
+//     written. net/http cancels it when its background read of the connection
+//     ends, which is the caller closing or resetting it (a caller's own timeout
+//     does exactly that), and also a caller that only half-closed its sending
+//     side: a half-close alone counts as client-gone. The handler writes no
+//     answer; net/http then sends the empty 200 (Content-Length: 0) a handler
+//     that wrote nothing gets, which a caller that only half-closed receives.
+//   - outcomeWriteFailed: a write or a flush of the answer returned an error.
+//     A write that fails also cancels the request context in net/http, so the
+//     context is not consulted once writing has begun: the error decides.
+//   - outcomeOK: every write and the final flush returned nil, meaning the
+//     answer's bytes were handed to the kernel's socket buffer. That is what
+//     the fixture can see; it is not proof the caller read them.
+const (
+	outcomeOK          = "ok"
+	outcomeClientGone  = "client-gone"
+	outcomeWriteFailed = "write-failed"
+)
+
+// waitOrGone sleeps ms milliseconds unless ctx ends first, and reports whether
+// the caller is still there. A caller that left as the delay ended counts as
+// gone: no answer is written to it. The last check covers two windows: no delay
+// at all with the caller already gone (pinned by TestWaitOrGone), and, on the
+// timer path, the instant where the timer and the caller's leaving are both
+// ready and select picks the timer, which select decides at random and a test
+// cannot force.
+func waitOrGone(ctx context.Context, ms int) bool {
+	if ms > 0 {
+		timer := time.NewTimer(time.Duration(ms) * time.Millisecond)
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			return false
+		}
+	}
+	return ctx.Err() == nil
+}
+
+// innermost follows Unwrap down to the writer net/http itself created.
+func innermost(w http.ResponseWriter) http.ResponseWriter {
+	for {
+		u, ok := w.(interface{ Unwrap() http.ResponseWriter })
+		if !ok {
+			return w
+		}
+		w = u.Unwrap()
+	}
+}
+
+// answerWriter is the chain's writer with every write and flush error kept.
+// Headers and body go through the chain as for any answer; flushes go to the
+// innermost writer's controller, whose Flush returns the socket write's error.
+type answerWriter struct {
+	http.ResponseWriter
+	rc  *http.ResponseController
+	err error
+}
+
+func (a *answerWriter) Write(p []byte) (int, error) {
+	n, err := a.ResponseWriter.Write(p)
+	a.keep(err)
+	return n, err
+}
+
+func (a *answerWriter) Flush() { a.keep(a.rc.Flush()) }
+
+func (a *answerWriter) keep(err error) {
+	if a.err == nil {
+		a.err = err
+	}
+}
+
+// delayThenAnswer is the delay mode: sleep delayMs (in place of the fixture's
+// LatencyMs, as delay-then-close does), then answer as a call with no
+// injection would, and return what happened to the answer.
+//
+// The write deadline. net/http sets it once, when the request header is read,
+// to WriteTimeout later (10 s in main), and the handler does not move it; an
+// answer written after a longer delay would fail at the socket. So when the
+// delay ends, this answer is given a deadline of its own: WriteTimeout from
+// that moment (answerDeadline), the same budget a normal answer gets from its
+// header. The bound stays; it is only counted from when the answer starts.
+//
+// What this chain lets a handler reach (measured through servedHandler, the
+// otelhttp handler at the pinned version): SetWriteDeadline on the chain's
+// writer reaches net/http's, but a Flush through it does not report the
+// socket's error — otelhttp's Flush hook calls the plain http.Flusher, which
+// has none, so a failed write reads as a clean flush. Every layer of this chain
+// offers Unwrap, so both the deadline and the flush are taken on the innermost
+// writer, net/http's own. TestDelay_WriteFailureIsRecorded runs through
+// servedHandler and fails if that stops being true.
+//
+// A JSON answer is written with an explicit Content-Length: flushing before
+// the handler returns would otherwise send it chunked, where a normal answer
+// is framed by the length net/http computes. Framing and body bytes are the
+// same as a normal answer's; the header block differs in order only
+// (Content-Length is written before Content-Type and Date here, after them in
+// a normal answer).
+//
+// The span. The mock's own server span is marked with lab.injection=delay, and
+// with status Error named by the outcome when the answer did not leave
+// (labotel.MarkInjectionOutcome, which has what the instrumentation still
+// stamps beside it).
+func (s *server) delayThenAnswer(w http.ResponseWriter, r *http.Request, req chatCompletionRequest, bodySHA256 string, delayMs int) string {
+	if !waitOrGone(r.Context(), delayMs) {
+		return outcomeClientGone
+	}
+	rc := http.NewResponseController(innermost(w))
+	// If the deadline cannot be moved, the one net/http set stands, and a write
+	// past it fails and is recorded as write-failed below.
+	_ = rc.SetWriteDeadline(s.answerDeadline())
+	aw := &answerWriter{ResponseWriter: w, rc: rc}
+	if req.Stream {
+		writeSSEResponse(aw, s.cfg.ResponseText, bodySHA256, req)
+	} else {
+		writeLengthFramedJSON(aw, buildResponse(s.cfg.ResponseText, bodySHA256, req))
+	}
+	aw.Flush()
+	if aw.err != nil {
+		return outcomeWriteFailed
+	}
+	return outcomeOK
+}
+
 func (s *server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -312,6 +450,11 @@ func (s *server) handleChatCompletions(w http.ResponseWriter, r *http.Request) {
 		} else {
 			line.Outcome = "delayed-close"
 		}
+
+	case fire && mode == modeDelay:
+		line.Injection = mode
+		line.Outcome = s.delayThenAnswer(w, r, req, bodySHA256, delayMs)
+		labotel.MarkInjectionOutcome(r.Context(), mode, line.Outcome, line.Outcome == outcomeOK)
 
 	case fire && mode == modeStale:
 		// Two ledger lines for one stale injection: this "stale-armed" one,

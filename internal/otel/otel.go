@@ -146,6 +146,31 @@ func MarkInjection(ctx context.Context, mode string, closeErr error) {
 	span.SetStatus(codes.Error, description)
 }
 
+// MarkInjectionOutcome marks the server span of the request in ctx as one a lab
+// fixture served under an injection that answers, such as the mock's delay mode.
+// It always sets lab.injection=<mode>. When the answer did not leave (answered
+// false) it also sets status Error with the description
+// "injected: <mode>: <outcome>", the outcome spelled as the fixture's ledger
+// spells it, so a cut call never reads as a clean one.
+//
+// Measured before it existed (fixtures/mockllm/delay_test.go,
+// TestDelay_ServerSpanSaysWhatHappened): the mock's span for a delay call read
+// status Unset, http.response.status_code=200 and no lab.injection for every
+// outcome, and on a write that failed it also carried the body size the handler
+// had written. The instrumentation still stamps those beside this marking, for
+// the reason MarkInjection gives (its wrapper's default 200, stamped after the
+// handler returns, and a later, lower status ignored by the SDK); a reader tells
+// what happened by this status and the fixture's ledger line, never by the
+// status code. Nothing on the wire and no ledger line changes; with no tracer
+// provider installed the span is non-recording and this does nothing.
+func MarkInjectionOutcome(ctx context.Context, mode, outcome string, answered bool) {
+	span := trace.SpanFromContext(ctx)
+	span.SetAttributes(attribute.String(labInjection, mode))
+	if !answered {
+		span.SetStatus(codes.Error, "injected: "+mode+": "+outcome)
+	}
+}
+
 // Transport wraps a RoundTripper so an outbound request is a client span and
 // carries the trace context to whatever answers it. It adds no retry and no
 // header of the lab's own: base is used exactly as the caller built it, which is
