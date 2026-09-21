@@ -4,6 +4,19 @@ Retries are off at both layers the openai client has: its own request retries
 (max_retries, documented default 2) and the connection retries of the httpx2
 transport it uses (retries, default 0). Both values are recorded in the
 baseline findings entry.
+
+The timeout (60.0 s, set by nothing in the environment: server.py passes none)
+is an httpx2 timeout applied per phase, so the wait for the model's answer is
+bounded at 60 s. It is the ceiling on the mock's delay mode for this receiver
+(fixtures/mockllm/injection.go, modeDelay, has both receivers' ceilings). An
+environment knob like the worker's MODEL_TIMEOUT_S is not a one-line change:
+the openai client ignores an http_client whose timeout equals httpx2's
+DEFAULT_TIMEOUT_CONFIG, Timeout(timeout=5.0) (httpx2 _config.py l.218), and
+uses its own 600 s instead (openai _base_client, the http_client.timeout
+check), so a knob set to 5 would silently mean 600 s. It
+would have to hand the value to AsyncOpenAI(timeout=...) too, with a test for
+that value, and say that it bounds each phase here where the worker's bounds the
+whole call.
 """
 from __future__ import annotations
 
