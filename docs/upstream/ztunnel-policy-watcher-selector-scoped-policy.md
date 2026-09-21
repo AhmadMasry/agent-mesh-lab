@@ -1,6 +1,8 @@
 # Draft issue — ztunnel: a connection opened before a selector-scoped ALLOW policy is not closed when the policy arrives
 
-Status: **draft, not filed.** Text for a human to review and file, addressed to istio/ztunnel. No link until it is filed.
+Status: **not to be filed — the author's decision of 2026-09-21.** Written for istio/ztunnel and not filed; kept because the C-3R entry in `findings.md` ("Experiment C / ztunnel / open connections") cites it.
+
+2026-09-21, C-3R2: the Reproduction below was run as written, its YAML with only the server's image line changed, to the public `nginxinc/nginx-unprivileged:1.30.5@sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3` (`versions.yaml` `c3r2-public-server`), `$REQ_PATH` `/?rep=<run>`, and steps 1–6 with their own commands, one control and three runs per policy; nothing in the steps had to change, and the result held: policy A closed the held connection 3 of 3 (the watcher's line 148–182 µs after `handling RBAC update`, the second request not delivered) and policy B did not, 3 of 3 (no watcher line, the second request answered 200 486–499 ms after it), new connections refused 6 of 6. The pushes differ from the table's: the client Pod as written carries no labels, and ztunnel listed `repro/repro-selector` on it as well as on the server (why was not read), and policy B came as a two-resource 426 B WDS push with a 73 B WADS, where the lab's run had a one-resource 238 B WDS and a 67 B WADS; policy A came as a 74 B WADS alone, as the lab's did at 68 B (`findings.md`, "Experiment C / ztunnel / open connections, public server"; `experiments/runs/2026-09-21-c3r2-public-server/`).
 
 ## Issue text to file
 

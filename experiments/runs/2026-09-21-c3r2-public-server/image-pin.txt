@@ -1,0 +1,69 @@
+
+# read 2026-09-21T20:17:00Z
+$ curl -sS --retry 0 --max-time 30 'https://hub.docker.com/v2/repositories/nginxinc/nginx-unprivileged/' | jq '{name, namespace, description, pull_count, last_updated, status_description, is_private}'
+{
+  "name": "nginx-unprivileged",
+  "namespace": "nginxinc",
+  "description": "Unprivileged NGINX Dockerfiles",
+  "pull_count": 1278008013,
+  "last_updated": "2026-09-21T04:24:17.522248Z",
+  "status_description": "active",
+  "is_private": false
+}
+# exit 0
+
+# read 2026-09-21T20:17:00Z
+$ curl -sS --retry 0 --max-time 30 'https://hub.docker.com/v2/repositories/library/nginx/' | jq '{name, namespace, description, pull_count, last_updated}'
+{
+  "name": "nginx",
+  "namespace": "library",
+  "description": "Official build of Nginx.",
+  "pull_count": 13386262182,
+  "last_updated": "2026-09-19T10:53:04.251083Z"
+}
+# exit 0
+
+# read 2026-09-21T20:17:01Z
+$ curl -sS --retry 0 --max-time 30 'https://hub.docker.com/v2/repositories/nginxinc/nginx-unprivileged/tags/1.30.5' | jq -c '{name, digest, last_updated, tag_status, images: [.images[] | {os, architecture, variant, digest}]}'
+{"name":"1.30.5","digest":"sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3","last_updated":"2026-09-21T02:50:58.592412Z","tag_status":"active","images":[{"os":"linux","architecture":"amd64","variant":null,"digest":"sha256:d7eccb9e3b238bcb01f9f82137633332063d5d2e9c78fec611ae5a7480e93478"},{"os":"linux","architecture":"ppc64le","variant":null,"digest":"sha256:15f53bc7d1dd4995433fe73dda43bf6416740053e39a92153dc3c84424407238"},{"os":"linux","architecture":"arm64","variant":null,"digest":"sha256:7573f17b255e286b75fddeeecc90dc1828b10a185cbffa0b96eb51d3b46e1236"},{"os":"linux","architecture":"386","variant":null,"digest":"sha256:1d2a3966fa1e517d83396ab094b929838ee3805e91d5cc1059ff9756491e3e76"},{"os":"linux","architecture":"s390x","variant":null,"digest":"sha256:33b37bbc1316aa4b2e48c30517638f152ab15f8e0665b99600b954eb65d324a2"},{"os":"linux","architecture":"arm","variant":"v7","digest":"sha256:66c85126f0a862e2ad7d7b148c2994ea05512edb4c2799ed3d036b43865cd113"},{"os":"linux","architecture":"riscv64","variant":null,"digest":"sha256:b0cad6dfdc0b573a673785b0e2ae655e0ae1f9b42fe064c3bdeb1d964c4703c6"}]}
+# exit 0
+
+# read 2026-09-21T20:17:01Z
+$ curl -sS --retry 0 --max-time 30 'https://hub.docker.com/v2/repositories/nginxinc/nginx-unprivileged/tags/stable' | jq -c '{name, digest, last_updated}'; curl -sS --retry 0 --max-time 30 'https://hub.docker.com/v2/repositories/nginxinc/nginx-unprivileged/tags/mainline' | jq -c '{name, digest, last_updated}'; curl -sS --retry 0 --max-time 30 'https://hub.docker.com/v2/repositories/nginxinc/nginx-unprivileged/tags/1.31.6' | jq -c '{name, digest, last_updated}'
+{"name":"stable","digest":"sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3","last_updated":"2026-09-21T02:51:12.005881Z"}
+{"name":"mainline","digest":"sha256:31e97ebaac04c19c8e7da6012c5776e86a4414695565200719d6113cb68d0b78","last_updated":"2026-09-21T03:27:41.23934Z"}
+{"name":"1.31.6","digest":"sha256:31e97ebaac04c19c8e7da6012c5776e86a4414695565200719d6113cb68d0b78","last_updated":"2026-09-21T03:27:22.808069Z"}
+# exit 0
+
+# read 2026-09-21T20:17:02Z
+$ TOK=$(curl -sS --retry 0 --max-time 30 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:nginxinc/nginx-unprivileged:pull' | jq -r .token); curl -sS --retry 0 --max-time 30 -I -H "Authorization: Bearer $TOK" -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' 'https://registry-1.docker.io/v2/nginxinc/nginx-unprivileged/manifests/1.30.5' | grep -i -E '^HTTP/|^docker-content-digest|^content-type'; curl -sS --retry 0 --max-time 30 -H "Authorization: Bearer $TOK" -H 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json' 'https://registry-1.docker.io/v2/nginxinc/nginx-unprivileged/manifests/1.30.5' > "$TMPDIR/c3r2-index.json"; printf 'sha256 of the index body as served: '; shasum -a 256 "$TMPDIR/c3r2-index.json" | cut -d' ' -f1; jq -c '.manifests[] | select(.platform.os == "linux") | {platform, digest}' "$TMPDIR/c3r2-index.json"; rm -f "$TMPDIR/c3r2-index.json"
+HTTP/2 200 
+content-type: application/vnd.oci.image.index.v1+json
+docker-content-digest: sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3
+sha256 of the index body as served: 0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3
+{"platform":{"architecture":"amd64","os":"linux"},"digest":"sha256:d7eccb9e3b238bcb01f9f82137633332063d5d2e9c78fec611ae5a7480e93478"}
+{"platform":{"architecture":"arm","os":"linux","variant":"v7"},"digest":"sha256:66c85126f0a862e2ad7d7b148c2994ea05512edb4c2799ed3d036b43865cd113"}
+{"platform":{"architecture":"arm64","os":"linux"},"digest":"sha256:7573f17b255e286b75fddeeecc90dc1828b10a185cbffa0b96eb51d3b46e1236"}
+{"platform":{"architecture":"386","os":"linux"},"digest":"sha256:1d2a3966fa1e517d83396ab094b929838ee3805e91d5cc1059ff9756491e3e76"}
+{"platform":{"architecture":"ppc64le","os":"linux"},"digest":"sha256:15f53bc7d1dd4995433fe73dda43bf6416740053e39a92153dc3c84424407238"}
+{"platform":{"architecture":"riscv64","os":"linux"},"digest":"sha256:b0cad6dfdc0b573a673785b0e2ae655e0ae1f9b42fe064c3bdeb1d964c4703c6"}
+{"platform":{"architecture":"s390x","os":"linux"},"digest":"sha256:33b37bbc1316aa4b2e48c30517638f152ab15f8e0665b99600b954eb65d324a2"}
+# exit 0
+
+# read 2026-09-21T20:17:04Z
+$ curl -sS --retry 0 --max-time 30 https://nginx.org/en/download.html | sed 's/<[^>]*>/ /g' | tr -s ' ' | grep -o -E '(Mainline version|Stable version) CHANGES[^ ]* nginx-[0-9.]+'
+Mainline version CHANGES nginx-1.31.6
+Stable version CHANGES-1.30 nginx-1.30.5
+# exit 0
+
+# read 2026-09-21T20:17:05Z
+$ git ls-remote https://github.com/nginx/docker-nginx-unprivileged refs/heads/main; curl -sS --retry 0 --max-time 30 https://raw.githubusercontent.com/nginx/docker-nginx-unprivileged/main/stable/debian/Dockerfile | grep -n -E 'NGINX_VERSION=|listen|EXPOSE|^USER|^CMD|^ENTRYPOINT'
+bf9eed6de9a7ff412f1e37d604ee491f2cf78528	refs/heads/main
+11:ENV NGINX_VERSION=1.30.5
+139:RUN sed -i 's,listen       80;,listen       8080;,' /etc/nginx/conf.d/default.conf \
+151:COPY 10-listen-on-ipv6-by-default.sh /docker-entrypoint.d
+155:ENTRYPOINT ["/docker-entrypoint.sh"]
+157:EXPOSE 8080
+161:USER $UID
+163:CMD ["nginx", "-g", "daemon off;"]
+# exit 0

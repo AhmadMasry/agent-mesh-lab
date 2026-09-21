@@ -1,0 +1,199 @@
+
+# read 2026-09-21T20:21:10Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-21T20:21:10Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "repro") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"client","inbound":[],"outbound":[]}
+{"pod":"server-64b5d85cf7-fqmzb","inbound":[],"outbound":[]}
+# exit 0
+
+# read 2026-09-21T20:21:10Z
+$ kubectl -n repro exec client -- netstat -tn
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 10.244.1.46:39861       10.244.1.47:8080        TIME_WAIT   
+tcp        0      0 10.244.1.46:42535       10.244.1.47:8080        ESTABLISHED 
+tcp        0      0 10.244.1.46:43827       10.244.1.47:8080        TIME_WAIT   
+tcp        0      0 10.244.1.46:47364       10.244.1.47:15008       ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.46:34125 TIME_WAIT   
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.46:42535 ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.46:38225 TIME_WAIT   
+# exit 0
+
+# read 2026-09-21T20:21:10Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "repro") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"client","inbound":[],"outbound":[{"src":"10.244.1.46:42535","originalDst":"10.244.1.47:8080","actualDst":"10.244.1.47:15008","protocol":"HBONE"}]}
+{"pod":"server-64b5d85cf7-fqmzb","inbound":[{"src":"10.244.1.46:47364","originalDst":"","actualDst":"10.244.1.47:8080","protocol":"HBONE"}],"outbound":[]}
+# exit 0
+
+# read 2026-09-21T20:21:11Z
+$ kubectl -n repro logs server-64b5d85cf7-fqmzb --timestamps --since-time=2026-09-21T20:21:10Z
+2026-09-21T20:21:10.862334135Z 10.244.1.46 - - [21/Sep/2026:20:21:10 +0000] "GET /?rep=namespace-3 HTTP/1.1" 200 896 "-" "-" "-"
+# exit 0
+
+# read 2026-09-21T20:21:11Z
+$ kubectl apply -f experiments/runs/2026-09-21-c3r2-public-server/objects/policy-namespace.yaml
+authorizationpolicy.security.istio.io/repro-namespace created
+# exit 0
+
+# read 2026-09-21T20:21:11Z
+$ kubectl -n istio-system logs ztunnel-sdq6z --since-time=2026-09-21T20:21:10Z | grep 'no longer allowed after a policy update'
+2026-09-21T20:21:11.213349Z	info	proxy::connection_manager:proxy{wl=repro/server-64b5d85cf7-fqmzb}	connection 10.244.1.46:47364(spiffe://cluster.local/ns/repro/sa/default)->10.244.1.47:8080 (Kubernetes//Pod/repro/server-64b5d85cf7-fqmzb) closed because it's no longer allowed after a policy update	
+# exit 0
+
+# read 2026-09-21T20:21:11Z
+$ kubectl -n repro get authorizationpolicy repro-namespace -o yaml
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"security.istio.io/v1","kind":"AuthorizationPolicy","metadata":{"annotations":{},"name":"repro-namespace","namespace":"repro"},"spec":{"action":"ALLOW","rules":[{"from":[{"source":{"principals":["cluster.local/ns/repro/sa/someone-else"]}}]}]}}
+  creationTimestamp: "2026-09-21T20:21:11Z"
+  generation: 1
+  name: repro-namespace
+  namespace: repro
+  resourceVersion: "80412"
+  uid: df06b96b-adae-4502-ac04-765ba60361a8
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/repro/sa/someone-else
+status:
+  conditions:
+  - lastTransitionTime: "2026-09-21T20:21:11.111557093Z"
+    message: attached to ztunnel
+    observedGeneration: "1"
+    reason: Accepted
+    status: "True"
+    type: ZtunnelAccepted
+# exit 0
+
+# read 2026-09-21T20:21:11Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq '.[] | select(.namespace == "repro")'
+{
+  "name": "repro-namespace",
+  "namespace": "repro",
+  "scope": "Namespace",
+  "action": "Allow",
+  "rules": [
+    [
+      [
+        {
+          "principals": [
+            {
+              "Exact": "cluster.local/ns/repro/sa/someone-else"
+            }
+          ]
+        }
+      ]
+    ]
+  ]
+}
+# exit 0
+
+# read 2026-09-21T20:21:11Z
+$ istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.namespace == "repro") | {name, uid, authorizationPolicies}'
+{"name":"client","uid":"Kubernetes//Pod/repro/client","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+{"name":"server-64b5d85cf7-fqmzb","uid":"Kubernetes//Pod/repro/server-64b5d85cf7-fqmzb","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+# exit 0
+
+# read 2026-09-21T20:21:11Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "repro") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"client","inbound":[],"outbound":[{"src":"10.244.1.46:42535","originalDst":"10.244.1.47:8080","actualDst":"10.244.1.47:15008","protocol":"HBONE"}]}
+{"pod":"server-64b5d85cf7-fqmzb","inbound":[],"outbound":[]}
+# exit 0
+
+# read 2026-09-21T20:21:11Z
+$ kubectl -n istio-system logs ztunnel-sdq6z --since-time=2026-09-21T20:21:10Z | grep -E 'no longer allowed|policy change|policy rejection|RBAC|10\.244\.1\.47'
+2026-09-21T20:21:10.187367Z	info	xds:xds{id=3}	handling RBAC delete repro/repro-selector	
+2026-09-21T20:21:11.213173Z	info	xds:xds{id=3}	handling RBAC update repro-namespace	
+2026-09-21T20:21:11.213300Z	error	access	connection complete	src.addr=10.244.1.46:47364 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.47:15008 dst.hbone_addr=10.244.1.47:8080 dst.workload="server-64b5d85cf7-fqmzb" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=1134 bytes_recv=48 duration="351ms" error="connection closed due to policy change"
+2026-09-21T20:21:11.213349Z	info	proxy::connection_manager:proxy{wl=repro/server-64b5d85cf7-fqmzb}	connection 10.244.1.46:47364(spiffe://cluster.local/ns/repro/sa/default)->10.244.1.47:8080 (Kubernetes//Pod/repro/server-64b5d85cf7-fqmzb) closed because it's no longer allowed after a policy update	
+# exit 0
+
+# read 2026-09-21T20:21:11Z
+$ kubectl -n repro exec client -- netstat -tn
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 10.244.1.46:39861       10.244.1.47:8080        TIME_WAIT   
+tcp        0      0 10.244.1.46:42535       10.244.1.47:8080        CLOSE_WAIT  
+tcp        0      0 10.244.1.46:43827       10.244.1.47:8080        TIME_WAIT   
+tcp        0      0 10.244.1.46:47364       10.244.1.47:15008       ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.46:34125 TIME_WAIT   
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.46:42535 FIN_WAIT2   
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.46:38225 TIME_WAIT   
+# exit 0
+
+# read 2026-09-21T20:21:31Z
+$ kubectl -n repro exec client -- curl -sS --retry 0 "http://10.244.1.47:8080/?rep=namespace-3"
+curl: (56) Recv failure: Connection reset by peer
+command terminated with exit code 56
+# exit 56
+
+# read 2026-09-21T20:21:31Z
+$ kubectl -n repro logs server-64b5d85cf7-fqmzb --timestamps --since-time=2026-09-21T20:21:10Z
+2026-09-21T20:21:10.862334135Z 10.244.1.46 - - [21/Sep/2026:20:21:10 +0000] "GET /?rep=namespace-3 HTTP/1.1" 200 896 "-" "-" "-"
+# exit 0
+
+# read 2026-09-21T20:21:31Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "repro") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"client","inbound":[],"outbound":[]}
+{"pod":"server-64b5d85cf7-fqmzb","inbound":[],"outbound":[]}
+# exit 0
+
+# read 2026-09-21T20:21:31Z
+$ kubectl -n istio-system logs ztunnel-sdq6z --since-time=2026-09-21T20:21:10Z | grep -E 'no longer allowed|policy change|policy rejection|RBAC|10\.244\.1\.47'
+2026-09-21T20:21:10.187367Z	info	xds:xds{id=3}	handling RBAC delete repro/repro-selector	
+2026-09-21T20:21:11.213173Z	info	xds:xds{id=3}	handling RBAC update repro-namespace	
+2026-09-21T20:21:11.213300Z	error	access	connection complete	src.addr=10.244.1.46:47364 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.47:15008 dst.hbone_addr=10.244.1.47:8080 dst.workload="server-64b5d85cf7-fqmzb" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=1134 bytes_recv=48 duration="351ms" error="connection closed due to policy change"
+2026-09-21T20:21:11.213349Z	info	proxy::connection_manager:proxy{wl=repro/server-64b5d85cf7-fqmzb}	connection 10.244.1.46:47364(spiffe://cluster.local/ns/repro/sa/default)->10.244.1.47:8080 (Kubernetes//Pod/repro/server-64b5d85cf7-fqmzb) closed because it's no longer allowed after a policy update	
+2026-09-21T20:21:11.647987Z	error	access	connection complete	src.addr=10.244.1.46:42535 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.47:15008 dst.hbone_addr=10.244.1.47:8080 dst.workload="server-64b5d85cf7-fqmzb" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="outbound" bytes_sent=48 bytes_recv=1134 duration="786ms" error="while closing connection: send: io error: broken pipe"
+2026-09-21T20:21:31.091001Z	error	access	connection complete	src.addr=10.244.1.46:47364 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.47:15008 dst.hbone_addr=10.244.1.47:8080 dst.workload="server-64b5d85cf7-fqmzb" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: allow policies exist, but none allowed"
+2026-09-21T20:21:31.091069Z	error	access	connection complete	src.addr=10.244.1.46:35984 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.47:15008 dst.hbone_addr=10.244.1.47:8080 dst.workload="server-64b5d85cf7-fqmzb" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="outbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="http status: 401 Unauthorized"
+# exit 0
+
+# read 2026-09-21T20:21:31Z
+$ kubectl -n repro exec client -- netstat -tn
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 10.244.1.46:39861       10.244.1.47:8080        TIME_WAIT   
+tcp        0      0 10.244.1.46:43827       10.244.1.47:8080        TIME_WAIT   
+tcp        0      0 10.244.1.46:47364       10.244.1.47:15008       ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.46:34125 TIME_WAIT   
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.46:42535 TIME_WAIT   
+# exit 0
+
+# read 2026-09-21T20:21:31Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "repro") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"client","inbound":[],"outbound":[]}
+{"pod":"server-64b5d85cf7-fqmzb","inbound":[],"outbound":[]}
+# exit 0
+
+# read 2026-09-21T20:21:31Z
+$ kubectl delete -f experiments/runs/2026-09-21-c3r2-public-server/objects/policy-namespace.yaml
+authorizationpolicy.security.istio.io "repro-namespace" deleted from repro namespace
+# exit 0
+
+# read 2026-09-21T20:21:31Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-21T20:21:31Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq -c '.[] | {name, namespace, scope, action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-21T20:21:31Z
+$ istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.namespace == "repro") | {name, authorizationPolicies}'
+{"name":"client","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+{"name":"server-64b5d85cf7-fqmzb","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+# exit 0

@@ -1,0 +1,96 @@
+
+# read 2026-09-21T20:21:41Z
+$ kubectl -n repro logs deploy/server --timestamps --since-time=2026-09-21T20:18:30Z | grep -v -E 'docker-entrypoint|\[notice\]|10-listen|envsh|\.sh:'
+2026-09-21T20:19:04.251488090Z 10.244.1.46 - - [21/Sep/2026:20:19:04 +0000] "GET /?rep=none-1 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:19:04.450768090Z 10.244.1.46 - - [21/Sep/2026:20:19:04 +0000] "GET /?rep=none-1 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:19:04.555090382Z 10.244.1.46 - - [21/Sep/2026:20:19:04 +0000] "GET /?rep=none-1 HTTP/1.1" 200 896 "-" "curl/8.22.0" "-"
+2026-09-21T20:19:15.556668262Z 10.244.1.46 - - [21/Sep/2026:20:19:15 +0000] "GET /?rep=selector-1 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:19:16.385106388Z 10.244.1.46 - - [21/Sep/2026:20:19:16 +0000] "GET /?rep=selector-1 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:20:07.320983050Z 10.244.1.46 - - [21/Sep/2026:20:20:07 +0000] "GET /?rep=namespace-1 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:20:44.998865762Z 10.244.1.46 - - [21/Sep/2026:20:20:44 +0000] "GET /?rep=selector-2 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:20:45.826507721Z 10.244.1.46 - - [21/Sep/2026:20:20:45 +0000] "GET /?rep=selector-2 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:20:47.028685305Z 10.244.1.46 - - [21/Sep/2026:20:20:47 +0000] "GET /?rep=namespace-2 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:21:08.783890551Z 10.244.1.46 - - [21/Sep/2026:20:21:08 +0000] "GET /?rep=selector-3 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:21:09.629564801Z 10.244.1.46 - - [21/Sep/2026:20:21:09 +0000] "GET /?rep=selector-3 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-21T20:21:10.862334135Z 10.244.1.46 - - [21/Sep/2026:20:21:10 +0000] "GET /?rep=namespace-3 HTTP/1.1" 200 896 "-" "-" "-"
+# exit 0
+
+# read 2026-09-21T20:21:41Z
+$ kubectl -n repro get pods -o wide
+NAME                      READY   STATUS    RESTARTS   AGE    IP            NODE                    NOMINATED NODE   READINESS GATES
+client                    1/1     Running   0          3m7s   10.244.1.46   agent-mesh-lab-worker   <none>           <none>
+server-64b5d85cf7-fqmzb   1/1     Running   0          3m7s   10.244.1.47   agent-mesh-lab-worker   <none>           <none>
+# exit 0
+
+# read 2026-09-21T20:21:41Z
+$ kubectl -n istio-system logs istiod-5c847d4d8-9h6lw --since-time=2026-09-21T20:18:30Z | grep -E 'repro'
+2026-09-21T20:18:34.186303Z	info	ads	Push debounce stable[47] 1 for config ConfigMap/repro/kube-root-ca.crt: 100.393958ms since last change, 100.393916ms since last push, forced=false
+2026-09-21T20:18:34.293231Z	info	ads	Push debounce stable[48] 1 for config Address//Kubernetes//Pod/repro/client: 100.415625ms since last change, 100.415583ms since last push, forced=false
+2026-09-21T20:18:49.297283Z	info	ads	Push debounce stable[49] 1 for config Address//Kubernetes//Pod/repro/server-64b5d85cf7-fqmzb: 100.582125ms since last change, 100.582083ms since last push, forced=false
+2026-09-21T20:19:15.897989Z	info	ads	Push debounce stable[50] 3 for config Address//Kubernetes//Pod/repro/server-64b5d85cf7-fqmzb and 2 more configs: 100.584917ms since last change, 100.759917ms since last push, forced=false
+2026-09-21T20:19:16.830980Z	info	status	object is removed, no action needed	key=repro/repro-selector
+2026-09-21T20:19:16.931225Z	info	ads	Push debounce stable[51] 3 for config AuthorizationPolicy/repro/repro-selector and 2 more configs: 100.098541ms since last change, 100.263042ms since last push, forced=false
+2026-09-21T20:20:07.660646Z	info	ads	Push debounce stable[52] 2 for config AuthorizationPolicy/repro/repro-namespace: 100.054667ms since last change, 100.130208ms since last push, forced=false
+2026-09-21T20:20:28.439842Z	info	status	object is removed, no action needed	key=repro/repro-namespace
+2026-09-21T20:20:28.540154Z	info	ads	Push debounce stable[53] 2 for config AuthorizationPolicy/repro/repro-namespace: 100.2765ms since last change, 100.297292ms since last push, forced=false
+2026-09-21T20:20:45.340443Z	info	ads	Push debounce stable[54] 3 for config AuthorizationPolicy/repro/repro-selector and 2 more configs: 100.766667ms since last change, 100.964958ms since last push, forced=false
+2026-09-21T20:20:46.272704Z	info	status	object is removed, no action needed	key=repro/repro-selector
+2026-09-21T20:20:46.373570Z	info	ads	Push debounce stable[55] 3 for config AuthorizationPolicy/repro/repro-selector and 2 more configs: 100.715125ms since last change, 100.887583ms since last push, forced=false
+2026-09-21T20:20:47.371019Z	info	ads	Push debounce stable[56] 2 for config AuthorizationPolicy/repro/repro-namespace: 100.748ms since last change, 100.819375ms since last push, forced=false
+2026-09-21T20:21:07.459113Z	info	status	object is removed, no action needed	key=repro/repro-namespace
+2026-09-21T20:21:07.559786Z	info	ads	Push debounce stable[57] 2 for config AuthorizationPolicy/repro/repro-namespace: 100.66175ms since last change, 100.6915ms since last push, forced=false
+2026-09-21T20:21:09.130087Z	info	ads	Push debounce stable[58] 3 for config Address//Kubernetes//Pod/repro/client and 2 more configs: 100.935042ms since last change, 101.070334ms since last push, forced=false
+2026-09-21T20:21:10.086506Z	info	status	object is removed, no action needed	key=repro/repro-selector
+2026-09-21T20:21:10.187051Z	info	ads	Push debounce stable[59] 3 for config AuthorizationPolicy/repro/repro-selector and 2 more configs: 100.392958ms since last change, 100.566541ms since last push, forced=false
+2026-09-21T20:21:11.212874Z	info	ads	Push debounce stable[60] 2 for config AuthorizationPolicy/repro/repro-namespace: 101.336792ms since last change, 101.390417ms since last push, forced=false
+2026-09-21T20:21:31.455196Z	info	status	object is removed, no action needed	key=repro/repro-namespace
+2026-09-21T20:21:31.555676Z	info	ads	Push debounce stable[61] 2 for config AuthorizationPolicy/repro/repro-namespace: 100.46025ms since last change, 100.512917ms since last push, forced=false
+# exit 0
+
+# read 2026-09-21T20:21:41Z
+$ kubectl -n istio-system logs istiod-5c847d4d8-9h6lw --since-time=2026-09-21T20:18:30Z | awk -F'\t' '$2 == "warn" || $2 == "error"' | wc -l
+       0
+# exit 0
+
+# read 2026-09-21T20:21:41Z
+$ kubectl -n istio-system logs ztunnel-sdq6z --since-time=2026-09-21T20:18:30Z | grep -E 'no longer allowed|policy change|skipping unknown policy|handling RBAC'
+2026-09-21T20:19:15.898313Z	info	xds:xds{id=3}	handling RBAC update repro-selector	
+2026-09-21T20:19:16.931568Z	info	xds:xds{id=3}	handling RBAC delete repro/repro-selector	
+2026-09-21T20:20:07.660933Z	info	xds:xds{id=3}	handling RBAC update repro-namespace	
+2026-09-21T20:20:07.661065Z	error	access	connection complete	src.addr=10.244.1.46:47364 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.47:15008 dst.hbone_addr=10.244.1.47:8080 dst.workload="server-64b5d85cf7-fqmzb" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=1134 bytes_recv=48 duration="340ms" error="connection closed due to policy change"
+2026-09-21T20:20:07.661081Z	info	proxy::connection_manager:proxy{wl=repro/server-64b5d85cf7-fqmzb}	connection 10.244.1.46:47364(spiffe://cluster.local/ns/repro/sa/default)->10.244.1.47:8080 (Kubernetes//Pod/repro/server-64b5d85cf7-fqmzb) closed because it's no longer allowed after a policy update	
+2026-09-21T20:20:28.540397Z	info	xds:xds{id=3}	handling RBAC delete repro/repro-namespace	
+2026-09-21T20:20:45.340829Z	info	xds:xds{id=3}	handling RBAC update repro-selector	
+2026-09-21T20:20:46.373882Z	info	xds:xds{id=3}	handling RBAC delete repro/repro-selector	
+2026-09-21T20:20:47.371290Z	info	xds:xds{id=3}	handling RBAC update repro-namespace	
+2026-09-21T20:20:47.371397Z	error	access	connection complete	src.addr=10.244.1.46:47364 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.47:15008 dst.hbone_addr=10.244.1.47:8080 dst.workload="server-64b5d85cf7-fqmzb" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=1134 bytes_recv=48 duration="343ms" error="connection closed due to policy change"
+2026-09-21T20:20:47.371472Z	info	proxy::connection_manager:proxy{wl=repro/server-64b5d85cf7-fqmzb}	connection 10.244.1.46:47364(spiffe://cluster.local/ns/repro/sa/default)->10.244.1.47:8080 (Kubernetes//Pod/repro/server-64b5d85cf7-fqmzb) closed because it's no longer allowed after a policy update	
+2026-09-21T20:21:07.560094Z	info	xds:xds{id=3}	handling RBAC delete repro/repro-namespace	
+2026-09-21T20:21:09.130454Z	info	xds:xds{id=3}	handling RBAC update repro-selector	
+2026-09-21T20:21:10.187367Z	info	xds:xds{id=3}	handling RBAC delete repro/repro-selector	
+2026-09-21T20:21:11.213173Z	info	xds:xds{id=3}	handling RBAC update repro-namespace	
+2026-09-21T20:21:11.213300Z	error	access	connection complete	src.addr=10.244.1.46:47364 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.47:15008 dst.hbone_addr=10.244.1.47:8080 dst.workload="server-64b5d85cf7-fqmzb" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=1134 bytes_recv=48 duration="351ms" error="connection closed due to policy change"
+2026-09-21T20:21:11.213349Z	info	proxy::connection_manager:proxy{wl=repro/server-64b5d85cf7-fqmzb}	connection 10.244.1.46:47364(spiffe://cluster.local/ns/repro/sa/default)->10.244.1.47:8080 (Kubernetes//Pod/repro/server-64b5d85cf7-fqmzb) closed because it's no longer allowed after a policy update	
+2026-09-21T20:21:31.555916Z	info	xds:xds{id=3}	handling RBAC delete repro/repro-namespace	
+# exit 0
+
+# read 2026-09-21T20:21:41Z
+$ kubectl -n istio-system logs ztunnel-sdq6z --since-time=2026-09-21T20:18:30Z | awk -F'\t' '$2 == "warn"' | wc -l
+       0
+# exit 0
+
+# read 2026-09-21T20:21:41Z
+$ kubectl -n istio-system logs ztunnel-rzhcf --since-time=2026-09-21T20:18:30Z | grep -E 'no longer allowed|policy change|skipping unknown policy|handling RBAC'
+2026-09-21T20:19:15.898296Z	info	xds:xds{id=4}	handling RBAC update repro-selector	
+2026-09-21T20:19:16.931526Z	info	xds:xds{id=4}	handling RBAC delete repro/repro-selector	
+2026-09-21T20:20:07.660960Z	info	xds:xds{id=4}	handling RBAC update repro-namespace	
+2026-09-21T20:20:28.540414Z	info	xds:xds{id=4}	handling RBAC delete repro/repro-namespace	
+2026-09-21T20:20:45.340761Z	info	xds:xds{id=4}	handling RBAC update repro-selector	
+2026-09-21T20:20:46.373893Z	info	xds:xds{id=4}	handling RBAC delete repro/repro-selector	
+2026-09-21T20:20:47.371312Z	info	xds:xds{id=4}	handling RBAC update repro-namespace	
+2026-09-21T20:21:07.560074Z	info	xds:xds{id=4}	handling RBAC delete repro/repro-namespace	
+2026-09-21T20:21:09.130453Z	info	xds:xds{id=4}	handling RBAC update repro-selector	
+2026-09-21T20:21:10.187372Z	info	xds:xds{id=4}	handling RBAC delete repro/repro-selector	
+2026-09-21T20:21:11.213168Z	info	xds:xds{id=4}	handling RBAC update repro-namespace	
+2026-09-21T20:21:31.555937Z	info	xds:xds{id=4}	handling RBAC delete repro/repro-namespace	
+# exit 0
