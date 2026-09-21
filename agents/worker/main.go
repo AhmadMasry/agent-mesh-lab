@@ -31,6 +31,11 @@ func getenv(k, def string) string {
 
 // modelTimeout is the model client's overall timeout (MODEL_TIMEOUT_S, default 60 s).
 // The baseline's delay-then-close run lowers it so a repetition does not take a minute.
+// It is also the ceiling on the mock's delay mode: a delay_ms at or past it ends
+// with this client closing the connection. The mock records such a call as
+// client-gone when its caller leaves directly (measured in fixtures/mockllm's
+// tests); through agw-central, the path this client takes, Experiment B-3
+// measures it (fixtures/mockllm/injection.go, modeDelay, has the ceilings).
 func modelTimeout() time.Duration {
 	if v, err := strconv.Atoi(os.Getenv("MODEL_TIMEOUT_S")); err == nil && v > 0 {
 		return time.Duration(v) * time.Second
