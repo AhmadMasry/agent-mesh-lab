@@ -25,6 +25,16 @@
 # Unlike the three above, any other value, an unsubstituted placeholder included,
 # stops the Job before it sends (TestDialFromEnv), so a template rendered by a
 # script that does not know this variable fails loudly rather than sending.
+#
+# MODE and TASK_ID (added on 2026-09-21, for Experiment B) say WHAT the one
+# request is: empty, the SendMessage every earlier row sent; MODE=stream one
+# SendStreamingMessage; MODE=subscribe one SubscribeToTask for TASK_ID. Both are
+# rendered empty by every script that renders this template and is not a B row
+# (experiments/gate2-a2.sh, experiments/gate3-matrix.sh), and the client reads
+# empty as unset (TestMode_DefaultOff). Like CLIENT_DIAL, any other value, an
+# unsubstituted placeholder included, stops the Job before it sends
+# (TestModeFromEnv_KnownValuesAndRefusals), and so does either mode with a retry
+# knob on (TestMode_RetryKnobsAreRefusedOnAStreamOrASubscription).
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -106,3 +116,7 @@ spec:
               value: "${CLIENT_RETRY_ON}"
             - name: CLIENT_DIAL
               value: "${CLIENT_DIAL}"
+            - name: MODE
+              value: "${MODE}"
+            - name: TASK_ID
+              value: "${TASK_ID}"
