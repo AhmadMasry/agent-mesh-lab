@@ -38,11 +38,25 @@
 // ingress (docs/proposal-notes.md, the second note of 2026-09-19). It adds no
 // send, no re-send and no transport: the HTTP client and the factory options are
 // the ones every other run uses.
+//
+// One more switch says WHAT the one request is, for Experiment B (stream.go):
+//
+//   - MODE=stream            one SendStreamingMessage instead of the SendMessage.
+//   - MODE=subscribe         one SubscribeToTask for TASK_ID.
+//
+// Unset or empty, the client sends the SendMessage every run before Experiment B
+// sent, and prints the same line (TestMode_DefaultOff,
+// TestMode_UnsetSendsTheUnaryMessageAndItsLine). Any other MODE, a TASK_ID
+// without MODE=subscribe or MODE=subscribe without one is refused before
+// anything is sent (modeFromEnv), and so is either mode with a retry knob on
+// (checkModeKnobs). The HTTP client of the two modes differs from the unary one
+// in one setting, recorded in stream.go.
 package main
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -228,20 +242,49 @@ type sendConfig struct {
 	dial      dialMode
 }
 
-func main() {
+// configFromEnv reads everything main needs from the environment and refuses,
+// before anything is sent, what must never run: a missing TARGET_URL or LWI, an
+// unknown CLIENT_DIAL or MODE, a TASK_ID the mode cannot use, and a retry knob
+// on a stream or a subscription. It is main's
+// opening, moved here on 2026-09-21 so a test can assert the refusals are wired
+// in and not only written; its messages are the ones main printed before.
+func configFromEnv() (runConfig, knobs, error) {
 	target := os.Getenv("TARGET_URL")
 	lwi := os.Getenv("LWI")
 	if target == "" || lwi == "" {
-		fmt.Fprintln(os.Stderr, "loadgen: TARGET_URL and LWI are required")
-		os.Exit(2)
+		return runConfig{}, knobs{}, errors.New("TARGET_URL and LWI are required")
 	}
 	dial, err := dialFromEnv()
+	if err != nil {
+		return runConfig{}, knobs{}, err
+	}
+	mode, err := modeFromEnv()
+	if err != nil {
+		return runConfig{}, knobs{}, err
+	}
+	k := knobsFromEnv()
+	if err := checkModeKnobs(mode.mode, k); err != nil {
+		return runConfig{}, knobs{}, err
+	}
+	return runConfig{target: target, workItem: lwi, text: getenv("TEXT", "hello"), sdkResend: k.sdkResend, dial: dial, mode: mode}, k, nil
+}
+
+// httpClientFor is the HTTP client this process's one request is sent with: the
+// knobs' client for the unary send, as it always was, and the stream client for
+// the two Experiment B modes (stream.go says what differs).
+func httpClientFor(mode clientMode, k knobs, timeout time.Duration) *http.Client {
+	if mode != modeUnary {
+		return streamHTTPClient(timeout)
+	}
+	return k.httpClient(timeout)
+}
+
+func main() {
+	c, k, err := configFromEnv()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "loadgen:", err)
 		os.Exit(2)
 	}
-	text := getenv("TEXT", "hello")
-	k := knobsFromEnv()
 
 	// Tracing, if OTEL_EXPORTER_OTLP_ENDPOINT names a collector; nothing at all
 	// otherwise. This process is a Job that exits as soon as its one send is
@@ -263,9 +306,9 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	hc := instrument(k.httpClient(90*time.Second), lwi)
+	hc := instrument(httpClientFor(c.mode.mode, k, 90*time.Second), c.workItem)
 
-	done(send(ctx, hc, sendConfig{target: target, workItem: lwi, text: text, sdkResend: k.sdkResend, dial: dial}, os.Stdout))
+	done(runMode(ctx, hc, c, os.Stdout))
 }
 
 // send resolves the card, makes the one send and prints the client ledger
