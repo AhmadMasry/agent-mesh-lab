@@ -1,0 +1,40 @@
+
+# read 2026-09-21T04:38:56Z
+$ kubectl version -o json | jq -r .serverVersion.gitVersion
+v1.37.0
+# exit 0
+
+# read 2026-09-21T04:38:56Z
+$ docker inspect agent-mesh-lab-control-plane agent-mesh-lab-worker --format '{{.Config.Image}}'
+kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+# exit 0
+
+# read 2026-09-21T04:38:56Z
+$ kubectl -n istio-system get deploy/istiod ds/ztunnel -o jsonpath='{range .items[*]}{.spec.template.spec.containers[0].image}{"\n"}{end}'
+docker.io/istio/pilot:1.31.0-distroless
+docker.io/istio/ztunnel:1.31.0-distroless
+# exit 0
+
+# read 2026-09-21T04:38:56Z
+$ kubectl -n agentgateway-system get deploy -o jsonpath='{range .items[*]}{.spec.template.spec.containers[0].image}{"\n"}{end}'; kubectl -n agentgateway-waypoint get deploy agw-central -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'; kubectl -n agentgateway-ingress get deploy agentgateway-ingress -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+cr.agentgateway.dev/controller:v1.5.0
+cr.agentgateway.dev/agentgateway:v1.5.0
+cr.agentgateway.dev/agentgateway:v1.5.0
+# exit 0
+
+# read 2026-09-21T04:38:56Z
+$ kubectl get crd httproutes.gateway.networking.k8s.io -o jsonpath='{.metadata.annotations.gateway\.networking\.k8s\.io/bundle-version} {.metadata.annotations.gateway\.networking\.k8s\.io/channel}{"\n"}'
+v1.6.2 experimental
+# exit 0
+
+# read 2026-09-21T04:38:56Z
+$ grep -E 'a2aproject/a2a-go' go.mod; grep -A1 -E '^name = "(a2a-sdk|openai)"' agents/orchestrator/uv.lock; grep -oE 'a2a-spec: +\{ value: "[0-9a-f]+"' versions.yaml
+	github.com/a2aproject/a2a-go/v2 v2.5.0
+name = "a2a-sdk"
+version = "1.1.4"
+--
+name = "openai"
+version = "3.16.2"
+a2a-spec:                  { value: "3303592588e388e62e0f69f701af531d2f4e3991"
+# exit 0

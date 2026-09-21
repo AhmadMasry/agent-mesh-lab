@@ -1,0 +1,34 @@
+
+# read 2026-09-21T04:35:48Z
+$ kubectl delete -k experiments/runs/2026-09-21-c3-c4-ztunnel/overlay-c4
+authorizationpolicy.security.istio.io "require-agw-central" deleted from lab namespace
+# exit 0
+
+# read 2026-09-21T04:35:48Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-21T04:35:48Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq -c '.[] | {name,namespace,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","action":"Deny"}
+# exit 0
+
+# read 2026-09-21T04:35:49Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-control-plane -o json | jq -c '.[] | {name,namespace,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","action":"Deny"}
+# exit 0
+
+# read 2026-09-21T04:35:49Z
+$ kubectl get peerauthentication -A
+NAMESPACE              NAME                           MODE     AGE
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   5h22m
+istio-system           default                        STRICT   5h23m
+# exit 0
+
+# read 2026-09-21T04:35:49Z
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+# exit 0

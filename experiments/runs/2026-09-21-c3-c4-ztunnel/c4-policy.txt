@@ -1,0 +1,57 @@
+
+# read 2026-09-21T04:34:35Z
+$ kubectl apply -k experiments/runs/2026-09-21-c3-c4-ztunnel/overlay-c4
+authorizationpolicy.security.istio.io/require-agw-central configured
+# exit 0
+
+# read 2026-09-21T04:34:36Z
+$ kubectl -n lab get authorizationpolicy require-agw-central -o yaml
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"security.istio.io/v1","kind":"AuthorizationPolicy","metadata":{"annotations":{},"name":"require-agw-central","namespace":"lab"},"spec":{"action":"ALLOW","rules":[{"from":[{"source":{"principals":["cluster.local/ns/agentgateway-waypoint/sa/agw-central"]}}],"to":[{"operation":{"methods":["GET"]}}]}],"selector":{"matchLabels":{"app":"worker"}}}}
+  creationTimestamp: "2026-09-21T04:21:04Z"
+  generation: 2
+  name: require-agw-central
+  namespace: lab
+  resourceVersion: "39360"
+  uid: bee7436b-77ec-4b41-9981-8577e3f5d4f0
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/agentgateway-waypoint/sa/agw-central
+    to:
+    - operation:
+        methods:
+        - GET
+  selector:
+    matchLabels:
+      app: worker
+status:
+  conditions:
+  - lastTransitionTime: "2026-09-21T04:34:36.082424927Z"
+    message: 'ztunnel does not support HTTP attributes (found: methods). In ambient
+      mode you must use a waypoint proxy to enforce HTTP rules. Within an ALLOW policy,
+      rules matching HTTP attributes are omitted. This will be more restrictive than
+      requested.'
+    observedGeneration: "2"
+    reason: UnsupportedValue
+    status: "True"
+    type: ZtunnelAccepted
+# exit 0
+
+# read 2026-09-21T04:34:36Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq '.[] | select(.name=="require-agw-central")'
+{
+  "name": "require-agw-central",
+  "namespace": "lab",
+  "scope": "WorkloadSelector",
+  "action": "Allow",
+  "rules": []
+}
+# exit 0

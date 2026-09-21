@@ -1,0 +1,46 @@
+
+# read 2026-09-21T04:37:01Z
+$ bash experiments/runs/2026-09-21-c3-c4-ztunnel/proxy-spans.sh
+c34-after-direct trace=5bff201e082abd569ca7cb90c4ebae55 spans=7
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/default error=- status=-
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+c34-after-ingress trace=dfc17e1457b48dddd4735a26fe2dea66 spans=11
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=200 src.identity=- error=- status=-
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/default error=- status=-
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=200 src.identity=- error=- status=-
+c34-c3-direct trace=85192a835eb811201c523355f50ab90c spans=0
+c34-c3-ingress-2 trace=83ba5072938e8a36cb0af1ccb193c5d9 spans=4
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=503 src.identity=- error=- status=2
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=503 src.identity=- error=- status=2
+c34-c3-ingress trace=5591b2619cc2f5c87aaa8b2d09c826b3 spans=11
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/default error=- status=-
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=200 src.identity=- error=- status=-
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=200 src.identity=- error=- status=-
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+c34-c4-direct trace=ca75792e7e02ed83f1152a153bf26548 spans=0
+c34-c4-ingress trace=e14b815a37af3d57a3b167475c08cd8c spans=4
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=503 src.identity=- error=- status=2
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=503 src.identity=- error=- status=2
+c34-c4-service trace=1edad7e361dfa704f20656e566c494d0 spans=4
+  agw-central SERVER GET /* route=lab/worker http.method=GET http.status=503 src.identity=spiffe://cluster.local/ns/lab/sa/default error=- status=2
+  agw-central SERVER POST /* route=lab/worker http.method=POST http.status=503 src.identity=spiffe://cluster.local/ns/lab/sa/default error=- status=2
+c34-p0-direct trace=69e525371387ed5a4a7212779f8b93d3 spans=7
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/default error=- status=-
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+c34-p0-ingress trace=f3449cc0d20204ddb31029109bebacc0 spans=11
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/default error=- status=-
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=200 src.identity=- error=- status=-
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=200 src.identity=- error=- status=-
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+# exit 0

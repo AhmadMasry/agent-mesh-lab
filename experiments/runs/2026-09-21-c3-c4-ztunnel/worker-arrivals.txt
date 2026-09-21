@@ -1,0 +1,29 @@
+
+# read 2026-09-21T04:38:30Z
+$ kubectl -n lab logs deploy/worker --since-time=2026-09-21T04:20:00Z | grep '"ledger":"ingress"' | jq -rc 'select(.phase=="arrival") | [.ts_arrival, .remote, .method, .logical_work_item_id] | @tsv'
+2026-09-21T04:20:45.193343083Z	10.244.1.48:40321	GET /.well-known/agent-card.json	
+2026-09-21T04:20:45.272007667Z	10.244.1.48:35609	SendMessage	c34-p0-direct
+2026-09-21T04:20:45.997388084Z	10.244.1.16:40457	GET /.well-known/agent-card.json	
+2026-09-21T04:20:46.037530959Z	10.244.1.16:40457	SendMessage	c34-p0-ingress
+2026-09-21T04:21:36.810184635Z	10.244.1.13:40711	GET /.well-known/agent-card.json	
+2026-09-21T04:21:36.810934719Z	10.244.1.13:40711	SendMessage	g2c-c3-worker
+2026-09-21T04:21:57.826991964Z	10.244.1.13:40711	SendMessage	g2c-c3-orchestrator
+2026-09-21T04:22:03.29253205Z	10.244.1.16:40457	GET /.well-known/agent-card.json	
+2026-09-21T04:22:03.331357217Z	10.244.1.16:40457	SendMessage	c34-c3-ingress
+2026-09-21T04:36:17.022145418Z	10.244.1.13:54759	GET /.well-known/agent-card.json	
+2026-09-21T04:36:17.022902668Z	10.244.1.13:54759	SendMessage	g2c-c34after-worker
+2026-09-21T04:36:38.537851261Z	10.244.1.13:54759	SendMessage	g2c-c34after-orchestrator
+2026-09-21T04:36:43.31662543Z	10.244.1.58:39437	GET /.well-known/agent-card.json	
+2026-09-21T04:36:43.40250018Z	10.244.1.58:59955	SendMessage	c34-after-direct
+2026-09-21T04:36:44.1683855Z	10.244.1.16:36545	GET /.well-known/agent-card.json	
+2026-09-21T04:36:44.210503416Z	10.244.1.16:36545	SendMessage	c34-after-ingress
+# exit 0
+
+# read 2026-09-21T04:38:30Z
+$ for m in $(jq -r 'select(.op=="SendMessage") | .messageId' experiments/runs/2026-09-21-c3-c4-ztunnel/c34-c3-direct/client.jsonl experiments/runs/2026-09-21-c3-c4-ztunnel/c34-c3-ingress-2/client.jsonl experiments/runs/2026-09-21-c3-c4-ztunnel/c34-c4-*/client.jsonl); do printf '%s %s\n' "$m" "$(kubectl -n lab logs deploy/worker | grep -c "$m")"; done
+7adcf265-31e6-4b46-9458-50ea5b9aa50a 0
+510fc936-0a1c-4699-a0c6-90310f05fde7 0
+3efac5b0-0249-42ad-b301-f2172a622594 0
+ee66ef27-a351-416c-be1c-83ef001bda1e 0
+955ebed7-7c34-41d3-b68c-8a8717fbde68 0
+# exit 0

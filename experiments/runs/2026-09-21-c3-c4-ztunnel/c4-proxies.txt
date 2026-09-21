@@ -1,0 +1,12 @@
+
+# read 2026-09-21T04:35:32Z
+$ kubectl -n agentgateway-waypoint logs deploy/agw-central --since-time=2026-09-21T04:34:30Z | grep 1edad7e361dfa704f20656e566c494d0
+2026-09-21T04:34:47.24019Z	info	request gateway=agentgateway-waypoint/agw-central listener=inner-http route=lab/worker endpoint=10.244.1.42:8080 src.addr=10.244.1.53:38698 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=GET http.host=worker.lab.svc.cluster.local http.path=/.well-known/agent-card.json http.version=HTTP/1.1 http.status=503 trace.id=1edad7e361dfa704f20656e566c494d0 span.id=1c64b4dc556f80f8 protocol=http error="upstream call failed: Connect: unexpected status: 401 Unauthorized" reason=UpstreamFailure duration=0ms
+2026-09-21T04:34:47.107220Z	info	request gateway=agentgateway-waypoint/agw-central listener=inner-http route=lab/worker endpoint=10.244.1.42:8080 src.addr=10.244.1.53:38698 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=worker.lab.svc.cluster.local http.path=/ http.version=HTTP/1.1 http.status=503 trace.id=1edad7e361dfa704f20656e566c494d0 span.id=4d13b82cadb0ba33 protocol=http error="upstream call failed: Connect: unexpected status: 401 Unauthorized" reason=UpstreamFailure duration=0ms
+# exit 0
+
+# read 2026-09-21T04:35:32Z
+$ kubectl -n agentgateway-ingress logs deploy/agentgateway-ingress --since-time=2026-09-21T04:34:30Z | grep e14b815a37af3d57a3b167475c08cd8c
+2026-09-21T04:35:20.233771Z	info	request gateway=agentgateway-ingress/agentgateway-ingress listener=http route=lab/worker-ingress endpoint=10.244.1.42:8080 src.addr=127.0.0.1:56234 http.method=GET http.host=worker.lab.internal http.path=/.well-known/agent-card.json http.version=HTTP/1.1 http.status=503 trace.id=e14b815a37af3d57a3b167475c08cd8c span.id=730755f474ebdb5d protocol=http error="upstream call failed: SendRequest: connection error: Connection reset by peer (os error 104)" reason=UpstreamFailure duration=0ms
+2026-09-21T04:35:20.277395Z	info	request gateway=agentgateway-ingress/agentgateway-ingress listener=http route=lab/worker-ingress endpoint=10.244.1.42:8080 src.addr=127.0.0.1:56238 http.method=POST http.host=worker.lab.internal http.path=/ http.version=HTTP/1.1 http.status=503 trace.id=e14b815a37af3d57a3b167475c08cd8c span.id=8c996b7c3edbdf98 protocol=http error="upstream call failed: SendRequest: connection error: Connection reset by peer (os error 104)" reason=UpstreamFailure duration=0ms
+# exit 0

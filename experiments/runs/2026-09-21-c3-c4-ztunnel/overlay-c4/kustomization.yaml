@@ -1,0 +1,12 @@
+# C-4 overlay: C-3's policy, unchanged, plus one operation rule on its one rule.
+# Same object name, so `kubectl apply -k` over C-3 updates that object in place in
+# the cluster; nothing in the repository is edited. Removed with `kubectl delete -k`.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../overlay-c3
+patches:
+  - path: methods-get.yaml
+    target:
+      kind: AuthorizationPolicy
+      name: require-agw-central

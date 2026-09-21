@@ -1,0 +1,124 @@
+
+# read 2026-09-21T04:21:04Z
+$ kubectl apply -k experiments/runs/2026-09-21-c3-c4-ztunnel/overlay-c3
+authorizationpolicy.security.istio.io/require-agw-central created
+# exit 0
+
+# read 2026-09-21T04:21:04Z
+$ kubectl get authorizationpolicy -A
+NAMESPACE   NAME                  ACTION   AGE
+lab         require-agw-central   ALLOW    0s
+# exit 0
+
+# read 2026-09-21T04:21:04Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json
+[
+    {
+        "name": "converted_peer_authentication_agentgateway-ingress-metrics",
+        "namespace": "agentgateway-ingress",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notDestinationPorts": [
+                            15020
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    },
+    {
+        "name": "istio_converted_static_strict",
+        "namespace": "istio-system",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    },
+    {
+        "name": "require-agw-central",
+        "namespace": "lab",
+        "scope": "WorkloadSelector",
+        "action": "Allow",
+        "rules": [
+            [
+                [
+                    {
+                        "principals": [
+                            {
+                                "Exact": "cluster.local/ns/agentgateway-waypoint/sa/agw-central"
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    }
+]
+# exit 0
+
+# read 2026-09-21T04:21:04Z
+$ kubectl -n lab get authorizationpolicy require-agw-central -o yaml
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"security.istio.io/v1","kind":"AuthorizationPolicy","metadata":{"annotations":{},"name":"require-agw-central","namespace":"lab"},"spec":{"action":"ALLOW","rules":[{"from":[{"source":{"principals":["cluster.local/ns/agentgateway-waypoint/sa/agw-central"]}}]}],"selector":{"matchLabels":{"app":"worker"}}}}
+  creationTimestamp: "2026-09-21T04:21:04Z"
+  generation: 1
+  name: require-agw-central
+  namespace: lab
+  resourceVersion: "37005"
+  uid: bee7436b-77ec-4b41-9981-8577e3f5d4f0
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  selector:
+    matchLabels:
+      app: worker
+status:
+  conditions:
+  - lastTransitionTime: "2026-09-21T04:21:04.403476134Z"
+    message: attached to ztunnel
+    observedGeneration: "1"
+    reason: Accepted
+    status: "True"
+    type: ZtunnelAccepted
+# exit 0
