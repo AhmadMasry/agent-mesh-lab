@@ -1,0 +1,49 @@
+# The projects' trackers, searched before any upstream draft was written (rule 11). `gh search issues` / `gh search prs`
+# and `gh issue view` / `gh pr view` / `gh pr diff`, read only; stamps UTC from date -u; results as listed at that moment.
+#
+# a2aproject/a2a-go, 2026-09-21T21:27:25Z -- issues, one query each:
+#   "SubscribeToTask terminal"          -> (none)
+#   "resubscribe terminal state"        -> (none)
+#   "UnsupportedOperationError terminal"-> (none)
+#   "task not found subscribe"          -> (none)
+#   "no active execution"               -> #439 [open] "[Bug]: SubscribeToTask on an INPUT_REQUIRED task returns TASK_NOT_FOUND because
+#                                          localManager tears down the execution/broker on INPUT_REQUIRED"
+#                                          #438 [open] "[Bug]: SendMessage and SubscribeToTask on a terminal task return
+#                                          InvalidParams/TaskNotFound instead of UnsupportedOperationError"
+# 2026-09-21T21:27:38Z #438 read whole: opened 2026-09-15, 0 comments. It reports the SubscribeToTask half of this row at a2a-go
+#   v2.5.0 / main e54a070: -32001 TASK_NOT_FOUND "task not found: no active execution" where the specification requires
+#   UnsupportedOperationError, cites a2asrv/handler.go l.371-373, gives an in-process reproduction and the JSON-RPC wire text,
+#   and proposes loading the task from the store when Resubscribe fails. The a2a-go draft of this task is therefore a COMMENT
+#   for #438 (docs/upstream/a2a-go-subscribe-to-terminal-task-not-found.md), not a new issue.
+# 2026-09-21T23:16:10Z, for the second observation of this step (a2a-go's client reads an application/json answer to a
+#   streaming method as an empty stream): "SSE content-type json error", "streaming error not reported", "event-stream content
+#   type", "non-SSE response" -> (none); "ParseDataStream" -> #162 [closed] "[Bug]: ParseDataStream should tolerate "data:"
+#   without space for compatibility" (not this); "silently" -> #346, #296, #77, #162, #163, #173, all closed, none about this.
+#   No draft is written for it here (see reading-notes.txt).
+#
+# a2aproject/a2a-python, 2026-09-21T21:27:48Z -- issues, one query each:
+#   "subscribe terminal state", "SubscribeToTask terminal", "UnsupportedOperationError terminal", "already completed subscribe",
+#   "InvalidParams terminal state", "resubscribe completed task" -> (none)
+#   "is in terminal state"              -> #1205 [open] "[Bug]: Wrong error when sending a message for a terminal task"
+#   PRs "terminal state subscribe"      -> #1207 [open] "fix: Use correct errors when rejecting messages to terminal tasks", #1167
+#                                          [open], #1055 [merged] "fix(errors): align error mappings with A2A spec", and older
+#   PRs "UnsupportedOperationError"     -> #903, #919, #755, #716, #879, #712 [merged], #771 [closed]
+# 2026-09-21T21:28:03Z #1205 read whole: opened 2026-08-25 about SendMessage only (on_message_send -> InvalidParamsError "Task
+#   {id} is in terminal state: {state}"); 3 comments -- 2026-08-28 a maintainer assigns it to the PR's author; 2026-08-30 a
+#   comment names "Same bug class on SubscribeToTask" and quotes ActiveTask.start()'s terminal-state raise, asking that both be
+#   fixed together; 2026-09-13 a stale-bot notice. #1207 (Fixes #1205) changes default_request_handler.py,
+#   default_request_handler_v2.py and their tests; its diff's terminal-state lines are all in the send paths
+#   (on_message_send / on_message_send_stream) -- none touches on_subscribe_to_task or ActiveTask.subscribe/start. The
+#   a2a-python draft of this task is therefore a COMMENT for #1205 carrying the SubscribeToTask case with a cluster count
+#   (docs/upstream/a2a-python-subscribe-to-terminal-task-invalid-params.md), not a new issue.
+#
+# 2026-09-22T00:21:33Z -- dated note, the review round of 2026-09-22 (the lines above stand as written):
+#   - Line 32's "a maintainer" is wrong. GitHub reports the 2026-08-28 commenter's author association as NONE. It is
+#     a commenter whose text says it is assigning the issue to the PR's author; nothing in the thread shows who
+#     assigned it. The 2026-08-30 comment's author association is COLLABORATOR; the 2026-09-13 stale notice's is NONE.
+#     Read 2026-09-22T00:20:21Z: gh api repos/a2aproject/a2a-python/issues/1205/comments (author_association,
+#     created_at).
+#   - Not recorded above: PR #1207 carries a review, state CHANGES_REQUESTED, author association COLLABORATOR,
+#     submitted 2026-08-30T21:31:27Z. Its text is the 2026-08-30 comment's: "Same bug class on SubscribeToTask, they
+#     must be fixed together so SendMessage and SubscribeToTask reject terminal tasks consistently ...". Read
+#     2026-09-22T00:20:21Z: gh api repos/a2aproject/a2a-python/pulls/1207/reviews. The a2a-python draft now says so.
