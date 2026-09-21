@@ -1,0 +1,58 @@
+=== none-json
+HTTP/1.1 200 OK\r
+Content-Type: application/json\r
+Date: <masked>\r
+Content-Length: 273\r
+Connection: close\r
+\r
+{"id":"chatcmpl-798d46639491d6c1","object":"chat.completion","created":1734000000,"model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"fixed test response"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":6,"total_tokens":18}}
+=== none-stream
+HTTP/1.1 200 OK\r
+Cache-Control: no-cache\r
+Content-Type: text/event-stream\r
+Date: <masked>\r
+Connection: close\r
+Transfer-Encoding: chunked\r
+\r
+d6\r
+data: {"id":"chatcmpl-3bfd9a7f965995a7","object":"chat.completion.chunk","created":1734000000,"model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":"fixed test response"},"finish_reason":null}]}
+
+\r
+a6\r
+data: {"id":"chatcmpl-3bfd9a7f965995a7","object":"chat.completion.chunk","created":1734000000,"model":"m","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+\r
+e\r
+data: [DONE]
+
+\r
+0\r
+\r
+
+=== http500
+HTTP/1.1 500 Internal Server Error\r
+Content-Type: application/json\r
+Date: <masked>\r
+Content-Length: 66\r
+Connection: close\r
+\r
+{"error":{"message":"injected failure","type":"mockllm_injected"}}
+=== close
+
+=== delay-then-close
+
+=== stale
+HTTP/1.1 200 OK\r
+Content-Type: application/json\r
+Date: <masked>\r
+Content-Length: 273\r
+\r
+{"id":"chatcmpl-798d46639491d6c1","object":"chat.completion","created":1734000000,"model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"fixed test response"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":6,"total_tokens":18}}
+=== count-keyed-http500
+HTTP/1.1 500 Internal Server Error\r
+Content-Type: application/json\r
+Date: <masked>\r
+Content-Length: 66\r
+Connection: close\r
+\r
+{"error":{"message":"injected failure","type":"mockllm_injected"}}

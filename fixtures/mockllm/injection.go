@@ -7,11 +7,15 @@ const (
 	modeClose          = "close"
 	modeDelayThenClose = "delay-then-close"
 	modeStale          = "stale"
+	// modeDelay sleeps delay_ms and then answers as a call with no injection
+	// would; its invocation line reads ok, client-gone or write-failed
+	// (delayThenAnswer has what each is read from).
+	modeDelay = "delay"
 )
 
 func isKnownMode(mode string) bool {
 	switch mode {
-	case modeHTTP500, modeClose, modeDelayThenClose, modeStale:
+	case modeHTTP500, modeClose, modeDelayThenClose, modeStale, modeDelay:
 		return true
 	default:
 		return false

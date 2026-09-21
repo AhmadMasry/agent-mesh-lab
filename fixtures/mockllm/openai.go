@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 // fixedCreatedUnix and the usage counts below are constants, never the wall
@@ -118,6 +119,21 @@ func writeJSONResponse(w http.ResponseWriter, status int, v any) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
+	_, _ = w.Write(b)
+}
+
+// writeLengthFramedJSON is writeJSONResponse for a 200 answer that will be
+// flushed before its handler returns: it sets Content-Length itself, so the
+// answer is framed by its length as a normal answer is, not sent chunked.
+func writeLengthFramedJSON(w http.ResponseWriter, v any) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(b)
 }
 
