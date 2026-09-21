@@ -1,0 +1,215 @@
+Experiment B, step B-3 -- reading notes. What each file in this directory is, what produced it, and what differs
+from what was written. Stamps UTC from `date -u`. The findings entries of 2026-09-21 that cite this directory are the
+four "Experiment B / both receivers" entries: "B-3, the rebuild and B-2's count", "B-3, a clean stream", "B-3,
+`SubscribeToTask` during a running task" and "D3, `SubscribeToTask` on a terminal task".
+
+THE CODE THE REBUILD PROVES (code-proof/)
+  The load client's two modes and the Job template's MODE / TASK_ID were written and committed before any cluster
+  action; the commits are named in the entries. code-proof/ holds what showed no existing row changes:
+  wire/       the unary send, compared on the wire: capture.py (a raw TCP server that answers a card GET and one POST),
+              run.sh (one run of one binary), compare.sh (masks UUIDs, ports and the line's stamp and compares every
+              run with parent-unset), refusals.sh; runs/<label>/ the requests each capture received, stdout, stderr
+              and exit status of each run -- the requests as req-N.escaped.txt, the raw bytes with each carriage
+              return written <CR>, because the repository converts CRLF to LF on commit; runs/originals.txt has each
+              raw file's size and sha256, and the raw files stay in a scratch directory; compare.txt (taken on the
+              raw files): 25 comparisons, every one equal. Three binaries: parent (the commit before the two
+              B-3 commits), tip (the working tree just before the first commit -- it differs from the committed code
+              by one comment in stream.go, edited after this capture) and committed (built from the committed tree
+              through git archive, taken afterwards so that the committed code itself is on record). Each ran with
+              MODE and TASK_ID unset and with both set empty, as the template renders them.
+  render/     render.sh runs each renderer's own sed block, parent copy and this tree's, over the two templates with
+              the knob values its rows use; render.txt: 18 renders, the 12 of loadgen-a2-job.yaml differing by
+              exactly the four lines `- name: MODE` / `value: ""` / `- name: TASK_ID` / `value: ""`, the 6 of
+              loadgen-job.yaml byte-identical, no placeholder left.
+  mutants/    mutants.py is the pass run during development (its 27 verdicts are in the first commit's message);
+              mutants-tree.py is the same program pointed at a git-archive copy of the committed tree, so the pass
+              could be re-run while the rows were building images from the live checkout without touching it;
+              mutants.txt is that re-run: 27 mutants, 27 killed.
+  preflight.txt  go build / vet / gofmt, go test ./... (7 packages ok), -race on fixtures/loadgen, make test (28 ok
+              lines), uv lock --check, pytest (86 passed), all at the committed code before the rebuild.
+
+THE BUILD
+  attempt-1/  build.txt, timings.csv, rebuild-driver.txt, rebuild.sh -- stopped at `make step-2` on the Makefile's
+              istioctl pin guard ("istioctl on PATH is not the pinned 1.31.0 (see versions.yaml)"): the host's Homebrew
+              istioctl was a link to Cellar/istioctl/1.31.1, whose directory and install receipt are stamped
+              2026-09-21T18:55:13Z, before this task's first command (20:32:25Z). The controller ruled a lab-scoped
+              istioctl 1.31.0 for this run (tools.txt).
+  attempt-2/  the same four files -- the lab-scoped istioctl first on the driver's PATH; stopped at step-2's first
+              Helm install: "no cached repo found (try 'helm repo update')". The host's Helm cache directory had been
+              removed before this run by something outside the lab (Helm recreated it, empty, at 21:02:03Z -- its
+              birth stamp), and helm 4.3.0 refuses a --repo install while the host's repositories file names
+              repositories with no cached index. The controller ruled a lab-scoped Helm environment.
+  build.txt, timings.csv, rebuild-driver.txt, rebuild.sh -- ATTEMPT 3, the build this directory's proof and rows ran
+              on: the lab-scoped istioctl and HELM_REPOSITORY_CONFIG (an empty file), HELM_REPOSITORY_CACHE and
+              HELM_CACHE_HOME under ${TMPDIR}/b3/tools/helm-scope, each recorded in build.txt's header. Nothing on the
+              host was changed: not Homebrew, not /opt/homebrew/bin/istioctl, not the user's Helm configuration or
+              cache, not a shell profile or a global PATH; `helm repo update` was not run.
+  tools.txt   the lab-scoped istioctl: the release fetched, the stamps, the checksum comparison, the binary's version.
+  rebuild.sh of attempts 2 and 3 differ from attempt 1's only in the ATTEMPT paragraphs of their header, the
+  lab-scoped PATH (and, in attempt 3, Helm) settings, and the header lines that record them.
+
+MASKED LINES (the controller's ruling of 2026-09-21: no home path enters a new record; each masked line is named here,
+and the unmasked original stays in a scratch directory, uncommitted)
+  build.txt            line 102  -- the `git worktree list` line: the checkout's absolute path, its home directory
+                                     replaced by <HOME>
+  attempt-1/build.txt  line 102  -- the same line
+  attempt-2/build.txt  line 102  -- the same line
+  attempt-2/build.txt  line 1396 -- Helm's error, "open <HOME>/Library/Caches/helm/repository/cilium-index.yaml: no such
+                                     file or directory"
+  Each committed file differs from its original ONLY in the home directory on these lines (checked by masking the
+  original the same way and comparing: identical). Line 102 was not named by the ruling, which named line 1396; it
+  was put to the controller before assembly under the same principle, as was the item below. The last proof's
+  record committed the same worktree line unmasked (experiments/runs/2026-09-21-followups-21/build.txt l.93).
+
+NOT COMMITTED: checks.sh's own byte copies (put to the controller before assembly)
+  The last record's checks.sh keeps a byte copy of itself under this directory's checks-as-run/ each time it runs, and
+  its line 40 is `cd` to the checkout's absolute path. The two copies it made here were moved to a scratch directory
+  instead of being committed:
+    checks.sh.as-run-20260921T211131Z-part1  sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00
+    checks.sh.as-run-20260921T211459Z-knobs  sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00
+  Both equal, byte for byte, the committed experiments/runs/2026-09-20-experiment-a-agentgateway-only/checks.sh
+  (sha256 8ee90f7d...), which checks.txt's lines 2 and 391 also print; those two lines still name the copies'
+  paths under checks-as-run/, which is what the script wrote.
+
+THE STANDARD PROOF
+  proof.sh    the driver: checks.sh part1, versions-readback.sh, checks.sh knobs, each run from the record that holds
+              it, unedited; adapted from the followups-21 driver (header, RUNREL, scratch path, lab-scoped tools).
+  checks-driver.txt, checks.txt  its console output and the checks' own log.
+  clean-check/, trace/, strict/, proxies/, cluster/, images/ (empty), ingress-shape/ (empty), worker-span/ (empty),
+  prometheus-targets.txt, retry-knobs/readings.txt, versions-readback.txt -- written by checks.sh and
+  versions-readback.sh as every proof since follow-ups 19 writes them. The three empty directories are created by
+  checks.sh for its part two, which this proof does not run; git keeps no empty directory, so they are not committed.
+  standard-counts-vs-last-proof.txt  experiments/runs/2026-09-21-followups-21/standard-counts-vs-rebuild-2.py, unedited,
+              with the followups-21 directory as its first argument: 66 rows same, 1 DIFFERS (the Prometheus scrape
+              leg's connection count, 16 here, 17 there -- the cell ruled on 2026-09-20 to stay as recorded). The
+              program names the other side "REBUILD-2" in its printed labels; here that side is followups-21's.
+
+THE ROWS
+  rows.sh     the row driver (sha256 9f51f2f1..., as every row's control.txt prints it at its start; unchanged
+              since); DRY=yes sends a row to a scratch directory, which is how the dry repetitions ran.
+  counts.py   the counting (sha256 ef65838f...): parses every stamp, joins on identity, reads the final state from
+              the executor's state lines; writes <row>/summary.csv; its console output is <row>/counts.txt.
+  <row>/control.txt  the row's own log: the replica, certificate, retry-stanza and AuthorizationPolicy checks, the
+              orchestrator's variables before the switch, the switch to model mode and the restore, the pods with
+              their uid and IP at each half's start and end, one line per repetition.
+  <row>/<go|py>/<work item>/  ingress.jsonl, execution.jsonl, invocation.jsonl, client.jsonl (make ledgers),
+              client-sub.jsonl (Job 2's lines, the two subscribe rows), steps.txt (the driver's stamped steps),
+              jobs.txt (each Job's succeeded/failed and its pod's exit code), agw-central-access.txt and
+              ingress-access.txt (each proxy's access-log lines since the repetition began), ledgers-stderr.txt.
+              Each Job's `ko apply` output (apply-1.log, apply-2.log) is ignored by the repository's .gitignore, as
+              every record's apply.log is.
+  The dry repetitions, before the counted rows, 2026-09-21T21:16:25Z-21:25:05Z, RUN_ID b3dry1, into a scratch
+  directory, not committed and not counted: b3-mc-go-b3dry1-01, b3-mc-py-b3dry1-01, b3-st-go-b3dry1-01,
+  b3-st-py-b3dry1-01, b3-sr-go-b3dry1-01, b3-sr-py-b3dry1-01, b3-sx-go-b3dry1-01, b3-sx-py-b3dry1-01. Their lines are in
+  the pods' logs beside the counted ones; they read as the counted rows read (one each: latency 45 004.8 / 45 005.5 ms
+  ok; 4 events, complete; subscription first event task/WORKING; -32001 and -32602 as in the terminal row).
+  Work-item ids carry the row (mc model-call, st stream, sr subscribe-running, sx subscribe-terminal), the receiver
+  and each row's RUN_ID (r212542, r221134, r222720, r231337).
+
+THINGS TO KNOW WHEN READING THE ROWS
+  - The load client dials what the card advertises: every Go arrival came from agw-central's pod (10.244.1.13) and
+    every Python arrival from the ingress pod (10.244.1.16), 240 of 240, by the ingress ledgers' remote field.
+  - The Go receiver's control reset (a POST before each half's first repetition) crosses agw-central on lab/worker and
+    shows in the first repetition's access lines as a 204; the Python receiver's, on lab/orchestrator, likewise.
+  - The restore of the orchestrator (`kubectl set env DOWNSTREAM_A2A_URL=<the value read before>`, the practice of
+    experiments/gate2-a1.sh) puts the variable back with its value but at the end of the container's env list, so the
+    Deployment's pod template differs from step-2b's in that order and the pod name hash moved; cluster-after.txt
+    reads the value.
+  - Job 2 of the subscribe-running row reached the receiver ~17 s after Job 1's first event: 15.7-18.1 s of it is the
+    driver's `ko apply` of Job 2 (steps.txt). ko reported the checkout "in a dirty state" during the rows: the only
+    untracked path was this run directory, so the load-client image's vcs.modified stamp is set by it, not by source.
+  - The Python receiver's refused SubscribeToTask is an application/json answer the a2a-go SDK reads as an empty
+    stream: client-sub.jsonl shows events 0, stream_end eof, error empty; the code and the text are the end line's
+    wire_error_code and wire_error_message, read from the bytes the SDK read (fixtures/loadgen/stream.go).
+
+HOST SLEEP AND KEEP-AWAKE
+  windows.csv lists the counted windows (the first spans the whole task); host-sleep.txt is the last record's
+  host-sleep.sh, unedited, over them: Sleep=0 Wake=0 DarkWake=0 Maintenance=0 Wake Requests=0 in every window.
+  Assertion lines are counted, never listed. Its "THIS DIRECTORY'S OWN LINES" section lists the files of the directory
+  the script lives in (the last record's); this directory's own files are counted in own-keepawake-lines.txt: 0 lines
+  that would start a keep-awake or set a power value. This task started no keep-awake and changed no power setting;
+  keep-awake is not claimed absent -- the agent harness holds its own.
+
+UPSTREAM
+  tracker-search.txt  both trackers searched before any draft; sources.txt  the specification and SDK files fetched for
+  the terminal-task entry and the drafts. The two drafts are comments for existing issues (a2a-go #438, a2a-python
+  #1205). One further observation of this step has no draft: a2a-go v2.5.0's client accepts any HTTP 200 answer to a
+  streaming method and reads it only as SSE, so a JSON-RPC error sent as application/json -- a2a-python's framing of
+  a refused SubscribeToTask -- yields no event and no error. No issue about it was found in a2a-go's tracker. Whether
+  it gets a draft is the controller's and the author's call; it is named in the terminal-task entry.
+
+NOTES OF 2026-09-22T00:26:04Z -- the review round (the review of the record commit; the controller's rulings of 2026-09-22). The
+sections above stand as written; these notes add to them and, where one says so, correct them.
+
+  checks.sh's byte copies, the four values (the controller's ruling on the uncommitted copies asks for all of them):
+    the committed experiments/runs/2026-09-20-experiment-a-agentgateway-only/checks.sh
+                                             sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00
+    what checks.sh printed into its own log when it ran, checks.txt line 2 and line 391, each reading
+      "# this driver as it runs: sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00; byte copy kept as ..."
+    checks.sh.as-run-20260921T211131Z-part1  sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00
+    checks.sh.as-run-20260921T211459Z-knobs  sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00
+    All four values are equal: the committed file, the value printed at both runs, and both uncommitted copies.
+    (The section above wrote the committed file's hash shortened, "8ee90f7d...".)
+
+  "Nothing on the host was changed" (THE BUILD, above) is too absolute, and this note corrects it. Attempt 2's own
+    `make step-2` Helm call recreated the host's Helm cache directory, <HOME>/Library/Caches/helm, before the second
+    ruling: its birth stamp is 2026-09-21T21:02:03Z. Its repository subdirectory, born at the same instant, has an
+    mtime of 21:02:41Z, 38 s later, and no record names what touched it. It is plausibly this task's own off-cluster
+    reproduction at 21:02:39Z, which ran `helm show chart base --repo <istio charts> --version 1.31.0` once with the
+    host's Helm configuration and failed with the same "no cached repo found". Both directories are empty and helm
+    is unchanged (v4.3.0), read 2026-09-22T00:22Z and 00:25Z: nothing lasting. Homebrew's istioctl is still 1.31.1;
+    this task did not change it. (The incident below did not reach the Helm cache: the mtime is still 21:02:41Z.)
+
+  counts.py line 97 drops every invocation line whose outcome is "stale-closed" before counting; neither its header
+    nor the entries said so. It moved nothing here: 0 of the 160 committed invocation.jsonl files hold such a line.
+    B-5, where connections are cut, can produce them, and must count and report them rather than filter them.
+
+  The end line's `posts` field (fixtures/loadgen/stream.go) counts the round trips the SDK handed the load client's
+    outermost transport, not POSTs on the wire. A re-send below that transport would not be counted: the reviewer's
+    mutant R1 read posts=1 with 2 on the wire. The rule-4 evidence of these rows is the receivers' ingress ledgers:
+    one arrival per method per repetition, 160 of 160. The field's comment is corrected in B-4's first code commit.
+
+  Unpinned at this tree (the review's I-2 and M-6). No committed test pins three behaviours of the load client:
+    - R1: a re-send of a POST whose round trip failed before any answer, in either mode;
+    - R5: a second SendStreamingMessage after a stream that ended quietly with no terminal event;
+    - R6: the wire observer reading an error event that follows other events. It reads a JSON-RPC error from the
+      first "data:" payload that carries one, and no test puts an error after other events.
+    The rows are unaffected: 1 arrival per method per repetition at the receivers' ingress ledgers, 160 of 160 (the
+    reviewer's own parser too); every Job had 1 pod; backoffLimit 0; 0 restarts. By the controller's ruling, the tests
+    that pin all three go into B-4's first code commit, before any B-4 or B-5 row, and B-4's rebuild proves them.
+    They sit under fixtures/, a deployed path, and this record's built tree is 2bdc771b's.
+
+  host-sleep.txt's first line names "the follow-ups 19 task 4b rebuild, standard proof and Experiment A re-run". That
+    is the unedited script's own header (experiments/runs/2026-09-20-experiment-a-agentgateway-only/host-sleep.sh),
+    not this task. Its counts are over this directory's windows.csv.
+
+INCIDENT, 2026-09-22T00:22Z -- an accidental partial `make step-2` on this cluster, after every row and every reading
+above, while this directory's review-round notes were being appended.
+  How. The notes were appended with an UNQUOTED shell heredoc, so three backtick spans in their text ran as command
+  substitutions. The dispatch had warned of exactly this pitfall. The corrupted file was restored to the record
+  commit's version, and these notes were written again through a quoted heredoc.
+  What each ran:
+    1. `make step-2`, from the repository root with the HOST's PATH (Homebrew istioctl 1.31.1) and the host's Helm
+       environment. In the Makefile's order it ran:
+       - helm-required;
+       - check-go-sources-clean, which passed: no source change;
+       - orchestrator-image: a docker build of the unchanged agents/orchestrator, whose image was created at
+         2026-09-22T00:22:48.73Z (docker image id sha256:fedbc9c6...), then `kind load docker-image
+         orchestrator:dev`, which re-pointed orchestrator:dev on both nodes to that new image id ("not yet present
+         ... loading"; containerd id 3ecfe142e620a);
+       - `kubectl apply --server-side` of the Gateway API v1.6.2 experimental bundle, at the same version: every
+         CRD and the safe-upgrades policy and binding reported "serverside-applied". The CRDs still read
+         bundle-version v1.6.2, channel experimental, generation 1, and the policy's kubectl Apply entry is stamped
+         2026-09-22T00:22:56Z;
+       - then the istioctl pin guard failed ("istioctl on PATH is not the pinned 1.31.0 (see versions.yaml)"), exit
+         2, BEFORE any Helm call. No Istio, agentgateway or telemetry release was touched, and no rollout or Job ran.
+    2. `helm show chart ... --repo`: "Error: flag needs an argument: --repo", so it failed at flag parsing.
+    3. `posts`: "command not found".
+  State after, read 2026-09-22T00:23:52Z and 00:25:38Z:
+    - The running orchestrator pod and its imageID are unchanged (orchestrator-d86985bd-n65jd, started
+      2026-09-21T23:43:04Z, 0 restarts), but any later pod start would take the rebuilt image of the same committed
+      sources.
+    - No row, count or Job was touched.
+    - cluster-after.txt describes the state BEFORE this incident.
+    - No repair was made (the controller's ruling): nothing deleted, re-tagged or rolled. B-4 starts from a deleted
+      cluster, so nothing carries forward.

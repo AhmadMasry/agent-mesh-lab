@@ -1,0 +1,27 @@
+# The istioctl client this task's rebuild (attempt 2), standard proof and rows run with -- a lab-scoped copy of the
+# pinned release, put FIRST on PATH by each driver for its own processes only. Nothing on the host changed: Homebrew,
+# /opt/homebrew/bin/istioctl, the shell profile and every global PATH are as they were. Written 2026-09-21T20:59:31Z.
+#
+# Why: attempt 1 stopped at `make step-2` on the Makefile's pin guard ("istioctl on PATH is not the pinned 1.31.0
+# (see versions.yaml)"). The istioctl on the host's PATH was Homebrew's, a link to Cellar/istioctl/1.31.1; that Cellar
+# directory and its install receipt are stamped 2026-09-21 21:55:13 +0300 (18:55:13Z), before this task's first command
+# (20:32Z), and it was the only istioctl version the Cellar held. The controller ruled option (a): a lab-scoped 1.31.0
+# for this run; the pin does not move here (Istio 1.31.1 is left for the next currency pass).
+#
+# Fetched in this session, one GET each, curl --retry 0:
+#   2026-09-21T20:58:36Z https://api.github.com/repos/istio/istio/releases/tags/1.31.0 -> http 200
+#       tag_name 1.31.0, html_url https://github.com/istio/istio/releases/tag/1.31.0, published_at 2026-08-31T15:47:13Z
+#       asset istioctl-1.31.0-osx-arm64.tar.gz: size 27597747, digest sha256:a0c4d35320f930e5254de119512f0761f65a76fb614973281bf9435e24306d66
+#   2026-09-21T20:58:42Z https://github.com/istio/istio/releases/download/1.31.0/istioctl-1.31.0-osx-arm64.tar.gz -> http 200, 27597747 bytes
+#   2026-09-21T20:58:48Z https://github.com/istio/istio/releases/download/1.31.0/istioctl-1.31.0-osx-arm64.tar.gz.sha256 -> http 200, 98 bytes
+#
+# Verified:
+#   the release's checksum file reads:  a0c4d35320f930e5254de119512f0761f65a76fb614973281bf9435e24306d66 istioctl-1.31.0-osx-arm64.tar.gz
+#   shasum -a 256 of the tarball:       a0c4d35320f930e5254de119512f0761f65a76fb614973281bf9435e24306d66
+#   -> equal to the checksum file and to the release API's asset digest. (shasum -c refused the file's one-space
+#      separator as "no properly formatted SHA checksum lines"; the comparison above is of the hex strings.)
+#   host: Darwin arm64 (the osx-arm64 asset)
+#
+# Placed at ${TMPDIR}/b3/tools/istioctl-1.31.0/istioctl (tar -xzf of the tarball; the one file it holds):
+#   sha256 of the binary: 763caa1c906c62a0cb6f07653de94446600dc81d25af33e2c047cc124b674840
+#   istioctl version --remote=false: client version: 1.31.0

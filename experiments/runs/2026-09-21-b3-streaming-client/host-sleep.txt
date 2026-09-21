@@ -1,0 +1,103 @@
+# Host sleep during the follow-ups 19 task 4b rebuild, standard proof and Experiment A re-run. Written 2026-09-21T23:43:56Z.
+#
+# The selection, by pmset's event-kind column (field $4), over the whole of `pmset -g log`:
+#   $4=="Sleep" || $4=="Wake" || $4=="DarkWake" || $4=="Maintenance"
+# pmset stamps in the host local zone (shown per line); the windows are given in UTC and compared after
+# converting each stamp with its own offset. No Assertions line is listed anywhere in this file.
+#
+# EVERY COUNTED WINDOW, and the lines of each kept kind whose stamp falls inside it:
+
+   window b3-task: 2026-09-21T20:32:25Z .. 2026-09-21T23:43:54Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=411   (Assertions: counted, never listed)
+
+   window code-phase-no-cluster: 2026-09-21T20:32:25Z .. 2026-09-21T20:52:02Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=28   (Assertions: counted, never listed)
+
+   window rebuild-attempt-1: 2026-09-21T20:53:32Z .. 2026-09-21T20:55:55Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=1   (Assertions: counted, never listed)
+
+   window rebuild-attempt-2: 2026-09-21T20:59:36Z .. 2026-09-21T21:02:03Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=8   (Assertions: counted, never listed)
+
+   window rebuild-attempt-3: 2026-09-21T21:04:03Z .. 2026-09-21T21:11:14Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=11   (Assertions: counted, never listed)
+
+   window standard-proof: 2026-09-21T21:11:31Z .. 2026-09-21T21:15:02Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=16   (Assertions: counted, never listed)
+
+   window dry-repetitions: 2026-09-21T21:16:25Z .. 2026-09-21T21:25:05Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=6   (Assertions: counted, never listed)
+
+   window row-model-call: 2026-09-21T21:25:42Z .. 2026-09-21T22:11:26Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=166   (Assertions: counted, never listed)
+
+   window row-stream: 2026-09-21T22:11:34Z .. 2026-09-21T22:27:06Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=15   (Assertions: counted, never listed)
+
+   window row-subscribe-running: 2026-09-21T22:27:20Z .. 2026-09-21T23:13:22Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=44   (Assertions: counted, never listed)
+
+   window row-subscribe-terminal: 2026-09-21T23:13:37Z .. 2026-09-21T23:43:07Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=84   (Assertions: counted, never listed)
+
+   window cluster-after: 2026-09-21T23:43:29Z .. 2026-09-21T23:43:29Z
+     Sleep=0  Wake=0  DarkWake=0  Maintenance=0  Wake Requests=0  Assertions=0   (Assertions: counted, never listed)
+
+# kept lines whose tail was cut by the guard: 0
+# the earliest stamped line pmset holds: 2026-09-15T17:25:40+03:00 (the log covers the windows only if this is before them)
+# Sleep lines pmset holds in all: 1316; the last one stamped 2026-09-21T21:52:47+03:00
+# Wake lines pmset holds in all:  8; the last one stamped 2026-09-21T21:53:16+03:00
+
+# ASSERTION COUNTS PER WINDOW. Counts only: no Assertions line is listed here. How counted:
+#   pmset -g log | python3 host-sleep-assertion-counts.py windows.csv   (the same read of the log as above)
+# The method is in that program's header: field $4 == "Assertions"; stamps compared in UTC, both ends inclusive;
+# the substring "caffeinate"; the type substring; the action word after the process token, printed only if it is
+# one of pmset's own action words. It prints numbers and those words, never a line, a pid or a name other than
+# that process name.
+   window b3-task: 2026-09-21T20:32:25Z .. 2026-09-21T23:43:54Z
+     Assertions lines=411  naming caffeinate=128  of those with type PreventUserIdleSystemSleep=128  by action word: Created=0, ClientDied=99, Summary=29
+   window code-phase-no-cluster: 2026-09-21T20:32:25Z .. 2026-09-21T20:52:02Z
+     Assertions lines=28  naming caffeinate=18  of those with type PreventUserIdleSystemSleep=18  by action word: Created=0, ClientDied=13, Summary=5
+   window rebuild-attempt-1: 2026-09-21T20:53:32Z .. 2026-09-21T20:55:55Z
+     Assertions lines=1  naming caffeinate=1  of those with type PreventUserIdleSystemSleep=1  by action word: Created=0, ClientDied=1
+   window rebuild-attempt-2: 2026-09-21T20:59:36Z .. 2026-09-21T21:02:03Z
+     Assertions lines=8  naming caffeinate=1  of those with type PreventUserIdleSystemSleep=1  by action word: Created=0, ClientDied=1
+   window rebuild-attempt-3: 2026-09-21T21:04:03Z .. 2026-09-21T21:11:14Z
+     Assertions lines=11  naming caffeinate=3  of those with type PreventUserIdleSystemSleep=3  by action word: Created=0, ClientDied=3
+   window standard-proof: 2026-09-21T21:11:31Z .. 2026-09-21T21:15:02Z
+     Assertions lines=16  naming caffeinate=5  of those with type PreventUserIdleSystemSleep=5  by action word: Created=0, ClientDied=1, Summary=4
+   window dry-repetitions: 2026-09-21T21:16:25Z .. 2026-09-21T21:25:05Z
+     Assertions lines=6  naming caffeinate=4  of those with type PreventUserIdleSystemSleep=4  by action word: Created=0, ClientDied=4
+   window row-model-call: 2026-09-21T21:25:42Z .. 2026-09-21T22:11:26Z
+     Assertions lines=166  naming caffeinate=29  of those with type PreventUserIdleSystemSleep=29  by action word: Created=0, ClientDied=23, Summary=6
+   window row-stream: 2026-09-21T22:11:34Z .. 2026-09-21T22:27:06Z
+     Assertions lines=15  naming caffeinate=9  of those with type PreventUserIdleSystemSleep=9  by action word: Created=0, ClientDied=7, Summary=2
+   window row-subscribe-running: 2026-09-21T22:27:20Z .. 2026-09-21T23:13:22Z
+     Assertions lines=44  naming caffeinate=30  of those with type PreventUserIdleSystemSleep=30  by action word: Created=0, ClientDied=24, Summary=6
+   window row-subscribe-terminal: 2026-09-21T23:13:37Z .. 2026-09-21T23:43:07Z
+     Assertions lines=84  naming caffeinate=18  of those with type PreventUserIdleSystemSleep=18  by action word: Created=0, ClientDied=14, Summary=4
+   window cluster-after: 2026-09-21T23:43:29Z .. 2026-09-21T23:43:29Z
+     Assertions lines=0  naming caffeinate=0  of those with type PreventUserIdleSystemSleep=0  by action word: Created=0
+
+# KEEP-AWAKE PROCESSES, read by `ps` at 2026-09-21T23:43:57Z, after the windows: the process's arguments and its
+# PARENT's command name only (no pid, no user, no terminal):
+#      2 caffeinate -i -t 300   <- parent command name: claude
+# (no line above means no such process at that moment)
+
+# THIS DIRECTORY'S OWN LINES that run caffeinate or a pmset setter: non-comment lines of the .sh and .py files
+# beside this script that match `caffeinate` or `pmset`, counted; the counting program's match strings and
+# this script's own reads are what is expected to match:
+#   checks.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   cluster-after.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   host-sleep.sh: lines naming either = 14; of them lines that would START a keep-awake or SET a power value = 0
+#   proof.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   rebuild.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   versions-readback.sh: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   compare.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   event-spans.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   host-sleep-assertion-counts.py: lines naming either = 14; of them lines that would START a keep-awake or SET a power value = 0
+#   new-rows.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   proxy-entry-spans.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   spans_diff.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   standard-counts-vs-rebuild-2.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0
+#   table.py: lines naming either = 0; of them lines that would START a keep-awake or SET a power value = 0

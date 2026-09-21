@@ -1,0 +1,53 @@
+# Documents fetched in this task for the terminal-task row's entry and its two upstream drafts (rule 2). One GET each,
+# curl --retry 0; the files were read in a scratch directory and are not committed; each is named with its sha256.
+#
+# The specification, pinned revision (versions.yaml a2a-spec):
+2026-09-21T21:28:25Z GET https://raw.githubusercontent.com/a2aproject/A2A/v1.0.1/docs/specification.md -> http 200, 155498 bytes, 3610 lines, sha256 627ccfe6ffb1be2c56811c3dcc18780deb419f41cdc98248095c939b2d9dc9cb
+2026-09-21T21:28:27Z GET https://api.github.com/repos/a2aproject/A2A/git/refs/tags/v1.0.1 -> commit 3303592588e388e62e0f69f701af531d2f4e3991 (the pin)
+#   lines cited: 296-311 (Subscribe to Task: errors and behaviour; l.305 "UnsupportedOperationError: The operation is
+#   attempted on a task that is in a terminal state"), 1182 (TaskNotFoundError -32001), 1185 (UnsupportedOperationError
+#   -32004), 2322 (SendStreamingMessage response "HTTP 200 with Content-Type: text/event-stream"), 2406-2408
+#   (SubscribeToTask: "Response: SSE stream (same format as SendStreamingMessage)"; "Error: Returns
+#   UnsupportedOperationError if the task is in a terminal state"). No line found that says how an ERROR answer to a
+#   streaming method is framed (a JSON body or an event).
+#
+# a2a-go, tag v2.5.0 (versions.yaml a2a-go):
+2026-09-21T21:28:51Z GET https://api.github.com/repos/a2aproject/a2a-go/git/refs/tags/v2.5.0 -> commit 9d95b95445f4208ba77f48a137a278067937adb7
+  https://raw.githubusercontent.com/a2aproject/a2a-go/v2.5.0/a2asrv/handler.go -> sha256 ea0c255de465315df8ff9f89bbb609d4fa83ebf8dbd44cae0cb59414110e9cc1
+  https://raw.githubusercontent.com/a2aproject/a2a-go/v2.5.0/internal/taskexec/local_manager.go -> sha256 a9cc514cad191eaaf40402e3fabf8721655d2d3e79263ed313db956ed2e28cfa
+  https://raw.githubusercontent.com/a2aproject/a2a-go/v2.5.0/a2asrv/jsonrpc.go -> sha256 9d53a6d5196aa6114b877db16c7e1c8a28b21e4b220ce66f109973b27b9b0a35
+  https://raw.githubusercontent.com/a2aproject/a2a-go/v2.5.0/a2aclient/jsonrpc.go -> sha256 f336adb9addf8a12d78197a0b04921e742b85a754e72f026a8a613e3e46a6faa
+  https://raw.githubusercontent.com/a2aproject/a2a-go/v2.5.0/internal/sse/sse.go -> sha256 5a118627a55be5522fd4c8891875df44ebc56af39a9947a58bac0c10fa3bb5b9
+#   (fetched 2026-09-21T21:28:46Z-21:28:48Z, http 200 each) lines cited: handler.go 360-375 (SubscribeToTask wraps any
+#   Resubscribe error in ErrTaskNotFound, l.371-374); local_manager.go 134-140 (Resubscribe: "no active execution" when
+#   the execution is gone) and 259-266 (cleanupExecution deletes it when the execution ends); a2aclient/jsonrpc.go
+#   153-160 (a 200 is accepted whatever its Content-Type) and 164-185 (the body is read as SSE); internal/sse/sse.go
+#   94-137 (ParseDataStream skips every line that does not begin "data:", l.120, and a clean end yields nothing).
+#
+# a2a-python (a2a-sdk), tag v1.1.4 (versions.yaml a2a-python):
+2026-09-21T21:28:51Z GET https://api.github.com/repos/a2aproject/a2a-python/git/refs/tags/v1.1.4 -> commit 2d4d3048b245d2af854bad804f0e722ea9febc08
+  https://raw.githubusercontent.com/a2aproject/a2a-python/v1.1.4/src/a2a/server/agent_execution/active_task.py -> sha256 0c13e4393d086ea3e5cb2dd87019881e846d510db5e9c27154b85b7fc1c4cc37
+  https://raw.githubusercontent.com/a2aproject/a2a-python/v1.1.4/src/a2a/server/request_handlers/default_request_handler_v2.py -> sha256 07cbed554d444430bb5ebbc7eba06dc92dc1549e12c31ee4844f0e5daca9f144
+  https://raw.githubusercontent.com/a2aproject/a2a-python/v1.1.4/src/a2a/server/routes/jsonrpc_dispatcher.py -> sha256 6d56a5763a283c4e975fde9d6a52aa815aad28fa7b08e1d40bd1bbdc7a9baf57
+  https://raw.githubusercontent.com/a2aproject/a2a-python/v1.1.4/src/a2a/server/agent_execution/active_task_registry.py -> sha256 980b94426925e02b6e008b2f2d96bf09259c57de7fcd164a53fe6dbf3a07c696
+#   (fetched 2026-09-21T21:28:49Z-21:28:50Z, http 200 each) lines cited: default_request_handler_v2.py 431-445
+#   (on_subscribe_to_task: get_or_create(create_task_if_missing=False), then subscribe(include_initial_task=True));
+#   active_task.py 443-446 (start() on a finished ActiveTask: "is already completed. Cannot start it again."), 466-474
+#   (start() on a stored terminal task: InvalidParamsError "Task {id} is in terminal state: {task.status.state}" -- the
+#   state formatted as its enum number), 624-628 (subscribe() on a finished ActiveTask still registered: "Task {id} is
+#   already completed."); jsonrpc_dispatcher.py 376-380 (the first event is fetched eagerly, so an error raised before
+#   it propagates to the dispatcher, which answers with a JSONResponse, l.600, not an event stream);
+#   active_task_registry.py 60-97 (a finished ActiveTask with no subscribers is removed; a later get_or_create builds a
+#   new one, whose start() raises the terminal-state error above).
+#
+# 2026-09-22T00:21:33Z -- dated notes, the review round of 2026-09-22 (the lines above stand as written):
+#   - jsonrpc_dispatcher.py "l.600" above is wrong for this path. The A2AError raised by the eager anext (l.376-380)
+#     propagates out of _process_streaming_request and is caught at l.337-338 ("except A2AError as e: return
+#     self._generate_error_response(request_id, e)"), which returns JSONResponse(response_data, status_code=200) at
+#     l.201-204. l.600 is _create_response's dict branch, which this path does not reach. Re-read in the scratch copy
+#     fetched at 21:28:50Z (same sha256 as above).
+#   - Fetched for the a2a-go draft's by-source sentence (the client's mapping of -32001):
+2026-09-22T00:20:10Z GET https://raw.githubusercontent.com/a2aproject/a2a-go/v2.5.0/internal/jsonrpc/jsonrpc.go -> http 200, 6817 bytes, sha256 49173b901fee7dc7c5900a8c6257386f83434a16d260879c730d2a69bded15c9
+#     lines cited: l.75 ("-32001: a2a.ErrTaskNotFound," in codeToError) and l.89-103 (FromJSONRPCError wraps the mapped
+#     sentinel with a2a.NewError and the wire message). Also cited in the draft, from the a2asrv/jsonrpc.go fetched
+#     above: l.235-238, the event loop writing one error event (handleError) and returning.
