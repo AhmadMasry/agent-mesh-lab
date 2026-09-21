@@ -1,0 +1,15 @@
+2026-09-21T19:33:27.441Z rep namespace-1 start T0=2026-09-21T19:33:27Z ztunnel=ztunnel-sdq6z istiod=istiod-5c847d4d8-9h6lw server=c3r-server-77dd87c567-qwj88 10.244.1.41:8080 policy=c3r-namespace
+2026-09-21T19:33:27.583Z held connection: kubectl -n c3r exec -i c3r-client -- nc 10.244.1.41 8080 (stdin held open by this script)
+2026-09-21T19:33:27.588Z r1 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-namespace-1-r1
+2026-09-21T19:33:27.657Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-21T19:33:27.833Z apply: kubectl apply -f experiments/runs/2026-09-21-c3r-open-connections/objects/policy-namespace.yaml
+2026-09-21T19:33:27.999Z ztunnel holds c3r/c3r-namespace (istioctl ztunnel-config policy)
+2026-09-21T19:33:28.024Z held connection after the push: complete responses 1 200; nc running
+2026-09-21T19:33:28.368Z r2 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-namespace-1-r2 on the held connection
+2026-09-21T19:33:48.031Z r2 result: complete responses on the held connection: 1 200; nc running
+2026-09-21T19:33:48.034Z new connection: one curl --retry 0, X-Logical-Work-Item-Id: c3r-namespace-1-new
+2026-09-21T19:33:48.249Z close: EOF on nc's input
+2026-09-21T19:33:48.288Z held connection ended: nc exited 2026-09-21T19:33:48.263Z exit=0; complete responses on it: 1 200
+2026-09-21T19:33:48.421Z remove: kubectl delete -f experiments/runs/2026-09-21-c3r-open-connections/objects/policy-namespace.yaml
+2026-09-21T19:33:48.580Z ztunnel no longer holds c3r/c3r-namespace
+2026-09-21T19:33:48.832Z rep namespace-1 end

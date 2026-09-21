@@ -1,0 +1,387 @@
+
+# read 2026-09-21T19:41:50Z
+$ gh api repos/istio/ztunnel/git/ref/tags/1.31.0 --jq '.object'
+{"sha":"e6fdcc5bd462e6db9f6c844aed5e054a01343a0f","type":"tag","url":"https://api.github.com/repos/istio/ztunnel/git/tags/e6fdcc5bd462e6db9f6c844aed5e054a01343a0f"}
+# exit 0
+
+# read 2026-09-21T19:41:51Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy/connection_manager.rs | shasum -a 256
+0239cff125ceaff39bca640da45b4ac745bc480099488d7e1bebbcb4884930f1  -
+# exit 0
+
+# read 2026-09-21T19:41:51Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/state.rs | shasum -a 256
+cc075661fd882e2c73f75ad5b3eabdc2f459beeae7b5fa05a04260e35acb81e6  -
+# exit 0
+
+# read 2026-09-21T19:41:52Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy/inbound.rs | shasum -a 256
+bb2efec13fe92bb17a0d61aec130db5ea8c82158ffb37bdcf9493d29a6baf425  -
+# exit 0
+
+# read 2026-09-21T19:41:53Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/state/policy.rs | shasum -a 256
+8efaa933c2cd862d1fb1d0adc93e7dc7a907cb164d2b771141c96201acbb76da  -
+# exit 0
+
+# read 2026-09-21T19:41:53Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/xds.rs | shasum -a 256
+6643b9769cbc9a9a02c9df746a234a641b3d69c69e5b4dd8596b885b62b93c3d  -
+# exit 0
+
+# read 2026-09-21T19:41:53Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy.rs | shasum -a 256
+9a605c2e530cbf95953f0410f9196d329701c5834bbf29f3c68e1bff40cdb25b  -
+# exit 0
+
+# read 2026-09-21T19:41:54Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy/connection_manager.rs | sed -n '345p;364,381p'
+pub struct PolicyWatcher {
+    pub async fn run(self) {
+        let mut policies_changed = self.state.read().policies.subscribe();
+        loop {
+            tokio::select! {
+                _ = self.stop.clone().wait_for_drain() => {
+                    break;
+                }
+                _ = policies_changed.changed() => {
+                    let connections = self.connection_manager.connections();
+                    for conn in connections {
+                        if self.state.assert_rbac(&conn.ctx).await.is_err() {
+                            self.connection_manager.close(&conn).await;
+                            info!("connection {} closed because it's no longer allowed after a policy update", conn.ctx);
+                        }
+                    }
+                }
+            }
+        }
+# exit 0
+
+# read 2026-09-21T19:41:54Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy/connection_manager.rs | sed -n '615p;666,673p;683p;689,693p;697,698p'
+    async fn test_policy_watcher_lifecycle() {
+        let auth_name = "allow-nothing";
+        let auth_namespace = "default";
+        let auth = Authorization {
+            name: auth_name.into(),
+            action: Action::Deny as i32,
+            scope: Scope::Global as i32,
+            namespace: auth_namespace.into(),
+            rules: vec![],
+        tokio::spawn(assert_close(close1));
+                .write()
+                .expect("test fails if we're unable to get a write lock on state");
+            let res =
+                state_mutator.insert_authorization(&mut s, auth_xds_name.clone().into(), auth);
+            // assert that the update was OK
+        // send the signal which stops policy watcher
+        tx.start_drain_and_wait(drain::DrainMode::Immediate).await;
+# exit 0
+
+# read 2026-09-21T19:41:55Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/state.rs | sed -n '154,160p;584,611p'
+#[derive(Educe, Debug, Clone, Eq, serde::Serialize)]
+#[educe(PartialEq, Hash)]
+pub struct ProxyRbacContext {
+    pub conn: rbac::Connection,
+    #[educe(Hash(ignore), PartialEq(ignore))]
+    pub dest_workload: Arc<Workload>,
+}
+    pub async fn assert_rbac(
+        &self,
+        ctx: &ProxyRbacContext,
+    ) -> Result<(), proxy::AuthorizationRejectionError> {
+        let wl = &ctx.dest_workload;
+        let conn = &ctx.conn;
+        let state = self.read();
+
+        // We can get policies from namespace, global, and workload...
+        let ns = state.policies.get_by_namespace(&wl.namespace);
+        let global = state.policies.get_by_namespace(&crate::strng::EMPTY);
+        let workload = wl.authorization_policies.iter();
+
+        // Aggregate all of them based on type
+        let (all_allow, all_deny): (Vec<_>, Vec<_>) = ns
+            .iter()
+            .chain(global.iter())
+            .chain(workload)
+            .filter_map(|k| {
+                let pol = state.policies.get(k);
+                // Policy not found. This is probably transition state where the policy hasn't been sent
+                // by the control plane, or it was just removed.
+                if pol.is_none() {
+                    warn!("skipping unknown policy {k}");
+                }
+                pol
+            })
+            .partition(|p| p.action == rbac::RbacAction::Allow);
+# exit 0
+
+# read 2026-09-21T19:41:55Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy/inbound.rs | sed -n '270,278p;434,437p'
+        // can fail before we send the OK response here.
+        let rx = async {
+            // Define a connection guard to ensure rbac conditions are maintained for the duration of the connection
+            let conn_guard = pi
+                .connection_manager
+                .assert_rbac(&pi.state, &ri.rbac_ctx, ri.for_host)
+                .await
+                .map_err(InboundFlagError::build(
+                    StatusCode::UNAUTHORIZED,
+        let rbac_ctx = ProxyRbacContext {
+            conn,
+            dest_workload: destination_workload.clone(),
+        };
+# exit 0
+
+# read 2026-09-21T19:41:55Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/state/policy.rs | sed -n '59,77p;95,100p'
+    pub fn insert(&mut self, xds_name: Strng, rbac: Authorization) {
+        self.remove(xds_name.clone());
+        match rbac.scope {
+            RbacScope::Global => {
+                self.by_namespace
+                    .entry(strng::EMPTY)
+                    .or_default()
+                    .insert(xds_name.clone());
+            }
+            RbacScope::Namespace => {
+                self.by_namespace
+                    .entry(strng::new(&rbac.namespace))
+                    .or_default()
+                    .insert(xds_name.clone());
+            }
+            RbacScope::WorkloadSelector => {}
+        }
+        self.by_key.insert(xds_name.clone(), rbac);
+    }
+    pub fn subscribe(&self) -> watch::Receiver<()> {
+        self.notifier.sender.subscribe()
+    }
+    pub fn send(&mut self) {
+        self.notifier.sender.send_replace(());
+    }
+# exit 0
+
+# read 2026-09-21T19:41:56Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/xds.rs | sed -n '360,376p;508,540p'
+    pub fn insert_authorization(
+        &self,
+        state: &mut ProxyState,
+        xds_name: Strng,
+        r: XdsAuthorization,
+    ) -> anyhow::Result<()> {
+        info!("handling RBAC update {}", r.name);
+
+        let rbac = rbac::Authorization::try_from(r)?;
+        trace!(
+            "insert policy {}, {}",
+            xds_name,
+            serde_json::to_string(&rbac)?
+        );
+        state.policies.insert(xds_name, rbac);
+        Ok(())
+    }
+        true
+    }
+
+    fn handle(
+        &self,
+        updates: Box<&mut dyn Iterator<Item = XdsUpdate<XdsAuthorization>>>,
+    ) -> Result<(), Vec<RejectedConfig>> {
+        let mut state = self.state.write().unwrap();
+        let handle = |res: XdsUpdate<XdsAuthorization>| {
+            match res {
+                XdsUpdate::Update(w) => self
+                    .updater
+                    .insert_authorization(&mut state, w.name, w.resource)?,
+                XdsUpdate::Remove(name) => self.updater.remove_authorization(&mut state, name),
+            }
+            Ok(())
+        };
+        let mut len_updates = 0;
+        let updates = updates.inspect(|_| len_updates += 1);
+        match handle_single_resource(updates, handle) {
+            Ok(()) => {
+                state.policies.send();
+                Ok(())
+            }
+            Err(e) => {
+                if e.len() < len_updates {
+                    // not all config was rejected, we have _some_ valide update
+                    state.policies.send();
+                }
+                Err(e)
+            }
+        }
+    }
+# exit 0
+
+# read 2026-09-21T19:41:56Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy.rs | sed -n '411,419p'
+
+    #[error("connection closed due to policy change")]
+    AuthorizationPolicyLateRejection,
+
+    #[error("connection closed: peer certificate revoked by CRL")]
+    CertificateRevoked,
+
+    #[error("connection closed due to policy rejection: {0}")]
+    AuthorizationPolicyRejection(AuthorizationRejectionError),
+# exit 0
+
+# read 2026-09-21T19:41:57Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1b9172443c56087ff0a2f95f2c5d36d09ab7b468/src/state.rs | sed -n '131,135p;452,466p'
+pub struct ProxyRbacContext {
+    pub conn: rbac::Connection,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub dest_workload_info: Option<Arc<WorkloadInfo>>,
+}
+    pub async fn assert_rbac(
+        &self,
+        ctx: &ProxyRbacContext,
+    ) -> Result<(), proxy::AuthorizationRejectionError> {
+        let nw_addr = network_addr(ctx.conn.dst_network.clone(), ctx.conn.dst.ip());
+        let Some(wl) = self.fetch_workload(&nw_addr).await else {
+            debug!("destination workload not found {}", nw_addr);
+            return Err(proxy::AuthorizationRejectionError::NoWorkload);
+        };
+        if let Some(ref wl_info) = ctx.dest_workload_info {
+            // make sure that the workload we fetched matches the workload info we got over ZDS.
+            if !wl_info.matches(&wl) {
+                error!("workload does not match proxy workload uid. this is probably a bug. please report an issue");
+                return Err(proxy::AuthorizationRejectionError::WorkloadMismatch);
+            }
+# exit 0
+
+# read 2026-09-21T19:41:57Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/4de5e896fad8c5fb8744c2acba6b8f40f5abd194/src/state.rs | sed -n '131,135p;468,479p'
+pub struct ProxyRbacContext {
+    pub conn: rbac::Connection,
+    #[derivative(Hash = "ignore", PartialEq = "ignore")]
+    pub dest_workload: Arc<Workload>,
+}
+    pub async fn assert_rbac(
+        &self,
+        ctx: &ProxyRbacContext,
+    ) -> Result<(), proxy::AuthorizationRejectionError> {
+        let wl = &ctx.dest_workload;
+        let conn = &ctx.conn;
+        let state = self.state.read().unwrap();
+
+        // We can get policies from namespace, global, and workload...
+        let ns = state.policies.get_by_namespace(&wl.namespace);
+        let global = state.policies.get_by_namespace(&crate::strng::EMPTY);
+        let workload = wl.authorization_policies.iter();
+# exit 0
+
+# ---- added in the review round of 2026-09-21 (readings below carry their own stamps) ----
+
+# read 2026-09-21T20:05:45Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/state.rs | sed -n '158,159p'
+    #[educe(Hash(ignore), PartialEq(ignore))]
+    pub dest_workload: Arc<Workload>,
+# exit 0
+
+# read 2026-09-21T20:05:45Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy/connection_manager.rs | sed -n '254,268p;287,296p;299,302p'
+    fn register(&self, c: &InboundConnection) -> Option<DrainWatcher> {
+        match self.drains.write().expect("mutex").entry(c.clone()) {
+            Entry::Occupied(mut cd) => {
+                cd.get_mut().count += 1;
+                let rx = cd.get().rx.clone();
+                Some(rx)
+            }
+            Entry::Vacant(entry) => {
+                let drain = ConnectionDrain::new();
+                let rx = drain.rx.clone();
+                entry.insert(drain);
+                Some(rx)
+            }
+        }
+    }
+    // signal all connections listening to this channel to take action (typically terminate traffic)
+    async fn close(&self, c: &InboundConnection) {
+        let drain = { self.drains.write().expect("mutex").remove(c) };
+        if let Some(cd) = drain {
+            cd.drain().await;
+        } else {
+            // this is bad, possibly drain called twice
+            error!("requested drain on a Connection which wasn't initialized");
+        }
+    }
+    pub fn connections(&self) -> Vec<InboundConnection> {
+        // potentially large copy under read lock, could require optimization
+        self.drains.read().expect("mutex").keys().cloned().collect()
+    }
+# exit 0
+
+# read 2026-09-21T20:05:46Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy/inbound.rs | sed -n '404,410p'
+        // Get the destination workload information of the destination pods (wds) workload (not destination ztunnel)
+        let destination_workload = pi
+            .local_workload_information
+            .get_workload()
+            .await
+            // At this point we already fetched the local workload for TLS, so it should be infallible.
+            .map_err(InboundError::build(StatusCode::SERVICE_UNAVAILABLE))?;
+# exit 0
+
+# read 2026-09-21T20:05:46Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/proxy.rs | sed -n '195,197p;240,248p'
+    pub async fn get_workload(&self) -> Result<Arc<Workload>, Error> {
+        get_workload(&self.state, self.wi.clone()).await
+    }
+
+async fn get_workload(
+    state: &DemandProxyState,
+    wi: Arc<WorkloadInfo>,
+) -> Result<Arc<Workload>, Error> {
+    state
+        .wait_for_workload(&wi, Duration::from_secs(5))
+        .await
+        .ok_or_else(|| Error::UnknownSourceWorkload(wi.clone()))
+# exit 0
+
+# read 2026-09-21T20:05:46Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/1.31.0/src/xds.rs | grep -n -E 'policies\.send\(\)|^impl Handler<'
+384:impl Handler<XdsWorkload> for ProxyStateUpdater {
+408:impl Handler<XdsAddress> for ProxyStateUpdater {
+506:impl Handler<XdsAuthorization> for ProxyStateUpdater {
+529:                state.policies.send();
+535:                    state.policies.send();
+# exit 0
+
+# read 2026-09-21T20:05:47Z
+$ gh api repos/istio/ztunnel/commits/master --jq '{sha: .sha, committed: .commit.committer.date}'
+{"committed":"2026-09-18T18:16:16Z","sha":"db40ece85ffc98b493ed75da18e1f2a276f4d452"}
+# exit 0
+
+# read 2026-09-21T20:05:48Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/db40ece85ffc98b493ed75da18e1f2a276f4d452/src/state.rs | grep -n -E 'Hash\(ignore\)|pub dest_workload: Arc<Workload>|let wl = &ctx.dest_workload|get_by_namespace\(&wl.namespace\)|wl.authorization_policies.iter\(\)'
+158:    #[educe(Hash(ignore), PartialEq(ignore))]
+159:    pub dest_workload: Arc<Workload>,
+588:        let wl = &ctx.dest_workload;
+593:        let ns = state.policies.get_by_namespace(&wl.namespace);
+595:        let workload = wl.authorization_policies.iter();
+# exit 0
+
+# read 2026-09-21T20:05:49Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/db40ece85ffc98b493ed75da18e1f2a276f4d452/src/proxy/inbound.rs | grep -n -E 'dest_workload: destination_workload.clone\(\)'
+436:            dest_workload: destination_workload.clone(),
+# exit 0
+
+# read 2026-09-21T20:05:49Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/db40ece85ffc98b493ed75da18e1f2a276f4d452/src/proxy/connection_manager.rs | grep -n -E 'assert_rbac\(&conn.ctx\)|no longer allowed after a policy update'
+374:                        if self.state.assert_rbac(&conn.ctx).await.is_err() {
+376:                            info!("connection {} closed because it's no longer allowed after a policy update", conn.ctx);
+# exit 0
+
+# read 2026-09-21T20:05:50Z
+$ curl -sS --retry 0 https://raw.githubusercontent.com/istio/ztunnel/db40ece85ffc98b493ed75da18e1f2a276f4d452/src/xds.rs | grep -n -E 'policies\.send\(\)|^impl Handler<'
+384:impl Handler<XdsWorkload> for ProxyStateUpdater {
+408:impl Handler<XdsAddress> for ProxyStateUpdater {
+506:impl Handler<XdsAuthorization> for ProxyStateUpdater {
+529:                state.policies.send();
+535:                    state.policies.send();
+# exit 0

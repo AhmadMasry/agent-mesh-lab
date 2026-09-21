@@ -1,0 +1,96 @@
+
+# read 2026-09-21T19:28:22Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-21T19:28:22Z
+$ kubectl get peerauthentication -A
+NAMESPACE              NAME                           MODE     AGE
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   20h
+istio-system           default                        STRICT   20h
+# exit 0
+
+# read 2026-09-21T19:28:22Z
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+# exit 0
+
+# read 2026-09-21T19:28:22Z
+$ kubectl get httproute -A
+NAMESPACE               NAME                   HOSTNAMES                                AGE
+agentgateway-waypoint   model-via-agw          ["model.lab.internal"]                   20h
+lab                     orchestrator           ["orchestrator.lab.svc.cluster.local"]   20h
+lab                     orchestrator-ingress                                            20h
+lab                     worker                 ["worker.lab.svc.cluster.local"]         20h
+lab                     worker-ingress         ["worker.lab.internal"]                  20h
+# exit 0
+
+# read 2026-09-21T19:28:22Z
+$ kubectl get ns --show-labels
+NAME                    STATUS   AGE   LABELS
+agentgateway-ingress    Active   20h   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=agentgateway-ingress
+agentgateway-system     Active   20h   kubernetes.io/metadata.name=agentgateway-system,name=agentgateway-system
+agentgateway-waypoint   Active   20h   kubernetes.io/metadata.name=agentgateway-waypoint
+default                 Active   20h   kubernetes.io/metadata.name=default
+istio-system            Active   20h   kubernetes.io/metadata.name=istio-system,name=istio-system
+kube-node-lease         Active   20h   kubernetes.io/metadata.name=kube-node-lease
+kube-public             Active   20h   kubernetes.io/metadata.name=kube-public
+kube-system             Active   20h   kubernetes.io/metadata.name=kube-system
+lab                     Active   20h   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=lab
+local-path-storage      Active   20h   kubernetes.io/metadata.name=local-path-storage
+telemetry               Active   20h   kubernetes.io/metadata.name=telemetry
+# exit 0
+
+# read 2026-09-21T19:28:22Z
+$ kubectl -n istio-system get pods -l app=ztunnel -o wide
+NAME            READY   STATUS    RESTARTS      AGE   IP            NODE                           NOMINATED NODE   READINESS GATES
+ztunnel-rzhcf   1/1     Running   1 (29m ago)   20h   10.244.0.13   agent-mesh-lab-control-plane   <none>           <none>
+ztunnel-sdq6z   1/1     Running   1 (29m ago)   20h   10.244.1.37   agent-mesh-lab-worker          <none>           <none>
+# exit 0
+
+# read 2026-09-21T19:28:22Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq -c '.[] | {name,namespace,scope,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-21T19:28:22Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-control-plane -o json | jq -c '.[] | {name,namespace,scope,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-21T19:28:22Z
+$ kubectl get nodes -o wide; kubectl describe node agent-mesh-lab-control-plane | grep -i -A2 taints
+NAME                           STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION            CONTAINER-RUNTIME
+agent-mesh-lab-control-plane   Ready    control-plane   20h   v1.37.0   172.18.0.2    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+agent-mesh-lab-worker          Ready    <none>          20h   v1.37.0   172.18.0.3    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+Taints:             node-role.kubernetes.io/control-plane:NoSchedule
+Unschedulable:      false
+Lease:
+# exit 0
+
+# read 2026-09-21T19:28:22Z
+$ kubectl -n lab get pods -o wide
+NAME                                      READY   STATUS      RESTARTS      AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+loadgen-a3t-fu3ct-r1-orchestrator-2lz4l   0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-fu3ct-r1-worker-xgm7n         0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-fu3ct-r2-orchestrator-cv5fk   0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-fu3ct-r2-worker-q82lf         0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-fu21n-r3-01-gn5vp              0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-fu21p-r3-01-wqn5j              0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c3-orchestrator-jqg9s         0/1     Completed   0             15h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c3-worker-dbmxz               0/1     Completed   0             15h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c34after-orchestrator-lv8xp   0/1     Completed   0             14h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c34after-worker-vnb79         0/1     Completed   0             14h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-fu21nc-orchestrator-n4q57     0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-fu21nc-worker-np6xj           0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-fu21pc-orchestrator-mrsnq     0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-fu21pc-worker-f55wp           0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-fu3cc-orchestrator-lqqfx      0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-fu3cc-worker-wd2gb            0/1     Completed   0             20h   <none>        agent-mesh-lab-worker   <none>           <none>
+mockllm-6d59fb76b7-pgvjv                  1/1     Running     1 (29m ago)   20h   10.244.1.32   agent-mesh-lab-worker   <none>           <none>
+orchestrator-5cf7d655b8-8v62d             1/1     Running     1 (29m ago)   20h   10.244.1.35   agent-mesh-lab-worker   <none>           <none>
+worker-59b9d577cf-r9sdh                   1/1     Running     1 (29m ago)   20h   10.244.1.31   agent-mesh-lab-worker   <none>           <none>
+# exit 0

@@ -1,0 +1,30 @@
+
+# read 2026-09-21T19:29:49Z
+$ kubectl apply -f experiments/runs/2026-09-21-c3r-open-connections/objects/namespace.yaml
+namespace/c3r created
+# exit 0
+
+# read 2026-09-21T19:29:50Z
+$ kubectl apply -f experiments/runs/2026-09-21-c3r-open-connections/objects/server.yaml -f experiments/runs/2026-09-21-c3r-open-connections/objects/client.yaml
+deployment.apps/c3r-server created
+pod/c3r-client created
+# exit 0
+
+# read 2026-09-21T19:29:50Z
+$ kubectl -n c3r wait --for=condition=Available deploy/c3r-server --timeout=120s && kubectl -n c3r wait --for=condition=Ready pod/c3r-client --timeout=120s
+deployment.apps/c3r-server condition met
+pod/c3r-client condition met
+# exit 0
+
+# read 2026-09-21T19:29:52Z
+$ kubectl -n c3r get pods -o wide
+NAME                          READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+c3r-client                    1/1     Running   0          2s    10.244.1.42   agent-mesh-lab-worker   <none>           <none>
+c3r-server-77dd87c567-qwj88   1/1     Running   0          2s    10.244.1.41   agent-mesh-lab-worker   <none>           <none>
+# exit 0
+
+# read 2026-09-21T19:29:52Z
+$ kubectl -n c3r get pods -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.serviceAccountName}{" "}{.metadata.annotations.ambient\.istio\.io/redirection}{" "}{.status.containerStatuses[0].imageID}{"\n"}{end}'
+c3r-client default enabled docker.io/curlimages/curl@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+c3r-server-77dd87c567-qwj88 default enabled sha256:11942b6942fa9bbe8adec59390381689f8aa4c8b17e59a9dcc0b9d4ab7e504a8
+# exit 0

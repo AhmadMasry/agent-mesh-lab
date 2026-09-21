@@ -1,0 +1,34 @@
+
+# read 2026-09-21T19:30:00Z
+$ kubectl -n c3r exec c3r-client -- sh -c 'ls -l /bin/nc /usr/bin/nc /bin/netstat /usr/bin/timeout 2>&1; nc --help 2>&1 | head -20; cat /etc/alpine-release; id'
+ls: /bin/nc: No such file or directory
+lrwxrwxrwx    1 root     root            12 Jun 13 16:39 /bin/netstat -> /bin/busybox
+lrwxrwxrwx    1 root     root            12 Jun 13 16:39 /usr/bin/nc -> /bin/busybox
+lrwxrwxrwx    1 root     root            12 Jun 13 16:39 /usr/bin/timeout -> /bin/busybox
+BusyBox v1.37.0 (2026-01-10 15:38:28 UTC) multi-call binary.
+
+Usage: nc [OPTIONS] HOST PORT  - connect
+nc [OPTIONS] -l -p PORT [HOST] [PORT]  - listen
+
+	-e PROG	Run PROG after connect (must be last)
+	-l	Listen mode, for inbound connects
+	-lk	With -e, provides persistent server
+	-p PORT	Local port
+	-s ADDR	Local address
+	-w SEC	Timeout for connects and final net reads
+	-i SEC	Delay interval for lines sent
+	-n	Don't do DNS resolution
+	-u	UDP mode
+	-b	Allow broadcasts
+	-v	Verbose
+	-o FILE	Hex dump traffic
+	-z	Zero-I/O mode (scanning)
+3.24.1
+uid=65532 gid=65532 groups=65532
+# exit 0
+
+# read 2026-09-21T19:30:00Z
+$ istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.namespace=="c3r") | {name,namespace,uid,serviceAccount,workloadIps,protocol,authorizationPolicies}'
+{"name":"c3r-client","namespace":"c3r","uid":"Kubernetes//Pod/c3r/c3r-client","serviceAccount":"default","workloadIps":["10.244.1.42"],"protocol":"HBONE","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+{"name":"c3r-server-77dd87c567-qwj88","namespace":"c3r","uid":"Kubernetes//Pod/c3r/c3r-server-77dd87c567-qwj88","serviceAccount":"default","workloadIps":["10.244.1.41"],"protocol":"HBONE","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+# exit 0
