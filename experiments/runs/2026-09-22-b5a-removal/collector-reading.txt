@@ -1,0 +1,40 @@
+# The OpenTelemetry collector's own record for the two removals whose drain began 5 s after SIGTERM.
+# Read 2026-09-22T20:22:28Z from the collector still running in the telemetry namespace, which has not restarted since
+# step 3: its log's first line is 2026-09-22T17:05:17.646Z and it held 17 799 lines at this read. Reads only.
+#
+# WHY. In 2 of this task's 32 removals the line
+#   error opentelemetry_sdk name="BatchSpanProcessor.Shutdown.Timeout""BatchSpanProcessor shutdown timing out."
+# stands between SIGTERM and the drain's start, and the drain then begins 5 000.0 ms after SIGTERM instead of
+# 0.3-0.6 ms. This file records what the collector received from each of those two pods, so the five seconds
+# are attributed to the span processor's own shutdown from a reading rather than from an assumption.
+# IT COVERS THOSE TWO PODS ONLY and is not generalised to the other 30 removals.
+#
+# The command, once per pod, bounded to the four minutes around that pod's SIGTERM:
+#   kubectl -n telemetry logs deploy/otel-collector \
+#     | awk -v P=<pod> '/^2026-09-22T/{ts=$1} $0 ~ P {print substr(ts,1,19)}' | sort | uniq -c
+# Each output line is: how many collector records name that pod, and the second they arrived in.
+
+== dry 1, ingress graceful (b5a-ingress-graceful-d1-01)
+   pod agentgateway-ingress-78dc95c486-ncrbc; its own SIGTERM line reads 2026-09-22T19:27:01.744364Z (proxy pod clock)
+   collector records naming that pod, 2026-09-22T19:25:01Z .. 2026-09-22T19:29:01Z:
+     2 records at 2026-09-22T19:27:00Z
+   total records naming that pod over the WHOLE collector log: 238
+   the LAST second in the whole log at which any record names it: 2026-09-22T19:27:00Z
+
+== ingress rollout repetition 3 (b5a-ingress-rollout-r1-03)
+   pod agentgateway-ingress-7dd7d86fb8-jsm7q; its own SIGTERM line reads 2026-09-22T19:44:31.451947Z (proxy pod clock)
+   collector records naming that pod, 2026-09-22T19:42:31Z .. 2026-09-22T19:46:31Z:
+     2 records at 2026-09-22T19:43:42Z
+     2 records at 2026-09-22T19:44:27Z
+   total records naming that pod over the WHOLE collector log: 4
+   the LAST second in the whole log at which any record names it: 2026-09-22T19:44:27Z
+
+== what this reads, and what it does not
+   Each of the two pods was still reaching the collector shortly before its own SIGTERM -- the last record naming
+   the first is stamped 2026-09-22T19:27:00.344Z, 1.400 s before its SIGTERM, and the last naming the second is
+   stamped 2026-09-22T19:44:27.974Z, 3.477 s before its SIGTERM -- and neither reached it again afterwards. So the five seconds
+   are the span processor's shutdown timing out, which is the pod's own line, and not the collector being
+   unreachable. This lab exports at 100 % sampling to a collector in another namespace, so those five seconds
+   are a property of this configuration rather than of the proxy.
+   What this does NOT read: why the processor's shutdown timed out, and anything about the other 30 removals,
+   whose drains began 0.291-0.587 ms after SIGTERM and which carry no such line.

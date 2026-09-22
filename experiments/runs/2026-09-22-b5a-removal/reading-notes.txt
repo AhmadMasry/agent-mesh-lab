@@ -1,0 +1,249 @@
+Experiment B, step B-5a -- reading notes. What each file in this directory is, what produced it, and what differs from
+what was written. Stamps UTC from `date -u`. The findings entry of 2026-09-22 that cites this directory is
+"Experiment B / both proxies / B-5a, the removal measured".
+
+WHAT THIS STEP IS, AND WHAT IT IS NOT
+  The author's note of 2026-09-20 (docs/proposal-notes.md, "Experiment B on the agentgateway-only topology"), D5:
+  "what each method does to an open stream is measured first -- a graceful delete, a forced delete and a rollout --
+  and the experiment then uses the forced delete". This step measures the STIMULUS. It counts nothing about
+  resubscription (B-5b), and it is no row of the experiment proper.
+
+NO REBUILD, AND WHY
+  The cluster B-4 built stands at step 3. Every deployed path at this branch's HEAD is byte-equal to the tree that
+  cluster was built from, the commit `feat(loadgen,deploy,experiments): CLIENT_HOST, every request names the host it
+  is given, and the knobs Job template renders it empty on every existing row` (6bf9e00f): deploy f89a47199f1f,
+  agents 324396fd246e, fixtures d143d6709373, internal f63b96cc7251, experiments/lib bad5771f9500, Makefile
+  7244d6718923, .ko.yaml 2dcd19898e03, kind-config.yaml aa98aa461ddc, go.mod a8314e0b85f3, go.sum 53b265e52f3e, and
+  all eleven experiments/*.sh blobs. Read 2026-09-22T19:17:43Z. This step writes no file under any deployed path:
+  its driver and its counter live under experiments/runs/, which the rebuild rule does not name. So there is no
+  rebuild and no standard proof in this record, and the entry says so.
+
+THE THREE DECISIONS THIS STEP TOOK, each recorded before the first counted repetition
+  1. ONE RECEIVER, the Go receiver. The brief's grid is proxy x method x 5 and names no receiver, and by the
+     author's note of 2026-09-20 the streaming client is the load client (a2a-go) in every B row, so the client SDK
+     does not vary either. The Go receiver was chosen because on B-4's measured paths it puts each proxy on exactly
+     ONE leg of a repetition, which is what makes each removal attributable: the agentgateway ingress carries the
+     A2A stream (B-4 counted 80 of 80 arrivals from the ingress pod and 0 from agw-central for its Go half) and
+     agw-central carries the model call and no A2A line at all. The Python receiver's card GET crosses agw-central
+     as well, which would put both proxies inside one repetition. B-5b runs both receivers.
+  2. N = 45 000 ms, unchanged from B-3 and B-4. It is the only N this lab has MEASURED the path to carry with no
+     timeout set anywhere (the B-3 entry of 2026-09-22: "No N above 45 s was tried, and the 60 s ceilings say where
+     the next limit is"), and keeping it makes this step's stimulus comparable with the B-4 control that is set
+     beside it. The proxy is removed 2 000 ms after the client's own TASK_STATE_WORKING event, so the stream has
+     about 43 s of life left at the moment of the removal. The consequence is stated rather than discovered: 43 s is
+     under 60 s, so a cut that falls at the pod's grace CANNOT be seen at the client at any N under the callers'
+     60 s ceilings, and the brief forbids raising a ceiling. In such a repetition the discriminator is the removed
+     pod's own drain log and how long the pod actually lived, both of which this step captures.
+  3. THE PROBE for "seconds until the successor serves" is two readings, not one: the successor's Ready condition
+     from the Kubernetes API, which needs no request at all, and ONE loadgen Job of the row's own kind (MODE=stream,
+     nothing armed on the mock, so its model call answers at once) applied the moment the successor is first seen
+     Ready -- one send, no retry, never repeated, and a refusal would be a recorded outcome. It goes out while
+     Job 1's stream may still be open, deliberately: waiting for Job 1 would add the old pod's whole drain to a
+     figure that is about the successor.
+
+THE FILES
+  rows.sh          the variant driver, one variant per invocation, run as a background driver. Its header says what
+                   a repetition does and which standing B rules it keeps. Each invocation writes the between-variant
+                   proof into its own control.txt, before and after: both agents and the mock at one ready replica,
+                   both proxies at one ready replica with their Gateway Programmed, every proxy pod with its uid and
+                   ip, 0 retry stanzas on every HTTPRoute and 0 AuthorizationPolicies, the mock's own control lines
+                   (an inject arms, a reset clears, the last line decides), the worker's process log read for a
+                   close-after-read line, the orchestrator still in its deployed mode, the worker's model-client
+                   settings, ztunnel's leaf certificate valid, and the agent pods with their restart counts.
+  counts.py        the counter. One CSV line per repetition, a tally per variant over the clean repetitions and
+                   another over all of them. Its header states the clock convention that every interval column's
+                   name carries: _h2h both stamps the driver's own host stamps, _h2c the removal command (host) to a
+                   cluster or API-server stamp, _c2c both inside the cluster; _s1 marks an API-server stamp's second
+                   resolution. Adapted from B-4's counts.py; the cancel columns are gone (nothing cancels here) and
+                   the removal, drain, successor and probe columns are new.
+  sleep-events.sh  B-4's, BYTE-IDENTICAL (sha256 e3ff664d65ab8e255f5f21a334499671e10f69b0e6a5ca76e662dee86c1baba4),
+                   run over this task's own window only, so the committed sleep-events.csv holds this task's window
+                   and not the week of host history the power log keeps. Kind and UTC and nothing else: no line's
+                   text, no peripheral and no assertion owner can enter the record.
+  cluster-after.sh the closing read-only reading, and cluster-after.txt its output.
+  tools.txt        the tools the drivers used. The lab-scoped istioctl 1.31.0 is B-4's, re-read here and shown to be
+                   the same binary (sha256 763caa1c...); it is used for ONE read-only call. Nothing on the host was
+                   changed, and no make target but `make ledgers` was run.
+  dry/             the two dry repetitions, kept whole, named in the entry as sent and NOT counted.
+  removal/         the six counted variants, five repetitions each.
+  windows.csv      the windows this task counts, the first spanning all the others.
+  phases.txt       the task's own dated phase lines.
+  counts.txt       counts.py's output over removal/, and removal/summary.csv its one line per repetition; dry/ has
+                   its own pair.
+  drain-evidence.txt   the minimal reproduction material for the drain reading: the configuration in force, the exact
+                   commands, the removed pod's shutdown log quoted verbatim on both proxies, the counts over the
+                   thirty repetitions, and what an operator's record of the cut request looks like. It contains NO
+                   upstream draft.
+  tracker-search.txt   the read-only search of agentgateway's tracker for that reading, run TWICE after the review
+                   -- issues only, then issues and pull requests -- with every query and result recorded, including
+                   the ones that returned nothing, and the API readings behind #3334, #3337, #503 and #2876.
+  collector-reading.txt  the collector's own record for the two pods whose drain began 5 s after SIGTERM, with the
+                   command and the read stamp; it covers those two pods and is not generalised.
+  versions-readback.txt   the Versions line read back from the cluster, by
+                   experiments/runs/2026-09-20-experiment-a-agentgateway-only/versions-readback.sh, unedited
+                   (sha256 c2d35631a45cd9f285d916c73d3fb47d2001653061352e342be487791e7cce7a), with the lab-scoped
+                   istioctl first on PATH for its one istioctl call.
+  cluster-after.txt    the closing reading, which also carries each proxy's own printed terminationMinDeadline and
+                   terminationMaxDeadline and the rollout annotation the two rollout variants left behind.
+
+THE DRY REPETITIONS, AND THE ONE THING THEY CHANGED
+  dry/ingress-graceful/b5a-ingress-graceful-d1-01 (19:26:39Z-19:27:33Z) was the first. The stimulus worked and the
+  collection did not, and both are kept as they stand. `make ledgers` ran 13 s BEFORE the mock's invocation line and
+  the executor's terminal state line existed, because a stream can end long before the Task and the model call do --
+  which is exactly what B-4's control established. That repetition therefore has invocations=0 and a final state of
+  TASK_STATE_WORKING, and neither figure is a reading about the proxy. rows.sh gained wait_settled for it: after both
+  Jobs end it reads the worker's and the mock's pod logs (it sends nothing) and waits for the executor's terminal
+  state line, and then for the mock's invocation line until the arm stamp plus N plus 30 s at the latest, with a
+  180 s ceiling on the whole wait.
+  dry/central-forced/b5a-central-forced-d2-01 (19:30:31Z-19:30:57Z) was the second, on the other proxy and the
+  method B-5b will use, and it proved the fix: it settled in 0.0 s with the terminal state and the invocation
+  outcome both already present.
+
+THE TWO ITEMS CARRIED FROM THE B-4 REVIEW
+  1. internal/httpclient.New leaves CheckRedirect at Go's default, so up to ten 3xx answers would be FOLLOWED and
+     CLIENT_HOST re-applied to each, and no test pins "a 3xx is not followed" at this tree. A removed proxy is when a
+     gateway is likeliest to answer non-2xx, so every repetition records what its client actually saw -- http_status,
+     content_type, the first JSON-RPC error object on the wire, the SDK's error text -- and the POST round trips the
+     client's own outermost transport carried, which a followed redirect would increase; and counts.py reports every
+     non-2xx and every 3xx line in either proxy's access log. NO CODE WAS CHANGED for this in B-5a. The findings
+     entry states that no redirect policy is pinned at this tree.
+  2. canceller.stop() (fixtures/loadgen/cancel.go) has a microsecond-wide race behind `ended_before_cancel`: the
+     canceller's timer and the reader's end can both reach it. It cannot matter in B-5a, where CANCEL_AFTER_MS is
+     empty in every Job and nothing cancels. It is written here for B-5b, which cancels nothing either by the brief
+     but whose Job 2 arrives while a stream is ending, and for whoever next changes that file.
+
+WHAT THE THIRTY COUNTED REPETITIONS READ, and what in them was not predicted
+  No host power event fell in this task's window at all (sleep-events.csv holds only its three comment lines and the
+  header), so every repetition is clean and every _h2c figure is readable. All six drivers exited 0 and every
+  between-variant proof passed, before and after each variant.
+
+  THE TWO HYPOTHESES OF 6.2, ANSWERED SEPARATELY PER PROXY.
+  agw-central, the HBONE-terminating listener, SUPPORTS HYPOTHESIS 2 and names it: the open model call ended
+  10.002-10.007 s after SIGTERM, 0.4-1.7 ms after the line `minimum drain completed`, and the WARN line
+  `hbone error: drain timeout` is present in 10 of 10 repetitions that reached the minimum drain. That is the exact
+  discriminator 6.2 gave for hypothesis 2. It is NOT a rule 11 candidate, and this file said it was until the B-5a
+  review found that the tracker search behind that claim silently excluded pull requests. Re-run both ways in
+  tracker-search.txt: over issues alone nothing is on point, and with pull requests included the mechanism is
+  already identified upstream in the project's own words and fixed on main by #3334 "proxy: keep serving open
+  connections during drain", merged 2026-09-14T23:10:53Z -- after the v1.5.0 this lab pins, and at this read in no
+  published release at all. #3337 was closed WITHOUT merging 14 minutes later, and #503 merged in 2025 and is what
+  produces the 10 s minimum drain measured here. The measurement stands unchanged; what the lab adds is the counted
+  behaviour at the pin. NO DRAFT is written and none is owed, and drain-evidence.txt is kept as the record of
+  v1.5.0's behaviour rather than as material for a report.
+  The agentgateway ingress, the plain HTTP listener, supports NEITHER hypothesis. Hypothesis 1 predicted the pod's
+  60 s grace; what happened was 20.003-20.005 s from SIGTERM -- a 10.001 s minimum drain and then 10.001 s more --
+  with no drain-timeout line, with the bind reporting `bind complete Ok(Ok(()))`, and with the pod's object leaving
+  the API about 39 s BEFORE its grace would have expired. Both halves are recorded: what the proxy announced
+  ("waiting 55s for any connections to complete") and what it did.
+
+  WHAT WAS NOT PREDICTED, and is recorded rather than smoothed:
+  - the two proxies differ in WHAT a removal costs, and this step's one-receiver choice is what makes that legible.
+    Removing the ingress cut the A2A stream and cost the Task nothing: TASK_STATE_COMPLETED in 15 of 15, exactly one
+    invocation, outcome ok, 45 000.4-45 004.6 ms. Removing agw-central cost the Task everything: TASK_STATE_FAILED in
+    15 of 15, on one model attempt with retries off, and the stream itself never broke -- it carried the FAILED
+    status-update as its terminal event and ended `eof` with the Job exiting 0.
+  - the mock's own line says which side went first: outcome `client-gone` in 15 of 15 agw-central repetitions, with
+    the delay abandoned at 4 155-4 211 ms (forced), 12 130-12 190 ms (graceful) and 13 577-14 435 ms (rollout) of its
+    45 000 ms, each about the moment the proxy died.
+  - the rollout against 6.4's derived maxSurge reading, in two halves. SHOWN: at the moment the rollout command
+    returned the old pod carried no deletionTimestamp at all, 5 of 5 per rollout variant against one present in 5 of
+    5 for a graceful delete, so it had not been asked to stop; its SIGTERM then came 1 463.8-2 376.2 ms after the
+    command. NOT shown by this design, and this file claimed it until the review: the successor's Ready
+    lastTransitionTime is at or before that SIGTERM 10 of 10, but it is an API stamp at one-second resolution and
+    the margin is 114.9-989.2 ms in every one of the ten, so the true transition could fall either side and the pair
+    resolves the order in none. counts.py now carries that margin and says so in its own column
+    (`successor_ready_lt_to_old_sigterm_margin_ms_c2c_s1`, `ready_lt_margin_resolves_the_order`), and the column it
+    rests on gained the clock suffix every other figure here carries. Showing the order would need a finer Ready
+    stamp than the API gives -- the successor's own readiness log line, or a watch on the transition -- and this
+    step captured neither.
+  - an operator's record of the request a removal cut is incomplete in a way that differs by proxy and method. The
+    counts and the one capture limit that qualifies them are in drain-evidence.txt's last section.
+  - the span processor's 5 s shutdown timeout stands between SIGTERM and the drain in 2 of 32 removals -- dry 1 and
+    ingress rollout repetition 3, so exactly ONE of the thirty counted; this file said three until the review, the
+    third being a repetition whose only OTel lines are AfterShutdown warnings written after `binds drained`. The
+    true split over the 32 is 25 drains beginning at 0.291-0.587 ms, 2 at 5 000.0 ms, and 5 with no drain line at
+    all (the ingress forced removals, whose logs end at SIGTERM). It is this lab's tracing configuration, not the
+    proxy's, and the collector's own record for both of those pods is now committed as collector-reading.txt.
+
+  THE REDIRECT CHECK (the B-4 review's first carry): NOTHING was followed. `posts` is 1 in 30 of 30, every client
+  read http_status 200 with content type text/event-stream, no client read a JSON-RPC error on the wire, and across
+  every proxy access line collected there are 0 non-2xx and 0 3xx statuses. The one access line that carries no
+  status at all is the cut model call's, which has no response head rather than a 3xx. No redirect policy is pinned
+  at this tree and none was exercised.
+
+  THE PROBE, kept apart from Job 1 as the controller asked: its own logical work item `<work item>-p`, its own
+  ledgers under each repetition's probe/, 1 arrival, 1 execute, 1 invocation `ok` and TASK_STATE_COMPLETED in 30 of
+  30, `probe_work_item_matches` yes in 30 of 30. It was never refused and never retried.
+
+  THE CLUSTER IS PUT BACK, with one thing named. Every functional reading is as it was: both proxies at one ready
+  replica with their Gateway Programmed, 0 retry stanzas on every HTTPRoute, 0 AuthorizationPolicies, the mock reset
+  (2 resets after the last inject), neither receiver armed, the orchestrator untouched in its deployed mode --
+  this step never switched it, having used the Go receiver only -- and no agent pod restarted in any of the 30
+  (`agent_pods_unchanged` yes, `agent_restarts` 0). What is NOT as it was: each proxy Deployment is at generation 6
+  with six ReplicaSets in its history, and the two `rollout restart` variants left
+  `kubectl.kubernetes.io/restartedAt` on both pod templates, which the agentgateway controller did not remove. That
+  annotation is what a rollout leaves; it is recorded here so B-5b starts from a known cluster.
+
+THE REVIEW ROUND (2026-09-22), and what it changed
+  The B-5a review reproduced the headline table cell for cell on its own parser, and every figure in it stood. What
+  it found wrong was a band of counts and claims AROUND the table, and all of it is corrected in this amend, in
+  findings.md and in this run directory only:
+  I-1  the tracker search excluded pull requests while every block claimed to include them. Both takes are now
+       recorded, the label is right, and the upstream posture is reversed: not a rule 11 candidate, because the
+       mechanism is agentgateway #3334, merged after the pin. Two facts the review itself had slightly wrong were
+       read from the API here and are recorded as the API gives them: #3337 was closed WITHOUT merging, and #3334
+       is in NO published release at this read (it merged 67 minutes after v1.6.0-alpha.1 was published and its
+       merge commit is seven commits ahead of that tag), so "both fixes first appear in v1.6.0-alpha.1" is not what
+       the releases API says.
+  I-2  "3 of 32" span-processor removals is 2 of 32, one of them counted; and "the drain begins 0.3-0.6 ms later in
+       29 of 32" is impossible, because 5 removals have no drain line at all. The true split is 25 / 2 / 5.
+  I-3  the ingress "from SIGTERM" range was graceful-only. Over the ten drained counted ingress repetitions it is
+       20 003.0-20 008.4 ms with ONE at 25 002.7 ms, and two rollout repetitions sit above the graceful maximum for
+       reasons this step did not isolate.
+  I-4  the rollout's "shown, not derived" rested on a one-second API stamp against a proxy-clock SIGTERM with a
+       margin under one second in all ten. The claim is split into the half that is shown and the half that is not,
+       the derived column gained its clock suffix, and counts.py now reports the margin and says the pair resolves
+       nothing.
+  I-5  the collector-reachability reading had no committed record. It is now collector-reading.txt, with its
+       command and read stamp, covering the two pods it is about and no others.
+  M-1 to M-5 are corrected in place: "8 of 8" is 10 of 10; the central-graceful log is now quoted in all seventeen
+       of its lines rather than nine under the word "whole"; the tracker file no longer says "nine distinct issues"
+       where thirteen are recorded; the ingress-forced access line is given as the range 0.659-3.858 ms rather than
+       one repetition's 1.527 ms; and the cut-request duration maximum is 14 434 ms as the line reads.
+  M-6, ruled Important by the controller: oldpod.log and newpod.log were excluded by .gitignore's
+       `experiments/runs/**/*.log`, so every drain figure rested on files that could not be re-derived from the
+       repository. They are now committed under a negation scoped to THIS run directory alone
+       (.gitignore, `!experiments/runs/2026-09-22-b5a-removal/**/*.log`), with the reason written beside the rule.
+       The negation covers every .log under this directory, which is 128 files and 1 099 lines and 141 304 bytes:
+       64 proxy pod logs (oldpod.log 367 lines and newpod.log 668 lines, 137 912 bytes together) and 64 one-line
+       `kubectl apply` outputs (apply-1.log and apply-probe.log, 3 392 bytes together), the latter kept for the same
+       reason the rendered Job manifests beside them are. Every line was scanned for a host-identifying string
+       before committing and none was found -- they carry in-cluster pod names, cluster IPs, SPIFFE identities and
+       trace ids only -- so NOTHING is masked and no line is declared as masked.
+  What did NOT change: the stimulus, the thirty repetitions, the raw files, and every figure in the headline table.
+  counts.py was re-run after its I-4 change; summary.csv differs from the first take only by the renamed column and
+  the two columns added beside it.
+
+THE SECOND REVIEW PASS (2026-09-22), two Minors and one trivium, all recorded rather than argued
+  M-7  tracker-search.txt's per-block figures are THE PAGE EACH QUERY RETURNED under `--limit 20`, not totals, and
+       the searches run `--match title,body` where the REST search API's default also matches comments. The first
+       version of that file carried the caveat and the amended one dropped it; it is restored in the header, and
+       the API's own total_count for every query text is now tabulated at the end of the file (drain 3 issues /
+       33 with pull requests; shutdown 5 / 38; and six smaller blocks likewise under-reported). Two totals exceed
+       even take 1's issues-only page -- in-flight connections 3 against 0 recorded, long-lived connections 3
+       against 0 -- and that is the comment-matching difference, not a missed result. The conclusion does not move
+       and was never reached by counting: it rests on #3334, #3337, #503 and the release timing, each read from
+       the API by number. The findings entry now carries the page-not-total qualification too.
+  M-8  `ready_lt_margin_resolves_the_order` tests the SIGNED margin `t_sigterm - ready_lt` against one second, not
+       its magnitude. For the rollout rows the entry cites it for, that is right: margins of 114.9-989.2 ms are
+       under the API stamp's one-second resolution and the order really is unresolved. It is wrong the other way:
+       in 16 of the 30 rows the Ready stamp is more than a second AFTER the SIGTERM, the margin is negative
+       (-2 221.3 to -1 061.2 ms), the column still reads "no", and yet the order IS resolved -- Ready came later,
+       beyond any resolution doubt. All 16 are graceful or forced removals and none is a rollout. The column is
+       therefore CONSERVATIVE: it never claims an order the stamps do not carry, and it withholds one they do.
+       By the controller's ruling it is NOT regenerated, so that the committed outputs still reproduce
+       byte-identically from the committed program; the limitation is written into counts.py's own header beside
+       the column, as a comment only, and stated here. A corrected column would test abs(margin).
+  trivium  the ingress-forced SIGTERM bound in drain-evidence.txt printed 3.570 ms where the value is 3.569165 ms;
+       it now reads 0.810 ms before and 3.569 ms after, both re-derived from the committed logs.
+  Nothing else changed: no raw file, no figure in the headline table, no count in summary.csv or counts.txt.

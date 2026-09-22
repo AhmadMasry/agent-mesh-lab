@@ -89,6 +89,14 @@ tmp/
 # experiments/runs/<date>-<item>/. Only raw, large, or ephemeral output is ignored.
 experiments/runs/**/raw/
 experiments/runs/**/*.log
+# Exception, B-5a (2026-09-22): that step's finding is about what a proxy's own log says while it shuts down, so
+# the removed pod's log and its successor's ARE the run output, not raw output beside it. The negation covers every
+# .log under that one run directory: 128 files, 1 099 lines, 141 304 bytes -- 64 proxy pod logs (oldpod.log 367
+# lines, newpod.log 668 lines, 137 912 bytes together) and 64 one-line `kubectl apply` outputs (apply-1.log and
+# apply-probe.log, 3 392 bytes together), which are kept for the same reason the rendered Job manifests beside them
+# are. Every line was scanned for a host-identifying string and none was found (in-cluster pod names, cluster IPs,
+# SPIFFE identities and trace ids only), so nothing is masked. Scoped to this one run directory.
+!experiments/runs/2026-09-22-b5a-removal/**/*.log
 *.pcap
 *.pcapng
 *.db

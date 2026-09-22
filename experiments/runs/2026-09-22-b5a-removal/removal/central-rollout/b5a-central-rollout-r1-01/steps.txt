@@ -1,0 +1,22 @@
+2026-09-22T19:52:00.841022Z repetition b5a-central-rollout-r1-01 variant=central-rollout proxy=agentgateway-waypoint/agw-central method=rollout
+2026-09-22T19:52:00.880867Z agent pods before: mockllm-747c5dfcdb-cqpdc=7248311e-d94f-4c64-85a4-10fcec45cbdd/ip=10.244.1.17/restarts=0 orchestrator-5689674d4-5qwj7=868d626f-feef-44ba-b4dd-bf79ced0814b/ip=10.244.1.121/restarts=0 worker-5cf9644bbb-djnc5=1d8c5190-b0ee-4f5d-a604-0880faa237ed/ip=10.244.1.19/restarts=0 
+2026-09-22T19:52:00.919234Z proxy pods before: agw-central-7fc4bf686b-qtp87 uid=009bcb6e-5f2d-4ff1-b90f-67a593c59a23 ip=10.244.1.208 created=2026-09-22T19:51:01Z restarts=0; 
+2026-09-22T19:52:00.958223Z old pod: agw-central-7fc4bf686b-qtp87 grace=60 rs=agw-central-7fc4bf686b
+2026-09-22T19:52:01.058784Z started kubectl logs -f agw-central-7fc4bf686b-qtp87 (pid 35126)
+2026-09-22T19:52:01.122076Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-22T19:52:01.185674Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"delay","lwi":"b5a-central-rollout-r1-01","delay_ms":45000} -> 204
+2026-09-22T19:52:01.195703Z apply Job 1 loadgen-b5a-central-rollout-r1-01 MODE=stream TASK_ID=<empty> CANCEL_AFTER_MS=<empty>
+2026-09-22T19:52:01.279449Z Job 1 applied
+2026-09-22T19:52:01.559165Z Job 1's client saw TASK_STATE_WORKING at 2026-09-22T19:52:01.48894447Z (client pod clock)
+2026-09-22T19:52:03.637490Z removal issued: rollout on agw-central-7fc4bf686b-qtp87
+2026-09-22T19:52:05.585473Z apply probe Job loadgen-b5a-central-rollout-r1-01-p MODE=stream, nothing armed on the mock
+2026-09-22T19:52:05.667145Z probe Job applied
+2026-09-22T19:52:17.845119Z Job 1 Complete
+2026-09-22T19:52:17.918219Z probe Job Complete
+2026-09-22T19:52:17.997577Z settled after 0.0s: terminal state=TASK_STATE_FAILED invocation outcome=client-gone (the invocation wait ran to the arm stamp plus N plus 30s at the latest, the whole wait to 180s; reads two pod logs, sends nothing)
+2026-09-22T19:52:18.065697Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-22T19:52:20.090260Z old-pod log capture stopped (17 lines)
+2026-09-22T19:52:20.560221Z make ledgers LWI=b5a-central-rollout-r1-01 exit=0
+2026-09-22T19:52:21.316735Z agent pods after: mockllm-747c5dfcdb-cqpdc=7248311e-d94f-4c64-85a4-10fcec45cbdd/ip=10.244.1.17/restarts=0 orchestrator-5689674d4-5qwj7=868d626f-feef-44ba-b4dd-bf79ced0814b/ip=10.244.1.121/restarts=0 worker-5cf9644bbb-djnc5=1d8c5190-b0ee-4f5d-a604-0880faa237ed/ip=10.244.1.19/restarts=0 
+2026-09-22T19:52:21.356756Z proxy pods after: agw-central-7c54457885-72q72 uid=da597ea2-92eb-4e81-b94f-b0f66bb260e6 ip=10.244.1.212 created=2026-09-22T19:52:03Z ready=True; 
+2026-09-22T19:52:21.397011Z collected

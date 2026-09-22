@@ -1,0 +1,138 @@
+Experiment B, step B-5a -- the reproduction material for the drain reading, kept in the run directory as the record
+of what was measured at the pinned release. The read-only tracker search is tracker-search.txt.
+
+THE UPSTREAM POSTURE, corrected after the B-5a review. This is NOT a rule 11 candidate and NO draft is to be written
+for it. The first version of this file concluded "nothing on point" from a tracker search that silently excluded pull
+requests. With pull requests included the mechanism is already identified upstream, in the project's own words, and
+fixed on main: agentgateway #3334 "proxy: keep serving open connections during drain", merged 2026-09-14T23:10:53Z.
+Two facts about it were read from the API in this session and neither matches what was first assumed: #3337 "fix:
+honor graceful drain deadline" was closed WITHOUT merging 14 minutes after #3334 merged, so it is a second proposal
+of the same fix rather than a second merged fix; and #3334 is in NO published release at this read -- it merged 67
+minutes AFTER v1.6.0-alpha.1 was published and its merge commit is seven commits ahead of that tag. The lab pins
+v1.5.0 (2026-08-27T18:01:08Z), which predates all of it. #503 "drain: do not start drain until min deadline has
+finished" merged 2025-10-07 and IS in the pinned build, and is what produces the 10 s minimum drain measured here.
+So: the measurement below stands unchanged and every figure in it is a reading at v1.5.0. What this lab adds is the
+counted behaviour at the pinned release, not a report of a defect; a reader should read #3334, not file an issue.
+
+WHAT WAS MEASURED, IN ONE SENTENCE
+  With one HTTP response streaming through an agentgateway proxy, the proxy is asked to shut down; the proxy announces
+  that it will wait up to 55 s for open connections to complete and then ends the stream 10.0 s after its minimum
+  drain expires (agw-central, the HBONE listener, with the WARN line `hbone error: drain timeout`), or 20.0 s after
+  SIGTERM in all (the ingress, the plain HTTP listener, with no such line and with the bind reporting Ok).
+
+THE CONFIGURATION IN FORCE. Neither Gateway sets `shutdown`, so the deployer's defaults apply.
+  deploy/step-2-ambient-agw/central-gateway.yaml and deploy/step-2b-agw-ingress-egress/ingress.yaml:
+    the AgentgatewayParameters of each Gateway set `istio.enabled` (agw-central only) and `service.spec.type:
+    ClusterIP`, and NOTHING else; there is no `shutdown` stanza, no `shutdown.min` and no `shutdown.max`.
+  What the deployer then rendered, read from the live Deployments (cluster-after.txt):
+    TERMINATION_GRACE_PERIOD_SECONDS=60   CONNECTION_MIN_TERMINATION_DEADLINE=10s
+    spec.template.spec.terminationGracePeriodSeconds: 60
+    strategy RollingUpdate maxSurge 25% maxUnavailable 25%, replicas 1
+  What the proxy itself then printed at startup, on both proxies (cluster-after.txt):
+    terminationMinDeadline: 10s
+    terminationMaxDeadline: 55s
+  Versions: agentgateway v1.5.0 (cr.agentgateway.dev/agentgateway:v1.5.0, controller cr.agentgateway.dev/
+  controller:v1.5.0), Istio 1.31.0, Kubernetes v1.37.0 on kind, Gateway API v1.6.2 experimental.
+  The lab's routes set no `timeouts` of any kind and no retry stanza (0 on every HTTPRoute, cluster-after.txt).
+
+THE EXACT COMMANDS, as rows.sh issues them (the driver's own file is the record; these are its three removals)
+  graceful   kubectl -n <ns> delete pod <pod> --wait=false
+  forced     kubectl -n <ns> delete pod <pod> --grace-period=0 --force --wait=false
+  rollout    kubectl -n <ns> rollout restart deployment/<name>
+  Each is issued ONCE, 2 000 ms after the streaming client's own TASK_STATE_WORKING event, with exactly one
+  SendStreamingMessage open and its model call held for 45 000 ms by the lab's mock. The removed pod's log is
+  captured by `kubectl -n <ns> logs -f <pod> --since-time=<repetition start>` started BEFORE anything is sent,
+  and since the B-5a review that log is COMMITTED: every repetition's oldpod.log and its successor's newpod.log
+  are in this run directory, under a .gitignore negation scoped to this directory alone, so every figure below
+  can be re-derived from the repository without a cluster.
+
+THE LOG, VERBATIM. agw-central, graceful delete, repetition b5a-central-graceful-r1-01 (removal/central-graceful/
+b5a-central-graceful-r1-01/oldpod.log, all seventeen of its lines; the removal command was issued at 19:47:47.699723Z on the
+host clock, and every stamp below is the proxy pod's own):
+
+  2026-09-22T19:47:47.742240Z	info	agent_core::signal::imp	received signal SIGTERM, starting shutdown	
+  2026-09-22T19:47:47.742595Z	info	management::hyper_helpers	listener drained	address=127.0.0.1:15000 component="admin"
+  2026-09-22T19:47:47.742598Z	info	agent_core::drain	drain started, waiting 10s-55s for any connections to complete	component="bind 15008/agentgateway-waypoint/agw-central"
+  2026-09-22T19:47:47.742633Z	info	proxy::gateway	stop listening for binds; drain started	
+  2026-09-22T19:47:47.742642Z	info	management::hyper_helpers	listener drained	address=[::]:15021 component="readiness"
+  2026-09-22T19:47:47.742663Z	info	management::hyper_helpers	listener drained	address=[::1]:15000 component="admin"
+  2026-09-22T19:47:47.742675Z	info	management::hyper_helpers	listener drained	address=[::]:15020 component="stats"
+  2026-09-22T19:47:57.744654Z	info	agent_core::drain	minimum drain completed, waiting, not accepting new connections and waiting 55s for any connections to complete	component="bind 15008/agentgateway-waypoint/agw-central"
+  2026-09-22T19:47:57.745076Z	warn	proxy::gateway	hbone error: drain timeout	connection.id=1 src.addr=10.244.1.19:44598
+  2026-09-22T19:47:57.745257Z	warn	opentelemetry_sdk:inbound	request.id=32 name="BatchSpanProcessor.OnEnd.AfterShutdown""Spans are being emitted even after Shutdown. This indicates incorrect lifecycle management of TracerProvider in application. Spans will not be exported."	
+  2026-09-22T19:47:57.745270Z	warn	opentelemetry_sdk:inbound	request.id=32 name="BatchSpanProcessor.OnEnd.AfterShutdown""Spans are being emitted even after Shutdown. This indicates incorrect lifecycle management of TracerProvider in application. Spans will not be exported."	
+  2026-09-22T19:47:57.745302Z	warn	opentelemetry_sdk:inbound	request.id=32 name="BatchLogProcessor.Emit.AfterShutdown""Logs are being emitted even after Shutdown. This indicates incorrect lifecycle management of OTelLoggerProvider in application. Logs will not be exported."	
+  2026-09-22T19:47:57.745312Z	info	request gateway=agentgateway-waypoint/agw-central listener=inner-http route=agentgateway-waypoint/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.19:44598 src.identity=spiffe://cluster.local/ns/lab/sa/default http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 trace.id=58836b0c4e064b10e93746fe98cbb2d0 span.id=54b584596f6fab2e protocol=http duration=12150ms
+  2026-09-22T19:47:57.745441Z	warn	proxy::gateway:inbound	proxy error: connection error	src.addr=10.244.1.19:44598
+  2026-09-22T19:47:57.745460Z	info	agent_core::drain	shutdown complete	component="bind 15008/agentgateway-waypoint/agw-central"
+  2026-09-22T19:47:57.745538Z	info	proxy::gateway	bind complete Ok(Ok(()))	
+  2026-09-22T19:47:57.745557Z	info	proxy::gateway	binds drained	
+
+  The two halves, stated plainly: the proxy ANNOUNCED it would wait 10s-55s, and then again 55s past the minimum;
+  what it DID was end the connection 0.42 ms after the minimum drain completed, 10.002 s after SIGTERM, with the
+  open request still running. `hbone error: drain timeout` is present in 10 of 10 repetitions on this proxy that
+  reached the minimum drain (5 graceful, 5 rollout). It is exactly the discriminator the preparation's 6.2 named
+  for its second hypothesis.
+
+THE SAME ON THE PLAIN HTTP LISTENER, verbatim, repetition b5a-ingress-graceful-r1-01 (removal/ingress-graceful/
+b5a-ingress-graceful-r1-01/oldpod.log; the removal command was at 19:32:55.957Z on the host clock):
+
+  2026-09-22T19:32:56.003626Z	info	agent_core::signal::imp	received signal SIGTERM, starting shutdown
+  2026-09-22T19:32:56.004148Z	info	agent_core::drain	drain started, waiting 10s-55s for any connections to complete	component="bind 80/agentgateway-ingress/agentgateway-ingress"
+  2026-09-22T19:33:06.005538Z	info	agent_core::drain	minimum drain completed, waiting, not accepting new connections and waiting 55s for any connections to complete	component="bind 80/agentgateway-ingress/agentgateway-ingress"
+  2026-09-22T19:33:16.006559Z	info	proxy::gateway	bind complete Ok(Ok(()))
+  2026-09-22T19:33:16.006604Z	info	proxy::gateway	binds drained
+
+  No `drain timeout` line, and the bind reports Ok, not a timeout -- yet the open SSE stream ended at
+  19:33:16.010239Z at the client, 3.6 ms after `binds drained`. The third interval is 10.001 s, where the proxy's own
+  message announces 55 s. The pod's grace period is 60 s and its deletionTimestamp was 19:33:55Z; its object left the
+  API at 19:33:16.544580Z (the driver's own observation, host clock), about 39 s before that grace expired.
+
+THE COUNTS OVER THE THIRTY REPETITIONS (removal/summary.csv; five per variant, no host power event in any window)
+  SIGTERM -> drain started             the split over all 32 removals, dry included: 25 at 0.291-0.587 ms; 2 at
+                                       5 000.0 ms, where the span processor's shutdown ran first (below); and 5
+                                       with NO `drain started` line at all -- the five ingress forced removals,
+                                       whose logs end at the SIGTERM line. 25 + 2 + 5 = 32.
+  SIGTERM -> minimum drain completed   10 001.0-10 006.2 ms, 20 of 20 counted repetitions that reached it
+  minimum drain -> last log line       agw-central 0.4-1.7 ms (10 of 10); ingress 10 000.7-10 003.1 ms (10 of 10)
+  SIGTERM -> last log line             agw-central 10 001.8-10 006.8 ms over its 10 drained repetitions. Ingress,
+                                       over its 10 drained COUNTED repetitions: 20 003.0-20 008.4 ms, with ONE at
+                                       25 002.7 ms (ingress rollout repetition 3), where the span processor ran
+                                       first. Per variant: graceful 20 003.0, 20 003.1, 20 003.3, 20 004.9,
+                                       20 005.6; rollout 20 003.9, 20 005.3, 20 007.3, 20 008.4, 25 002.7. Two
+                                       rollout repetitions therefore sit above the graceful maximum for reasons
+                                       this step did not isolate, and the 25 002.7 one is the span processor's.
+  `hbone error: drain timeout`         present 10 of 10 on agw-central graceful and rollout; absent everywhere else
+  the announced deadline               "waiting 55s for any connections to complete", 20 of 20
+
+WHAT THE 5 s BEFORE THE DRAIN IS, WHERE IT APPEARS, AND HOW OFTEN
+  In 2 of 32 removals -- NOT three, corrected after the B-5a review -- the line
+  `error opentelemetry_sdk name="BatchSpanProcessor.Shutdown.Timeout""BatchSpanProcessor shutdown timing out."`
+  stands between SIGTERM and the drain's start, and the drain then begins 5 001.0 ms / 4 999.99 ms after SIGTERM
+  instead of 0.291-0.587 ms. `grep -rl 'BatchSpanProcessor.Shutdown.Timeout'` over all 32 oldpod.log returns exactly
+  two files: dry/ingress-graceful/b5a-ingress-graceful-d1-01 and removal/ingress-rollout/b5a-ingress-rollout-r1-03.
+  Among the THIRTY COUNTED repetitions there is exactly ONE. The third instance first claimed here was
+  b5a-ingress-rollout-r1-05, whose only OTel lines are `BatchSpanProcessor.OnEnd.AfterShutdown` warnings written
+  AFTER `binds drained` -- a different line, with no bearing on when the drain started; its drain began 0.414 ms
+  after SIGTERM. Those AfterShutdown warnings appear in many repetitions and are visible in the quoted log above.
+  The five seconds are this lab's own tracing configuration and not a property of the proxy: every emitter is at
+  100 % sampling and the collector is in another namespace. The collector's own record for BOTH of those two pods is
+  committed beside this file as collector-reading.txt, with its command and read stamp: each pod was still reaching
+  the collector shortly before its own SIGTERM (1.400 s and 3.477 s before it) and neither reached it again
+  afterwards, so the five seconds are the span processor's shutdown timing out rather than an unreachable collector.
+  That reading covers those two pods only and is not generalised to the other thirty removals.
+
+WHAT AN OPERATOR'S RECORD OF THE CUT REQUEST LOOKS LIKE
+  agw-central graceful and rollout, 10 of 10: an access line IS written for the cut request, and it carries NO
+  `http.status` field at all -- there was never a response head -- with `duration=` 12 130-14 434 ms as the lines themselves read.
+  agw-central forced, 5 of 5: no access line at all; the pod's log ends inside its first millisecond of shutdown.
+  ingress forced, 5 of 5: an access line with `http.status=200`, for a stream whose body was then cut -- a 200 in
+  the record for a request the client saw fail. That line lands 0.659, 1.430, 1.527, 2.684 and 3.858 ms before its
+  pod's SIGTERM across the five. It, the client's own stream end and the SIGTERM all fall inside the same few
+  milliseconds (the access line between 1.469 ms before and 1.2 us after the client's end, SIGTERM between 0.810 ms
+  before and 3.569 ms after it) and in no consistent order across the five, so this capture
+  does not order the connection's death against the process being signalled.
+  ingress graceful 0 of 5 and ingress rollout 2 of 5: the captured log ends at `binds drained`. In the two where it
+  did not, the access line and a `connection forcefully terminated` line follow `binds drained` by 186 us, so the
+  absence in the other eight is consistent with the capture ending at the container's death and NOT with the line
+  never being written. That is stated as a limit of this capture, not as a finding about the proxy.
