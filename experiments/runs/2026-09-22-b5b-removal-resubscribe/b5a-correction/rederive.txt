@@ -1,0 +1,66 @@
+1. EVERY AFFECTED LINE IN B-5a's COMMITTED LOGS, and what it is
+   (a stamp whose fraction is shorter than six digits; the intended value is it LEFT-padded to six)
+
+   b5a-central-graceful-r1-05         newpod.log             model POST  2026-09-22T19:49:06.22450ZZ reads   +202.1 ms late
+   b5a-central-graceful-r1-05         otherproxy-access.txt  POST        2026-09-22T19:49:06.23925ZZ reads   +215.3 ms late
+   b5a-central-rollout-r1-01          newpod.log             model POST  2026-09-22T19:52:06.82790ZZ reads   +745.1 ms late
+   b5a-central-rollout-r1-01          otherproxy-access.txt  POST        2026-09-22T19:52:06.84523ZZ reads   +760.7 ms late
+   b5a-central-rollout-r1-02          otherproxy-access.txt  card GET    2026-09-22T19:52:22.80430ZZ reads   +723.9 ms late
+   b5a-ingress-forced-r1-02           newpod.log             POST        2026-09-22T19:38:45.78960ZZ reads   +710.6 ms late
+   b5a-ingress-forced-r1-02           otherproxy-access.txt  model POST  2026-09-22T19:38:45.78097ZZ reads   +702.9 ms late
+   b5a-ingress-forced-r1-03           oldpod.log             card GET    2026-09-22T19:39:30.83341ZZ reads   +750.1 ms late
+   b5a-ingress-forced-r1-03           otherproxy-access.txt  model POST  2026-09-22T19:40:15.90532ZZ reads   +814.8 ms late
+   b5a-ingress-graceful-r1-02         newpod.log             card GET    2026-09-22T19:33:48.410ZZ reads   +409.6 ms late
+   b5a-ingress-graceful-r1-05         oldpod.log             card GET    2026-09-22T19:36:11.93965ZZ reads   +845.7 ms late
+   b5a-ingress-graceful-r1-05         otherproxy-access.txt  model POST  2026-09-22T19:36:56.98452ZZ reads   +886.1 ms late
+   b5a-ingress-rollout-r1-02          newpod.log             POST        2026-09-22T19:43:42.32804ZZ reads   +295.2 ms late
+   b5a-ingress-rollout-r1-02          otherproxy-access.txt  model POST  2026-09-22T19:43:42.31621ZZ reads   +284.6 ms late
+   b5a-ingress-rollout-r1-03          oldpod.log             card GET    2026-09-22T19:44:27.95165ZZ reads   +856.5 ms late
+
+   access lines: 15 of 167 affected; other proxy lines: 0 of 766 affected
+   what the affected lines ARE: 4 x POST, 5 x card GET, 6 x model POST
+
+
+2. EACH PUBLISHED FIGURE OF B-5a THAT MOVES
+   B-5a's counter took the successor's FIRST access line after sorting the file by the parsed stamp.
+
+   b5a-central-graceful-r1-05  (1 access line(s) in newpod.log)
+      as B-5a published it:   first line = model POST stamp 2026-09-22T19:49:06.22450ZZ ->   2395.0 ms
+      as the proxy meant it:  first line = model POST                           ->   2192.9 ms
+   b5a-central-rollout-r1-01  (1 access line(s) in newpod.log)
+      as B-5a published it:   first line = model POST stamp 2026-09-22T19:52:06.82790ZZ ->   3254.2 ms
+      as the proxy meant it:  first line = model POST                           ->   2509.1 ms
+   b5a-ingress-graceful-r1-02  (2 access line(s) in newpod.log)
+      as B-5a published it:   first line = POST       stamp 2026-09-22T19:33:48.203361ZZ ->   2717.0 ms
+      as the proxy meant it:  first line = card GET                             ->   2514.1 ms
+      THE IDENTITY MOVES TOO: the line B-5a records as the successor's FIRST is its POST, where the first it actually served is the card GET.
+
+   checked all 30 repetitions of B-5a's grid; 3 figure(s) move and 27 are unaffected.
+   B-5a's PUBLISHED range over the grid: 1818.3-3254.2 ms
+   the same range as the proxy meant it:  1818.3-3082.3 ms
+
+
+3. B-5a's INTERPRETATION SENTENCE, re-derived against the affected files
+   The sentence: "the access line between 1.47 ms before and 2 us after the client's end, SIGTERM between
+   0.81 ms before and 3.57 ms after it, in neither case in a consistent order across the five".
+   It is about the CUT POST's access line on the five ingress-forced repetitions.
+
+   b5a-ingress-forced-r1-01: cut-POST access line      +1.2 us from the client's end (stamp intact), SIGTERM   +1528.2 us
+   b5a-ingress-forced-r1-02: cut-POST access line   -1468.8 us from the client's end (stamp intact), SIGTERM    -809.8 us
+   b5a-ingress-forced-r1-03: cut-POST access line    -466.0 us from the client's end (stamp intact), SIGTERM   +2218.0 us
+   b5a-ingress-forced-r1-04: cut-POST access line    -372.4 us from the client's end (stamp intact), SIGTERM   +1057.6 us
+   b5a-ingress-forced-r1-05: cut-POST access line    -288.8 us from the client's end (stamp intact), SIGTERM   +3569.2 us
+
+   access line over the five: -1468.8 us to +1.2 us = 1.47 ms before to 1 us after
+   SIGTERM     over the five: -809.8 us to +3569.2 us = 0.81 ms before to 3.57 ms after
+   VERDICT: the sentence HOLDS. Every one of the five cut-POST stamps is intact; the one affected line in
+   an ingress-forced oldpod.log is that repetition's CARD GET, which the sentence does not use.
+
+   And its companion claim, on the two ingress-rollout repetitions where the line appeared:
+      b5a-ingress-rollout-r1-03: the cut POST's access line follows 'binds drained' by +186 us
+      b5a-ingress-rollout-r1-03: connection forcefully terminated follows 'binds drained' by +208 us
+      b5a-ingress-rollout-r1-05: the cut POST's access line follows 'binds drained' by +186 us
+      b5a-ingress-rollout-r1-05: connection forcefully terminated follows 'binds drained' by +199 us
+   VERDICT: the 186 us figure HOLDS for the access line in both; the `connection forcefully terminated`
+   line follows at 208 and 199 us, so the entry's 'that line and a ... line follow ... by 186 us' reads one
+   figure onto two lines that differ by about 20 us. Neither stamp is defective.

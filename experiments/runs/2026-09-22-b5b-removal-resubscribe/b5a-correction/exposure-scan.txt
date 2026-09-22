@@ -1,0 +1,44 @@
+# Produced by exposure-scan.py beside this file. It asks git which files are committed, and falls back to
+# walking the tree where there is no index, so it reproduces byte-identically both in this repository at the
+# commit carrying it and from a clean `git archive` of that commit.
+# It skips committed programs (.py, .sh): a scan of run RECORDS should not count a driver's own grep string.
+
+(a) COMMITTED RUN RECORDS HOLDING AN AGENTGATEWAY ACCESS LINE
+
+    run record                                                stamped  defective  unstamped
+    2026-09-05-baseline-step2                                      40          7          1
+    2026-09-07-baseline-step2                                      36          3          0
+    2026-09-08-baseline-step2b                                      3          0         72
+    2026-09-08-openai-3.9.0-runs-5-6                               20          1          0
+    2026-09-16-walkthrough                                          1          0          2
+    2026-09-20-c1-observation                                      14          0          0
+    2026-09-20-walkthrough                                          6          0          0
+    2026-09-21-b3-streaming-client                                648         70          0
+    2026-09-21-c3-c4-ztunnel                                       16          4          0
+    2026-09-22-b4-control                                         210         14          0
+    2026-09-22-b5a-removal                                        176         17          1
+    2026-09-22-b5b-removal-resubscribe                            410         47          0
+
+
+(b) OF THOSE, WHICH COUNTERS PARSE AN ACCESS-LINE STAMP INTO A FIGURE
+
+    2026-09-21-b3-streaming-client/counts.py
+        NO. Its ACCESS regex captures route, method, status and duration only -- it does not capture a timestamp at all, so none of its 70 defective lines can reach a figure.
+
+    2026-09-21-c3r2-public-server/counts.py
+        NO. Its access log is a public server's combined log, not agentgateway's, and carries no agentgateway timestamp.
+
+    2026-09-22-b4-control/counts.py
+        NO. Its ACCESS regex does capture the stamp into the dict, but the field is never read: every use of those dicts is route, host, method, path, status or duration. Its 14 defective lines cannot reach a figure.
+
+    2026-09-22-b5a-removal/counts.py
+        YES -- rm_to_new_pod_first_served_ms_h2c (the successor's first ACCESS line) and the last-log figures, whose last line can be an access line. This is the record the correction note beside its entry is about.
+
+    2026-09-22-b5b-removal-resubscribe/counts.py
+        YES, and handled: it keeps proxy lines in the order the proxy wrote them and reports any figure ending at a defective stamp as not readable, correcting nothing.
+
+    Every other record above quotes its access lines for route, host, method and status, or for the proxy's
+    own duration= field, and commits no counter that parses their stamps.
+
+    ANSWER: of the committed run records that hold stamped agentgateway access lines, ONLY B-5a and B-5b
+    compute a figure from one. Nothing else in this repository is exposed.
