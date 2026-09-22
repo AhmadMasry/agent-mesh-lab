@@ -1,0 +1,472 @@
+{
+    "apiVersion": "v1",
+    "kind": "Pod",
+    "metadata": {
+        "annotations": {
+            "checksum/config": "271875b407e33ccab9ff4b543c95ec87b6f3bbe487e308497765f14bacf41945",
+            "checksum/session-key": "c529dcf06ad54d9dd5695c21e6a2cf11a10f55fec2963c4aa899582375b85088",
+            "checksum/xds-ca": "da49cae1b74b0ce43e0b314452bf3eca48ea7e581fdff787f4e5d4462a3053a9",
+            "kubectl.kubernetes.io/restartedAt": "2026-09-22T22:53:25+03:00",
+            "prometheus.io/path": "/metrics",
+            "prometheus.io/port": "15020",
+            "prometheus.io/scrape": "true"
+        },
+        "creationTimestamp": "2026-09-22T21:50:02Z",
+        "generateName": "agw-central-868f4dc87d-",
+        "generation": 1,
+        "labels": {
+            "app.kubernetes.io/instance": "agw-central",
+            "app.kubernetes.io/name": "agw-central",
+            "gateway.networking.k8s.io/gateway-class-name": "agentgateway",
+            "gateway.networking.k8s.io/gateway-name": "agw-central",
+            "istio.io/dataplane-mode": "none",
+            "pod-template-hash": "868f4dc87d",
+            "sidecar.istio.io/inject": "false"
+        },
+        "name": "agw-central-868f4dc87d-fm59h",
+        "namespace": "agentgateway-waypoint",
+        "ownerReferences": [
+            {
+                "apiVersion": "apps/v1",
+                "blockOwnerDeletion": true,
+                "controller": true,
+                "kind": "ReplicaSet",
+                "name": "agw-central-868f4dc87d",
+                "uid": "8cf07f99-4a0d-4b16-8615-61c0c77174fc"
+            }
+        ],
+        "resourceVersion": "56741",
+        "uid": "a4ec42c2-8fe7-422e-84ce-f8131e583a12"
+    },
+    "spec": {
+        "containers": [
+            {
+                "args": [
+                    "-f",
+                    "/config/config.yaml"
+                ],
+                "env": [
+                    {
+                        "name": "TERMINATION_GRACE_PERIOD_SECONDS",
+                        "value": "60"
+                    },
+                    {
+                        "name": "CONNECTION_MIN_TERMINATION_DEADLINE",
+                        "value": "10s"
+                    },
+                    {
+                        "name": "NODE_NAME",
+                        "valueFrom": {
+                            "fieldRef": {
+                                "apiVersion": "v1",
+                                "fieldPath": "spec.nodeName"
+                            }
+                        }
+                    },
+                    {
+                        "name": "POD_NAMESPACE",
+                        "valueFrom": {
+                            "fieldRef": {
+                                "apiVersion": "v1",
+                                "fieldPath": "metadata.namespace"
+                            }
+                        }
+                    },
+                    {
+                        "name": "POD_NAME",
+                        "valueFrom": {
+                            "fieldRef": {
+                                "apiVersion": "v1",
+                                "fieldPath": "metadata.name"
+                            }
+                        }
+                    },
+                    {
+                        "name": "RUST_BACKTRACE",
+                        "value": "1"
+                    },
+                    {
+                        "name": "RUST_LOG",
+                        "value": "info"
+                    },
+                    {
+                        "name": "SESSION_KEY",
+                        "valueFrom": {
+                            "secretKeyRef": {
+                                "key": "key",
+                                "name": "agw-central-session-key"
+                            }
+                        }
+                    },
+                    {
+                        "name": "XDS_ADDRESS",
+                        "value": "https://agentgateway.agentgateway-system.svc.cluster.local:9978"
+                    },
+                    {
+                        "name": "XDS_ROOT_CA",
+                        "value": "/etc/xds-tls/ca.crt"
+                    },
+                    {
+                        "name": "NAMESPACE",
+                        "valueFrom": {
+                            "fieldRef": {
+                                "apiVersion": "v1",
+                                "fieldPath": "metadata.namespace"
+                            }
+                        }
+                    },
+                    {
+                        "name": "GATEWAY",
+                        "value": "agw-central"
+                    },
+                    {
+                        "name": "CPU_LIMIT",
+                        "valueFrom": {
+                            "resourceFieldRef": {
+                                "divisor": "1",
+                                "resource": "limits.cpu"
+                            }
+                        }
+                    },
+                    {
+                        "name": "INSTANCE_IP",
+                        "valueFrom": {
+                            "fieldRef": {
+                                "apiVersion": "v1",
+                                "fieldPath": "status.podIP"
+                            }
+                        }
+                    },
+                    {
+                        "name": "SERVICE_ACCOUNT",
+                        "valueFrom": {
+                            "fieldRef": {
+                                "apiVersion": "v1",
+                                "fieldPath": "spec.serviceAccountName"
+                            }
+                        }
+                    },
+                    {
+                        "name": "CA_ADDRESS",
+                        "value": "https://istiod.istio-system.svc:15012"
+                    },
+                    {
+                        "name": "TRUST_DOMAIN",
+                        "value": "cluster.local"
+                    }
+                ],
+                "image": "cr.agentgateway.dev/agentgateway:v1.5.0",
+                "imagePullPolicy": "IfNotPresent",
+                "name": "agentgateway",
+                "ports": [
+                    {
+                        "containerPort": 15020,
+                        "name": "metrics",
+                        "protocol": "TCP"
+                    }
+                ],
+                "readinessProbe": {
+                    "failureThreshold": 3,
+                    "httpGet": {
+                        "path": "/healthz/ready",
+                        "port": 15021,
+                        "scheme": "HTTP"
+                    },
+                    "periodSeconds": 10,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 1
+                },
+                "resources": {
+                    "requests": {
+                        "cpu": "100m",
+                        "memory": "128Mi"
+                    }
+                },
+                "securityContext": {
+                    "allowPrivilegeEscalation": false,
+                    "capabilities": {
+                        "drop": [
+                            "ALL"
+                        ]
+                    },
+                    "readOnlyRootFilesystem": true,
+                    "runAsNonRoot": true,
+                    "runAsUser": 10101
+                },
+                "startupProbe": {
+                    "failureThreshold": 60,
+                    "httpGet": {
+                        "path": "/healthz/ready",
+                        "port": 15021,
+                        "scheme": "HTTP"
+                    },
+                    "periodSeconds": 1,
+                    "successThreshold": 1,
+                    "timeoutSeconds": 2
+                },
+                "terminationMessagePath": "/dev/termination-log",
+                "terminationMessagePolicy": "File",
+                "volumeMounts": [
+                    {
+                        "mountPath": "/config",
+                        "name": "config-volume"
+                    },
+                    {
+                        "mountPath": "/tmp",
+                        "name": "tmp"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/xds-tokens",
+                        "name": "xds-token",
+                        "readOnly": true
+                    },
+                    {
+                        "mountPath": "/etc/xds-tls",
+                        "name": "xds-ca",
+                        "readOnly": true
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/istio",
+                        "name": "istiod-ca-cert",
+                        "readOnly": true
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/tokens",
+                        "name": "istio-token",
+                        "readOnly": true
+                    }
+                ]
+            }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "enableServiceLinks": true,
+        "nodeName": "agent-mesh-lab-worker",
+        "preemptionPolicy": "PreemptLowerPriority",
+        "priority": 0,
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {
+            "sysctls": [
+                {
+                    "name": "net.ipv4.ip_unprivileged_port_start",
+                    "value": "0"
+                }
+            ]
+        },
+        "serviceAccount": "agw-central",
+        "serviceAccountName": "agw-central",
+        "terminationGracePeriodSeconds": 60,
+        "tolerations": [
+            {
+                "effect": "NoExecute",
+                "key": "node.kubernetes.io/not-ready",
+                "operator": "Exists",
+                "tolerationSeconds": 300
+            },
+            {
+                "effect": "NoExecute",
+                "key": "node.kubernetes.io/unreachable",
+                "operator": "Exists",
+                "tolerationSeconds": 300
+            }
+        ],
+        "volumes": [
+            {
+                "configMap": {
+                    "defaultMode": 420,
+                    "name": "agw-central"
+                },
+                "name": "config-volume"
+            },
+            {
+                "name": "xds-token",
+                "projected": {
+                    "defaultMode": 420,
+                    "sources": [
+                        {
+                            "serviceAccountToken": {
+                                "audience": "agentgateway",
+                                "expirationSeconds": 43200,
+                                "path": "xds-token"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "emptyDir": {},
+                "name": "tmp"
+            },
+            {
+                "configMap": {
+                    "defaultMode": 420,
+                    "items": [
+                        {
+                            "key": "ca.crt",
+                            "path": "ca.crt"
+                        }
+                    ],
+                    "name": "agw-central-xds-ca"
+                },
+                "name": "xds-ca"
+            },
+            {
+                "configMap": {
+                    "defaultMode": 420,
+                    "name": "istio-ca-root-cert"
+                },
+                "name": "istiod-ca-cert"
+            },
+            {
+                "name": "istio-token",
+                "projected": {
+                    "defaultMode": 420,
+                    "sources": [
+                        {
+                            "serviceAccountToken": {
+                                "audience": "istio-ca",
+                                "expirationSeconds": 43200,
+                                "path": "istio-token"
+                            }
+                        }
+                    ]
+                }
+            }
+        ]
+    },
+    "status": {
+        "allocatedResources": {
+            "cpu": "100m",
+            "memory": "128Mi"
+        },
+        "conditions": [
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-09-22T21:50:02Z",
+                "observedGeneration": 1,
+                "status": "True",
+                "type": "PodReadyToStartContainers"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-09-22T21:50:02Z",
+                "observedGeneration": 1,
+                "status": "True",
+                "type": "Initialized"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-09-22T21:50:03Z",
+                "observedGeneration": 1,
+                "status": "True",
+                "type": "Ready"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-09-22T21:50:03Z",
+                "observedGeneration": 1,
+                "status": "True",
+                "type": "ContainersReady"
+            },
+            {
+                "lastProbeTime": null,
+                "lastTransitionTime": "2026-09-22T21:50:02Z",
+                "observedGeneration": 1,
+                "status": "True",
+                "type": "PodScheduled"
+            }
+        ],
+        "containerStatuses": [
+            {
+                "allocatedResources": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                },
+                "containerID": "containerd://2cd8ec1af447556ba10802bbb3aaa5cb709b7015afd5daae4f7c713487ce2da1",
+                "image": "cr.agentgateway.dev/agentgateway:v1.5.0",
+                "imageID": "cr.agentgateway.dev/agentgateway@sha256:bf2f339ef326d32def2aaeb44b1b4549801293c19b89e764a4228667d97d9896",
+                "lastState": {},
+                "name": "agentgateway",
+                "ready": true,
+                "resources": {
+                    "requests": {
+                        "cpu": "100m",
+                        "memory": "128Mi"
+                    }
+                },
+                "restartCount": 0,
+                "started": true,
+                "state": {
+                    "running": {
+                        "startedAt": "2026-09-22T21:50:02Z"
+                    }
+                },
+                "user": {
+                    "linux": {
+                        "gid": 0,
+                        "supplementalGroups": [
+                            0
+                        ],
+                        "uid": 10101
+                    }
+                },
+                "volumeMounts": [
+                    {
+                        "mountPath": "/config",
+                        "name": "config-volume"
+                    },
+                    {
+                        "mountPath": "/tmp",
+                        "name": "tmp"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/xds-tokens",
+                        "name": "xds-token",
+                        "readOnly": true,
+                        "recursiveReadOnly": "Disabled"
+                    },
+                    {
+                        "mountPath": "/etc/xds-tls",
+                        "name": "xds-ca",
+                        "readOnly": true,
+                        "recursiveReadOnly": "Disabled"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/istio",
+                        "name": "istiod-ca-cert",
+                        "readOnly": true,
+                        "recursiveReadOnly": "Disabled"
+                    },
+                    {
+                        "mountPath": "/var/run/secrets/tokens",
+                        "name": "istio-token",
+                        "readOnly": true,
+                        "recursiveReadOnly": "Disabled"
+                    }
+                ]
+            }
+        ],
+        "hostIP": "172.18.0.2",
+        "hostIPs": [
+            {
+                "ip": "172.18.0.2"
+            }
+        ],
+        "observedGeneration": 1,
+        "phase": "Running",
+        "podIP": "10.244.1.213",
+        "podIPs": [
+            {
+                "ip": "10.244.1.213"
+            }
+        ],
+        "qosClass": "Burstable",
+        "resources": {
+            "requests": {
+                "cpu": "79m",
+                "memory": "128Mi"
+            }
+        },
+        "startTime": "2026-09-22T21:50:02Z"
+    }
+}

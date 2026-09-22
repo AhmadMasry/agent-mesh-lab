@@ -1,0 +1,38 @@
+# The cluster as this task found it, read 2026-09-22T20:51:26Z. Reads only; nothing was changed by this reading.
+# B-5a left it at step 3 and said so in its own record: both proxies at one ready replica, 0 retry stanzas,
+# nothing armed, the mock reset -- and NOT as it was found, each proxy Deployment now at generation 6 with six
+# ReplicaSets and kubectl.kubernetes.io/restartedAt left on both pod templates by B-5a two rollout variants.
+# This file is that claim read back.
+
+== proxy Deployments: generation, ReplicaSets, restartedAt ==
+agentgateway-ingress/agentgateway-ingress generation=6 observedGeneration=6 replicas spec=1 ready=1
+agentgateway-ingress/agentgateway-ingress pod-template restartedAt=2026-09-22T22:46:07+03:00
+agentgateway-ingress/agentgateway-ingress ReplicaSets=6
+agentgateway-ingress/agentgateway-ingress Gateway Programmed=True
+agentgateway-waypoint/agw-central generation=6 observedGeneration=6 replicas spec=1 ready=1
+agentgateway-waypoint/agw-central pod-template restartedAt=2026-09-22T22:53:25+03:00
+agentgateway-waypoint/agw-central ReplicaSets=6
+agentgateway-waypoint/agw-central Gateway Programmed=True
+
+== proxy pods ==
+agentgateway-ingress/agentgateway-ingress-7c6487c684-ch6bv ip=10.244.1.176 uid=75cef1b0-5db3-4912-834b-ed0fd33e77c4 restarts=0 created=2026-09-22T19:46:08Z rs=agentgateway-ingress-7c6487c684
+agentgateway-waypoint/agw-central-868f4dc87d-hnh6d ip=10.244.1.224 uid=e798fbfa-304d-4a02-96dc-ea1c2c33217a restarts=0 created=2026-09-22T19:53:25Z rs=agw-central-868f4dc87d
+
+== agent and fixture Deployments ==
+deployment/worker spec=1 ready=1 generation=5
+deployment/orchestrator spec=1 ready=1 generation=9
+deployment/mockllm spec=1 ready=1 generation=4
+mockllm-747c5dfcdb-cqpdc=7248311e-d94f-4c64-85a4-10fcec45cbdd/ip=10.244.1.17/restarts=0
+orchestrator-5689674d4-5qwj7=868d626f-feef-44ba-b4dd-bf79ced0814b/ip=10.244.1.121/restarts=0
+worker-5cf9644bbb-djnc5=1d8c5190-b0ee-4f5d-a604-0880faa237ed/ip=10.244.1.19/restarts=0
+
+== the knobs ==
+retry stanzas on HTTPRoutes: 0
+AuthorizationPolicies: 0
+orchestrator deployed mode: DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080 PLAN_MODEL_CALL=off MODEL_MAX_RETRIES=0
+worker model client: MODEL_TIMEOUT_S=<- empty means unset, default 60 s; MODEL_RETRIES=<- empty means unset, default 0
+
+== the mock control lines (the last line decides whether anything is armed) ==
+injects=74 resets=165 resets-after-the-last-inject=2
+last control line: {"ledger":"control","ts":"2026-09-22T19:53:45.074630796Z","endpoint":"/control/reset"}
+worker log lines naming close-after-read: 0

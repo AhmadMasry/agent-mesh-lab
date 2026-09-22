@@ -1,0 +1,71 @@
+# The cluster as this task leaves it, read 2026-09-22T21:53:55Z. Reads only.
+== 2026-09-22T21:53:55Z Gateways and HTTPRoutes ==
+gateways: 2 ; httproutes: 5
+== 2026-09-22T21:53:55Z retry stanzas: across every HTTPRoute, and per route ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=0
+AuthorizationPolicies: 0
+== 2026-09-22T21:53:55Z the mock's mode: its own control lines; an inject arms, a reset clears, the last line decides ==
+control lines since the mock started: 491; injects: 156; resets: 335
+the last inject: {"ledger":"control","ts":"2026-09-22T21:52:52.519644757Z","endpoint":"/control/inject","detail":"{\"mode\":\"delay\",\"lwi\":\"b5b-go-central-graceful-r1-20\",\"delay_ms\":45000}"}
+the last line:   {"ledger":"control","ts":"2026-09-22T21:53:11.429940794Z","endpoint":"/control/reset"}
+resets after the last inject: 2
+== 2026-09-22T21:53:55Z the two receivers' injectors ==
+  (a receiver writes no LEDGER line for a control call and holds its armed mode in process memory, so there is
+   no mode to read back from it. This task armed neither receiver: its only control calls are the mock's, above.
+   The worker's process log, which is not a ledger, prints a line only for a close-after-read that could NOT
+   take its connection or could not close it. Such lines:)
+  worker log lines naming close-after-read: 0
+== 2026-09-22T21:53:55Z every Deployment in lab: env names starting MODEL_, CLIENT_, DOWNSTREAM_ or PLAN_; generation, ready ==
+  deploy/mockllm generation=4 ready=1/1: (none)
+  deploy/orchestrator generation=17 ready=1/1: MODEL_BASE_URL=http://model.lab.internal:8080/v1 PLAN_MODEL_CALL=off MODEL_NAME=mock MODEL_API_KEY=unused MODEL_MAX_RETRIES=0 DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+  deploy/worker generation=5 ready=1/1: MODEL_BASE_URL=http://model.lab.internal:8080/v1 MODEL_NAME=mock MODEL_API_KEY=unused
+== 2026-09-22T21:53:55Z the two proxies after this step's removals: Deployment shape, and the rollout annotation B-5a left ==
+  deploy/agentgateway-ingress/agentgateway-ingress generation=6 ready=1/1 strategy=RollingUpdate {"maxSurge":"25%","maxUnavailable":"25%"} grace=60
+    template annotations: {"checksum/config":"ea58279133dabeff2eb08c83858f261b40e8d0a2094f51382307a2967511c41e","checksum/session-key":"88e81314efcca32c535b2e0568121bbbd6b421ddc5ed826459d42abcedfe22af","checksum/xds-ca":"6a33f03503fcb59d5548f018f6784d0109cf12a0c1f152a833e7e7d94f729951","kubectl.kubernetes.io/restartedAt":"2026-09-22T22:46:07+03:00","prometheus.io/path":"/metrics","prometheus.io/port":"15020","prometheus.io/scrape":"true"}
+    replicasets: agentgateway-ingress-568f698b98=desired0/ready; agentgateway-ingress-5cdbd66dcc=desired0/ready; agentgateway-ingress-78dc95c486=desired0/ready; agentgateway-ingress-7c6487c684=desired1/ready1; agentgateway-ingress-7dd7d86fb8=desired0/ready; agentgateway-ingress-f58948fb=desired0/ready; 
+    Gateway Programmed=True address=10.96.254.180
+    the proxy's own drain settings, printed by the running pod at startup:
+      terminationMaxDeadline: 55s
+      terminationMinDeadline: 10s
+      numWorkerThreads: 16
+    env the deployer set: TERMINATION_GRACE_PERIOD_SECONDS=60 CONNECTION_MIN_TERMINATION_DEADLINE=10s
+  deploy/agentgateway-waypoint/agw-central generation=6 ready=1/1 strategy=RollingUpdate {"maxSurge":"25%","maxUnavailable":"25%"} grace=60
+    template annotations: {"checksum/config":"271875b407e33ccab9ff4b543c95ec87b6f3bbe487e308497765f14bacf41945","checksum/session-key":"c529dcf06ad54d9dd5695c21e6a2cf11a10f55fec2963c4aa899582375b85088","checksum/xds-ca":"da49cae1b74b0ce43e0b314452bf3eca48ea7e581fdff787f4e5d4462a3053a9","kubectl.kubernetes.io/restartedAt":"2026-09-22T22:53:25+03:00","prometheus.io/path":"/metrics","prometheus.io/port":"15020","prometheus.io/scrape":"true"}
+    replicasets: agw-central-5f55c9fd48=desired0/ready; agw-central-6f448747f4=desired0/ready; agw-central-76f48c8544=desired0/ready; agw-central-7c54457885=desired0/ready; agw-central-7fc4bf686b=desired0/ready; agw-central-868f4dc87d=desired1/ready1; 
+    Gateway Programmed=True address=10.96.141.113
+    the proxy's own drain settings, printed by the running pod at startup:
+      terminationMaxDeadline: 55s
+      terminationMinDeadline: 10s
+      numWorkerThreads: 16
+    env the deployer set: TERMINATION_GRACE_PERIOD_SECONDS=60 CONNECTION_MIN_TERMINATION_DEADLINE=10s
+== 2026-09-22T21:53:55Z pods: every namespace, phase counts; pods neither Running nor Succeeded; control pods left ==
+  Completed=219
+  Error=99
+  Running=25
+pods neither Running nor Completed: 99
+pods of a curl image (the scripts' control pods): 0
+loadgen Jobs left in lab (each a finished single send, kept for its pod log): 318
+mockllm-747c5dfcdb-cqpdc       Running   0     2026-09-22T17:04:56Z
+orchestrator-5689674d4-fggs8   Running   0     2026-09-22T21:27:48Z
+worker-5cf9644bbb-djnc5        Running   0     2026-09-22T17:04:56Z
+== 2026-09-22T21:53:55Z helm releases ==
+  agentgateway          agentgateway-system     deployed                agentgateway-v1.5.0
+  agentgateway-crds     agentgateway-system     deployed                agentgateway-crds-v1.5.0
+  istio-base            istio-system            deployed                base-1.31.0
+  istio-cni             istio-system            deployed                cni-1.31.0
+  istiod                istio-system            deployed                istiod-1.31.0
+  jaeger                telemetry               deployed                jaeger-4.13.1
+  otel-collector        telemetry               deployed                opentelemetry-collector-0.173.1
+  prometheus            telemetry               deployed                prometheus-29.31.1
+  ztunnel               istio-system            deployed                ztunnel-1.31.0
+== 2026-09-22T21:53:55Z ztunnel's certificates, worker node ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           2e8adf57826383a74dd2fb4bcd2681c5     2026-09-29T21:45:07Z     2026-09-22T21:43:07Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           5322788448854ba95e9a6f7f4ebbcb9a     2036-09-19T17:02:10Z     2026-09-22T17:02:10Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           4bf53074a3d361d806e09e1769e34c90     2026-09-29T17:03:06Z     2026-09-22T17:01:06Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           5322788448854ba95e9a6f7f4ebbcb9a     2036-09-19T17:02:10Z     2026-09-22T17:02:10Z

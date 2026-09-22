@@ -1,0 +1,23 @@
+2026-09-22T21:48:03.891707Z repetition b5b-go-central-graceful-r1-05 variant=go-central-graceful receiver=go proxy=agentgateway-waypoint/agw-central method=graceful target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal
+2026-09-22T21:48:03.933012Z agent pods before: mockllm-747c5dfcdb-cqpdc=7248311e-d94f-4c64-85a4-10fcec45cbdd/ip=10.244.1.17/restarts=0 orchestrator-5689674d4-fggs8=a02f8f56-e5a0-450a-a526-a01aaf524928/ip=10.244.1.119/restarts=0 worker-5cf9644bbb-djnc5=1d8c5190-b0ee-4f5d-a604-0880faa237ed/ip=10.244.1.19/restarts=0 
+2026-09-22T21:48:03.973305Z proxy pods before: agw-central-868f4dc87d-wqdbl uid=67a1ae6e-1996-4233-b12e-2d7e81807599 ip=10.244.1.192 created=2026-09-22T21:47:47Z restarts=0; 
+2026-09-22T21:48:04.012599Z other proxy pods: agentgateway-ingress-7c6487c684-qpg6d uid=8ed2aa58-571f-4ba5-9c75-e4ee22a662bf ip=10.244.1.179; agw-central-868f4dc87d-wqdbl uid=67a1ae6e-1996-4233-b12e-2d7e81807599 ip=10.244.1.192; 
+2026-09-22T21:48:04.052112Z old pod: agw-central-868f4dc87d-wqdbl grace=60 rs=agw-central-868f4dc87d
+2026-09-22T21:48:04.152493Z started kubectl logs -f agw-central-868f4dc87d-wqdbl (pid 47873)
+2026-09-22T21:48:04.215306Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-22T21:48:04.278764Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"delay","lwi":"b5b-go-central-graceful-r1-05","delay_ms":45000} -> 204
+2026-09-22T21:48:04.289447Z apply Job 1 loadgen-b5b-go-central-graceful-r1-05 MODE=stream TASK_ID=<empty> CANCEL_AFTER_MS=<empty>
+2026-09-22T21:48:04.371676Z Job 1 applied
+2026-09-22T21:48:04.678677Z Job 1's client saw TASK_STATE_WORKING at 2026-09-22T21:48:04.580511555Z (client pod clock) naming task 01a0cb17-1c63-79ec-b11a-92add5625c8e
+2026-09-22T21:48:06.782311Z removal issued: graceful on agw-central-868f4dc87d-wqdbl
+2026-09-22T21:48:08.515825Z apply Job 2 loadgen-b5b-go-central-graceful-r1-05-s MODE=subscribe TASK_ID=01a0cb17-1c63-79ec-b11a-92add5625c8e CANCEL_AFTER_MS=<empty>
+2026-09-22T21:48:08.596955Z Job 2 applied
+2026-09-22T21:48:19.583354Z Job 1 Complete
+2026-09-22T21:48:19.655397Z Job 2 Complete
+2026-09-22T21:48:19.729639Z settled after 0.0s: terminal state=TASK_STATE_FAILED invocation outcome=client-gone (the invocation wait ran to the arm stamp plus N plus 30s at the latest, the whole wait to 180s; reads two pod logs, sends nothing)
+2026-09-22T21:48:19.791982Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-22T21:48:21.824032Z old-pod log capture stopped (17 lines)
+2026-09-22T21:48:22.338200Z make ledgers LWI=b5b-go-central-graceful-r1-05 exit=0
+2026-09-22T21:48:22.755053Z agent pods after: mockllm-747c5dfcdb-cqpdc=7248311e-d94f-4c64-85a4-10fcec45cbdd/ip=10.244.1.17/restarts=0 orchestrator-5689674d4-fggs8=a02f8f56-e5a0-450a-a526-a01aaf524928/ip=10.244.1.119/restarts=0 worker-5cf9644bbb-djnc5=1d8c5190-b0ee-4f5d-a604-0880faa237ed/ip=10.244.1.19/restarts=0 
+2026-09-22T21:48:22.794696Z proxy pods after: agw-central-868f4dc87d-s9nhs uid=31e359e7-4b85-400a-8aff-7b1d257ef423 ip=10.244.1.195 created=2026-09-22T21:48:06Z ready=True; 
+2026-09-22T21:48:22.832596Z collected

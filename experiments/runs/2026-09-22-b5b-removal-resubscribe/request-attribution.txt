@@ -1,0 +1,49 @@
+WHICH PROXY POD ANSWERED EACH REQUEST, per variant, over its 20 repetitions
+
+## go-central-graceful   (100 access lines over 20 repetitions; 5 per repetition, the accounting closes)
+   Job 1 POST (SendStreamingMessage) <- ingress: 20 of 20
+   Job 2 POST (SubscribeToTask) <- ingress: 20 of 20
+   Job 1 card GET <- the OTHER proxy, untouched: 20 of 20
+   Job 2 card GET <- the OTHER proxy, untouched: 20 of 20
+   Job 1's model call <- the REMOVED pod: 20 of 20
+
+## go-ingress-forced   (100 access lines over 20 repetitions; 5 per repetition, the accounting closes)
+   Job 1 POST (SendStreamingMessage) <- ingress-OLD: 20 of 20
+   Job 2 POST (SubscribeToTask) <- ingress-SUCCESSOR: 20 of 20
+   Job 1 card GET <- the REMOVED pod: 20 of 20
+   Job 2 card GET <- its SUCCESSOR: 20 of 20
+   Job 1's model call <- the OTHER proxy, untouched: 20 of 20
+
+## py-central-graceful   (100 access lines over 20 repetitions; 5 per repetition, the accounting closes)
+   Job 1 POST (SendStreamingMessage) <- ingress: 20 of 20
+   Job 2 POST (SubscribeToTask) <- ingress: 20 of 20
+   Job 1 card GET <- the REMOVED pod: 20 of 20
+   Job 2 card GET <- its SUCCESSOR: 20 of 20
+   Job 1's model call <- the REMOVED pod: 20 of 20
+
+## py-ingress-forced   (100 access lines over 20 repetitions; 5 per repetition, the accounting closes)
+   Job 1 POST (SendStreamingMessage) <- ingress-OLD: 20 of 20
+   Job 2 POST (SubscribeToTask) <- ingress-SUCCESSOR: 20 of 20
+   Job 1 card GET <- the OTHER proxy, untouched: 20 of 20
+   Job 2 card GET <- the OTHER proxy, untouched: 20 of 20
+   Job 1's model call <- the OTHER proxy, untouched: 20 of 20
+
+HOW MANY OF EACH 20 SENT A SUBSCRIPTION AT ALL, AND HOW MANY OF THOSE REATTACHED
+(the controller's addition of 2026-09-22: a repetition where no subscription is sent is a counted
+ outcome, not a lost repetition. Nothing here was retried, re-sent, or waited for and tried again.)
+  go-central-graceful: sent 20 of 20; arrived at the receiver 20 of 20; reattached to Job 1's task 20 of 20; refused on the wire 0; arrived after the Task had ended 0
+  go-ingress-forced: sent 20 of 20; arrived at the receiver 20 of 20; reattached to Job 1's task 20 of 20; refused on the wire 0; arrived after the Task had ended 0
+  py-central-graceful: sent 20 of 20; arrived at the receiver 20 of 20; reattached to Job 1's task 20 of 20; refused on the wire 0; arrived after the Task had ended 0
+  py-ingress-forced: sent 20 of 20; arrived at the receiver 20 of 20; reattached to Job 1's task 20 of 20; refused on the wire 0; arrived after the Task had ended 0
+
+THE EXECUTOR'S OWN ERROR TEXT ON THE LOST-MODEL-CALL EVENT, per row, and whether it varies within a row
+  go-central-graceful: 20 of 20 'model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF'   (distinct texts within the row: 1)
+  go-ingress-forced: 20 of 20 '<none>'   (distinct texts within the row: 1)
+  py-central-graceful: 20 of 20 'Connection error.'   (distinct texts within the row: 1)
+  py-ingress-forced: 20 of 20 '<none>'   (distinct texts within the row: 1)
+
+and the B-4 asymmetry on the CUT-STREAM event, the execution result line, for comparison:
+  go-central-graceful: 20 of 20 '<no error key>'
+  go-ingress-forced: 20 of 20 'queue read failed: context canceled'
+  py-central-graceful: 20 of 20 '<no error key>'
+  py-ingress-forced: 20 of 20 '<no error key>'

@@ -1,0 +1,269 @@
+Experiment B, step B-5b -- reading notes
+=========================================
+Written beside the findings entries, for the reviewer and for whoever reads the run directory later. Every figure
+quoted in the entries comes from counts.py over the raw per-repetition files committed here; nothing in this file
+is a number that is not also in rows/summary.csv or rows/counts.txt.
+
+WHAT THIS STEP IS
+  Section 4.4 B of the frozen proposal as it is worded: Agent A starts a SendStreamingMessage; Agent B begins model
+  work; the proxy on the path is removed; the stream dies; the client sends ONE SubscribeToTask. It is run with the
+  stimulus and the N that B-5a MEASURED rather than guessed, and with B-4's control beside it, so that a Task which
+  fails here can be attributed.
+  Captured before the removal: logical_work_item_id, messageId, taskId. Captured after the resubscription: the
+  taskId reattached to, the first returned Task state, the model invocation count, and the final state.
+
+THE TWO ROWS, AND WHY THEY USE DIFFERENT REMOVALS
+  The author ruled this on 2026-09-22, from B-5a's table, and the entries say so rather than leaving it to be
+  assumed.
+    MAIN ROWS -- the agentgateway ingress, FORCED delete (--grace-period=0 --force), per receiver x20. B-5a measured
+    this removal: the stream is gone 35.6-43.3 ms after the command, the Task runs on for another 42.9 s and reaches
+    TASK_STATE_COMPLETED 5 of 5 with one model call, and the successor serves at 1 818.3-3 254.2 ms. So a
+    resubscription has about 40 s of RUNNING Task to attach to. This is the abrupt case the author's D5 names.
+    ONE VARIANT -- agw-central, GRACEFUL delete, per receiver x20. With the FORCED delete of agw-central B-5a
+    measured the Task already TASK_STATE_FAILED at 2 055-2 079 ms while the successor was only Ready at
+    2 115-2 511 ms: a resubscription could never reach a running Task at all, and the row would have measured
+    nothing about reattachment. The graceful delete leaves about 7 s (the Task fails at 10 046-10 066 ms, the
+    successor serves at 2 16x-3 05x ms), which is the window this row uses.
+  rows.sh REFUSES any other pairing of proxy and method before anything is sent, so a typo cannot run a stimulus
+  nobody ruled.
+  N = 45 000 ms throughout, unchanged from B-3, B-4 and B-5a, and NO caller ceiling was moved.
+
+NO REBUILD, AND WHY
+  CLAUDE.md's rebuild rule names the deployed paths. Every one of them at this branch's HEAD is byte-equal to the
+  tree the standing cluster was built from, the commit `feat(loadgen,deploy,experiments): CLIENT_HOST, every request
+  names the host it is given, and the knobs Job template renders it empty on every existing row`: deploy f89a4719,
+  agents 324396fd, fixtures d143d670, internal f63b96cc, experiments/lib bad5771f, Makefile 7244d671, .ko.yaml
+  2dcd1989, kind-config.yaml aa98aa46, go.mod a8314e0b, go.sum 53b265e5, and all eleven experiments/*.sh blobs.
+  This step's driver and counter live under experiments/runs/, which the rebuild rule does not name. So this record
+  carries no rebuild and no standard proof. The one file outside the run directory that this step changes besides
+  findings.md is .gitignore, for the reason B-5a changed it: the pod logs a figure rests on are committed.
+
+THE CLUSTER AS THIS STEP FOUND IT
+  cluster-before.txt, read 20:51:26Z, before anything was sent. It is B-5a's closing state read back, and it is NOT
+  the state step 3 built: both proxy Deployments stand at generation 6 with six ReplicaSets each, and
+  kubectl.kubernetes.io/restartedAt is on both pod templates, left by B-5a's two `rollout restart` variants and not
+  removed by the agentgateway controller. This step runs NO rollout of a proxy at all, so anything of that kind in
+  cluster-after.txt is inherited, not made here. Everything else was as it should be: both proxies at one ready
+  replica with their Gateway Programmed, all three lab Deployments at one ready replica, 0 retry stanzas on every
+  HTTPRoute, 0 AuthorizationPolicies, the mock's last control line a reset with 2 resets after the last inject, the
+  worker's log with 0 close-after-read lines, and the orchestrator in its deployed forward mode.
+
+THE FILES
+  rows.sh          the variant driver, one variant per invocation, run as a background driver. Its header says what
+                   a repetition does, which standing B rules it keeps, and why the two rows use different removals.
+                   Each invocation writes the between-variant proof into its own control.txt, before and after.
+  counts.py        the counter. One CSV line per repetition, a tally per variant over the clean repetitions and
+                   another over all of them. It is B-5a's counts.py (the removal, drain, successor and clock
+                   columns) with B-4's Job 2 columns put back beside them, which is what this step is. Its header
+                   states the clock convention every interval column's name carries: _h2h both stamps the driver's
+                   own, _h2c a host stamp against a cluster or API-server stamp, _c2c both inside the cluster; _s1
+                   marks an API-server stamp's one-second resolution.
+  sleep-events.sh  B-4's, BYTE-IDENTICAL (sha256 e3ff664d65ab8e255f5f21a334499671e10f69b0e6a5ca76e662dee86c1baba4,
+                   equal to B-4's and B-5a's copies), run over this task's own window only, so the committed
+                   sleep-events.csv holds this task's window and not the week of host history the power log keeps.
+                   Kind and UTC and nothing else: no line's text, no peripheral and no assertion owner can enter the
+                   record.
+  cluster-before.txt / cluster-after.sh / cluster-after.txt   the opening and closing read-only readings.
+  tools.txt        the tools the drivers used. The lab-scoped istioctl 1.31.0 is B-4's, re-read here and shown to be
+                   the same binary (sha256 763caa1c...); it is used for ONE read-only call per between-variant
+                   proof. Nothing on the host was changed, and no make target but `make ledgers` (a read) was run.
+  dry/             the two dry repetitions, kept whole, named in the entries as sent and NOT counted, with their own
+                   counts.txt and summary.csv.
+  rows/            the four counted variants, twenty repetitions each.
+  windows.csv      the windows this task counts, the first spanning all the others.
+  phases.txt       the task's own dated phase lines.
+  counts.txt       counts.py's output over rows/, and rows/summary.csv its one line per repetition.
+  versions-readback.txt   the Versions line read back from the cluster, by
+                   experiments/runs/2026-09-20-experiment-a-agentgateway-only/versions-readback.sh, unedited, with
+                   the lab-scoped istioctl first on PATH for its one istioctl call.
+
+THE THREE ITEMS CARRIED FROM B-5a, AND WHAT EACH READ HERE
+  1. wait_settled. B-5a's first dry repetition found that `make ledgers` can run before the Task and the model call
+     settle, because a stream can end long before either does. Its fix is copied here unchanged in behaviour: after
+     both Jobs end the driver reads the worker's (or the orchestrator's) and the mock's pod logs -- it SENDS NOTHING
+     -- and waits for the executor's terminal state line, then for the mock's invocation line until the arm stamp
+     plus N plus 30 s at the latest, with a 180 s ceiling on the whole wait. Both dry repetitions settled at 0.0 s.
+  2. The removed proxy's record of the request it cut. B-5a found it incomplete in three different ways depending on
+     proxy and method -- no access line at all, a line with NO http.status field, or a line reading http.status=200
+     for a stream the client saw fail -- so counts.py carries all three as columns, with the line's duration and the
+     POST statuses beside them, and the entries state what each row read.
+  3. The redirect check. internal/httpclient.New leaves CheckRedirect at Go's default, so up to ten 3xx answers
+     would be FOLLOWED and CLIENT_HOST re-applied to each, and no test pins "a 3xx is not followed" at this tree.
+     A removed proxy is when a gateway is likeliest to answer non-2xx, so every repetition records what BOTH of its
+     clients saw -- http_status, content_type, the first JSON-RPC error object on the wire, the SDK's error text --
+     and the POST round trips each client's own outermost transport carried, which a followed redirect would
+     increase; and counts.py reports every non-2xx and every 3xx line in every access log collected. NO CODE WAS
+     CHANGED for this here. The entries state that no redirect policy is pinned at this tree.
+
+ONE READING ABOUT THE COUNTER ITSELF, recorded before the first counted repetition
+  A proxy writes a request's access line when the request ENDS, not when it begins, and Job 2 is a subscription that
+  stays open until the Task reaches a terminal state. So `rm_to_new_pod_first_served_ms_h2c` reads about 43 s on the
+  ingress row, and it is NOT "seconds until the successor serves" the way the same column meant it in B-5a, whose
+  probe was a short stream of its own. The figure that answers "when did the successor first carry a request" on
+  this step is `rm_to_sub_arrival_ms_h2c`: the arrival's own ts_arrival on the receiver's ingress ledger, which the
+  successor had to forward for it to exist. counts.py says so in a comment beside the column, the comment went in
+  before the first counted repetition, and the entries cite the arrival figure.
+
+WHAT THE EIGHTY COUNTED REPETITIONS READ, and what in them was not predicted
+  Four variants, receiver x proxy-and-method x 20, one repetition at a time, all four drivers exit 0, every
+  between-variant proof passing before and after each variant. No host power event fell in this task's window at
+  all, so all 80 are clean and every _h2c figure is readable.
+    row-py-ingress-forced   21:02:40Z-21:20:23Z   17 min 43 s
+    row-py-central-graceful 21:20:23Z-21:27:50Z    7 min 27 s
+    row-go-ingress-forced   21:28:03Z-21:45:56Z   17 min 53 s
+    row-go-central-graceful 21:45:56Z-21:53:12Z    7 min 16 s
+  THE MAIN ROWS, the ingress removed by force. The cut at 36.3-64.4 ms; the Task COMPLETED 40 of 40 with one
+  invocation ok at 45 000.5-45 005.1 ms; the one resubscription reattaching to Job 1's task 40 of 40 with 0 new
+  executes, 0 new tasks and 0 new invocations, its first event the Task at TASK_STATE_WORKING; the arrival
+  1 938.8-2 852.3 ms after the removal and 40 045.3-40 931.1 ms before the terminal state, so the Task was running
+  at every arrival. The sender columns say it plainly: SendStreamingMessage from the REMOVED pod, SubscribeToTask
+  from its SUCCESSOR, 40 of 40.
+  THE VARIANT, agw-central removed gracefully. The stream never broke: it carried TASK_STATE_FAILED and ended eof
+  with a terminal event and a Job that exited 0, 40 of 40. The Task failed 40 of 40 on one model attempt with
+  retries off, one invocation line, outcome client-gone. The resubscription arrived 2.1-2.8 s after the removal and
+  7.5-13.0 s before the terminal state and reattached, 40 of 40 -- which is the reading the author's choice of the
+  GRACEFUL delete here exists to make possible, since under the forced delete B-5a measured the Task is already
+  failed before the successor is Ready.
+  WHAT WAS NOT PREDICTED, and is recorded rather than smoothed:
+    - the two receivers word the same failure differently on their own state line: the Go worker
+      `model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF` 20 of 20, the Python
+      orchestrator `Connection error.` 20 of 20;
+    - on the agw-central row the successor carried NOTHING at all on the Go path, 0 access lines in 20 of 20,
+      because neither Job crosses agw-central there; on the Python path it carried exactly one line, Job 2's card
+      GET on lab/orchestrator, status 200, at 2 051.1-2 801.7 ms. counts.py reports the Go column as n-a for the
+      first reason and not the second, and new_pod_access_lines=0 is what tells the two apart;
+    - B-4's own asymmetry reproduces on the execution result line of the cut stream: the Go receiver carries
+      error "queue read failed: context canceled" 20 of 20, the Python receiver no error key at all 20 of 20;
+    - the span processor's shutdown stands between SIGTERM and the drain in 2 of the 40 agw-central repetitions
+      (b5b-py-central-graceful-r1-01 and -r1-13), delaying it by 5 000.8 and 5 001.3 ms against 0.3-0.8 ms in the
+      other 38, and pushing those two repetitions' whole timeline out by five seconds. That is this lab's tracing
+      configuration and not the proxy; B-5a read it at 2 of 32 and named it the same way.
+
+THE PROXY-LOG TIMESTAMP DEFECT, measured here and already filed by this lab
+  agentgateway at the pinned v1.5.0 renders the sub-second part of a log timestamp with its LEADING ZEROS removed,
+  so 21:03:04.066706Z is written 21:03:04.66706Z and reads, as written, 600 ms later than it was.
+  docs/upstream/agentgateway-access-log-timestamp-leading-zeros.md: filed as agentgateway#3369 (2026-09-07, closed
+  2026-09-08), fixed by #3370, first contained in the v1.6.0-alpha.1 prerelease -- v1.5.0 carries it. NOT a new
+  rule 11 candidate and no draft is written.
+  MEASURED over every proxy log line this step collected: it falls ONLY on the access line's own stamp --
+  47 of 400 access lines (11.75 %, which is the 1/10 + 1/100 + ... a uniform microsecond field gives) against
+  0 of 1 986 other proxy lines, and 240 of the six-digit fractions end in a zero, so trailing zeros are NOT dropped
+  and a fraction shorter than six digits means leading zeros were. 27 of the 80 repetitions carry at least one.
+  WHAT counts.py DOES ABOUT IT: it keeps proxy log lines in the order the proxy WROTE them (file order, which is
+  what `kubectl logs` gives) instead of sorting by a stamp that can be wrong by up to 900 ms, and it reports any
+  figure whose endpoint is such a stamp as "n-a", never as a number, the way a sleep-affected interval is reported,
+  with the raw stamps kept verbatim in `dropped_zero_stamps`. NOTHING is corrected: correcting it would be the
+  counter deciding what the proxy meant.
+  WHEN IT WENT IN, corrected against this task's own phases.txt, which is the accurate record. An earlier version of
+  this file said the handling was "decided and written in before the first counted repetition". THAT IS WRONG, and
+  the stamps contradict it: phases.txt dates the change 21:34:51Z, by which time row-py-ingress-forced
+  (21:02:40Z-21:20:23Z) and row-py-central-graceful (21:20:23Z-21:27:50Z) were COMPLETE and row-go-ingress-forced
+  (21:28:03Z-21:45:56Z) was UNDER WAY. The honest statement is therefore: the handling went in AFTER 40 OF THE 80
+  COUNTED REPETITIONS HAD RUN, WITH A THIRD ROW IN PROGRESS -- and, as phases.txt itself words it, before any
+  committed output. A different and smaller thing, the comment about what `rm_to_new_pod_first_served_ms_h2c` means
+  on this step, is the one written before the first counted repetition; the two were run together in this file and
+  should not have been. NOTHING IN THIS RECORD DATES THAT SMALLER COMMENT, so no stamp is given for it here: an
+  earlier draft of this correction put "21:02" against it, which would have been the same fault this paragraph
+  exists to fix.
+  WHY THE ORDER BIASES NOTHING, stated rather than assumed. counts.py reads files; it never touches the cluster and
+  it produced no committed output until every repetition had run. The raw per-repetition records are rows.sh's, and
+  rows.sh did not change at any point in this task -- one sha256 for all 82 repetitions, printed into every
+  variant's control.txt. So no repetition was sent under one rule and another under a second: the rule is mechanical
+  (a fraction shorter than six digits), uniform (the same test on every line of every capture), and it was applied
+  to all eighty at once when the counter ran at the end. What the late change DID cost is that the defect was found
+  half-way through instead of at the start, and the entry's four `n-a` figures would have been the same either way.
+  WHAT IT COST HERE: exactly four figures, all of them rm_to_new_pod_first_served_ms_h2c
+  (b5b-go-ingress-forced-r1-09, b5b-py-ingress-forced-r1-05, -r1-09, -r1-15). No count, no ledger reading and no
+  client reading in either entry rests on a proxy-log stamp.
+  IT ALSO FIXED APPARENT OUTLIERS OF THIS STEP'S OWN, which is how it was found; the three that first showed it are
+  not its whole reach, and the reach is measured here rather than inferred from what happened to be visible.
+  WHAT FIRST SHOWED IT: old_pod_last_log read an access line in 3 of 20 py-central repetitions and
+  min_done_to_last_log_ms_c2c ran to 831.3 ms; with file order the last line is `binds drained` in 40 of 40 and the
+  figure is 0.3-2.6 ms, which lands on B-5a's own 0.4-1.7 ms. One py-ingress repetition appeared to write its access
+  line 598.1 ms AFTER its SIGTERM; its stamp as the proxy meant it is 2.3 ms BEFORE it.
+  THE MEASURED REACH, over all eighty: sorting oldpod.log by the parsed stamp instead of keeping file order would
+  have changed WHICH LINE IS LAST in 13 of the 80 repetitions -- go-central 4, py-central 3 (so 7 of the 40
+  agw-central repetitions, where it surfaced as the min_done_to_last_log outliers above), and go-ingress 5,
+  py-ingress 1 (6 of the 40 ingress repetitions, where min_done_to_last_log is n-a for want of drain lines, so it
+  could only surface as sigterm_to_last_log). Three of thirteen is what was visible; thirteen is what it reached.
+  WHAT THIS MEANS FOR B-5a, reported to the controller and acted on nowhere: B-5a's committed logs carry the same
+  defect at the same rate, 17 of 176 access lines and 0 of 814 other lines, and it reaches figures that END at an
+  access line. Three of its published figures are exposed: b5a-central-rollout-r1-01's 3 254.2 ms, which is the
+  UPPER BOUND of its published "the successor served at 1 818.3-3 254.2 ms" and whose stamp reads 745.1 ms late;
+  b5a-central-graceful-r1-05's 2 395.0 ms, whose stamp reads 202.1 ms late; and b5a-ingress-graceful-r1-02, whose
+  successor's card GET stamp sorted after its POST under B-5a's sort so that its "first access line" is the
+  successor's second. Three further affected lines sit in B-5a oldpod.log files. NO DATED RECORD WAS EDITED: a
+  correction beside B-5a's entry is the controller's and the author's decision, not this step's.
+
+THE ONE LOCAL-OFFSET STRING IN THIS RUN DIRECTORY, declared rather than left to be found
+  `kubectl.kubernetes.io/restartedAt` appears on both proxy pod templates with a local UTC offset, in
+  cluster-before.txt, cluster-after.txt and the 164 pod JSONs. It is cluster state read back, it is the annotation
+  B-5a's two `rollout restart` variants left behind (this step runs no rollout of a proxy at all), and it is
+  byte-identical to what B-5a already committed in its own cluster-after.txt and its 64 pod JSONs. It names no host,
+  serial, device, product or power-assertion owner, so it is kept unmasked. A scan of every file in this run
+  directory for a home path, the user name, a device or product name, a Signed-off-by line or an email domain
+  returns nothing, and NOTHING in this directory is masked.
+
+THE CLUSTER AS THIS STEP LEAVES IT
+  cluster-after.txt, read 21:53:55Z: both proxies at one ready replica with their Gateway Programmed, 0 retry
+  stanzas on every HTTPRoute, 0 AuthorizationPolicies, the mock reset with 2 resets after the last inject, neither
+  receiver armed, the orchestrator back at DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080, ztunnel's
+  leaf certificate valid, and no control pod left. Both proxy Deployments are still at generation 6 with six
+  ReplicaSets and B-5a's restartedAt annotation: this step changed neither. The orchestrator's Deployment moved
+  from generation 9 to 17, two rollouts per Python variant, in and out of model mode. The worker and the mock are
+  the pods they were at 17:04:56Z and have never restarted. 99 loadgen pods stand in Error: they are the Job 1 pods
+  of the ingress rows, whose cut stream is a non-zero client exit and a recorded outcome, not a failure of the
+  cluster.
+  This task started no keep-awake and changed no power setting, and does not claim none was active: the agent
+  harness holds its own.
+
+WHICH POD ANSWERED EACH REQUEST, Job 1's and Job 2's separately (the controller's addition of 2026-09-22)
+  request-attribution.py and request-attribution.txt, derived from the committed files alone. TWO SOURCES, each
+  used where it is definitive, and NEITHER of them an access line's STAMP:
+    - the two POSTs from the RECEIVER'S OWN ingress ledger, whose arrival line carries the method and the sender's
+      address, matched against the pod IPs the driver recorded before and after the removal. No stamp is involved,
+      so the access-line timestamp defect cannot reach this attribution at all;
+    - the two card GETs, which create no A2A arrival and exist only in a proxy's access log, by the capture that
+      holds them -- oldpod.log is the removed pod, newpod.log its successor, otherproxy-access.txt the proxy the
+      variant did not touch -- with FILE ORDER separating them where one capture holds both.
+  An access line's stamp is written when the request ENDS, not when it begins. That is why a stamp cannot separate
+  Job 1's cut POST, which ends just after the removal, from Job 2's, which ends when the Task does; the first
+  version of this analysis used one and mis-attributed all twenty of Job 1's POSTs on each ingress row. It is
+  recorded here because it is the same trap the sorting bug was.
+  THE ANSWER, 20 of 20 in every cell, with the accounting closing at five access lines per repetition:
+    go-ingress-forced    Job 1 POST <- the REMOVED pod, Job 2 POST <- its SUCCESSOR; Job 1 card GET <- the REMOVED
+                         pod, JOB 2 CARD GET <- ITS SUCCESSOR; the model call on the untouched agw-central.
+                         That card GET is the cell the controller asked for: the forced delete left the removed pod
+                         nothing to serve, where B-5a had shown an old pod can still serve during a GRACEFUL drain.
+    py-ingress-forced    Job 1 POST <- the REMOVED pod, Job 2 POST <- its SUCCESSOR; BOTH card GETs and the model
+                         call on the untouched agw-central, the Python card GET crossing lab/orchestrator there.
+    go-central-graceful  both POSTs and both card GETs on the untouched ingress; the removed pod carried ONLY
+                         Job 1's model call, and its successor carried nothing at all.
+    py-central-graceful  both POSTs on the untouched ingress; Job 1 card GET <- the REMOVED pod, JOB 2 CARD GET <-
+                         ITS SUCCESSOR; the model call on the removed pod.
+
+HOW MANY SENT A SUBSCRIPTION AT ALL (the controller's second addition)
+  A repetition where no subscription is sent is a counted outcome, not a lost repetition, and a row below 20 would
+  be a finding about the stimulus. In every one of the four rows: sent 20 of 20, arrived at the receiver 20 of 20,
+  reattached to Job 1's task 20 of 20, refused on the wire 0, arrived after the Task had ended 0. Nothing was
+  retried, re-sent, or waited for and tried again. B-5a's table is why the agw-central row COULD have been below
+  20 and is not: under the forced delete of that proxy the Task is already failed before the successor is Ready,
+  which is exactly why the author ruled the graceful delete for it.
+
+THE SECOND SDK ASYMMETRY, on the lost-model-call event
+  B-4 recorded one asymmetry, on the CANCELLED-STREAM event: the Go execution result line carries
+  error "queue read failed: context canceled" and the Python line carries no error key at all. It reproduces here
+  on the companion row's cut stream, 20 of 20 each. This step adds a second, on a different event -- the terminal
+  `state` line of a lost model call: the Go worker carries
+  `model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF` 20 of 20 and the Python orchestrator
+  carries `Connection error.` 20 of 20. NEITHER TEXT VARIES WITHIN ITS ROW -- one distinct text in each -- and the
+  Go text names the method, the URL and the wire condition where the Python one names none of the three. Neither
+  asymmetry moves a count.
+
+THE B-5a CORRECTION, and the exposure scan behind it
+  Both are in the commit beside this one, `docs(findings): a dated correction beside the B-5a entry`, which appends
+  and edits nothing. In short: two of B-5a's published figures move and one identity does; its Interpretation
+  sentence about the cut request's access line was re-derived against the three affected files and HOLDS, because
+  all three are card GETs and every cut-POST stamp of its ingress rows is intact. The bounded scan the controller
+  asked for found that of the twelve committed run records holding stamped agentgateway access lines, only B-5a and
+  this step compute a figure from one.

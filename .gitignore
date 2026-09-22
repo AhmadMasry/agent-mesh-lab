@@ -97,6 +97,15 @@ experiments/runs/**/*.log
 # are. Every line was scanned for a host-identifying string and none was found (in-cluster pod names, cluster IPs,
 # SPIFFE identities and trace ids only), so nothing is masked. Scoped to this one run directory.
 !experiments/runs/2026-09-22-b5a-removal/**/*.log
+# Exception, B-5b (2026-09-22): the same reason as B-5a's above -- this step's entries rest on what a removed proxy's
+# own log says while it shuts down and on which pod answered each request, so the removed pod's log and its
+# successor's ARE the run output. The negation covers every .log under that one run directory: 328 files, 2 405
+# lines, 372 931 bytes -- 164 proxy pod logs (82 oldpod.log, 929 lines; 82 newpod.log, 1 312 lines; 363747 bytes
+# together) and 164 one-line `kubectl apply` outputs (apply-1.log and apply-2.log, 9184 bytes together), which are
+# kept for the same reason the rendered Job manifests beside them are. Every line was scanned for a
+# host-identifying string: no host name, serial, device or product name, no power-assertion owner, no home path and
+# no user name. Scoped to this one run directory.
+!experiments/runs/2026-09-22-b5b-removal-resubscribe/**/*.log
 *.pcap
 *.pcapng
 *.db
