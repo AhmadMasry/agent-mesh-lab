@@ -302,3 +302,11 @@ required; there are now two and they do not overlap — istiod for L4, agentgate
 is added: no external authorization service, no rate-limit service, no token issuer, no Envoy waypoint for
 comparison (rule 6) — a mechanism that needs one is recorded as documented and not attempted. The proposal
 text is unchanged.
+
+## 2026-09-22 — Experiment B gains a control with no proxy event (author's addition)
+
+Decision by the author. B gains a second row the proposal does not list, run before any proxy is removed: per receiver, ×20,
+Job 1 opens a `SendStreamingMessage` and cancels its own stream after k seconds, and Job 2 sends one `SubscribeToTask`. It counts
+whether the task still reaches `TASK_STATE_COMPLETED` after losing its only stream, and whether the model was invoked exactly
+once. It needs one load-client setting (cancel after k ms), off by default. It separates what each SDK does when a task loses its only stream from
+anything a proxy does, so that a task that fails in the proxy-removal rows can be attributed. The proposal text is unchanged.
