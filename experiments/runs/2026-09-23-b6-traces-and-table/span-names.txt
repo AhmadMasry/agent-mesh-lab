@@ -1,0 +1,85 @@
+# What the twelve collected traces NAME and what they ATTRIBUTE. Derived from the committed
+# trace.json files alone.
+total spans across the twelve traces: 423
+
+== attribute KEYS matching a2a.* or rpc.* ==
+  NONE — 0 keys in 423 spans
+  keys whose text merely CONTAINS 'a2a': http.request.header.x_a2a_message_id (3 spans), http.request.header.x_a2a_task_id (3 spans)
+  protocol-shaped attributes that do exist: gen_ai.agent.description (12), gen_ai.agent.name (12), gen_ai.agent.version (12)
+
+== span NAMES holding an A2A operation, per work item ==
+  b4-control-go              spans= 22  none
+  b4-control-py              spans=101  on_message_send_stream|on_subscribe_to_task
+  b5a-central-forced         spans= 12  none
+  b5a-central-graceful       spans= 12  none
+  b5a-central-rollout        spans= 12  none
+  b5a-ingress-forced         spans= 10  none
+  b5a-ingress-graceful       spans= 12  none
+  b5a-ingress-rollout        spans= 12  none
+  b5b-go-central-graceful    spans= 20  none
+  b5b-go-ingress-forced      spans= 18  none
+  b5b-py-central-graceful    spans= 93  on_message_send_stream|on_subscribe_to_task
+  b5b-py-ingress-forced      spans= 99  on_message_send_stream|on_subscribe_to_task
+  work items whose spans name an operation: 3 of 12 — b4-control-py, b5b-py-central-graceful, b5b-py-ingress-forced
+  Python work items 3, of which naming an operation 3; Go work items 9, of which 0
+
+== the distinct span names each service emits ==
+  agentgateway-ingress (46 spans, 5 distinct names)
+        10  GET /*
+        10  GET worker.lab.svc.cluster.local:8080
+        13  POST /*
+         5  POST orchestrator.lab.svc.cluster.local:8080
+         8  POST worker.lab.svc.cluster.local:8080
+  agw-central (26 spans, 4 distinct names)
+         6  GET /*
+         6  GET orchestrator.lab.svc.cluster.local:8080
+         7  POST /*
+         7  POST mockllm.lab.svc.cluster.local:8080
+  loadgen (48 spans, 4 distinct names)
+        18  HTTP GET
+        18  HTTP POST
+         3  invoke_agent orchestrator
+         9  invoke_agent worker
+  mockllm (12 spans, 1 distinct names)
+        12  POST /v1/chat/completions
+  orchestrator (249 spans, 24 distinct names)
+         6  GET /.well-known/agent-card.json
+        12  GET /.well-known/agent-card.json http send
+         3  POST
+         6  POST /
+        12  POST / http receive
+        29  POST / http send
+        36  a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink
+         6  a2a.server.events.event_queue_v2.EventQueueSource._dispatch_loop
+      ... 16 further names
+  worker (42 spans, 4 distinct names)
+        12  GET /.well-known/agent-card.json
+         9  HTTP POST
+        12  POST /
+         9  chat mock
+
+== spans carrying a task id under ANY key, and which leg each is on ==
+  b4-control-go              mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: POST mockllm.lab.svc.cluster.local)
+  b4-control-go              worker        chat mock                    keys=lab.task_id  (parent: POST /)
+  b4-control-py              mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: POST mockllm.lab.svc.cluster.local)
+  b4-control-py              orchestrator  POST                         keys=http.request.header.x_a2a_task_id,lab.task_id  (parent: chat mock)
+  b5a-central-forced         mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: <not in this trace>)
+  b5a-central-forced         worker        chat mock                    keys=lab.task_id  (parent: POST /)
+  b5a-central-graceful       mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: <not in this trace>)
+  b5a-central-graceful       worker        chat mock                    keys=lab.task_id  (parent: POST /)
+  b5a-central-rollout        mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: <not in this trace>)
+  b5a-central-rollout        worker        chat mock                    keys=lab.task_id  (parent: POST /)
+  b5a-ingress-forced         mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: POST mockllm.lab.svc.cluster.local)
+  b5a-ingress-forced         worker        chat mock                    keys=lab.task_id  (parent: POST /)
+  b5a-ingress-graceful       worker        chat mock                    keys=lab.task_id  (parent: POST /)
+  b5a-ingress-graceful       mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: POST mockllm.lab.svc.cluster.local)
+  b5a-ingress-rollout        mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: POST mockllm.lab.svc.cluster.local)
+  b5a-ingress-rollout        worker        chat mock                    keys=lab.task_id  (parent: POST /)
+  b5b-go-central-graceful    mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: <not in this trace>)
+  b5b-go-central-graceful    worker        chat mock                    keys=lab.task_id  (parent: POST /)
+  b5b-go-ingress-forced      mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: POST mockllm.lab.svc.cluster.local)
+  b5b-go-ingress-forced      worker        chat mock                    keys=lab.task_id  (parent: POST /)
+  b5b-py-central-graceful    mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: <not in this trace>)
+  b5b-py-central-graceful    orchestrator  POST                         keys=http.request.header.x_a2a_task_id,lab.task_id  (parent: chat mock)
+  b5b-py-ingress-forced      mockllm       POST /v1/chat/completions    keys=lab.task_id  (parent: POST mockllm.lab.svc.cluster.local)
+  b5b-py-ingress-forced      orchestrator  POST                         keys=http.request.header.x_a2a_task_id,lab.task_id  (parent: chat mock)

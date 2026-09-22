@@ -76,3 +76,30 @@ and it arrived 19.4–22.7 s after the executor emitted completed.
   not this cluster run.
 - Sources and fetch stamps: `experiments/runs/2026-09-21-b3-streaming-client/sources.txt`. The tracker search is in
   `tracker-search.txt` there.
+
+## Refresh, 2026-09-22 (B-6) — nothing changed; the draft stands as written
+
+Re-read from the API by number at 2026-09-22T23:25:15Z–23:27Z:
+
+- **a2aproject/a2a-python#1205** is still **open**, 3 comments, `updated_at` `2026-09-13T22:35:31Z` — the
+  stale-bot notice this draft already accounts for. No new comment since.
+- **#1207** ("fix: Use correct errors when rejecting messages to terminal tasks", Fixes #1205) is still **open and
+  NOT merged** (`merged=false`, `merged_at=null`), `updated_at` `2026-08-30T21:34:15Z`, **1 commit**, head
+  `46a3d524`, `mergeable_state=behind`. Its five changed files are re-read in this task —
+  `default_request_handler.py`, `default_request_handler_v2.py` and three test files — and **its diff still
+  contains no `subscribe` line at all**, so the `SubscribeToTask` case remains unfixed by it, exactly as this draft
+  says. Read from the pull-request API by number, because a search page's "closed"/"open" says nothing about
+  whether a pull request was merged.
+- The tracker was searched again, **issues AND pull requests, any state**, seven queries with the page and the
+  API's `total_count` beside each (`experiments/runs/2026-09-23-b6-traces-and-table/tracker-search.txt`, block 2).
+  It surfaced one pair this draft did not name and which is **not** this bug: **#1175** (open) and its open,
+  unmerged **#1191** — `cancel()` and a producer failure write a terminal state to the store but not to active
+  subscriber streams. That is about a *live* subscriber missing a terminal event, not about the error code
+  returned to a *new* subscription on an already-terminal task. Named here so a human can see it is separate.
+- **The last point of the comment text now has a draft of its own.** "a2a-go v2.5.0's client skips every line that
+  does not begin `data:`, so it reads this answer as an empty stream with no error" is the subject of
+  `docs/upstream/a2a-go-client-reads-a-json-answer-to-a-streaming-method-as-an-empty-stream.md`, written in B-6 on
+  the author's decision of 2026-09-22 and filed against the a2a-go **client**, not against this project's framing:
+  the specification says how a streaming method's successful answer is framed and not how its error answer is.
+  If both are posted, the a2a-go issue may be worth linking from this comment; that is the poster's call.
+- Nothing in this refresh moves a number in the comment text.

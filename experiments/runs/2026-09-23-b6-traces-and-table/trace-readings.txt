@@ -1,0 +1,199 @@
+B-6 — what each collected trace shows, and what it does not
+============================================================
+
+Twelve traces were exported with `make export-trace` (LOOKBACK=86400), one directory each under traces/, each
+naming the repetition it is. trace-records.txt is the mechanical record of all twelve: span count, trace ids,
+roots, dangling parents, every span as a tree under its parent with kind, offset, duration, HTTP status,
+agentgateway route and OpenTelemetry status, and the GenAI attributes on the chat span. dangling.csv and genai/
+are follow-ups 14's own dangling.py and genai-spans.py run UNEDITED over that directory. trace-census.csv is the
+same reading taken over ALL 150 counted work items of B-4, B-5a and B-5b, so that what one trace shows is stated
+as a count.
+
+Three rows have no trace, and they are gone WITH their cluster, not evicted from a live one
+--------------------------------------------------------------------------------------------
+The three are B-3's CLEAN STREAM, B-3's SUBSCRIBETOTASK DURING A RUNNING TASK, and D3's SUBSCRIBETOTASK ON A
+TERMINAL TASK. The distinction matters to anyone re-running this lab, so it is stated rather than implied:
+nothing expired and no retention setting is involved. The backend those three ran against was DELETED by B-4's
+rebuild, and the Jaeger pod now standing started 2026-09-22T17:05:20Z (cluster-unchanged.txt), after all three.
+A trace backend that was torn down holds nothing.
+
+Every counted work item of every B row was probed rather than a sample -- 270 in all, one query each through the
+same binding `make export-trace` uses (backend-inventory.txt): B-3 0 OF 120, which is 0 of 40 on each of the
+three rows, against B-4 40 of 40, B-5a 30 of 30 and B-5b 80 of 80. NO ROW WAS RE-RUN TO MAKE A TRACE.
+
+The shape, and where the two SDKs differ in it
+-----------------------------------------------
+Every work item is FOUR traces, not one, at both receivers: the card GET and the POST of Job 1, then the card GET
+and the POST of Job 2. Each has its own root at the load client. They are tied together only by `lab.work_item`,
+an attribute this lab puts on its own spans and on the receivers' server spans -- not by a parent, not by a span
+link, and not by anything either SDK, either proxy or the conventions supply. The B-5a variants have two traces,
+having no Job 2.
+
+Go work items are 18-22 spans; Python ones are 93-101, because the Python image's zero-code instrumentation emits
+the a2a-sdk's own internals (EventQueueSource, JsonRpcDispatcher, DefaultRequestHandlerV2). Those carry OK
+statuses, not errors.
+
+1. The moment the stream ends
+------------------------------
+The client's own root span carries it, and nothing else does.
+
+  B-4 control, go and py       `otel=ERROR "SSE stream error: context canceled"`, 40 of 40, at 5000.2-5003.5 ms
+  every ingress removal        `otel=ERROR "SSE stream error: unexpected EOF"` -- B-5b 40 of 40, B-5a 15 of 15
+  every agw-central removal    `otel=UNSET`, NO error at all -- B-5b 40 of 40, B-5a 15 of 15
+
+The third line is the point of B-5b's companion row put in one cell: on the proxy that carries the model leg the
+stream never broke, it carried TASK_STATE_FAILED and ended cleanly, and the trace says so by having nothing to
+say. A reader of the trace alone would see a successful stream there.
+
+What the trace does NOT show at that moment: the two ledgers' `client-gone` and `consumer-gone` appear in no
+span, on either receiver, in any of the twelve. The proxy's SERVER span for the cut POST, where it exists at all,
+reads `http.status=200` -- the same reading as its access line, which B-5a and B-5b already counted.
+
+2. The removal itself
+----------------------
+Invisible. No span, attribute or event in any of the twelve names a pod being deleted, a SIGTERM, a drain, a
+drain timeout, or a successor coming up. The only trace-side sign that a proxy went is a span that is NOT there:
+
+  B-4 control (nothing removed)      0 dangling parents, 40 of 40, and every proxy span present
+  B-5a ingress FORCED                agentgateway-ingress contributes NO span at all; both of the worker's
+                                     SERVER spans are orphaned -- 2 dangling, 5 of 5
+  B-5a ingress graceful / rollout    the card-GET pair survives, the in-flight POST pair does not -- 1 dangling
+                                     (worker POST /), 5 of 5 each
+  B-5a / B-5b agw-central            both model-leg spans lost with the pod, the mock's SERVER span orphaned --
+                                     1 dangling, 55 of 55 across the two steps
+  B-5b go ingress-forced             2 dangling in 17 of 20 and 1 in 3 -- in those three the removed pod's batch
+                                     holding the card GET had already been exported when it died
+  B-5b py ingress-forced             1 dangling (orchestrator POST /), 20 of 20: on that path the card GET
+                                     crosses agw-central, which this row never touched
+
+In three of B-5b's go ingress-forced repetitions the count is 1 rather than 2, and the three are named:
+b5b-go-ingress-forced-r1-06, -r1-07 and -r1-08, which carry 20 spans where the other seventeen carry 18. In
+those three the removed pod's batch holding the card GET had already reached the collector when it died.
+
+THIS IS NOT A REGRESSION AGAINST THE STANDARD PROOF, AND THE TWO ARE DIFFERENT QUESTIONS. Every rebuild proof in
+this repository counts 0 dangling parents per work item, and every one of those clean checks is taken with NO
+PROXY REMOVED -- which is exactly what B-4's control reproduces here, 0 in 40 of 40. A dangling parent in the
+removal rows is the removed pod's UNEXPORTED BATCH, so the absence IS the removal, which is this section's own
+heading read from the other side. A span is exported when it ENDS; a span that ends at the pod's death dies with
+it, and a forced delete leaves nothing at all. The proof asks "did every hop report?", and the answer there is
+still yes. This asks "what did the pod that was killed manage to report?", and the answer is the finding.
+
+3. The moment the resubscription arrives
+-----------------------------------------
+Almost nothing -- and the sentence has to be exact, because a configuration for half of it EXISTS and this lab
+did not use it. Job 2 is its own root in its own trace, 120 of 120 -- no parent, no span link, no reference to
+Job 1. Every attribute on its four spans was read (b5b-go-ingress-forced, traces/): the proxy's SERVER span
+carries `route=lab/worker-ingress`, `http.method=POST`, `http.path=/`, `http.status=200`, `http.host`,
+`duration`, the peer address and its own trace and span ids; the receiver's server span carries `lab.work_item`
+and `lab.caller`. Job 2's proxy span is `agentgateway-ingress POST /*` in 120 of 120, on `lab/worker-ingress`
+for the Go rows and `lab/orchestrator-ingress` for the Python ones.
+
+STATED AS MEASURED, over all 423 SPANS of the twelve traces: AT THIS CONFIGURATION NO *ATTRIBUTE* NAMES THE A2A
+OPERATION AND NO *PROXY* SPAN DOES; THE OPERATION IS NAMED ONLY IN THE PYTHON RECEIVER'S OWN SPAN NAMES, AND
+NOWHERE AT ALL ON THE GO PATH; AND NO A2A HOP CARRIES THE TASK ID. The parts have different causes, they are
+named separately, none is a project gap, and the middle one is a third SDK asymmetry counted here.
+
+  (a0) NO ATTRIBUTE NAMES THE OPERATION, on any span of any hop. Across the 423 spans, 0 attribute keys match
+      `a2a.*` or `rpc.*`; the only protocol-shaped attributes are `gen_ai.agent.name|version|description` on
+      the `invoke_agent` span, one per trace. The only keys whose text contains `a2a` at all are
+      `http.request.header.x_a2a_message_id` and `http.request.header.x_a2a_task_id`, on 3 spans, each the
+      Python receiver's MODEL-LEG client span -- not an A2A hop.
+
+  (a) NO PROXY SPAN NAMES IT EITHER, AND THAT IS THIS LAB'S ROUTES, not a limit of agentgateway. The 72 proxy
+      spans carry seven distinct names between them, all `POST /*` or `POST <service>:8080`, with route, host,
+      path, method, status and duration and nothing of the body.
+      agentgateway v1.5.0 reads the JSON-RPC `method` into its logs and spans FOR A BACKEND MARKED A2A -- the
+      author's note of 2026-09-20 in docs/proposal-notes.md ("Experiment C on the agentgateway-only topology")
+      states the capability, and findings.md "Experiment C / both receivers / observation" names those `a2a.*`
+      span and log attributes as present in agentgateway's source and absent from its published attribute
+      reference (its follow-up (a)). The module was never switched on here: it keys on the Service
+      `appProtocol` marking, absent on 3 of 3 `lab` Services -- counted by that C entry and RE-READ on this
+      standing cluster at 2026-09-22T23:44:20Z for this step (a2a-marking.txt: `appProtocol` unset on worker,
+      orchestrator and mockllm, 0 of 3 carrying one) -- and `"a2a"` occurs 0 times in either proxy's
+      /config_dump, which that entry counted at these same versions and this step did not re-read. With the
+      JSON-RPC binding the operation is a field in the body and every operation shares one path, so with the
+      module off a proxy has nothing to read it from.
+
+  (a1) BUT ONE LAYER DOES NAME THE OPERATION, AND IT IS THE PYTHON RECEIVER'S OWN INSTRUMENTATION -- A THIRD
+      SDK ASYMMETRY, COUNTED HERE. The zero-code instrumentation in the orchestrator's image emits spans from
+      scope `a2a-python-sdk` named after the handler method it is running:
+        a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2.on_subscribe_to_task
+      on Job 2's trace, and ...on_message_send_stream on Job 1's, each descending from the ingress SERVER span
+      through `orchestrator POST /` and the JSON-RPC dispatcher. Present in 3 OF THE 3 PYTHON WORK ITEMS among
+      the twelve and in 0 OF THE 9 GO ONES: the Go receiver's 42 spans carry four distinct names --
+      `GET /.well-known/agent-card.json`, `POST /`, `HTTP POST`, `chat mock` -- and name no operation anywhere.
+      So the A2A operation is VISIBLE IN THE PYTHON RECEIVER'S SPAN NAMES AND NOWHERE ON THE GO PATH: a
+      difference in what each SDK's telemetry NAMES, beside the two differences in what each SDK's LEDGER
+      records. The distinction between a span NAME and a span ATTRIBUTE is one this lab had already drawn and
+      the first version of this file collapsed -- findings.md, "Experiment C / both receivers / observation",
+      records that the `a2a.` strings in the orchestrator's trace are span names the Python SDK emits in the
+      application, not proxy attributes. How the slip happened is visible two paragraphs above, where this file
+      says "Every attribute on its four spans was read (b5b-go-ingress-forced, traces/)": the Go Job 2 trace has
+      FOUR spans and the Python ones have sixteen to nineteen, so a reading taken on the Go trace was
+      generalised to all twelve. It was caught by the B-6 review, which parsed all twelve.
+
+  (b) THE TASK ID IS MISSING BECAUSE OF THE SDKs AND OF THIS LAB'S OWN INSTRUMENTATION. Neither a2a-go v2.5.0
+      nor a2a-python 1.1.4 writes an `a2a.*` or `rpc.*` attribute of its own: across all twelve traces the only
+      protocol-shaped attributes that exist are `gen_ai.agent.name|version|description`, on the `invoke_agent`
+      span, one per trace. `lab.task_id` is this lab's own attribute and is set only where a task id is in hand
+      at the model leg -- the mock's server span (12 of 12 traces), the Go `chat mock` span (9 of 9 Go traces)
+      and the Python httpx `POST` span (3 of 3 Python traces) -- and on NO A2A hop in any of the twelve.
+
+So the reattachment that B's whole question turns on is invisible in the trace, and it is the TASK ID that
+decides this rather than the operation: at the Python receiver a trace can say THAT a resubscription arrived,
+from that handler-method span name, and at the Go receiver not even that -- but on neither path can it say WHAT
+it reattached to, no A2A hop carrying a task id in any form. The results table's "what the one
+`SubscribeToTask` reattached to" column comes from the pre-dispatch ingress ledger, the execution ledger and the
+client's own lines, and COULD NOT have come from the traces at this configuration. That is §4.3's division of labour read back from a run, stated from both directions at once:
+ledgers are ground truth, traces explain, and here the explanation stops at the HTTP boundary.
+
+4. The task that outlives its stream
+-------------------------------------
+This is the one thing the trace shows better than any ledger, and it shows it as a shape: a CHILD span that
+outlives its PARENT. On every repetition where the stream was cut and the Task lived -- B-4's 40, B-5b's
+ingress-forced 40, B-5a's three ingress variants' 15, 95 in all -- the receiver's `POST /` SERVER span ends with
+the stream, 2 120-29 360 ms after the send depending on how the stream was ended, while its own descendant
+`chat mock` runs 45 002-45 023 ms. The chat span outlives its parent in 95 of 95, by 15 644-42 884 ms. The
+proxy's SERVER span and the client's both end at the same moment as the receiver's, and nothing below `chat
+mock` notices that everything above it has ended.
+
+5. The GenAI span answers the model-call question directly
+-----------------------------------------------------------
+  ingress removals and the control   chat span `otel=UNSET`, all five answer attributes present
+                                     (gen_ai.response.id / .model / .finish_reasons and the two token counts),
+                                     45.0 s -- 95 of 95
+  agw-central removals               chat span `otel=ERROR`, the five answer attributes absent -- 55 of 55
+
+and the SDK asymmetry B-5b found on the executor's state line is in the trace too, one span apart:
+
+and the 55 split 35 / 20 by receiver, not 20 / 20:
+
+  Go     chat span: `model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF`  35 of 55
+         (B-5b go-central-graceful 20 PLUS B-5a's three agw-central variants, 15, which are Go rows too)
+         its transport child (otelhttp): `EOF`                                                    35 of 55
+  Python chat span: `Connection error.`                                                           20 of 55
+         (B-5b py-central-graceful, the only Python rows whose model leg died)
+         its transport child (httpx):
+           `RemoteProtocolError: Server disconnected without sending a response.`                 20 of 55
+
+So the Python trace DOES name the wire condition -- one span below the one whose text the ledger quotes. THE
+ASYMMETRY B-5b COUNTED BETWEEN THE TWO RECEIVERS' STATE LINES IS THEREFORE AN ASYMMETRY OF WHAT EACH SDK PUTS IN
+ITS LEDGER, NOT OF WHAT EACH SDK KNOWS. The Python side had the method, the URL and the wire condition one span
+below the line it wrote -- `RemoteProtocolError: Server disconnected without sending a response.` on the httpx
+span, 20 of 20, under a state line reading `Connection error.`, 20 of 20 -- while the Go side put its own
+equivalent (`EOF` on the otelhttp span, 20 of 20) into the state line as well, 20 of 20. NOTHING IN THE B-5b
+ENTRY IS CORRECTED BY THIS: that entry recorded the two ledgers accurately, and what this step adds is where the
+missing text was all along. The mock's own side is on its server span in both:
+`otel=ERROR "injected: delay: client-gone"`.
+
+Two attributes of the Python chat span are absent and are NOT new: it comes from the zero-code instrumentation's
+scope `opentelemetry.util.genai.handler`, not from the lab's `internal/otel`, and carries no `server.address` /
+`server.port` and none of the four `lab.*` identity attributes. findings.md already records that, under
+"Gate 3 / both receivers / GenAI and agent spans". The Go chat span, the lab's own, carries all of them. What is
+new here is only that this row is the first to put that span on a FAILED model call at the Python receiver.
+
+6. Two things this step did not do
+-----------------------------------
+No trace was collected for B-3's three rows, for the reason above. No repetition was re-run, no stimulus was
+sent, and no figure in this file is an interval this step computed: each is a count, or a range taken from a
+row's own committed summary.csv.

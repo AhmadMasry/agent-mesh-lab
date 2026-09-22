@@ -1,0 +1,255 @@
+B-6 reading notes
+=================
+
+WHAT THIS STEP DID TO THE LAB
+  Nothing. No stimulus, no removal, no rollout, no arm, no reset, no row re-run, no proxy touched, no pin moved.
+  The only make target run is `make export-trace`, twelve times, which starts a port-forward to svc/jaeger,
+  queries the documented GET /api/v3/traces binding and stops the port-forward. Two scripts of this step's own,
+  backend-inventory.sh and trace-census.sh, each start and stop one port-forward of their own on a port they
+  refuse to take if anything already answers there. versions-readback.sh makes one read-only exec into the
+  orchestrator pod (importlib.metadata) and one `istioctl version`, as it does in every record that runs it.
+  cluster-unchanged.txt is the state, read after all of it.
+
+THE FILES, AND WHAT EACH IS
+  backend-inventory.sh/.txt  every counted work item of B-3, B-4, B-5a and B-5b probed for spans, 270 of them,
+                             so that "B-3 aged out" is a reading and not an inference from a sample.
+  traces/<row>/              `make export-trace LWI=<work item> OUT=... LOOKBACK=86400`: trace.json is the raw
+                             body of the backend's binding, spans.csv the committed jaeger-spans.jq over it.
+  traces/dangling.csv        follow-ups 14's dangling.py, UNEDITED, over traces/.
+  traces/genai/              follow-ups 14's genai-spans.py, UNEDITED, over traces/.
+  trace-records.py/.txt      this step's own reader: the tree under each parent, with kind, offset, duration,
+                             HTTP status, route, OpenTelemetry status and the GenAI attributes. Offsets and
+                             durations are integer nanosecond differences within one trace; no proxy log stamp
+                             is read here and none could be, this reading the backend and not a log.
+  trace-census.sh/.py/.csv   the same fields over ALL 150 counted work items of B-4, B-5a and B-5b, so that the
+                             trace statements in the entry are counts. It tells Job 1 from Job 2 by the load
+                             client's ROOT SPAN OPERATION -- `invoke_agent <agent>` is the send, a bare
+                             `HTTP POST` is the subscription, `HTTP GET` is a card read -- never by order and
+                             never by a stamp.
+  trace-readings.txt         what each trace shows and, as the brief asks, what it does NOT.
+  table.py                   every cell of the results table, derived from each row's own committed summary.csv.
+  table-inputs.csv           one row per row-and-receiver, every cell.
+  table-b5a-inputs.csv       the six B-5a variants.
+  table.md                   both tables as Markdown.
+  table-vs-entries.txt       each derived figure beside the sentence its entry states, with a verdict.
+  tracker-search.sh/.txt     the searches. items-read.sh/.txt: every candidate read by number from the API.
+  sources.txt                the a2a-go source read at v2.5.0 and at main, with stamps.
+  versions-readback.txt      the committed versions-readback.sh of 2026-09-20, unedited.
+  tools.txt, cluster-unchanged.txt, windows.csv, sleep-events.sh/.csv, phases.txt, own-keepawake-lines.txt
+
+THE THREE STANDING B RULES, AND HOW THIS STEP MET THEM
+  1. No figure is computed from an agentgateway access-line stamp. The table uses no such column: the only one
+     that ever did, rm_to_new_pod_first_served_ms_h2c, is not read by table.py, and the B-5a cells it does read
+     (old_pod_access_shapes, drain_timeout_line, the SIGTERM-to-last-log columns) are route/host/method/status
+     and the removed pod's own non-access lines, which the dated correction of 2026-09-22 measured as unaffected.
+     The trace figures come from the backend's nanosecond fields, not from any log.
+  2. Every upstream search included PULL REQUESTS, states its scope, and gives the API's total_count beside the
+     page it read; every item was then read by number for its merged-or-closed state, and every merged pull
+     request for the first release whose tree contains its merge commit.
+  3. Every note in this directory was written through `<<'EOF'` or a python heredoc, never an unquoted one.
+
+TWO THINGS THAT WENT WRONG IN THIS STEP'S OWN TOOLS, KEPT BECAUSE THEY ARE THE SAME LESSON AS B-5a's
+  * The FIRST run of tracker-search.sh recorded "0 results" for all seven a2a-python queries. They were not
+    empty: the search API allows 30 requests a minute, each query here costs two, and the quota had been spent
+    -- a rate-limited query returns an empty page that is indistinguishable from a genuine "nothing found".
+    The driver was rewritten to read `gh api rate_limit` before every call, wait for the window, and record any
+    call that still fails as FAILED rather than as 0. The committed file is the re-run, 0 failures, and the
+    a2a-python queries return, in query order, 20, 20, 18, 20, 20, 2 and 0 results. Had the first take been
+    committed, this step would have concluded "nothing new upstream" from an artefact, which is B-5a's mistake
+    in another dress.
+  * items-read.sh first reported "(none found)" for every merged pull request's release containment. Two causes,
+    both fixed and both commented in the script: `gh` inside a `while read` loop consumed the loop's own stdin,
+    and under `set -o pipefail` a `grep -q` that matches early kills `gh` with SIGPIPE, so the pipeline returned
+    141 and every release read as "does not contain". The committed run is after both fixes; the containments it
+    reports were each spot-checked by hand against `gh api compare`.
+
+WHAT THE TABLE EXPOSED IN THE EARLIER ENTRIES
+  Nothing contradicts its entry: table-vs-entries.txt agrees figure for figure on all six rows and both
+  receivers. Two things a reader could trip on, each already stated by the entry that owns it and now in one
+  place: (a) `rm_to_new_pod_first_served_ms_h2c` means "seconds until the successor serves" in B-5a, whose probe
+  was a short stream, and about 43 s in B-5b, whose Job 2 stays open until the Task ends -- the two must not be
+  read side by side, and the table uses neither; (b) B-5b's two rows use different removal METHODS on purpose,
+  so their cells are not comparable one to one, which is why the stimulus has a column of its own.
+  Two differences of print, not of number, are named in table-vs-entries.txt: D3's Python arrival range, which
+  the entry rounds to 19.4 s where the derived figure is 19 350.0 ms; and B-5b's "over the 38 without it", which
+  the entry gives across both receivers and the table gives over the eighteen Python repetitions it belongs to.
+
+WHAT IS NOT COVERED
+  No trace for B-3's three rows; their cluster is gone and no row was re-run to make one. No Prometheus reading:
+  this step's questions are answered by the backend and the committed run records, and the port-forward the brief
+  allows for Prometheus was not needed. No new count of any row. `agw-central` carrying an A2A stream, which no
+  path of this lab puts on it. And the `SendMessage` half of a2a-go#438, which no B row exercised.
+
+HOST SLEEP AND KEEP-AWAKE
+  windows.csv lists this task's windows; sleep-events.csv is B-4's sleep-events.sh, byte-identical
+  (sha256 e3ff664d65ab8e255f5f21a334499671e10f69b0e6a5ca76e662dee86c1baba4), over this task's own window, kind
+  and UTC only, no line's text kept. THIS STEP COMPUTES NO INTERVAL FROM ANY CLOCK: every figure it publishes is
+  a count, or a range a previous row's own counter computed from that row's own stamps, so a host power event
+  cannot reach one. own-keepawake-lines.txt counts the lines of this directory's own files that would start a
+  keep-awake or set a power value. This task started no keep-awake and changed no power setting, and does not
+  claim none was active: the agent harness holds its own.
+
+A THIRD THING THAT WENT WRONG IN THIS STEP'S OWN TOOLING, RECORDED RATHER THAN QUIETLY FIXED
+  The first version of own-keepawake-lines.txt was written by a `{ echo ...; } > file` block, and one of its
+  echo lines carried a backtick pair inside DOUBLE quotes. The shell ran it as a command substitution, so
+  `pmset -g log` executed and its whole output -- the host's week of power history, with every line's text --
+  landed in that file: 11 656 857 bytes. It is a READ; nothing on the host was changed, no keep-awake was
+  started and no power setting was touched. The file was deleted before anything was staged, was never
+  committed, and the directory was then scanned for any remaining power-log text: the only file that matches
+  those words is sleep-events.sh, which names the four kinds it keeps in its own comments and is B-4's script
+  byte-identical. own-keepawake-lines.txt is now written by count-own-keepawake.sh, a committed script with no
+  interpolation in any printf format.
+  This is the same mistake B-3 made with an unquoted heredoc, in another dress, and against the brief's own
+  third standing rule. The rule is not "use `<<'EOF'` for heredocs"; it is that nothing this lab writes may run
+  what it means to print. Every other note in this directory was written through a quoted heredoc or printf,
+  which is why this one is the only one that ran anything.
+
+ONE POST-PROCESSING STEP ON items-read.txt, NAMED SO THAT IT IS NOT MISTAKEN FOR THE SCRIPT'S OUTPUT
+  GitHub returns issue and pull-request bodies with CRLF line endings, and the quoted body excerpts in
+  items-read.txt carried them. The committed file is the 23:25Z run with those carriage returns stripped
+  afterwards (`tr -d '\r'`); items-read.sh now does that itself, at the line it is commented on, so a re-run
+  reproduces the committed file apart from its own read stamps. The run was not repeated, because the two
+  upstream drafts cite that run's stamps and a fresh read would have moved them for no gain. Nothing but the
+  carriage returns was touched: no state, no date, no count. The same normalisation is why table.py and
+  trace-census.py now pass `lineterminator="\n"` to their CSV writers -- this repository's committed CSVs are
+  LF, and `core.autocrlf=input` would otherwise have committed something other than what is on disk.
+
+THE PORT-FORWARDS, ALL OF THEM, AND WHEN EACH STOPPED
+  Three kinds, and the count is exact rather than approximate. (1) `make export-trace` starts and stops one per
+  call, twelve calls. (2) backend-inventory.sh and trace-census.sh each start one on a port of their own and
+  stop it in a trap; trace-census.sh ran twice, once at 23:0xZ and once after its CSV writer was set to LF.
+  (3) ONE further port-forward, on 16690, was started by hand at the beginning of this task to probe which work
+  items the backend still held before any tool was written, and it was left running through the task and
+  stopped at the end, after the commit: `pgrep -f 'port-forward svc/jaeger'` then returns nothing and nothing
+  listens on 16687, 16690, 16691 or 16692. It is named here because the commit message says every port-forward
+  this step started it stopped, and that is true of the third one only from the moment it was stopped.
+  A port-forward reads; none of them sent anything to the lab.
+
+THE CONTROLLER'S ROUND OF 2026-09-22, AND ONE FIGURE OF MINE IT CORRECTS
+  Eight asks over two messages, all of them about how a reading is STATED rather than about a number, and one
+  number of my own that was wrong.
+
+  THE WRONG NUMBER, MINE. My first report said backend-inventory.txt probed "290 work items". It probed 270:
+  B-3 120 (three rows of 40), B-4 40, B-5a 30, B-5b 80. 290 was a miscount of the file's LINES (284, being the
+  270 data rows plus its header block, its blank lines and its six totals) rather than a count of its rows. The
+  committed file always held 270 and no reading rests on the wrong figure -- the per-row totals it prints, and
+  every "0 of 40 / 40 of 40 / 30 of 30 / 80 of 80" in the entry, are its own and are right. The entry now says
+  270, and the controller's ask repeated my 290, so it is corrected here rather than carried.
+
+  THE SEVEN ASKS ABOUT STATEMENT, each applied to findings.md and to this directory together:
+  1. Trace reading on the resubscription must not read as a project gap where a configuration exists.
+     agentgateway CAN surface the JSON-RPC method for a backend marked A2A; this lab's routes mark none. The
+     The sentence written in THIS round read "at this configuration no span names the A2A operation, and no
+     A2A hop carries the task id"; its first half was FALSE and the review round below replaced it -- the
+     wording that stands is in the next block, I-1. What survives from this round is the shape asked for: the
+     causes named separately -- the routes for the operation, the SDKs and this lab's own instrumentation for
+     the task id -- and the capability the lab did not use named too, each half cited. a2a-marking.txt is the
+     live re-read of the marking behind it (0 of 3 lab Services).
+  2. Dangling parents must not read as a regression against the standard proof. The proof's clean check removes
+     no proxy and B-4's control reproduces its 0 here; a dangling parent in a removal row is the removed pod's
+     unexported batch, so the absence IS the removal. Both are now said in the same breath, with the shapes,
+     and with the three B-5b repetitions that carry 1 rather than 2 named by work item.
+  3. B-3's three rows are gone WITH their cluster, not evicted from a live one. Named, with the probe counts
+     and with "no row was re-run to make a trace".
+  4. The Python receiver's trace naming the wire condition one span below its own ledger line is a finding of
+     its own: the SDK asymmetry is of what each SDK PUTS IN ITS LEDGER, not of what each knows. Stated that
+     way, with both counts, and with the statement that B-5b's dated entry is not corrected by it -- that entry
+     recorded the ledgers accurately.
+  5. The four `[entry]` cells are named and their reason given, so a reader can tell derived from quoted.
+  6. The two differences between a derived cell and its entry's print are stated as differences of WORDING,
+     not of figure, and as corrections to nothing.
+  7. The empty cell that bounds the experiment has its own paragraph with its cause: no row anywhere has
+     `agw-central` carrying an A2A stream, because the author's topology note of 2026-09-19 moved every agentic
+     L7 hop to the ingress and made `agw-central` waypoint-and-egress, so B's `agw-central` rows are
+     necessarily about the model leg. A limit of what Experiment B can answer at this topology, not an
+     oversight.
+  8. The trace reading is tied to the table rather than left beside it: the table's "what the one
+     `SubscribeToTask` reattached to" column comes from the ledgers and the client lines and COULD NOT have
+     come from the traces at this configuration.
+  No count, range or ledger reading moved in this round; the changes are to what the record says about them,
+  plus the one corrected probe total.
+
+THE REVIEW ROUND, AND THE ONE CLAIM OF THIS STEP THAT ITS OWN COMMITTED FILES FALSIFIED
+  The B-6 review (.superpowers/sdd/experiment-b/review-b6.md) returned ACCEPT WITH TWO CORRECTIONS on
+  28a5ce42. Both were applied at the current head in one amend, together with four Minors. Everything below
+  was re-derived here before it was accepted; nothing was taken on the review's word.
+
+  I-1, AND IT WAS THE SENTENCE I HAD BEEN ASKED TO MAKE EXACT. The first version said "No span anywhere says
+  the operation is SubscribeToTask". The twelve trace.json files this step itself committed say otherwise:
+  parsing all 423 spans, THREE are named
+    a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2.on_subscribe_to_task
+  -- one in each of the three PYTHON work items, from scope `a2a-python-sdk`, inside Job 2's own trace,
+  descending from the ingress SERVER span through `orchestrator POST /` and the JSON-RPC dispatcher: exactly
+  the trace the paragraph is about. The Python receiver names Job 1's operation too, `on_message_send_stream`,
+  in the same 3 of 3. The corrected statement is narrower and says more: no ATTRIBUTE names the operation (0
+  keys matching a2a.* or rpc.* in 423 spans), no PROXY span names it (72 proxy spans, seven names, all
+  `POST /*` or `POST <service>:8080`), the PYTHON receiver's own span names DO, 3 of 3, and the GO path names
+  it nowhere, 0 of 9. That last line is a THIRD SDK asymmetry this step could have counted and did not, and it
+  is now counted. span-names.py / span-names.txt were added in this round as its derivation, so the corrected
+  claim is re-derivable from the committed traces rather than asserted.
+  HOW THE SLIP HAPPENED, and it is visible in this directory's own words: trace-readings.txt says "Every
+  attribute on its four spans was read (b5b-go-ingress-forced, traces/)". The Go Job 2 trace has FOUR spans;
+  the Python Job 2 traces have sixteen to nineteen. A reading taken on one Go trace was generalised to all
+  twelve, and the generalisation crossed a distinction this lab had already drawn -- findings.md, "Experiment
+  C / both receivers / observation", records that the `a2a.` strings in the orchestrator's trace are span
+  NAMES the Python SDK emits, not proxy attributes. Reading twelve traces and then writing a sentence from
+  one of them is the whole of the error.
+  THE TASK-ID HALF HOLDS and was re-checked rather than assumed: 24 carriers across the twelve, all model leg
+  (the mock's server span 12, the Go `chat mock` span 9, the Python httpx `POST` span 3), and the task id
+  appears under no other key on an A2A hop -- `http.request.header.x_a2a_task_id` exists on exactly 3 spans
+  and all three are the Python receiver's MODEL-LEG client span, whose parent is `chat mock`. So the table's
+  "what the one SubscribeToTask reattached to" column still could not have come from the traces; what changes
+  is the reason, which is the task id and not the operation.
+
+  I-2, AN INVERTED COUNT. The entry said "under a graceful ingress removal no line appeared at all in 5 of 5,
+  and under a rollout in 2 of 5". B-5a's own summary.csv gives ingress-rollout old_pod_post_access_lines
+  {0: 3, 1: 2} and inflight_request_logged_by_old_pod {no: 3, yes: 2}: the cut request's line is ABSENT in 3
+  of 5 and PRESENT in 2. The 2 of 5 is a PRESENCE count, which is how B-5a's entry and this step's own
+  table-vs-entries.txt both state it; the sentence carried "no line appeared at all" over it without
+  inverting the number. The bullet now states all three ingress variants as presence -- 5 of 5, 0 of 5, 2 of 5
+  -- and gives the absences beside them. B-5a is right and is not corrected.
+
+  THE FOUR MINORS: the file list above said the inventory probed 290 where it probed 270 (the entry was
+  already right, and the correction paragraph above it already said 270 -- the stale figure was two lines
+  away from its own correction); the new draft cited sse.go l.135 for the final flush() where the call is at
+  l.136 and l.135 is a closing brace, now l.103-110 for the closure and l.136 for the call, with sources.txt
+  brought into agreement; trace reading 6's sub-counts 20 and 20 did not reach 55, the other 15 being B-5a's
+  three agw-central variants, which are Go rows, so the split is EOF 35 and `Connection error.` 20; and the
+  agw-central A2A-stream limit now traces its cause to the mechanism B-4 measured -- the ingress forwards
+  straight to the receiver's pod, established three ways there -- rather than asserting it from the 2026-09-19
+  note alone.
+
+  TWO FIGURES IN THE INSTRUCTIONS THE REVIEW CORRECTED, recorded so the trail is complete: the brief's
+  child-outliving-parent count of "100 of 100" is 95 of 95, which is what this step's entry already said; and
+  the "290 work items" the controller's ask repeated came from this directory's own stale line, now 270.
+  NO COUNT, RANGE OR LEDGER READING OF ANY B ROW MOVED IN THIS ROUND. What moved is two statements about what
+  the traces carry, four citations, and one figure of this step's own bookkeeping.
+
+THE SECOND REVIEW PASS: ONE COUNT ATTRIBUTED TO THE WRONG HALF
+  Important B, and it sat in the paragraph whose whole job is to bound what Experiment B can answer. The
+  agw-central limit said "B-4 counted 80 of 80 arrivals from the ingress pod and 0 from `agw-central` AT THE
+  GO RECEIVER". Re-derived here from B-4's own control/summary.csv before accepting it:
+
+    go   20 work items  SendStreamingMessage arrivals 20 + SubscribeToTask arrivals 20 = 40
+         senders "SendStreamingMessage<-ingress|SubscribeToTask<-ingress" in 20 of 20
+         arrivals_from_agw_central 0 in 20 of 20; a2a_at_agw_central "none" in 20 of 20
+    py   20 work items                                                            = 40
+         senders the same in 20 of 20; arrivals_from_agw_central 0 in 20 of 20
+         a2a_at_agw_central holds that half's TWO CARD GETs per work item on lab/orchestrator
+    both receivers                                                                 = 80 over 40 work items
+
+  So 40 of 40 is one receiver's figure and 80 of 80 is both receivers', and the sentence put the second under
+  the first. The conclusion it supports is untouched -- no A2A stream crosses agw-central for either receiver,
+  and the Python half's card GET is the only A2A-protocol request that does. Both places in this step now name
+  their population: the mechanism sentence and the conclusion in findings.md, and the same sentence in
+  table-vs-entries.txt. The rest of the entry was audited for the same shape rather than only those two -- every
+  other "40 of 40" and "80 of 80" in it is a count of REPETITIONS (work items), not of arrivals, and is right.
+
+  ONE PLACE I DID NOT TOUCH, AND WHY. The controller's list included "the B-5a one-receiver justification",
+  which reads "the ingress carries the A2A stream (B-4: 80 of 80 arrivals from the ingress pod, 0 from
+  `agw-central`)". That sentence is at findings.md line 2027, inside the B-5a DATED ENTRY -- not this step's
+  text. Two reasons it stays: a dated entry is never edited, and it is not wrong. B-4 did count 80 of 80
+  arrivals from the ingress pod and 0 from agw-central across both receivers, so B-5a's parenthetical is true
+  as it stands; it is only ambiguous because the sentence around it is about choosing the Go receiver. No
+  correction note is owed for a figure that is correct, so this step names both populations in its own entry
+  instead and says there that B-5a's figure is the both-receivers total and correct as B-5a states it.

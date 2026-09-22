@@ -1,0 +1,672 @@
+== b4-control-go ==
+work item(s) carried on a span: b4-ct-go-r171600-20
+spans 22 | trace ids 4 | roots 4 | dangling parents 0
+spans by service: agentgateway-ingress=8|agw-central=2|loadgen=5|mockllm=1|worker=6
+  [trace 1/4 c6f417f796180f33] 4 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.230 ms  http=200
+      +  107.636 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       0.441 ms  http=200 route=lab/worker-ingress
+        +  107.694 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       0.360 ms  http=200
+          +  107.858 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.055 ms  http=200
+  [trace 2/4 4df1c4bc3865153f] 10 span(s)
+    +  108.323 ms  loadgen                invoke_agent worker                        CLIENT   dur=    5000.685 ms  otel=ERROR 'SSE stream error: context canceled' error.type=*errors.errorString
+      +  108.372 ms  loadgen                HTTP POST                                  CLIENT   dur=    5000.626 ms  http=200 otel=ERROR 'context canceled' error.type=*errors.errorString
+        +  108.472 ms  agentgateway-ingress   POST /*                                    SERVER   dur=    5000.668 ms  http=200 route=lab/worker-ingress
+          +  108.500 ms  agentgateway-ingress   POST worker.lab.svc.cluster.local:8080     CLIENT   dur=       0.601 ms  http=200
+            +  108.585 ms  worker                 POST /                                     SERVER   dur=    5000.927 ms  http=200
+              +  108.728 ms  worker                 chat mock                                  CLIENT   dur=   45003.798 ms  
+                +  108.737 ms  worker                 HTTP POST                                  CLIENT   dur=   45003.756 ms  http=200
+                  +  108.856 ms  agw-central            POST /*                                    SERVER   dur=   45002.596 ms  http=200 route=agentgateway-waypoint/model-via-agw
+                    +  108.891 ms  agw-central            POST mockllm.lab.svc.cluster.local:8080    CLIENT   dur=   45002.514 ms  http=200
+                      +  110.388 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   45001.006 ms  http=200
+  [trace 3/4 993f5e5884a42f90] 4 span(s)
+    + 5381.717 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.763 ms  http=200
+      + 5489.696 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       0.609 ms  http=200 route=lab/worker-ingress
+        + 5489.761 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       0.518 ms  http=200
+          + 5490.110 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.077 ms  http=200
+  [trace 4/4 7daa6c8264625091] 4 span(s)
+    + 5490.600 ms  loadgen                HTTP POST                                  CLIENT   dur=   39623.734 ms  http=200
+      + 5490.718 ms  agentgateway-ingress   POST /*                                    SERVER   dur=   39623.281 ms  http=200 route=lab/worker-ingress
+        + 5490.759 ms  agentgateway-ingress   POST worker.lab.svc.cluster.local:8080     CLIENT   dur=       0.393 ms  http=200
+          + 5490.869 ms  worker                 POST /                                     SERVER   dur=   39622.545 ms  http=200
+  GenAI chat span: service=worker op=chat mock kind=CLIENT otel=UNSET
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    gen_ai.response.finish_reasons = stop
+    gen_ai.response.id = chatcmpl-1b32f7d2ed924528
+    gen_ai.response.model = mock
+    gen_ai.usage.input_tokens = 12
+    gen_ai.usage.output_tokens = 6
+    lab.caller = worker
+    lab.message_id = 01a0ca46-4058-77b8-92b1-c4ff68a70af6
+    lab.task_id = 01a0ca46-4058-7d2e-961e-690ab4f1b916
+    lab.work_item = b4-ct-go-r171600-20
+    server.address = model.lab.internal
+    server.port = 8080
+
+== b4-control-py ==
+work item(s) carried on a span: b4-ct-py-r171600-20
+spans 101 | trace ids 4 | roots 4 | dangling parents 0
+spans by service: agentgateway-ingress=4|agw-central=6|loadgen=5|mockllm=1|orchestrator=85
+  [trace 1/4 62e19bec6f93bce1] 6 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     107.746 ms  http=200
+      +  106.619 ms  agw-central            GET /*                                     SERVER   dur=       0.926 ms  http=200 route=lab/orchestrator
+        +  106.678 ms  agw-central            GET orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       0.797 ms  http=200
+          +  107.159 ms  orchestrator           GET /.well-known/agent-card.json           SERVER   dur=       0.309 ms  http=200
+            +  107.312 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.012 ms  http=200
+            +  107.418 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.005 ms  
+  [trace 2/4 74946c3cb8efea5e] 70 span(s)
+    +  107.859 ms  loadgen                invoke_agent orchestrator                  CLIENT   dur=    5000.880 ms  otel=ERROR 'SSE stream error: context canceled' error.type=*errors.errorString
+      +  107.917 ms  loadgen                HTTP POST                                  CLIENT   dur=    5000.804 ms  http=200 otel=ERROR 'context canceled' error.type=*errors.errorString
+        +  108.988 ms  agentgateway-ingress   POST /*                                    SERVER   dur=    4999.985 ms  http=200 route=lab/orchestrator-ingress
+          +  109.025 ms  agentgateway-ingress   POST orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       2.576 ms  http=200
+            +  109.391 ms  orchestrator           POST /                                     SERVER   dur=    5000.636 ms  http=200
+              +  109.482 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher.handle_requests SERVER   dur=       1.811 ms  otel=OK
+                +  109.496 ms  orchestrator           POST / http receive                        INTERNAL dur=       0.005 ms  
+                +  109.630 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._process_streaming_request SERVER   dur=       1.616 ms  otel=OK
+                  +  109.682 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2.on_message_send_stream SERVER   dur=       0.005 ms  otel=OK
+                  +  109.768 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2._setup_active_task SERVER   dur=       0.066 ms  otel=OK
+                    +  109.894 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._dispatch_loop SERVER   dur=   45007.510 ms  otel=OK
+                      +  110.868 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.012 ms  otel=OK
+                      +  111.037 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.004 ms  otel=OK
+                      +  111.186 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.004 ms  otel=OK
+                      +45116.282 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.010 ms  otel=OK
+                      +45116.491 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.004 ms  otel=OK
+                      +45117.114 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.006 ms  otel=OK
+                    +  109.911 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._dispatch_loop SERVER   dur=   45008.271 ms  otel=OK
+                      +  111.013 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.006 ms  otel=OK
+                      +  111.166 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.005 ms  otel=OK
+                      +  111.698 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.392 ms  otel=OK
+                      +45116.467 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.007 ms  otel=OK
+                      +45117.085 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.008 ms  otel=OK
+                      +45117.424 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.006 ms  otel=OK
+                    +  109.931 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.006 ms  otel=OK
+                    +  110.000 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.004 ms  otel=OK
+                    +  110.051 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.004 ms  otel=OK
+                    +  110.097 ms  orchestrator           chat mock                                  CLIENT   dur=   45005.851 ms  
+                      +  110.580 ms  orchestrator           POST                                       CLIENT   dur=   45004.917 ms  http=200
+                        +  112.862 ms  agw-central            POST /*                                    SERVER   dur=   45002.057 ms  http=200 route=agentgateway-waypoint/model-via-agw
+                          +  112.894 ms  agw-central            POST mockllm.lab.svc.cluster.local:8080    CLIENT   dur=   45001.999 ms  http=200
+                            +  114.276 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   45001.080 ms  http=200
+                    +  110.734 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.164 ms  otel=OK
+                    +  110.922 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.006 ms  otel=OK
+                    +  110.947 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.005 ms  otel=OK
+                    +  110.966 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.092 ms  otel=OK
+                    +  111.090 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.004 ms  otel=OK
+                    +  111.109 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.003 ms  otel=OK
+                    +  111.125 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.230 ms  otel=OK
+                    +  111.389 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.005 ms  otel=OK
+                    +  111.409 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.003 ms  otel=OK
+                    +  111.427 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=   45004.875 ms  otel=OK
+                    +45116.063 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.021 ms  otel=OK
+                    +45116.196 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.006 ms  otel=OK
+                    +45116.226 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.005 ms  otel=OK
+                    +45116.337 ms  orchestrator           a2a.server.tasks.task_manager.append_artifact_to_task INTERNAL dur=       0.010 ms  otel=OK
+                    +45116.380 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.006 ms  otel=OK
+                    +45116.402 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.004 ms  otel=OK
+                    +45116.421 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.401 ms  otel=OK
+                    +45116.906 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.009 ms  otel=OK
+                    +45116.942 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.005 ms  otel=OK
+                    +45116.967 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.339 ms  otel=OK
+                    +45117.016 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.close SERVER   dur=       1.109 ms  otel=OK
+                      +45117.034 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._join_incoming_queue SERVER   dur=       0.413 ms  otel=OK
+                      +45117.480 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.005 ms  otel=OK
+                    +45117.333 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.006 ms  otel=OK
+                    +45117.359 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.004 ms  otel=OK
+                    +45117.379 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.683 ms  otel=ERROR 'QueueShutDown: '
+                    +45118.100 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.close SERVER   dur=       0.011 ms  otel=OK
+                    +45118.146 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.close SERVER   dur=    9388.132 ms  
+                      +45118.165 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._join_incoming_queue SERVER   dur=       0.028 ms  otel=OK
+                      +45118.218 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.004 ms  otel=OK
+                  +  109.857 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.tap SERVER   dur=       0.007 ms  otel=OK
+                  +  111.213 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2._validate_task_id_match SERVER   dur=       0.003 ms  otel=OK
+                +  111.265 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._create_response SERVER   dur=       0.023 ms  otel=OK
+              +  111.449 ms  orchestrator           POST / http send                           INTERNAL dur=       0.008 ms  http=200
+              +  111.607 ms  orchestrator           POST / http send                           INTERNAL dur=       0.004 ms  
+              +  111.664 ms  orchestrator           POST / http receive                        INTERNAL dur=    4997.892 ms  
+              +  112.292 ms  orchestrator           POST / http send                           INTERNAL dur=       0.008 ms  
+              + 5109.817 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.014 ms  otel=OK
+  [trace 3/4 a38f05949c00d34e] 6 span(s)
+    + 5391.140 ms  loadgen                HTTP GET                                   CLIENT   dur=     107.704 ms  http=200
+      + 5497.839 ms  agw-central            GET /*                                     SERVER   dur=       0.872 ms  http=200 route=lab/orchestrator
+        + 5497.896 ms  agw-central            GET orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       0.751 ms  http=200
+          + 5498.345 ms  orchestrator           GET /.well-known/agent-card.json           SERVER   dur=       0.309 ms  http=200
+            + 5498.485 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.012 ms  http=200
+            + 5498.596 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.010 ms  
+  [trace 4/4 0dcbe6164fb27608] 19 span(s)
+    + 5498.977 ms  loadgen                HTTP POST                                  CLIENT   dur=   39620.292 ms  http=200
+      + 5500.060 ms  agentgateway-ingress   POST /*                                    SERVER   dur=   39618.506 ms  http=200 route=lab/orchestrator-ingress
+        + 5500.097 ms  agentgateway-ingress   POST orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       1.163 ms  http=200
+          + 5500.618 ms  orchestrator           POST /                                     SERVER   dur=   39617.782 ms  http=200
+            + 5500.711 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher.handle_requests SERVER   dur=       0.318 ms  otel=OK
+              + 5500.724 ms  orchestrator           POST / http receive                        INTERNAL dur=       0.004 ms  
+              + 5500.828 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._process_streaming_request SERVER   dur=       0.145 ms  otel=OK
+                + 5500.874 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2.on_subscribe_to_task SERVER   dur=       0.007 ms  otel=OK
+                + 5500.933 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.tap SERVER   dur=       0.012 ms  otel=OK
+              + 5500.992 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._create_response SERVER   dur=       0.032 ms  otel=OK
+            + 5501.106 ms  orchestrator           POST / http send                           INTERNAL dur=       0.008 ms  http=200
+            + 5501.258 ms  orchestrator           POST / http send                           INTERNAL dur=       0.004 ms  
+            + 5501.322 ms  orchestrator           POST / http receive                        INTERNAL dur=   39617.134 ms  
+            +20502.930 ms  orchestrator           POST / http send                           INTERNAL dur=       0.046 ms  
+            +35504.150 ms  orchestrator           POST / http send                           INTERNAL dur=       0.036 ms  
+            +45116.669 ms  orchestrator           POST / http send                           INTERNAL dur=       0.009 ms  
+            +45117.243 ms  orchestrator           POST / http send                           INTERNAL dur=       0.006 ms  
+            +45118.246 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.003 ms  otel=OK
+            +45118.329 ms  orchestrator           POST / http send                           INTERNAL dur=       0.005 ms  
+  GenAI chat span: service=orchestrator op=chat mock kind=CLIENT otel=UNSET
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    gen_ai.response.finish_reasons = stop
+    gen_ai.response.id = chatcmpl-574f1d77ec59c824
+    gen_ai.response.model = mock
+    gen_ai.usage.input_tokens = 12
+    gen_ai.usage.output_tokens = 6
+
+== b5a-central-forced ==
+work item(s) carried on a span: b5a-central-forced-r1-01
+spans 12 | trace ids 2 | roots 2 | dangling parents 1
+spans by service: agentgateway-ingress=4|loadgen=3|mockllm=1|worker=4
+DANGLING PARENT: mockllm POST /v1/chat/completions (SERVER) has parent 82d1b0eec129d4fc, which is no span in this trace
+  [trace 1/2 8b65a5afc19ec2b4] 4 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.081 ms  http=200
+      +  107.478 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       0.464 ms  http=200 route=lab/worker-ingress
+        +  107.573 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       0.350 ms  http=200
+          +  107.746 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.061 ms  http=200
+  [trace 2/2 2646ac137da9dc70] 8 span(s)
+    +  108.179 ms  loadgen                invoke_agent worker                        CLIENT   dur=    4206.455 ms  
+      +  108.231 ms  loadgen                HTTP POST                                  CLIENT   dur=    4206.397 ms  http=200
+        +  108.324 ms  agentgateway-ingress   POST /*                                    SERVER   dur=    4205.928 ms  http=200 route=lab/worker-ingress
+          +  108.351 ms  agentgateway-ingress   POST worker.lab.svc.cluster.local:8080     CLIENT   dur=       0.639 ms  http=200
+            +  108.445 ms  worker                 POST /                                     SERVER   dur=    4205.515 ms  http=200
+              +  108.593 ms  worker                 chat mock                                  CLIENT   dur=    4204.888 ms  otel=ERROR 'model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF' error.type=*errors.errorString
+                +  108.606 ms  worker                 HTTP POST                                  CLIENT   dur=    4204.853 ms  otel=ERROR 'EOF' error.type=*errors.errorString
+    +  110.521 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=    4202.779 ms  http=200 otel=ERROR 'injected: delay: client-gone'  <- DANGLING PARENT 82d1b0eec129d4fc
+  GenAI chat span: service=worker op=chat mock kind=CLIENT otel=ERROR 'model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF'
+    error.type = *errors.errorString
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    lab.caller = worker
+    lab.message_id = 01a0caab-3003-7116-92ec-e3b42292c20e
+    lab.task_id = 01a0caab-3003-76b5-9962-1c2f5ef6775b
+    lab.work_item = b5a-central-forced-r1-01
+    server.address = model.lab.internal
+    server.port = 8080
+
+== b5a-central-graceful ==
+work item(s) carried on a span: b5a-central-graceful-r1-01
+spans 12 | trace ids 2 | roots 2 | dangling parents 1
+spans by service: agentgateway-ingress=4|loadgen=3|mockllm=1|worker=4
+DANGLING PARENT: mockllm POST /v1/chat/completions (SERVER) has parent f106402ea39887e2, which is no span in this trace
+  [trace 1/2 666d8df5a40f39f6] 4 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     107.982 ms  http=200
+      +  107.130 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       0.690 ms  http=200 route=lab/worker-ingress
+        +  107.191 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       0.607 ms  http=200
+          +  107.593 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.059 ms  http=200
+  [trace 2/2 58836b0c4e064b10] 8 span(s)
+    +  108.090 ms  loadgen                invoke_agent worker                        CLIENT   dur=   12155.026 ms  
+      +  108.149 ms  loadgen                HTTP POST                                  CLIENT   dur=   12154.827 ms  http=200
+        +  108.259 ms  agentgateway-ingress   POST /*                                    SERVER   dur=   12153.690 ms  http=200 route=lab/worker-ingress
+          +  108.288 ms  agentgateway-ingress   POST worker.lab.svc.cluster.local:8080     CLIENT   dur=       0.835 ms  http=200
+            +  108.399 ms  worker                 POST /                                     SERVER   dur=   12152.819 ms  http=200
+              +  108.559 ms  worker                 chat mock                                  CLIENT   dur=   12151.526 ms  otel=ERROR 'model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF' error.type=*errors.errorString
+                +  108.572 ms  worker                 HTTP POST                                  CLIENT   dur=   12151.453 ms  otel=ERROR 'EOF' error.type=*errors.errorString
+    +  110.533 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   12150.664 ms  http=200 otel=ERROR 'injected: delay: client-gone'  <- DANGLING PARENT f106402ea39887e2
+  GenAI chat span: service=worker op=chat mock kind=CLIENT otel=ERROR 'model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF'
+    error.type = *errors.errorString
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    lab.caller = worker
+    lab.message_id = 01a0caa8-f53a-7055-bd47-1527a0881b2d
+    lab.task_id = 01a0caa8-f53a-76d8-b4d1-88a8869b0d09
+    lab.work_item = b5a-central-graceful-r1-01
+    server.address = model.lab.internal
+    server.port = 8080
+
+== b5a-central-rollout ==
+work item(s) carried on a span: b5a-central-rollout-r1-01
+spans 12 | trace ids 2 | roots 2 | dangling parents 1
+spans by service: agentgateway-ingress=4|loadgen=3|mockllm=1|worker=4
+DANGLING PARENT: mockllm POST /v1/chat/completions (SERVER) has parent 30d3a8be6fa4df6c, which is no span in this trace
+  [trace 1/2 a347e13911d25ef4] 4 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.216 ms  http=200
+      +  107.473 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       0.577 ms  http=200 route=lab/worker-ingress
+        +  107.532 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       0.500 ms  http=200
+          +  107.697 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.169 ms  http=200
+  [trace 2/2 689b536330f2ecd6] 8 span(s)
+    +  108.329 ms  loadgen                invoke_agent worker                        CLIENT   dur=   14018.430 ms  
+      +  108.390 ms  loadgen                HTTP POST                                  CLIENT   dur=   14018.297 ms  http=200
+        +  108.528 ms  agentgateway-ingress   POST /*                                    SERVER   dur=   14017.728 ms  http=200 route=lab/worker-ingress
+          +  108.559 ms  agentgateway-ingress   POST worker.lab.svc.cluster.local:8080     CLIENT   dur=       0.643 ms  http=200
+            +  108.661 ms  worker                 POST /                                     SERVER   dur=   14016.198 ms  http=200
+              +  108.814 ms  worker                 chat mock                                  CLIENT   dur=   14014.965 ms  otel=ERROR 'model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF' error.type=*errors.errorString
+                +  108.829 ms  worker                 HTTP POST                                  CLIENT   dur=   14014.922 ms  otel=ERROR 'EOF' error.type=*errors.errorString
+    +  110.390 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   14014.584 ms  http=200 otel=ERROR 'injected: delay: client-gone'  <- DANGLING PARENT 30d3a8be6fa4df6c
+  GenAI chat span: service=worker op=chat mock kind=CLIENT otel=ERROR 'model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF'
+    error.type = *errors.errorString
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    lab.caller = worker
+    lab.message_id = 01a0caac-dccf-7caa-a787-12cf793f2467
+    lab.task_id = 01a0caac-dcd0-7402-a2fc-8fe59ce88ca6
+    lab.work_item = b5a-central-rollout-r1-01
+    server.address = model.lab.internal
+    server.port = 8080
+
+== b5a-ingress-forced ==
+work item(s) carried on a span: b5a-ingress-forced-r1-01
+spans 10 | trace ids 2 | roots 2 | dangling parents 2
+spans by service: agw-central=2|loadgen=3|mockllm=1|worker=4
+DANGLING PARENT: worker POST / (SERVER) has parent 521c28a3be5d70f7, which is no span in this trace
+DANGLING PARENT: worker GET /.well-known/agent-card.json (SERVER) has parent eebf004ad264a4a1, which is no span in this trace
+  [trace 1/2 94937e694629303f] 2 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.311 ms  http=200
+    +  107.915 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.062 ms  http=200  <- DANGLING PARENT eebf004ad264a4a1
+  [trace 2/2 f2b63a7bb166fd0e] 8 span(s)
+    +  108.410 ms  loadgen                invoke_agent worker                        CLIENT   dur=    2129.697 ms  otel=ERROR 'SSE stream error: unexpected EOF' error.type=*errors.errorString
+      +  108.461 ms  loadgen                HTTP POST                                  CLIENT   dur=    2129.557 ms  http=200 otel=ERROR 'unexpected EOF' error.type=*errors.errorString
+    +  108.776 ms  worker                 POST /                                     SERVER   dur=    2129.752 ms  http=200  <- DANGLING PARENT 521c28a3be5d70f7
+      +  108.950 ms  worker                 chat mock                                  CLIENT   dur=   45003.088 ms  
+        +  108.961 ms  worker                 HTTP POST                                  CLIENT   dur=   45003.038 ms  http=200
+          +  109.089 ms  agw-central            POST /*                                    SERVER   dur=   45002.361 ms  http=200 route=agentgateway-waypoint/model-via-agw
+            +  109.120 ms  agw-central            POST mockllm.lab.svc.cluster.local:8080    CLIENT   dur=   45002.292 ms  http=200
+              +  110.594 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   45000.806 ms  http=200
+  GenAI chat span: service=worker op=chat mock kind=CLIENT otel=UNSET
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    gen_ai.response.finish_reasons = stop
+    gen_ai.response.id = chatcmpl-044aefc6601b6449
+    gen_ai.response.model = mock
+    gen_ai.usage.input_tokens = 12
+    gen_ai.usage.output_tokens = 6
+    lab.caller = worker
+    lab.message_id = 01a0ca9f-e4f3-7c73-abcf-2583692065bd
+    lab.task_id = 01a0ca9f-e4f4-7477-bf16-6baa1608fd5b
+    lab.work_item = b5a-ingress-forced-r1-01
+    server.address = model.lab.internal
+    server.port = 8080
+
+== b5a-ingress-graceful ==
+work item(s) carried on a span: b5a-ingress-graceful-r1-01
+spans 12 | trace ids 2 | roots 2 | dangling parents 1
+spans by service: agentgateway-ingress=2|agw-central=2|loadgen=3|mockllm=1|worker=4
+DANGLING PARENT: worker POST / (SERVER) has parent c5394b2b61d81735, which is no span in this trace
+  [trace 1/2 d496141a343fc60e] 4 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.914 ms  http=200
+      +  108.074 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       0.656 ms  http=200 route=lab/worker-ingress
+        +  108.144 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       0.566 ms  http=200
+          +  108.511 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.069 ms  http=200
+  [trace 2/2 98021e21071e679f] 8 span(s)
+    +  109.019 ms  loadgen                invoke_agent worker                        CLIENT   dur=   22146.916 ms  otel=ERROR 'SSE stream error: unexpected EOF' error.type=*errors.errorString
+      +  109.069 ms  loadgen                HTTP POST                                  CLIENT   dur=   22146.586 ms  http=200 otel=ERROR 'unexpected EOF' error.type=*errors.errorString
+    +  109.383 ms  worker                 POST /                                     SERVER   dur=   22146.156 ms  http=200  <- DANGLING PARENT c5394b2b61d81735
+      +  109.588 ms  worker                 chat mock                                  CLIENT   dur=   45007.768 ms  
+        +  109.605 ms  worker                 HTTP POST                                  CLIENT   dur=   45007.709 ms  http=200
+          +  110.343 ms  agw-central            POST /*                                    SERVER   dur=   45006.290 ms  http=200 route=agentgateway-waypoint/model-via-agw
+            +  110.389 ms  agw-central            POST mockllm.lab.svc.cluster.local:8080    CLIENT   dur=   45006.210 ms  http=200
+              +  111.927 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   45004.725 ms  http=200
+  GenAI chat span: service=worker op=chat mock kind=CLIENT otel=UNSET
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    gen_ai.response.finish_reasons = stop
+    gen_ai.response.id = chatcmpl-210aaa8cc50dba86
+    gen_ai.response.model = mock
+    gen_ai.usage.input_tokens = 12
+    gen_ai.usage.output_tokens = 6
+    lab.caller = worker
+    lab.message_id = 01a0ca9b-59e7-7416-bd49-10b5b5b9e35b
+    lab.task_id = 01a0ca9b-59e7-7b8a-a62a-fe4c0f896d25
+    lab.work_item = b5a-ingress-graceful-r1-01
+    server.address = model.lab.internal
+    server.port = 8080
+
+== b5a-ingress-rollout ==
+work item(s) carried on a span: b5a-ingress-rollout-r1-01
+spans 12 | trace ids 2 | roots 2 | dangling parents 1
+spans by service: agentgateway-ingress=2|agw-central=2|loadgen=3|mockllm=1|worker=4
+DANGLING PARENT: worker POST / (SERVER) has parent 57b538ed2677c1a5, which is no span in this trace
+  [trace 1/2 e3c8a0ede57f45c1] 4 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     107.780 ms  http=200
+      +  106.927 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       0.672 ms  http=200 route=lab/worker-ingress
+        +  106.990 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       0.589 ms  http=200
+          +  107.389 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.068 ms  http=200
+  [trace 2/2 b98cb49913cf191e] 8 span(s)
+    +  107.887 ms  loadgen                invoke_agent worker                        CLIENT   dur=   24463.852 ms  otel=ERROR 'SSE stream error: unexpected EOF' error.type=*errors.errorString
+      +  107.947 ms  loadgen                HTTP POST                                  CLIENT   dur=   24463.496 ms  http=200 otel=ERROR 'unexpected EOF' error.type=*errors.errorString
+    +  108.292 ms  worker                 POST /                                     SERVER   dur=   24463.587 ms  http=200  <- DANGLING PARENT 57b538ed2677c1a5
+      +  108.468 ms  worker                 chat mock                                  CLIENT   dur=   45002.756 ms  
+        +  108.483 ms  worker                 HTTP POST                                  CLIENT   dur=   45002.718 ms  http=200
+          +  108.628 ms  agw-central            POST /*                                    SERVER   dur=   45002.296 ms  http=200 route=agentgateway-waypoint/model-via-agw
+            +  108.695 ms  agw-central            POST mockllm.lab.svc.cluster.local:8080    CLIENT   dur=   45002.198 ms  http=200
+              +  110.213 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   45000.594 ms  http=200
+  GenAI chat span: service=worker op=chat mock kind=CLIENT otel=UNSET
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    gen_ai.response.finish_reasons = stop
+    gen_ai.response.id = chatcmpl-17cf4a0b331a0912
+    gen_ai.response.model = mock
+    gen_ai.usage.input_tokens = 12
+    gen_ai.usage.output_tokens = 6
+    lab.caller = worker
+    lab.message_id = 01a0caa4-6c69-748c-9a78-f911eea846aa
+    lab.task_id = 01a0caa4-6c69-7c92-b436-8fa39968dfb3
+    lab.work_item = b5a-ingress-rollout-r1-01
+    server.address = model.lab.internal
+    server.port = 8080
+
+== b5b-go-central-graceful ==
+work item(s) carried on a span: b5b-go-central-graceful-r1-01
+spans 20 | trace ids 4 | roots 4 | dangling parents 1
+spans by service: agentgateway-ingress=8|loadgen=5|mockllm=1|worker=6
+DANGLING PARENT: mockllm POST /v1/chat/completions (SERVER) has parent 02973b20e9f29e9c, which is no span in this trace
+  [trace 1/4 a66a8ac455b8d2a8] 4 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.313 ms  http=200
+      +  107.596 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       0.455 ms  http=200 route=lab/worker-ingress
+        +  107.690 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       0.344 ms  http=200
+          +  107.870 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.055 ms  http=200
+  [trace 2/4 67189c23344ba278] 8 span(s)
+    +  108.420 ms  loadgen                invoke_agent worker                        CLIENT   dur=   12190.315 ms  
+      +  108.482 ms  loadgen                HTTP POST                                  CLIENT   dur=   12190.153 ms  http=200
+        +  108.640 ms  agentgateway-ingress   POST /*                                    SERVER   dur=   12189.189 ms  http=200 route=lab/worker-ingress
+          +  108.687 ms  agentgateway-ingress   POST worker.lab.svc.cluster.local:8080     CLIENT   dur=       0.765 ms  http=200
+            +  108.833 ms  worker                 POST /                                     SERVER   dur=   12187.552 ms  http=200
+              +  109.005 ms  worker                 chat mock                                  CLIENT   dur=   12185.373 ms  otel=ERROR 'model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF' error.type=*errors.errorString
+                +  109.019 ms  worker                 HTTP POST                                  CLIENT   dur=   12185.301 ms  otel=ERROR 'EOF' error.type=*errors.errorString
+    +  110.790 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   12182.947 ms  http=200 otel=ERROR 'injected: delay: client-gone'  <- DANGLING PARENT 02973b20e9f29e9c
+  [trace 3/4 d6524b0fe654fe0d] 4 span(s)
+    + 4535.194 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.825 ms  http=200
+      + 4642.997 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       0.815 ms  http=200 route=lab/worker-ingress
+        + 4643.064 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       0.721 ms  http=200
+          + 4643.414 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.247 ms  http=200
+  [trace 4/4 396641d83ca35d60] 4 span(s)
+    + 4644.163 ms  loadgen                HTTP POST                                  CLIENT   dur=    7654.501 ms  http=200
+      + 4644.285 ms  agentgateway-ingress   POST /*                                    SERVER   dur=    7653.623 ms  http=200 route=lab/worker-ingress
+        + 4644.317 ms  agentgateway-ingress   POST worker.lab.svc.cluster.local:8080     CLIENT   dur=       0.398 ms  http=200
+          + 4644.422 ms  worker                 POST /                                     SERVER   dur=    7651.700 ms  http=200
+  GenAI chat span: service=worker op=chat mock kind=CLIENT otel=ERROR 'model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF'
+    error.type = *errors.errorString
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    lab.caller = worker
+    lab.message_id = 01a0cb15-eeee-7c0a-8a99-5ff6d54ea82b
+    lab.task_id = 01a0cb15-eeef-74c2-9b4e-78d767c204dd
+    lab.work_item = b5b-go-central-graceful-r1-01
+    server.address = model.lab.internal
+    server.port = 8080
+
+== b5b-go-ingress-forced ==
+work item(s) carried on a span: b5b-go-ingress-forced-r1-01
+spans 18 | trace ids 4 | roots 4 | dangling parents 2
+spans by service: agentgateway-ingress=4|agw-central=2|loadgen=5|mockllm=1|worker=6
+DANGLING PARENT: worker POST / (SERVER) has parent 8f0ee80cba72853e, which is no span in this trace
+DANGLING PARENT: worker GET /.well-known/agent-card.json (SERVER) has parent 066831621d277b18, which is no span in this trace
+  [trace 1/4 08fd4e49296bb95e] 2 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.666 ms  http=200
+    +  108.282 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.068 ms  http=200  <- DANGLING PARENT 066831621d277b18
+  [trace 2/4 3a916cedc6f58a55] 8 span(s)
+    +  108.769 ms  loadgen                invoke_agent worker                        CLIENT   dur=    2145.265 ms  otel=ERROR 'SSE stream error: unexpected EOF' error.type=*errors.errorString
+      +  108.838 ms  loadgen                HTTP POST                                  CLIENT   dur=    2145.119 ms  http=200 otel=ERROR 'unexpected EOF' error.type=*errors.errorString
+    +  109.217 ms  worker                 POST /                                     SERVER   dur=    2144.899 ms  http=200  <- DANGLING PARENT 8f0ee80cba72853e
+      +  109.407 ms  worker                 chat mock                                  CLIENT   dur=   45005.070 ms  
+        +  109.420 ms  worker                 HTTP POST                                  CLIENT   dur=   45004.971 ms  http=200
+          +  110.607 ms  agw-central            POST /*                                    SERVER   dur=   45002.760 ms  http=200 route=agentgateway-waypoint/model-via-agw
+            +  110.657 ms  agw-central            POST mockllm.lab.svc.cluster.local:8080    CLIENT   dur=   45002.659 ms  http=200
+              +  112.159 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   45001.107 ms  http=200
+  [trace 3/4 fee717a4adb89036] 4 span(s)
+    + 4934.179 ms  loadgen                HTTP GET                                   CLIENT   dur=     110.252 ms  http=200
+      + 5042.626 ms  agentgateway-ingress   GET /*                                     SERVER   dur=       1.597 ms  http=200 route=lab/worker-ingress
+        + 5043.095 ms  agentgateway-ingress   GET worker.lab.svc.cluster.local:8080      CLIENT   dur=       1.099 ms  http=200
+          + 5043.946 ms  worker                 GET /.well-known/agent-card.json           SERVER   dur=       0.060 ms  http=200
+  [trace 4/4 5836c98397859dd2] 4 span(s)
+    + 5044.542 ms  loadgen                HTTP POST                                  CLIENT   dur=   40072.844 ms  http=200
+      + 5044.712 ms  agentgateway-ingress   POST /*                                    SERVER   dur=   40072.040 ms  http=200 route=lab/worker-ingress
+        + 5044.748 ms  agentgateway-ingress   POST worker.lab.svc.cluster.local:8080     CLIENT   dur=       0.460 ms  http=200
+          + 5044.866 ms  worker                 POST /                                     SERVER   dur=   40071.104 ms  http=200
+  GenAI chat span: service=worker op=chat mock kind=CLIENT otel=UNSET
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    gen_ai.response.finish_reasons = stop
+    gen_ai.response.id = chatcmpl-b4b77acf8d6dd4c8
+    gen_ai.response.model = mock
+    gen_ai.usage.input_tokens = 12
+    gen_ai.usage.output_tokens = 6
+    lab.caller = worker
+    lab.message_id = 01a0cb05-526d-71f0-b1d2-33da8a261ce7
+    lab.task_id = 01a0cb05-526d-7ab1-8b68-8bab06a94731
+    lab.work_item = b5b-go-ingress-forced-r1-01
+    server.address = model.lab.internal
+    server.port = 8080
+
+== b5b-py-central-graceful ==
+work item(s) carried on a span: b5b-py-central-graceful-r1-05
+spans 93 | trace ids 4 | roots 4 | dangling parents 1
+spans by service: agentgateway-ingress=4|agw-central=4|loadgen=5|mockllm=1|orchestrator=79
+DANGLING PARENT: mockllm POST /v1/chat/completions (SERVER) has parent 8519d87bcfac5d6a, which is no span in this trace
+  [trace 1/4 60a8143e6daa0d70] 6 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     109.128 ms  http=200
+      +  108.045 ms  agw-central            GET /*                                     SERVER   dur=       0.964 ms  http=200 route=lab/orchestrator
+        +  108.107 ms  agw-central            GET orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       0.848 ms  http=200
+          +  108.619 ms  orchestrator           GET /.well-known/agent-card.json           SERVER   dur=       0.334 ms  http=200
+            +  108.783 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.014 ms  http=200
+            +  108.894 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.005 ms  
+  [trace 2/4 66da3087ee831c44] 65 span(s)
+    +  109.244 ms  loadgen                invoke_agent orchestrator                  CLIENT   dur=   12213.811 ms  
+      +  109.301 ms  loadgen                HTTP POST                                  CLIENT   dur=   12213.734 ms  http=200
+        +  110.592 ms  agentgateway-ingress   POST /*                                    SERVER   dur=   12212.112 ms  http=200 route=lab/orchestrator-ingress
+          +  110.631 ms  agentgateway-ingress   POST orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       2.766 ms  http=200
+            +  111.048 ms  orchestrator           POST /                                     SERVER   dur=   12211.460 ms  http=200
+              +  111.148 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher.handle_requests SERVER   dur=       1.897 ms  otel=OK
+                +  111.165 ms  orchestrator           POST / http receive                        INTERNAL dur=       0.005 ms  
+                +  111.304 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._process_streaming_request SERVER   dur=       1.694 ms  otel=OK
+                  +  111.359 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2.on_message_send_stream SERVER   dur=       0.007 ms  otel=OK
+                  +  111.470 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2._setup_active_task SERVER   dur=       0.075 ms  otel=OK
+                    +  111.619 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._dispatch_loop SERVER   dur=   12210.315 ms  otel=OK
+                      +  112.606 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.011 ms  otel=OK
+                      +  112.772 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.005 ms  otel=OK
+                      +  112.930 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.004 ms  otel=OK
+                      +12318.946 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.043 ms  otel=OK
+                      +12319.830 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.011 ms  otel=OK
+                    +  111.636 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._dispatch_loop SERVER   dur=   12212.523 ms  otel=OK
+                      +  112.749 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.007 ms  otel=OK
+                      +  112.910 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.005 ms  otel=OK
+                      +  113.490 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.007 ms  otel=OK
+                      +12319.718 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.018 ms  otel=OK
+                      +12319.776 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.017 ms  otel=OK
+                      +12322.005 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.017 ms  otel=OK
+                      +12322.069 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.012 ms  otel=OK
+                    +  111.657 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.006 ms  otel=OK
+                    +  111.735 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.005 ms  otel=OK
+                    +  111.794 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.004 ms  otel=OK
+                    +  111.847 ms  orchestrator           chat mock                                  CLIENT   dur=   12204.998 ms  otel=ERROR 'Connection error.'
+                      +  112.360 ms  orchestrator           POST                                       CLIENT   dur=   12203.878 ms  otel=ERROR 'RemoteProtocolError: Server disconnected without sending a response.'
+                    +  112.534 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.098 ms  otel=OK
+                    +  112.653 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.005 ms  otel=OK
+                    +  112.676 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.004 ms  otel=OK
+                    +  112.698 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.099 ms  otel=OK
+                    +  112.830 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.004 ms  otel=OK
+                    +  112.848 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.003 ms  otel=OK
+                    +  112.865 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.244 ms  otel=OK
+                    +  113.145 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.005 ms  otel=OK
+                    +  113.169 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.004 ms  otel=OK
+                    +  113.187 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=   12206.021 ms  otel=OK
+                    +12317.821 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.100 ms  otel=OK
+                    +12318.249 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.041 ms  otel=OK
+                    +12319.370 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.015 ms  otel=OK
+                    +12319.428 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.010 ms  otel=OK
+                    +12319.474 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       1.215 ms  otel=OK
+                    +12319.535 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.close SERVER   dur=       4.265 ms  otel=OK
+                      +12319.587 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._join_incoming_queue SERVER   dur=       2.709 ms  otel=OK
+                      +12322.654 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.010 ms  otel=OK
+                    +12320.753 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.012 ms  otel=OK
+                    +12320.804 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.009 ms  otel=OK
+                    +12321.855 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       1.812 ms  otel=ERROR 'QueueShutDown: '
+                    +12323.736 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.close SERVER   dur=       0.022 ms  otel=OK
+                    +12323.838 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.close SERVER   dur=  302280.150 ms  
+                      +12323.872 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._join_incoming_queue SERVER   dur=       0.366 ms  otel=OK
+                      +12324.394 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.016 ms  otel=OK
+                  +  111.577 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.tap SERVER   dur=       0.008 ms  otel=OK
+                  +  112.961 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2._validate_task_id_match SERVER   dur=       0.004 ms  otel=OK
+                +  113.015 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._create_response SERVER   dur=       0.026 ms  otel=OK
+              +  113.213 ms  orchestrator           POST / http send                           INTERNAL dur=       0.008 ms  http=200
+              +  113.382 ms  orchestrator           POST / http send                           INTERNAL dur=       0.006 ms  
+              +  113.450 ms  orchestrator           POST / http receive                        INTERNAL dur=   12209.237 ms  
+              +  113.777 ms  orchestrator           POST / http send                           INTERNAL dur=       0.010 ms  
+              +12320.579 ms  orchestrator           POST / http send                           INTERNAL dur=       0.011 ms  
+              +12322.157 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.010 ms  otel=OK
+              +12322.351 ms  orchestrator           POST / http send                           INTERNAL dur=       0.010 ms  
+    +  116.492 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   12196.220 ms  http=200 otel=ERROR 'injected: delay: client-gone'  <- DANGLING PARENT 8519d87bcfac5d6a
+  [trace 3/4 1d62c23bec52b891] 6 span(s)
+    + 4290.537 ms  loadgen                HTTP GET                                   CLIENT   dur=     110.668 ms  http=200
+      + 4398.760 ms  agw-central            GET /*                                     SERVER   dur=       2.297 ms  http=200 route=lab/orchestrator
+        + 4399.269 ms  agw-central            GET orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       1.699 ms  http=200
+          + 4400.609 ms  orchestrator           GET /.well-known/agent-card.json           SERVER   dur=       0.328 ms  http=200
+            + 4400.777 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.013 ms  http=200
+            + 4400.886 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.005 ms  
+  [trace 4/4 7ee803ddd5f7da5f] 16 span(s)
+    + 4401.327 ms  loadgen                HTTP POST                                  CLIENT   dur=    7924.438 ms  http=200
+      + 4402.618 ms  agentgateway-ingress   POST /*                                    SERVER   dur=    7922.661 ms  http=200 route=lab/orchestrator-ingress
+        + 4402.672 ms  agentgateway-ingress   POST orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       1.211 ms  http=200
+          + 4403.135 ms  orchestrator           POST /                                     SERVER   dur=    7921.888 ms  http=200
+            + 4403.231 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher.handle_requests SERVER   dur=       0.360 ms  otel=OK
+              + 4403.246 ms  orchestrator           POST / http receive                        INTERNAL dur=       0.015 ms  
+              + 4403.362 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._process_streaming_request SERVER   dur=       0.158 ms  otel=OK
+                + 4403.410 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2.on_subscribe_to_task SERVER   dur=       0.006 ms  otel=OK
+                + 4403.477 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.tap SERVER   dur=       0.013 ms  otel=OK
+              + 4403.539 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._create_response SERVER   dur=       0.047 ms  otel=OK
+            + 4403.672 ms  orchestrator           POST / http send                           INTERNAL dur=       0.009 ms  http=200
+            + 4403.855 ms  orchestrator           POST / http send                           INTERNAL dur=       0.005 ms  
+            + 4403.930 ms  orchestrator           POST / http receive                        INTERNAL dur=    7921.182 ms  
+            +12320.225 ms  orchestrator           POST / http send                           INTERNAL dur=       0.013 ms  
+            +12324.481 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.010 ms  otel=OK
+            +12324.866 ms  orchestrator           POST / http send                           INTERNAL dur=       0.019 ms  
+  GenAI chat span: service=orchestrator op=chat mock kind=CLIENT otel=ERROR 'Connection error.'
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+
+== b5b-py-ingress-forced ==
+work item(s) carried on a span: b5b-py-ingress-forced-r1-01
+spans 99 | trace ids 4 | roots 4 | dangling parents 1
+spans by service: agentgateway-ingress=2|agw-central=6|loadgen=5|mockllm=1|orchestrator=85
+DANGLING PARENT: orchestrator POST / (SERVER) has parent d419c57b34de97ce, which is no span in this trace
+  [trace 1/4 485bf0df571e246b] 6 span(s)
+    +    0.000 ms  loadgen                HTTP GET                                   CLIENT   dur=     109.719 ms  http=200
+      +  107.670 ms  agw-central            GET /*                                     SERVER   dur=       1.930 ms  http=200 route=lab/orchestrator
+        +  107.736 ms  agw-central            GET orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       1.798 ms  http=200
+          +  109.201 ms  orchestrator           GET /.well-known/agent-card.json           SERVER   dur=       0.343 ms  http=200
+            +  109.374 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.013 ms  http=200
+            +  109.480 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.005 ms  
+  [trace 2/4 4086c2cc3844d402] 68 span(s)
+    +  109.822 ms  loadgen                invoke_agent orchestrator                  CLIENT   dur=    2224.962 ms  otel=ERROR 'SSE stream error: unexpected EOF' error.type=*errors.errorString
+      +  109.877 ms  loadgen                HTTP POST                                  CLIENT   dur=    2224.833 ms  http=200 otel=ERROR 'unexpected EOF' error.type=*errors.errorString
+    +  111.890 ms  orchestrator           POST /                                     SERVER   dur=    2223.595 ms  http=200  <- DANGLING PARENT d419c57b34de97ce
+      +  111.985 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher.handle_requests SERVER   dur=       7.603 ms  otel=OK
+        +  112.002 ms  orchestrator           POST / http receive                        INTERNAL dur=       0.007 ms  
+        +  112.192 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._process_streaming_request SERVER   dur=       2.602 ms  otel=OK
+          +  112.254 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2.on_message_send_stream SERVER   dur=       0.007 ms  otel=OK
+          +  112.369 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2._setup_active_task SERVER   dur=       0.092 ms  otel=OK
+            +  112.528 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._dispatch_loop SERVER   dur=   45024.971 ms  otel=OK
+              +  114.388 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.012 ms  otel=OK
+              +  114.547 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.004 ms  otel=OK
+              +  114.729 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.004 ms  otel=OK
+              +45136.197 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.013 ms  otel=OK
+              +45136.507 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.007 ms  otel=OK
+              +45137.136 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.007 ms  otel=OK
+            +  112.546 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._dispatch_loop SERVER   dur=   45026.824 ms  otel=OK
+              +  114.523 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.007 ms  otel=OK
+              +  114.707 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.006 ms  otel=OK
+              +  120.712 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.010 ms  otel=OK
+              +45136.471 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.009 ms  otel=OK
+              +45137.094 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.010 ms  otel=OK
+              +45137.535 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._deliver_to_sink SERVER   dur=       0.010 ms  otel=OK
+            +  112.576 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.007 ms  otel=OK
+            +  112.665 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.005 ms  otel=OK
+            +  112.725 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.004 ms  otel=OK
+            +  113.023 ms  orchestrator           chat mock                                  CLIENT   dur=   45022.706 ms  
+              +  120.507 ms  orchestrator           POST                                       CLIENT   dur=   45009.331 ms  http=200
+                +  122.060 ms  agw-central            POST /*                                    SERVER   dur=   45006.949 ms  http=200 route=agentgateway-waypoint/model-via-agw
+                  +  122.096 ms  agw-central            POST mockllm.lab.svc.cluster.local:8080    CLIENT   dur=   45006.850 ms  http=200
+                    +  123.711 ms  mockllm                POST /v1/chat/completions                  SERVER   dur=   45005.184 ms  http=200
+            +  114.336 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.077 ms  otel=OK
+            +  114.433 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.005 ms  otel=OK
+            +  114.454 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.005 ms  otel=OK
+            +  114.474 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.095 ms  otel=OK
+            +  114.626 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.005 ms  otel=OK
+            +  114.647 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.004 ms  otel=OK
+            +  114.665 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       5.012 ms  otel=OK
+            +  119.737 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.006 ms  otel=OK
+            +  119.761 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.004 ms  otel=OK
+            +  119.781 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=   45016.444 ms  otel=OK
+            +45135.877 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.021 ms  otel=OK
+            +45136.059 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.010 ms  otel=OK
+            +45136.111 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.008 ms  otel=OK
+            +45136.277 ms  orchestrator           a2a.server.tasks.task_manager.append_artifact_to_task INTERNAL dur=       0.015 ms  otel=OK
+            +45136.338 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.007 ms  otel=OK
+            +45136.371 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.008 ms  otel=OK
+            +45136.404 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.384 ms  otel=OK
+            +45136.862 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.008 ms  otel=OK
+            +45136.902 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.006 ms  otel=OK
+            +45136.933 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       0.421 ms  otel=OK
+            +45136.994 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.close SERVER   dur=       2.322 ms  otel=OK
+              +45137.022 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._join_incoming_queue SERVER   dur=       0.552 ms  otel=OK
+              +45137.632 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.010 ms  otel=OK
+            +45137.394 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.enqueue_event SERVER   dur=       0.008 ms  otel=OK
+            +45137.429 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.task_done SERVER   dur=       0.006 ms  otel=OK
+            +45137.463 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.dequeue_event SERVER   dur=       1.782 ms  otel=ERROR 'QueueShutDown: '
+            +45139.288 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.close SERVER   dur=       0.013 ms  otel=OK
+            +45139.335 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.close SERVER   dur=  997257.738 ms  
+              +45139.352 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource._join_incoming_queue SERVER   dur=       0.029 ms  otel=OK
+              +45139.406 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.004 ms  otel=OK
+          +  112.485 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.tap SERVER   dur=       0.010 ms  otel=OK
+          +  114.757 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2._validate_task_id_match SERVER   dur=       0.003 ms  otel=OK
+        +  114.817 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._create_response SERVER   dur=       4.763 ms  otel=OK
+      +  119.817 ms  orchestrator           POST / http send                           INTERNAL dur=       0.009 ms  http=200
+      +  120.004 ms  orchestrator           POST / http send                           INTERNAL dur=       0.004 ms  
+      +  120.086 ms  orchestrator           POST / http receive                        INTERNAL dur=    2214.856 ms  
+      +  120.843 ms  orchestrator           POST / http send                           INTERNAL dur=       0.005 ms  
+      + 2335.213 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.016 ms  otel=OK
+  [trace 3/4 b85c0dedaf2d9353] 6 span(s)
+    + 4979.242 ms  loadgen                HTTP GET                                   CLIENT   dur=     108.458 ms  http=200
+      + 5086.626 ms  agw-central            GET /*                                     SERVER   dur=       0.932 ms  http=200 route=lab/orchestrator
+        + 5086.693 ms  agw-central            GET orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       0.800 ms  http=200
+          + 5087.172 ms  orchestrator           GET /.well-known/agent-card.json           SERVER   dur=       0.320 ms  http=200
+            + 5087.338 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.012 ms  http=200
+            + 5087.440 ms  orchestrator           GET /.well-known/agent-card.json http send INTERNAL dur=       0.004 ms  
+  [trace 4/4 0138ffd3fd23b582] 19 span(s)
+    + 5087.830 ms  loadgen                HTTP POST                                  CLIENT   dur=   40051.457 ms  http=200
+      + 5089.234 ms  agentgateway-ingress   POST /*                                    SERVER   dur=   40050.398 ms  http=200 route=lab/orchestrator-ingress
+        + 5089.656 ms  agentgateway-ingress   POST orchestrator.lab.svc.cluster.local:8080 CLIENT   dur=       1.970 ms  http=200
+          + 5090.813 ms  orchestrator           POST /                                     SERVER   dur=   40048.750 ms  http=200
+            + 5090.909 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher.handle_requests SERVER   dur=       0.382 ms  otel=OK
+              + 5090.926 ms  orchestrator           POST / http receive                        INTERNAL dur=       0.005 ms  
+              + 5091.039 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._process_streaming_request SERVER   dur=       0.186 ms  otel=OK
+                + 5091.101 ms  orchestrator           a2a.server.request_handlers.default_request_handler_v2.DefaultRequestHandlerV2.on_subscribe_to_task SERVER   dur=       0.006 ms  otel=OK
+                + 5091.180 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.tap SERVER   dur=       0.013 ms  otel=OK
+              + 5091.244 ms  orchestrator           a2a.server.routes.jsonrpc_dispatcher.JsonRpcDispatcher._create_response SERVER   dur=       0.042 ms  otel=OK
+            + 5091.379 ms  orchestrator           POST / http send                           INTERNAL dur=       0.009 ms  http=200
+            + 5091.557 ms  orchestrator           POST / http send                           INTERNAL dur=       0.005 ms  
+            + 5091.633 ms  orchestrator           POST / http receive                        INTERNAL dur=   40047.973 ms  
+            +20100.933 ms  orchestrator           POST / http send                           INTERNAL dur=       0.034 ms  
+            +35103.186 ms  orchestrator           POST / http send                           INTERNAL dur=       0.023 ms  
+            +45136.684 ms  orchestrator           POST / http send                           INTERNAL dur=       0.008 ms  
+            +45137.281 ms  orchestrator           POST / http send                           INTERNAL dur=       0.007 ms  
+            +45139.432 ms  orchestrator           a2a.server.events.event_queue_v2.EventQueueSource.remove_sink SERVER   dur=       0.003 ms  otel=OK
+            +45139.502 ms  orchestrator           POST / http send                           INTERNAL dur=       0.004 ms  
+  GenAI chat span: service=orchestrator op=chat mock kind=CLIENT otel=UNSET
+    gen_ai.operation.name = chat
+    gen_ai.provider.name = openai
+    gen_ai.request.model = mock
+    gen_ai.response.finish_reasons = stop
+    gen_ai.response.id = chatcmpl-ecff1759963a02c5
+    gen_ai.response.model = mock
+    gen_ai.usage.input_tokens = 12
+    gen_ai.usage.output_tokens = 6
+

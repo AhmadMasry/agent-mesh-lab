@@ -1,0 +1,51 @@
+# The sources B-6 read, with the stamp each was read at. Reads only.
+
+## The two a2a-go source files behind the new draft
+Read twice, so that the draft can say whether the behaviour is only at the pin or also on main.
+
+1. The module the lab links, github.com/a2aproject/a2a-go/v2@v2.5.0, from this host's Go module cache
+   (the module the worker and the load client are built against; go.mod at the built tree names it).
+   Read 2026-09-22T23:20Z-23:23Z.
+     a2aclient/jsonrpc.go
+       l.108-138  sendRequest, the UNARY path: decodes the body and returns jsonrpc.FromJSONRPCError(resp.Error)
+       l.141-161  sendStreamingRequest: sets Accept: text/event-stream (l.146), checks only the HTTP status
+                  (l.153) and returns httpResp.Body (l.160). No Content-Type is read.
+       l.164-185  parseSSEStream: would map a JSON-RPC error object to a typed error (l.177), but only over the
+                  payloads ParseDataStream hands it
+       l.213-     streamRequestToEvents
+       l.96       the one Content-Type the client sets is its own REQUEST's, jsonrpc.ContentJSON
+     internal/sse/sse.go
+       l.32       ContentEventStream = "text/event-stream" -- set on Accept by the client and on the header by
+                  the server's SSEWriter.WriteHeaders (l.57-65); never compared against a response
+       l.95-136   ParseDataStream; l.120-122 skips every line without the "data:" prefix; the flush()
+                  closure at l.103-110, called at l.136, yields nothing for an empty buffer; l.132-135
+                  yields an error only when scanner.Err() is set
+
+2. a2aproject/a2a-go main @ 522f856289694089781754815bb4737225dc46cb (committed 2026-09-18T12:19:33Z), read
+   through the repository contents API at 2026-09-22T23:23:30Z. Both files are identical to v2.5.0's in the
+   parts above, at the same line numbers: sendStreamingRequest l.141-161 with no Content-Type read, and
+   ParseDataStream's skip at l.120.
+
+   The v2.5.0 tag object sha, read at the same time: 9d95b95445f4208ba77f48a137a278067937adb7 -- the tag the
+   B-3 drafts already cite.
+
+## The trackers
+tracker-search.txt  -- every query, its page and the API's own total_count, issues AND pull requests, any state.
+items-read.txt      -- every candidate read by NUMBER from the API: state, merged/not merged, dates, comments,
+                       and for each merged pull request the first release whose tree contains its merge commit.
+
+## The lab's own records this step read and did not change
+findings.md at ea1b03b8: every Experiment B entry and the dated correction of 2026-09-22 beside the B-5a entry.
+experiments/runs/2026-09-21-b3-streaming-client/{stream,subscribe-running,subscribe-terminal}/summary.csv
+experiments/runs/2026-09-22-b4-control/control/summary.csv
+experiments/runs/2026-09-22-b5a-removal/removal/summary.csv
+experiments/runs/2026-09-22-b5b-removal-resubscribe/rows/summary.csv
+experiments/runs/2026-09-16-genai-spans/trace/dangling.py and genai-spans.py, both run UNEDITED over this
+  step's traces directory
+experiments/runs/2026-09-20-experiment-a-agentgateway-only/versions-readback.sh, run unedited
+  (sha256 c2d35631a45cd9f285d916c73d3fb47d2001653061352e342be487791e7cce7a, re-read in this task)
+
+## The cluster
+The standing step-3 cluster, read through `make export-trace` and two port-forwards of this step's own, all
+stopped. versions-readback.txt and cluster-unchanged.txt hold what was read. The trace backend pod started
+2026-09-22T17:05:20Z, which is B-4's rebuild: that is why no work item of B-3 is in it.

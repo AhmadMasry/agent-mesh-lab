@@ -1,0 +1,46 @@
+# The cluster as this step found it and left it, read 2026-09-22T23:29:59Z. Reads only.
+# This step sent no stimulus, removed nothing, armed nothing, and ran no make target but
+# `make export-trace` (a port-forward, a query, the port-forward stopped). Two scripts of its own,
+# backend-inventory.sh and trace-census.sh, each started and stopped one port-forward too.
+
+== the proxy pods (neither was touched; both are the pods B-5b left) ==
+NS                      NAME                                                   RESTARTS   START
+agentgateway-ingress    agentgateway-ingress-7c6487c684-qpg6d                  0          2026-09-22T21:45:06Z
+agentgateway-system     agentgateway-864d45549-xdtsw                           0          2026-09-22T17:02:40Z
+agentgateway-waypoint   agw-central-868f4dc87d-tpdm9                           0          2026-09-22T21:52:55Z
+
+== lab Deployments ==
+NAME           READY   GEN
+mockllm        1       4
+orchestrator   1       17
+worker         1       5
+
+== Gateways ==
+NS                      NAME                   CLASS          PROGRAMMED
+agentgateway-ingress    agentgateway-ingress   agentgateway   True
+agentgateway-waypoint   agw-central            agentgateway   True
+
+== proxy Deployment generations (B-5a left both at 6 with restartedAt on the template; this step changed neither) ==
+agentgateway-ingress generation=6 restartedAt=2026-09-22T22:46:07+03:00
+agw-central generation=6 restartedAt=2026-09-22T22:53:25+03:00
+
+== retry stanzas across every HTTPRoute (0 is the state every step must start and end in) ==
+retry: lines = 0
+== AuthorizationPolicies ==
+count = 0
+
+== the orchestrator's mode (its deployed forward mode; this step never switched it) ==
+PLAN_MODEL_CALL=off
+MODEL_MAX_RETRIES=0
+DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+
+== the mock's own log, last three lines (nothing was armed by this step) ==
+  {"ledger":"invocation","ts":"2026-09-22T21:53:05.031238388Z","logical_work_item_id":"b5b-go-central-graceful-r1-20","messageId":"01a0cb1b-825f-7ce5-8e46-ec74a6f35169","taskId":"01a0cb1b-8260-741d-8e5c-9c890fbd41e9","caller":"worker","body_sha256":"c27376bdefa9e7d77c080050fd0b84c7a3c11af26c22cbc46c7f609d2732cd2a","stream":false,"injection":"delay","outcome":"client-gone","latency_ms":12195.587}
+  {"ledger":"control","ts":"2026-09-22T21:53:08.318103625Z","endpoint":"/control/reset"}
+  {"ledger":"control","ts":"2026-09-22T21:53:11.429940794Z","endpoint":"/control/reset"}
+
+== the trace backend (the pod every reading of this step came from) ==
+NAME                              RESTARTS   START
+jaeger-588c4756fd-4jrj7           0          2026-09-22T17:05:20Z
+otel-collector-6ff7b444f6-7r8kg   0          2026-09-22T17:05:00Z
+prometheus-786bc75c45-75nsq       0          2026-09-22T17:05:44Z

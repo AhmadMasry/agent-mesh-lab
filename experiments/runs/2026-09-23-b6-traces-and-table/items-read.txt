@@ -1,0 +1,222 @@
+# B-6: every tracker item read by number from the API. Read-only.
+# A search page's "closed" does not say whether a pull request was merged; that is read here.
+
+-- a2aproject/a2a-go #435 [issue] REST streaming stops at an unknown StreamResponse payload (v2.5.0)
+   why read: the nearest analogue the search found: a streaming client stopping on a payload it does not understand
+   state=open created=2026-09-07T08:17:06Z updated=2026-09-11T12:13:06Z comments=1   (read 2026-09-22T23:24:01Z)
+   | Following [the request for SDK investigations in A2A #2129](https://github.com/a2aproject/A2A/pull/2129#discussion_r3805450070), here is a reproducible Go case for the already-reported unknown-event compatibility problem.
+   | 
+   | With **a2a-go v2.5.0**, a REST/SSE stream containing:
+   | 
+   | `Task → working status → unfamiliar payload → working status → completed status`
+   | 
+   | stops at the unfamiliar payload with `unknown stream response type`. The caller receives the first two events but neither later known update. The request explicitly sends `A2A-Version: 1.0`.
+   | 
+   | The synthetic `futureEvent` is valid JSON but is **not a defined A2A 1.0 event**. This demonstrates a constraint on future event additions; it does not assume the current specification already mandates accepting that variant.
+   | 
+   | ### Reproduction
+   | 
+
+-- a2aproject/a2a-go #385 [issue] [Bug]: a2av0 JSON-RPC client fails to decode v0.3 error responses with non-typed `data`, masking the real error
+   why read: a JSON-RPC client decode failure that MASKS the real error -- adjacent, and its fix shows the project's posture
+   state=closed created=2026-07-30T11:17:11Z updated=2026-08-18T09:03:15Z comments=1   (read 2026-09-22T23:24:02Z)
+   | **Title:** [Bug]: a2av0 JSON-RPC client fails to decode v0.3 error responses with non-typed `data`, masking the real error
+   | 
+   | ## Summary
+   | The a2av0 compat JSON-RPC transport decodes responses into the shared `jsonrpc.ClientResponse`, whose `Error.Data` is typed `[]*errordetails.Typed` (`internal/jsonrpc/jsonrpc.go:54-58`). JSON-RPC 2.0 / A2A v0.3 define `error.data` as any JSON value, and v0.3 servers commonly return an object there. When they do, the whole `Decode(&resp)` fails, so the caller gets `failed to decode response: json: cannot unmarshal object into Go struct field ...` instead of the server's error — code and message are lost along with the data.
+   | 
+   | ## Current behavior
+   | - `a2acompat/a2av0/jsonrpc_client.go` `sendRequest` (~line 127): `json.NewDecoder(httpResp.Body).Decode(&resp)` with `resp jsonrpc.ClientResponse` → any v0.3 error whose `data` is not `[]*errordetails.Typed` aborts the decode.
+   | - Same on the SSE streaming path (~lines 165-175).
+   | - Present in v2.3.1 and current main.
+   | 
+   | ## Repro
+   | Point an a2av0 JSON-RPC client at a v0.3 server that returns:
+
+-- a2aproject/a2a-go #386 [pr] fix(jsonrpc): lenient decode of error.data to preserve server errors
+   why read: the fix for #385
+   state=closed created=2026-07-30T12:30:39Z updated=2026-08-18T13:59:56Z comments=1   (read 2026-09-22T23:24:02Z)
+   MERGED=true merged_at=2026-08-18T09:03:14Z merge_commit=497cbac9ce5e
+   first release whose tree contains the merge commit: v2.5.0 (published 2026-08-18T12:40:33Z, prerelease=false)
+   | ## Problem
+   | 
+   | The a2av0 compat JSON-RPC transport (and the v2 JSON-RPC client, which shares the same code path) decodes responses into `jsonrpc.ClientResponse`, whose `Error.Data` field is typed `[]*errordetails.Typed` (`internal/jsonrpc/jsonrpc.go`). JSON-RPC 2.0 / A2A v0.3 define `error.data` as **any JSON value**, and v0.3 servers commonly return a plain object there (e.g. `{"reason":"detail"}`). When they do, `json.Decode(&resp)` fails with `cannot unmarshal object into Go struct field ...`, so the caller gets `failed to decode response` instead of the server's actual error — the real code and message are lost.
+   | 
+   | Repro: point an a2av0 JSON-RPC client at a v0.3 server that returns:
+   | 
+   | ```json
+   | {"jsonrpc":"2.0","id":"1","error":{"code":-32603,"message":"real error message","data":{"reason":"detail"}}}
+   | ```
+   | 
+   | The client surfaces `failed to decode response`; the real message never reaches the caller.
+   | 
+
+-- a2aproject/a2a-go #318 [issue] [Bug]: deserialize REST streaming error events into typed A2A errors
+   why read: the REST binding's analogue: streaming error events not deserialised into typed errors
+   state=closed created=2026-04-12T13:09:29Z updated=2026-04-21T09:06:23Z comments=0   (read 2026-09-22T23:24:35Z)
+   | ### What happened?
+   | 
+   | The REST client's `doStreamingRequest` does not deserialize SSE error events into typed A2A errors.
+   | 
+   | When the REST server encounters an error during streaming, it sends a google.rpc.Status JSON object in the SSE data field:
+   | 
+   |     data: {"error":{"code":400,"status":"INVALID_ARGUMENT","message":"...","details":[...]}}
+   | 
+   | The client passes this directly to `StreamResponse.UnmarshalJSON`, which only recognizes `message`, `task`, `statusUpdate`, and `artifactUpdate` keys. The `error` key is unhandled, producing a generic `"unknown event type"` error. The original sentinel (e.g. `ErrInvalidRequest`, `ErrTaskNotFound`) is lost.
+   | 
+   | JSON-RPC does not have this issue because `parseSSEStream` checks `resp.Error != nil` and calls `resp.Error.ToA2AError()` before attempting event deserialization.
+   | 
+
+-- a2aproject/a2a-go #319 [pr] fix: deserialize REST streaming error events into typed A2A errors (#318)
+   why read: the fix for #318
+   state=closed created=2026-04-12T13:21:37Z updated=2026-04-21T09:06:22Z comments=1   (read 2026-09-22T23:24:36Z)
+   MERGED=true merged_at=2026-04-21T09:06:22Z merge_commit=8a250ad08334
+   first release whose tree contains the merge commit: v2.2.1 (published 2026-04-29T13:39:17Z, prerelease=false)
+   | ## Description
+   | 
+   | Fixes #318 🦕
+   | 
+   | ### Motivation
+   | 
+   | The REST client's `doStreamingRequest` does not deserialize SSE error events into typed A2A errors. When the server sends a google.rpc.Status error in the SSE data field (`{"error": {...}}`), `StreamResponse.UnmarshalJSON` rejects it with `"unknown event type"` because it only recognizes `message`, `task`, `statusUpdate`, and `artifactUpdate` keys. The original sentinel (`ErrInvalidRequest`, `ErrTaskNotFound`, etc.) is lost.
+   | 
+   | JSON-RPC does not have this issue — `parseSSEStream` checks `resp.Error` before event deserialization. gRPC is also unaffected because errors are communicated via gRPC status codes (out-of-band).
+   | 
+   | ### Changes
+   | 
+
+-- a2aproject/a2a-go #332 [pr] fix: add Content-Type: text/event-stream for jsonrpc example
+   why read: the only Content-Type item the search returned for the JSON-RPC path
+   state=closed created=2026-04-29T17:26:53Z updated=2026-04-29T18:57:10Z comments=1   (read 2026-09-22T23:25:02Z)
+   MERGED=false merged_at=null merge_commit=64602236d4a0
+   | The A2A 1.0 protocol specification strictly mandates that SSE streaming endpoints must return an HTTP response with the Content-Type: text/event-stream header. This wraps the a2asrv.NewJSONRPCHandler in a custom HandleFunc that unconditionally sets this header so streaming clients will instantly start streaming responses.
+
+-- a2aproject/a2a-go #162 [issue] [Bug]: ParseDataStream should tolerate "data:" without space for compatibility
+   why read: the one ParseDataStream leniency item, the SSE reader's own tolerance rules
+   state=closed created=2026-01-22T02:39:55Z updated=2026-02-04T11:47:32Z comments=0   (read 2026-09-22T23:25:04Z)
+   | ## Support SSE streams without space after "data:" prefix for compatibility with non-compliant implementations
+   | 
+   | ### Description
+   | 
+   | The current `ParseDataStream` function strictly requires the SSE `data:` prefix to be followed by a space (`data: `), as defined in the [WHATWG SSE specification](https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events). However, some widely-used frameworks generate SSE streams without this space, causing silent parsing failures where no data is yielded and no error is reported.
+   | 
+   | ### Problem
+   | 
+   | When connecting to SSE endpoints that omit the space after `data:`, the parser silently ignores all data lines:
+   | 
+   | **Non-compliant format (currently fails):**
+   | `data:{"jsonrpc":"2.0","result":"..."}`
+
+-- a2aproject/a2a-go #188 [pr] fix(sse): support data: prefix without space
+   why read: the fix for #162
+   state=closed created=2026-02-03T12:59:29Z updated=2026-02-04T11:47:30Z comments=2   (read 2026-09-22T23:25:04Z)
+   MERGED=true merged_at=2026-02-04T11:47:30Z merge_commit=6657a6dc3b68
+   first release whose tree contains the merge commit: v0.3.7 (published 2026-02-23T11:30:44Z, prerelease=false)
+   | fixes #162 
+
+-- a2aproject/a2a-go #438 [issue] [Bug]: SendMessage and SubscribeToTask on a terminal task return InvalidParams/TaskNotFound instead of UnsupportedOperationError
+   why read: the a2a-go terminal-task draft's target issue
+   state=open created=2026-09-15T15:46:08Z updated=2026-09-15T15:46:08Z comments=0   (read 2026-09-22T23:25:14Z)
+   | ### What happened
+   | 
+   | For a task that has reached a terminal state, two operations return error codes that differ from the A2A 1.0 specification.
+   | 
+   | | Operation on a `TASK_STATE_COMPLETED` task | a2a-go v2.5.0 / main (e54a070) | Specification 1.0.0 |
+   | |---|---|---|
+   | | `SendMessage` with `message.taskId` of that task | `-32602` `INVALID_PARAMS` ("task in a terminal state") | `UnsupportedOperationError` (`-32004`), §3.1.1 |
+   | | `SubscribeToTask` on that task | `-32001` `TASK_NOT_FOUND` ("no active execution"), although the task exists | `UnsupportedOperationError` (`-32004`), §3.1.6 |
+   | 
+   | Spec §3.1.1 Send Message, Errors: "UnsupportedOperationError: Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) cannot accept further messages."
+   | Spec §3.1.6 Subscribe to Task, Errors: "UnsupportedOperationError: The operation is attempted on a task that is in a terminal state (completed, failed, canceled, or rejected)."
+   | 
+
+-- a2aproject/a2a-go #439 [issue] [Bug]: SubscribeToTask on an INPUT_REQUIRED task returns TASK_NOT_FOUND because localManager tears down the execution/broker on INPUT_REQUIRED
+   why read: the sibling issue on the same code path, named in the a2a-go draft's search
+   state=open created=2026-09-19T00:32:39Z updated=2026-09-19T00:32:39Z comments=0   (read 2026-09-22T23:25:15Z)
+   | **What happened**
+   | 
+   | With the default (non-cluster) handler from `a2asrv.NewHandler`, a task that is parked in `TASK_STATE_INPUT_REQUIRED` — the standard human-in-the-loop pattern — cannot be subscribed to. `SubscribeToTask` fails with `task not found: no active execution` even though the task exists in the TaskStore and is non-terminal.
+   | 
+   | Over REST the failure is worse: `handleStreamingRequest` (`a2asrv/rest.go:269-277`) calls `sseWriter.WriteHeaders()` (HTTP 200, `text/event-stream`) before pulling the first event, so the client receives a 200 SSE stream whose only frame is a `TASK_NOT_FOUND` (-32001) error, then EOF.
+   | 
+   | **Root cause (v2.5.0, identical on main @ 522f8562)**
+   | 
+   | - `internal/taskupdate/final.go` `IsFinal` returns true for `TaskStateInputRequired` (`return state.Terminal() || state == a2a.TaskStateInputRequired`).
+   | - `internal/taskexec/local_manager.go` `handleExecution` defers `cleanupExecution` (line 275), which destroys the task's event queue, closes the pipe and `delete(m.executions, execution.tid)` (lines 259-268) as soon as the execution yields INPUT_REQUIRED.
+   | - `localManager.Resubscribe` (lines 134-148) requires `m.executions[taskID]` and otherwise returns `fmt.Errorf("no active execution")`. It never consults the TaskStore.
+   | - `a2asrv/handler.go:371-374` wraps any Resubscribe error as `a2a.ErrTaskNotFound`.
+
+-- a2aproject/a2a-python #1205 [issue] [Bug]: Wrong error when sending a message for a terminal task
+   why read: the a2a-python terminal-task draft's target issue
+   state=open created=2026-08-25T14:33:04Z updated=2026-09-13T22:35:31Z comments=3   (read 2026-09-22T23:25:15Z)
+   | ### What happened?
+   | 
+   | What the spec says about the "Send Message" operation errors:
+   | > UnsupportedOperationError: Messages sent to Tasks that are in a terminal state [...]
+   | 
+   | What the code does (`on_message_send(...)->_setup_message_execution(...)`):
+   | ```python
+   | if task.status.state in TERMINAL_TASK_STATES:
+   |     raise InvalidParamsError(
+   |         message=f'Task {task.id} is in terminal state: {task.status.state}'
+   |     )
+   | ```
+
+-- a2aproject/a2a-python #1207 [pr] fix: Use correct errors when rejecting messages to terminal tasks
+   why read: the open PR that Fixes #1205
+   state=open created=2026-08-25T15:18:21Z updated=2026-08-30T21:34:15Z comments=2   (read 2026-09-22T23:25:16Z)
+   MERGED=false merged_at=null merge_commit=4fc4041a9541
+   | Fixes #1205.
+   | 
+   | ---
+   | - [X] Follow the [`CONTRIBUTING` Guide](https://github.com/a2aproject/a2a-python/blob/main/CONTRIBUTING.md).
+   | - [X] Make your Pull Request title in the <https://www.conventionalcommits.org/> specification.
+   |   - Important Prefixes for [release-please](https://github.com/googleapis/release-please):
+   |     - `fix:` which represents bug fixes, and correlates to a [SemVer](https://semver.org/) patch.
+   |     - `feat:` represents a new feature, and correlates to a SemVer minor.
+   |     - `feat!:`, or `fix!:`, `refactor!:`, etc., which represent a breaking change (indicated by the `!`) and will result in a SemVer major.
+   | - [X] Ensure the tests and linter pass (Run `bash scripts/format.sh` from the repository root to format)
+   | - [X] Appropriate docs were updated (if necessary)
+   | 
+
+-- a2aproject/a2a-python #1191 [pr] fix: publish terminal task state to subscriber streams (#1175)
+   why read: new since 2026-09-22 in the search: terminal state published to subscriber streams
+   state=open created=2026-08-18T23:56:46Z updated=2026-09-15T17:56:54Z comments=4   (read 2026-09-22T23:25:18Z)
+   MERGED=false merged_at=null merge_commit=806cd8d8f6c7
+   | ## Summary
+   | 
+   | Follow-up to #1172 / #1175. After #1172, `cancel()` writes `CANCELED` to the store *after* `_is_finished.wait()`, when both event queues are already closed. A live `SubscribeToTask` / `message/stream` client saw `WORKING` and then a hung-up stream. Push did not fire either. The same store-only write existed on the producer-failure path.
+   | 
+   | This persists a *copy* of the current task (the shared `get_task()` object is not mutated) and notifies observers **before** teardown:
+   | 
+   | - **`cancel()`** — if the executor's `cancel()` is cleanup-only (or the task is still non-terminal), emit a synthetic `TaskStatusUpdateEvent(CANCELED)` to `_event_queue_subscribers` and `push_sender` in `finally` *before* `_producer_task.cancel()`, while `_run_producer.finally` cannot have closed the queues yet. #1172's cancel ordering and BaseException/`CancelledError` residual are preserved.
+   | - **Producer failure** — persist `FAILED` to the store and fire `push_sender` before the `finally` closes the queues. A `FAILED` status event is *not* enqueued on the subscriber stream: blocking `on_message_send` treats a terminal `Task` as a successful result, so the crash must still surface as the producer exception (scenarios 9 / 12). The leftover — a stream that cannot distinguish crash from disconnect without `get_task()` — is #1228.
+   | 
+   | The helper returns early when the task is already terminal (no duplicate store/push carrying an earlier state).
+   | 
+   | Rebased onto current main after #1172.
+
+-- a2aproject/a2a-python #1175 [issue] cancel() and producer-failure write a terminal state to the store but not to active subscriber streams
+   why read: the issue #1191 fixes
+   state=open created=2026-08-10T04:14:46Z updated=2026-09-17T22:35:07Z comments=6   (read 2026-09-22T23:25:19Z)
+   | 
+   | Follow-up from the review of #1172 (raised by @astrogilda).
+   | 
+   | ### What happens
+   | 
+   | `ActiveTask.cancel()` now closes a task out to a terminal `CANCELED` state when
+   | the executor's `cancel()` is cleanup-only or the task was parked in a
+   | non-terminal state (e.g. `input-required`). That terminal state is written
+   | directly to the task store via `save_task_event`, because by that point both
+   | the agent and subscriber event queues are already closed.
+   | 
+   | The consequence is that the terminal state reaches the **store** but not an
+
+# Release containment, spot-checked by hand against `gh api compare` at 2026-09-22T23:35Z, each against the
+# release the script names AND the one before it, so that "first" is a reading and not the first tag tried:
+#   #386 merge 497cbac9ce5e:  v2.5.0 -> behind (contains it),  v2.4.0 -> ahead (does not)
+#   #319 merge 8a250ad08334:  v2.2.1 -> behind,                v2.2.0 -> ahead
+#   #188 merge 6657a6dc3b68:  v0.3.7 -> behind,                v0.3.6 -> ahead
+# "behind" from base=<tag> to head=<merge commit> means the merge commit is an ancestor of that tag.
+# The lab pins a2a-go v2.5.0, so all three fixes are in the build this lab runs. None of them is the behaviour
+# the new draft reports, which is present at v2.5.0 and at main 522f8562 alike.

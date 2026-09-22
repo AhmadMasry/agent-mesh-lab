@@ -71,3 +71,21 @@ return `ErrUnsupportedOperation` if it exists and is terminal) would give `-3200
 - The sources and their fetch stamps are in `experiments/runs/2026-09-21-b3-streaming-client/sources.txt`, and the
   tracker search that found #438 is in `tracker-search.txt` there.
 - The `SendMessage` half of #438 was not exercised by this row.
+
+## Refresh, 2026-09-22 (B-6) — nothing changed; the draft stands as written
+
+Re-read from the API by number, not from a search page, at 2026-09-22T23:25:14Z:
+
+- **a2aproject/a2a-go#438** is still **open**, `created_at` and `updated_at` both `2026-09-15T15:46:08Z`, **0
+  comments**. Nothing has happened on it since this draft was written, so the comment text above needs no change.
+- The tracker was searched again, this time **issues AND pull requests, any state** — B-3's search for this row
+  covered both, but the lesson of B-5a is that a page labelled one way and run the other is how a search concludes
+  "nothing" and is wrong, so it was re-run and recorded with the page and the API's own `total_count` beside it
+  (`experiments/runs/2026-09-23-b6-traces-and-table/tracker-search.txt`, block 3). **No pull request touches this
+  path**: the five queries return #438 itself, its sibling #439, and items about other parts of the task
+  lifecycle. `UnsupportedOperationError` returns exactly one item across the whole repository, #438.
+- **#439** ("SubscribeToTask on an INPUT_REQUIRED task returns TASK_NOT_FOUND because localManager tears down the
+  execution/broker on INPUT_REQUIRED") is also still open with 0 comments, read at the same time. It is the same
+  `Resubscribe`-has-no-execution root cause on a *non-terminal* task, and it is not this draft's case; it is named
+  here so that a human filing this comment can see the pair.
+- Nothing in this refresh moves a number in the comment text.

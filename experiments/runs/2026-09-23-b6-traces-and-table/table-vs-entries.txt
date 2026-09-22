@@ -1,0 +1,196 @@
+Every derived cell of table.md against the sentence its findings entry states
+=============================================================================
+
+table.py derives each cell from the row's own committed summary.csv. This file
+checks each derived figure against what the entry already says, so that a cell
+that disagrees with its entry would be visible rather than silent. Read
+2026-09-22 (UTC) against findings.md at ea1b03b8.
+
+Notation: DERIVED is what table.py computed; ENTRY is the entry's own words.
+Where table.py prints a range per receiver and the entry prints one range over
+both, the union of the two derived ranges is given and compared.
+
+
+B-3 / a clean stream  (findings: "Experiment B / both receivers / B-3, a clean stream")
+---------------------------------------------------------------------------------------
+DERIVED  1 arrival / 1 received / 1 execute / 1 task / 1 invocation, both receivers,
+         20 of 20; ingress `complete`, execution `complete`; client 4 events,
+         terminal seen 20 of 20, `eof`; TASK_STATE_COMPLETED 20 of 20.
+ENTRY    "20 of 20, both receivers alike: 1 arrival (SendStreamingMessage), 1 received
+         (joined on messageId), 1 execute, 1 task, 1 invocation (ok) ... stream_end:
+         complete ... TASK_STATE_COMPLETED".
+VERDICT  agrees.
+NOT A COLUMN  the invocation's outcome and latency. This row's summary.csv carries
+         `invocations` and no `invocation_outcomes` or latency column; the cell quotes
+         the entry's `ok` and is marked [entry].
+
+
+B-3 / SubscribeToTask during a running task
+-------------------------------------------
+DERIVED  +1 SubscribeToTask, 0 new executes, 0 new tasks, invocations 1, `ok`,
+         go 45 000.2-45 006.0 ms, py 45 000.5-45 009.6 ms (union 45 000.2-45 009.6);
+         first event task/TASK_STATE_WORKING, Job 1's id 20 of 20 on both;
+         arrival after WORKING go 16 415.7-18 738.4, py 16 261.0-18 354.5;
+         arrival before terminal go 26 264.8-28 592.3, py 26 655.0-28 748.0.
+ENTRY    "invocations still 1 (ok, 45 000.2-45 009.6 ms) ... first event, at the client:
+         a task at TASK_STATE_WORKING with Job 1's task id ... the subscription arrived
+         16.3-18.7 s after the executor's working line and 26.3-28.7 s before its
+         completed line (Go 16 415.7-18 738.4 ms and 26 264.8-28 592.3 ms; Python
+         16 261.0-18 354.5 ms and 26 655.0-28 748.0 ms)".
+VERDICT  agrees, figure for figure.
+
+
+D3 / SubscribeToTask on a terminal task
+----------------------------------------
+DERIVED  Go: subscription ledgers ingress `complete` / execution `error`, wire
+         -32001 "task not found: no active execution", http 200 text/event-stream,
+         client 0 events, `error`, 20 of 20; arrival 19 200.6-24 494.9 ms after the
+         terminal state.
+         Python: ingress `none` / execution `error`, wire -32602 "Task <id> is in
+         terminal state: 3", http 200 application/json, client 0 events, no error,
+         `eof`, 20 of 20; arrival 19 350.0-22 716.2 ms after the terminal state.
+ENTRY    "It arrived 19.2-24.5 s after the terminal state at the worker (mean 20.2 s)
+         and 19.4-22.7 s after it at the orchestrator (mean 20.4 s) ... The Go receiver
+         ... HTTP 200, text/event-stream, carrying the JSON-RPC error -32001 ... The
+         Python receiver ... HTTP 200, application/json, not an event stream, carrying
+         the JSON-RPC error -32602 ... The a2a-go client read no event and no error: its
+         iteration ended quietly, with stream_end: eof. ... The ingress response line
+         carries no stream_end, because the answer was not a stream."
+VERDICT  agrees. The entry renders the Python arrival range to one decimal of a second
+         (19.4 s) where the derived figure is 19 350.0 ms; same number, coarser print.
+
+
+B-4 / the control, no proxy event
+----------------------------------
+DERIVED  cancel at k=5000 ms; 5000.1-5003.3 ms after the send (union) and
+         4997.7-5002.9 ms after the WORKING line (union), `cancel_while_working` 40 of 40;
+         ingress `client-gone` / execution `consumer-gone` 0.7-4.6 ms after the cancel
+         (union); 2 events, 0 events after the cancel, terminal seen 0 of 40;
+         TASK_STATE_COMPLETED 40 of 40; 1 invocation `ok`, go 45 000.2-45 003.7 ms,
+         py 45 000.3-45 002.9 ms; Job 2 arrival 5338.6-5630.1 ms after WORKING (union)
+         and 39 373.6-39 670.9 ms before the terminal state (union), reattached 40 of 40,
+         first event task/TASK_STATE_WORKING, 0 new executes / tasks / invocations.
+ENTRY    "the cancel came 5000.1-5003.3 ms after the send and 4997.7-5002.9 ms after the
+         executor's working line ... within 0.7-4.6 ms of the cancel ... 2 events ...
+         events_after_cancel 0 ... TASK_STATE_COMPLETED in 40 of 40 ... latency
+         45 000.2-45 003.7 ms (go) and 45 000.3-45 002.9 ms (py) ... Job 2 arrived
+         340.3-630.2 ms after the cancel and 5338.6-5630.1 ms after the working line, and
+         39 373.6-39 670.9 ms before the completed line".
+VERDICT  agrees, figure for figure. All derived ranges are over the 38 clean repetitions,
+         as the entry's are; the two sleep-affected repetitions are excluded by the
+         summary's own `sleep_affected` column and not by any choice made here.
+
+
+B-5b / agentgateway-ingress removed, FORCED
+--------------------------------------------
+DERIVED  stream end 38.3-55.6 ms (go) and 36.3-64.4 ms (py) after the removal command;
+         client `error`, "SSE stream error: unexpected EOF", 2 events, terminal seen
+         0 of 40; ingress `client-gone` / execution `consumer-gone`, -0.6 to +2.5 ms
+         from the client's own end stamp; 1 execute, 1 task; TASK_STATE_COMPLETED
+         40 of 40; 1 invocation `ok`, go 45 000.5-45 003.1, py 45 000.5-45 005.1 ms;
+         subscription arrival 1938.8-2846.5 (go) and 2273.4-2852.3 (py) ms after the
+         removal, 40 045.3-40 931.1 ms before the terminal state (union), reattached
+         40 of 40, first event task/TASK_STATE_WORKING, 0 new executes/tasks/invocations.
+ENTRY    "36.3-64.4 ms (go 38.3-55.6, py 36.3-64.4) ... SSE stream error: unexpected EOF,
+         2 events ... terminal_seen false ... both between 0.6 ms before and 2.5 ms after
+         the client's own end stamp ... TASK_STATE_COMPLETED 40 of 40 ... latency
+         45 000.5-45 005.1 ms ... Job 2's arrival came 1 938.8-2 852.3 ms after the
+         removal command and 40 045.3-40 931.1 ms before the Task's terminal state".
+VERDICT  agrees, figure for figure.
+
+
+B-5b / agw-central removed, GRACEFUL
+-------------------------------------
+DERIVED  the stream never broke: client `eof`, no error, 3 events, terminal seen 40 of 40,
+         Job 1 Complete/exit0; end 10 053.4-10 067.6 ms (go) and 10 046.1-15 070.1 ms (py)
+         after the removal command, the py maximum being `b5b-py-central-graceful-r1-01`
+         and `-r1-13` at 15 065.3 and 15 070.1 ms and the other eighteen
+         10 046.1-10 085.1 ms; ledgers `complete`/`complete`, -4.1 to +1.6 ms from the
+         client's end stamp; TASK_STATE_FAILED 40 of 40, the executor's text
+         `model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF` (go)
+         and `Connection error.` (py), each 20 of 20 with no variation inside its row;
+         1 invocation `client-gone`, go 12 159.9-12 199.0, py 12 119.4-17 201.3 ms;
+         subscription arrival 2074.4-2413.2 (go) and 2052.8-2803.9 (py) ms after the
+         removal, 7649.9-7980.0 (go) and 7488.5-13 014.9 (py) ms before the terminal
+         state, reattached 40 of 40, first event task/TASK_STATE_WORKING.
+ENTRY    "Its end came 10 053.4-10 067.6 ms (go) and 10 046.1-15 070.1 ms (py) after the
+         removal command, the two Python repetitions above 15 s being the span-processor
+         case below; over the 38 without it the range is 10 046.1-10 085.1 ms. The ledgers
+         lie between 4.1 ms before and 1.6 ms after the client's own end stamp ...
+         TASK_STATE_FAILED 40 of 40 ... outcome client-gone 40 of 40, latency
+         12 159.9-12 199.0 ms (go) and 12 119.4-17 201.3 ms (py) ... It arrived
+         2 052.8-2 803.9 ms (py) and 2 074.4-2 413.2 ms (go) after the removal command,
+         and 7 488.5-13 014.9 ms (py) and 7 649.9-7 980.0 ms (go) before the Task's
+         terminal state".
+VERDICT  agrees, figure for figure. One difference of wording, not of number: the entry
+         gives "over the 38 without it" as one range across both receivers, and the
+         derived cell gives the same range over the eighteen Python repetitions it
+         belongs to; the Go twenty have no span-processor repetition and their own range
+         is quoted separately.
+
+
+B-5a / the six removal variants (Go receiver only, no resubscription)
+----------------------------------------------------------------------
+DERIVED  ingress graceful 20 042.8-20 053.2 ms, ingress forced 35.6-43.3 ms, ingress
+         rollout 21 643.7-27 268.5 ms, all `error` + "SSE stream error: unexpected EOF",
+         ledgers client-gone/consumer-gone, COMPLETED 5 of 5 each, 1 invocation `ok`;
+         central graceful 10 046.5-10 065.5 ms, central forced 2055.1-2078.8 ms, central
+         rollout 11 467.2-12 309.2 ms, all `eof` with no error at all, ledgers
+         complete/complete, FAILED 5 of 5 each, 1 invocation `client-gone`;
+         `hbone error: drain timeout` present 5 of 5 on central graceful and 5 of 5 on
+         central rollout, 0 of 5 on every ingress variant; SIGTERM to the pod's last log
+         line: ingress graceful 20 003.0-20 005.6, ingress rollout 20 003.9-25 002.7
+         (its maximum the one span-processor repetition; the other four 20 003.9-20 008.4),
+         ingress forced 0.0 ms, central graceful 10 003.1-10 006.8, central rollout
+         10 001.8-10 003.6, central forced 0.4-0.5 ms; the cut request's own access line:
+         ingress forced POST 200 in 5 of 5, ingress graceful 0 of 5, ingress rollout
+         2 of 5, central graceful and rollout POST with no status field 5 of 5 each,
+         central forced no line at all.
+ENTRY    the stream-end table, the drain decomposition, the drain-timeout count "10 of 10",
+         the "20 003.0-20 008.4 ms ... with ONE at 25 002.7 ms", and the operator-record
+         paragraph, all as quoted in the B-5a entry.
+VERDICT  agrees, cell for cell. Nothing in this table rests on an agentgateway access-line
+         timestamp: `old_pod_access_shapes` is route, host, method and status, and the
+         three figures the dated correction of 2026-09-22 moves are all
+         `rm_to_new_pod_first_served_ms_h2c`, which this table does not use.
+
+
+Cells no run produced, named rather than inferred
+--------------------------------------------------
+* B-3's three rows have no removal, so they have no "when, after the removal command"
+  figure and none is invented; their "what ended the stream" cell says the server ended
+  it with the task.
+* B-5a ran the Go receiver only, by its own entry's stated reason. There is no Python
+  cell for any B-5a variant and none is inferred from the Go one.
+* B-5a sent no resubscription. Its probe was a fresh stream with its own work item, not a
+  reattachment, so the subscription columns are empty for all six variants.
+* FOUR cells are quoted rather than derived, and each is marked [entry]: the
+  model-invocation outcome and latency of the clean-stream row and of D3's terminal-task
+  row, at EACH receiver. `stream/summary.csv` and `subscribe-terminal/summary.csv` count
+  `invocations` and carry neither an `invocation_outcomes` nor a latency column, so the
+  `ok` in those four cells is their entries' word and not this step's reading. Every
+  other cell in both tables is derived by table.py from a committed summary.csv.
+* `agw-central` carrying an A2A stream is in NO row, and the cause is the topology, not an
+  oversight. The author's note of 2026-09-19 ("All agentic L7 traffic goes through
+  agentgateway; Istio is L4 only") moved every agentic L7 hop to the agentgateway ingress
+  and made `agw-central` the one waypoint-and-egress proxy, so no A2A stream crosses
+  `agw-central` for either receiver. The populations, because two figures are in play: at the
+  GO receiver B-4 counted 40 of 40 arrivals from the ingress pod and 0 from `agw-central` --
+  20 work items x two arrivals apiece, the SendStreamingMessage and the SubscribeToTask --
+  and the PYTHON receiver's `SendStreamingMessage` and `SubscribeToTask` both cross
+  `lab/orchestrator-ingress` for its own 40 of 40, which is 80 of 80 across BOTH receivers.
+  B-5a's Method cites that both-receivers 80 of 80, correctly, in a sentence about choosing
+  the Go receiver; it is named here only so the two are not read as one. The only A2A-protocol request
+  on that proxy in any B row is the Python CARD GET on `lab/orchestrator`, which is not a
+  stream. B's `agw-central` rows are therefore necessarily about the MODEL leg, and what
+  removing that proxy does to an open A2A stream is a question this topology cannot put.
+  That bounds what Experiment B can answer here; no cell is inferred across it.
+
+THE TWO DIFFERENCES OF PRINT, RESTATED SO NEITHER READS AS A CORRECTION
+  Neither is a difference of figure and neither is a correction to a dated entry; both
+  entries stand exactly as written.
+  * D3's Python arrival: the entry prints 19.4-22.7 s, the derived figure is
+    19 350.0-22 716.2 ms. The same number at a coarser print.
+  * B-5b's "over the 38 without it": the entry gives that range across BOTH receivers,
+    the table gives the same range over the EIGHTEEN Python repetitions it belongs to.
+    The Go twenty have no span-processor repetition and their own range is quoted apart.
