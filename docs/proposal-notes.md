@@ -310,3 +310,14 @@ Job 1 opens a `SendStreamingMessage` and cancels its own stream after k seconds,
 whether the task still reaches `TASK_STATE_COMPLETED` after losing its only stream, and whether the model was invoked exactly
 once. It needs one load-client setting (cancel after k ms), off by default. It separates what each SDK does when a task loses its only stream from
 anything a proxy does, so that a task that fails in the proxy-removal rows can be attributed. The proposal text is unchanged.
+
+## 2026-09-22 — Experiment B: the Go receiver is reached through the ingress by a Host setting on the load client
+
+Decision by the author. The note of 2026-09-20 makes the agentgateway ingress B's main rows, because removing it cuts only the A2A
+stream while the model leg stays up. The in-cluster load client reaches the Python receiver through the ingress from the URL its
+card advertises, but reaches the Go receiver through `agw-central` from its card's URL; the ingress's worker route
+(`worker-ingress`) matches only the host `worker.lab.internal`, which does not resolve in the cluster (measured 2026-09-22, from a
+pod in `lab`). The load client therefore gains one setting, off by default, that sets that host on its requests, so that both
+receivers' B rows cross the same proxy from the same in-cluster client. For Experiment B only, this departs from the stimulus path
+rule recorded in the note of 2026-09-09 (an in-cluster stimulus goes through the receiver's in-cluster gateway); every B entry
+names the path it used. The proposal text is unchanged.
