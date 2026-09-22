@@ -1026,10 +1026,14 @@ send_loadgen_job() { # $1 = work item, $2 = repetition directory
 	# always sent, and an unsubstituted value would make it refuse to start.
 	# CANCEL_AFTER_MS (added on 2026-09-22, for Experiment B's control row) is
 	# rendered empty on every row for the same reason: nothing here is cancelled.
+	# CLIENT_HOST (added the same day, for Experiment B's Go rows through the
+	# ingress) is rendered empty on every row too: each request names its URL's
+	# host, and the matrix's out-of-cluster ingress rows set theirs on the curl.
 	sed -e "s/\${LWI}/${lwi}/g" -e "s#\${TARGET_URL}#${RECEIVER_URL}#g" \
 		-e "s/\${CLIENT_RETRIES}/${JOB_RETRIES}/g" -e "s/\${CLIENT_SDK_RESEND}/${JOB_SDK_RESEND}/g" \
 		-e "s/\${CLIENT_RETRY_ON}/${JOB_RETRY_ON}/g" -e "s/\${CLIENT_DIAL}/${JOB_DIAL}/g" \
 		-e "s/\${MODE}//g" -e "s/\${TASK_ID}//g" -e "s/\${CANCEL_AFTER_MS}//g" \
+		-e "s/\${CLIENT_HOST}//g" \
 		"$JOB_TEMPLATE" \
 		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply --platform="linux/$(go env GOARCH)" -f - >"${d}/apply.log" 2>&1 || rc=$?
 	[ "$rc" = "0" ] || return "$rc"

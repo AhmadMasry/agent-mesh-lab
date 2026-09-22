@@ -39,6 +39,26 @@
 // send, no re-send and no transport: the HTTP client and the factory options are
 // the ones every other run uses.
 //
+// And one more says which HOST every request names, and is not a retry knob
+// either (the author's note of 2026-09-22 in docs/proposal-notes.md, "in
+// Experiment B the Go receiver is reached through the ingress by a Host
+// setting"):
+//
+//   - CLIENT_HOST=<host>     every request this process makes -- the card GET and
+//     the POST, in every mode -- names <host> as its Host (req.Host, as
+//     fixtures/replay does), and is still sent to the URL it was sent to.
+//     Nothing else on the request changes. Unset or empty, each request names
+//     the host of its URL, as every run before it did (TestHost_DefaultOff).
+//     A value that is not a bare host name is refused before anything is sent
+//     (hostFromEnv).
+//
+// It exists because the agentgateway ingress routes to the worker by the host
+// worker.lab.internal (its step-2c route, worker-ingress), which does not
+// resolve in the cluster, so an in-cluster Job can reach the worker through the
+// ingress only by sending to the ingress's Service and naming that host. The
+// name puts it beside CLIENT_DIAL, the other setting about where the client's
+// requests go, which every mode also reads.
+//
 // One more switch says WHAT the one request is, for Experiment B (stream.go):
 //
 //   - MODE=stream            one SendStreamingMessage instead of the SendMessage.
@@ -68,9 +88,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/a2aproject/a2a-go/v2/a2a"
@@ -91,9 +113,15 @@ import (
 // server span would otherwise have nothing to attribute it to. Nothing about
 // the A2A message changes: these are HTTP headers beside it, and the body is
 // untouched.
+//
+// When host is set (CLIENT_HOST) the request also names it as its Host. It is
+// set here, on the request every other transport of the process hands down, so
+// the card GET and every POST carry it alike, and the request still goes to
+// the address in its URL.
 type identityTransport struct {
 	base     http.RoundTripper
 	workItem string
+	host     string
 }
 
 func (t identityTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -101,6 +129,11 @@ func (t identityTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	next := req.Clone(req.Context())
 	next.Header.Set("X-Logical-Work-Item-Id", t.workItem)
 	next.Header.Set("X-Caller", "loadgen")
+	if t.host != "" {
+		// req.Host, not a Header.Set: net/http takes the request's authority from
+		// this field and ignores a Host header (fixtures/replay does the same).
+		next.Host = t.host
+	}
 	return t.base.RoundTrip(next)
 }
 
@@ -109,7 +142,13 @@ func (t identityTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 // retry knob built it, are the ones it was constructed with; nothing here adds
 // a retry or changes a timeout.
 func instrument(hc *http.Client, workItem string) *http.Client {
-	hc.Transport = labotel.Transport(identityTransport{base: hc.Transport, workItem: workItem})
+	return instrumentFor(hc, workItem, "")
+}
+
+// instrumentFor is instrument with the Host every request names (CLIENT_HOST),
+// or "" for the host of each request's URL.
+func instrumentFor(hc *http.Client, workItem, host string) *http.Client {
+	hc.Transport = labotel.Transport(identityTransport{base: hc.Transport, workItem: workItem, host: host})
 	return hc
 }
 
@@ -157,6 +196,10 @@ type clientLine struct {
 	// advertises several interfaces, where the choice is the SDK's.
 	AdvertisedURLs []string `json:"advertised_urls"`
 	DialledURL     string   `json:"dialled_url"`
+	// Appended on 2026-09-22, and only when CLIENT_HOST is set: the Host every
+	// request of this process named. With the setting off the key is absent and
+	// the line is the one before it, byte for byte.
+	Host string `json:"host,omitempty"`
 }
 
 func getenv(k, def string) string {
@@ -220,6 +263,41 @@ func dialFromEnv() (dialMode, error) {
 	}
 }
 
+// hostFromEnv reads CLIENT_HOST. Like CLIENT_DIAL, a value it does not take is
+// an error and not "off": a Host dropped would send the request to whatever the
+// proxy's other routes name, and the row would be recorded as one it was not.
+// It takes a bare host name as an HTTPRoute's hostnames field takes one without
+// a wildcard -- lower-case letters, digits and hyphens in dot-separated labels
+// of 1 to 63, no label starting or ending with a hyphen, 253 at most -- and no
+// IP address, port, scheme, path or placeholder.
+func hostFromEnv() (string, error) {
+	v := os.Getenv("CLIENT_HOST")
+	if v == "" {
+		return "", nil
+	}
+	if !bareHostName(v) {
+		return "", fmt.Errorf("CLIENT_HOST=%q is not a bare host name (lower-case letters, digits, hyphens and dots, with no scheme, port, path, wildcard, IP address or placeholder); nothing was sent", v)
+	}
+	return v, nil
+}
+
+func bareHostName(v string) bool {
+	if len(v) > 253 || net.ParseIP(v) != nil {
+		return false
+	}
+	for _, label := range strings.Split(v, ".") {
+		if len(label) < 1 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for i := 0; i < len(label); i++ {
+			if c := label[i]; !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // cardToDial returns the card the client is built from. With the knob unset that
 // is the resolved card itself, as it always was. With CLIENT_DIAL=target it is a
 // copy whose interface entries carry the target URL. The entries are pointers, so
@@ -249,11 +327,13 @@ type sendConfig struct {
 	text      string
 	sdkResend bool
 	dial      dialMode
+	// host is CLIENT_HOST, for the line; the transport puts it on the requests.
+	host string
 }
 
 // configFromEnv reads everything main needs from the environment and refuses,
 // before anything is sent, what must never run: a missing TARGET_URL or LWI, an
-// unknown CLIENT_DIAL or MODE, a TASK_ID the mode cannot use, a retry knob on a
+// unknown CLIENT_DIAL or MODE, a CLIENT_HOST that is not a bare host name, a TASK_ID the mode cannot use, a retry knob on a
 // stream or a subscription, and a CANCEL_AFTER_MS that is not a positive whole
 // number below requestBound or that comes with any mode but the stream. It is main's
 // opening, moved here on 2026-09-21 so a test can assert the refusals are wired
@@ -265,6 +345,10 @@ func configFromEnv() (runConfig, knobs, error) {
 		return runConfig{}, knobs{}, errors.New("TARGET_URL and LWI are required")
 	}
 	dial, err := dialFromEnv()
+	if err != nil {
+		return runConfig{}, knobs{}, err
+	}
+	host, err := hostFromEnv()
 	if err != nil {
 		return runConfig{}, knobs{}, err
 	}
@@ -281,7 +365,7 @@ func configFromEnv() (runConfig, knobs, error) {
 		return runConfig{}, knobs{}, err
 	}
 	return runConfig{target: target, workItem: lwi, text: getenv("TEXT", "hello"), sdkResend: k.sdkResend, dial: dial, mode: mode,
-		cancelAfter: cancelAfter}, k, nil
+		cancelAfter: cancelAfter, host: host}, k, nil
 }
 
 // requestBound is the whole process's bound on its one request, the context
@@ -297,6 +381,14 @@ func httpClientFor(mode clientMode, k knobs, timeout time.Duration) *http.Client
 		return streamHTTPClient(timeout)
 	}
 	return k.httpClient(timeout)
+}
+
+// clientFor is the HTTP client main sends this process's one request with:
+// httpClientFor's client for the mode, instrumented with the work item and the
+// Host every request names (CLIENT_HOST, "" for each URL's own). It is main's
+// line, moved here on 2026-09-22 so a test can assert the Host is wired in.
+func clientFor(c runConfig, k knobs) *http.Client {
+	return instrumentFor(httpClientFor(c.mode.mode, k, 90*time.Second), c.workItem, c.host)
 }
 
 func main() {
@@ -326,7 +418,7 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), requestBound)
 	defer cancel()
-	hc := instrument(httpClientFor(c.mode.mode, k, 90*time.Second), c.workItem)
+	hc := clientFor(c, k)
 
 	done(runMode(ctx, hc, c, os.Stdout))
 }
@@ -339,7 +431,7 @@ func main() {
 // statements it gained are the ones CLIENT_DIAL needs.
 func send(ctx context.Context, hc *http.Client, c sendConfig, out io.Writer) int {
 	lwi := c.workItem
-	line := clientLine{Ledger: "client", Attempt: 1, LogicalWorkItemID: lwi, A2AVersion: string(a2a.Version)}
+	line := clientLine{Ledger: "client", Attempt: 1, LogicalWorkItemID: lwi, A2AVersion: string(a2a.Version), Host: c.host}
 	emit := func() {
 		line.TS = time.Now().UTC().Format(time.RFC3339Nano)
 		b, _ := json.Marshal(line)

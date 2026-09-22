@@ -46,6 +46,18 @@
 # included, stops the Job before it sends, and so does the setting with any
 # mode but MODE=stream (TestCancelFromEnv_AnythingElseIsRefused,
 # TestCancelFromEnv_RefusedWithAnyModeButStream).
+#
+# CLIENT_HOST (added on 2026-09-22, the author's note of that date in
+# docs/proposal-notes.md) says which host every request of the Job names:
+# empty, the host of each request's URL, as every row before it; a bare host
+# name, that name as the Host of the card GET and of every POST, in every mode,
+# with nothing else on the request changed (fixtures/loadgen/main.go). It is for
+# Experiment B's Go rows through the agentgateway ingress, whose route to the
+# worker matches the host worker.lab.internal. It is rendered empty by every
+# script that renders this template and is not such a row, and the client reads
+# empty as off (TestHost_DefaultOff). Like CLIENT_DIAL, any value that is not a
+# bare host name, an unsubstituted placeholder included, stops the Job before it
+# sends (TestHostFromEnv_AnythingElseIsRefused).
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -127,6 +139,8 @@ spec:
               value: "${CLIENT_RETRY_ON}"
             - name: CLIENT_DIAL
               value: "${CLIENT_DIAL}"
+            - name: CLIENT_HOST
+              value: "${CLIENT_HOST}"
             - name: MODE
               value: "${MODE}"
             - name: TASK_ID

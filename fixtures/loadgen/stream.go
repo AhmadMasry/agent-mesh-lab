@@ -131,6 +131,9 @@ type runConfig struct {
 	// cancelAfter is CANCEL_AFTER_MS, 0 when off; only the stream mode reads it
 	// (cancel.go).
 	cancelAfter time.Duration
+	// host is CLIENT_HOST, "" when off. The transport puts it on every request
+	// (clientFor); the lines record it.
+	host string
 }
 
 // runMode makes this process's one request in the mode asked for and prints its
@@ -140,7 +143,7 @@ func runMode(ctx context.Context, hc *http.Client, c runConfig, out io.Writer) i
 	case modeStream, modeSubscribe:
 		return streamOnce(ctx, hc, c, out)
 	default:
-		return send(ctx, hc, sendConfig{target: c.target, workItem: c.workItem, text: c.text, sdkResend: c.sdkResend, dial: c.dial}, out)
+		return send(ctx, hc, sendConfig{target: c.target, workItem: c.workItem, text: c.text, sdkResend: c.sdkResend, dial: c.dial, host: c.host}, out)
 	}
 }
 
@@ -215,6 +218,9 @@ type streamEnd struct {
 	CardStreaming        bool     `json:"card_streaming"`
 	AdvertisedURLs       []string `json:"advertised_urls"`
 	DialledURL           string   `json:"dialled_url"`
+	// The Host every request of this process named, only when CLIENT_HOST is
+	// set; with it off the key is absent (main.go).
+	Host string `json:"host,omitempty"`
 	// The cancel's facts, after every key B-3 recorded, and only when
 	// CANCEL_AFTER_MS is on: a nil embedded pointer adds no key (cancel.go).
 	*cancelFacts
@@ -257,7 +263,7 @@ func streamOnce(ctx context.Context, hc *http.Client, c runConfig, out io.Writer
 	}
 	end := streamEnd{Ledger: "client", Mode: string(c.mode.mode), Method: method, Line: "end",
 		LogicalWorkItemID: c.workItem, RequestedTaskID: c.mode.taskID, A2AVersion: string(a2a.Version),
-		StreamEnd: streamEndNotSent}
+		StreamEnd: streamEndNotSent, Host: c.host}
 	finish := func() int {
 		end.Posts, end.HTTPStatus, end.ContentType = obs.facts()
 		end.WireErrorCode, end.WireErrorMessage = obs.wireError()

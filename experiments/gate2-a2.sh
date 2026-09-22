@@ -424,11 +424,14 @@ one_rep() { # $1 = repetition number
 	# unsubstituted, any of the three would make the client refuse to start.
 	# CANCEL_AFTER_MS (added on 2026-09-22, for Experiment B's control row) is
 	# rendered empty as well: nothing here is cancelled, and left unsubstituted
-	# it too would make the client refuse to start.
+	# it too would make the client refuse to start. So is CLIENT_HOST (added the
+	# same day, for Experiment B's Go rows through the ingress): each request
+	# names its URL's host, as it did when these rows were run.
 	sed -e "s/\${LWI}/${lwi}/g" -e "s#\${TARGET_URL}#${TARGET_URL}#g" \
 		-e "s/\${CLIENT_RETRIES}/${JOB_RETRIES}/g" -e "s/\${CLIENT_SDK_RESEND}/${JOB_SDK_RESEND}/g" \
 		-e "s/\${CLIENT_RETRY_ON}/${JOB_RETRY_ON}/g" -e "s/\${CLIENT_DIAL}//g" \
 		-e "s/\${MODE}//g" -e "s/\${TASK_ID}//g" -e "s/\${CANCEL_AFTER_MS}//g" \
+		-e "s/\${CLIENT_HOST}//g" \
 		"$JOB_TEMPLATE" \
 		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply --platform="linux/$(go env GOARCH)" -f - >"${d}/apply.log" 2>&1 || rc=$?
 	if [ "$rc" != "0" ]; then notes="${notes}ko_apply_rc=${rc};"; fi
