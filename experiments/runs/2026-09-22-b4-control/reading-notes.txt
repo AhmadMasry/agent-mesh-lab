@@ -1,0 +1,291 @@
+Experiment B, step B-4 -- reading notes. What each file in this directory is, what produced it, and what differs from
+what was written. Stamps UTC from `date -u`. The findings entry of 2026-09-22 that cites this directory is
+"Experiment B / both receivers / B-4, the control with no proxy event".
+
+THE STOP THAT SHAPED THE STEP (path-probe.txt)
+  The brief put the control on the paths B-5b's main rows will use: both receivers through the agentgateway ingress.
+  Before any code was written for it, four read-only requests from a curl pod in `lab` -- where a load-client Job sits --
+  were sent on the STANDING cluster (the one B-3 built, before this task deleted it), at 2026-09-22T16:10:44Z:
+    - `worker.lab.internal`, the host the ingress's step-2c route matches, does not resolve in the cluster: NXDOMAIN,
+      and curl exits 6 without sending;
+    - a card GET to the ingress Service with no Host override is answered by the ORCHESTRATOR's card, the catch-all
+      route lab/orchestrator-ingress;
+    - the same GET with `Host: worker.lab.internal` is answered by the WORKER's card, which advertises its own Service
+      URL (the agw-central path).
+  So the load client could not address the worker through the ingress at all: it has no Host setting, and the lab's
+  existing worker-through-ingress rows are out-of-cluster curl and the replay harness, both of which set that header.
+  That was reported as a STOP before any code for it. The author's note of 2026-09-22 ("in Experiment B the Go receiver
+  is reached through the ingress by a Host setting") followed, and the controller ruled the setting into one commit.
+
+THE CODE THE REBUILD PROVES (code-proof/)
+  Three commits, all written and committed before any cluster action, named in the entry. code-proof/ holds what
+  showed each one and what showed no existing row changed:
+  mutants/    four sets, each run on a git-archive copy of the tree, never on the checkout: B-3's 27
+              (b3-mutants-tree.py, its committed file unedited), this step's first commit's 6 (mutants-c1.py), the
+              cancel setting's 26 (mutants-c2.py, and mutants-c2-tip.py for the tip, whose C07 pattern follows the
+              configFromEnv line the Host setting extended -- the same mutation), and the Host setting's 19
+              (mutants-c3.py). mutants-c1.txt is the first commit's own pass; mutants-77a59010.txt the three sets at the
+              cancel commit; mutants-6bf9e00f.txt all four at the code tip: 78 of 78 killed, 0 survivors.
+  render/     render.sh takes a parent revision and a tip revision, runs each renderer's own sed block from both sides
+              over both templates with the knob values its rows use, and prints every render. render-cancel.txt
+              (4f2a9974 -> c5ca17df), render-host.txt (c5ca17df -> 6bf9e00f) and render-all.txt (314191d3 -> 6bf9e00f):
+              18 renders each; the 12 of loadgen-a2-job.yaml differ by exactly the two lines the commit adds (and by
+              both pairs in render-all.txt), the 6 of loadgen-job.yaml are byte-identical, and no placeholder is left
+              in any render. In render-all.txt `diff` aligns the second insertion one line early, because TASK_ID's
+              `value: ""` and the inserted `value: ""` are the same line; the inserted entry is CANCEL_AFTER_MS's.
+              Each file's last section renders B-3's own rows.sh -- a dated record, unedited -- over the tip's
+              template: it leaves the new placeholders, and a Job so rendered stops before it sends.
+  wire/       the unary send compared on the wire, with B-3's capture.py unedited and its run.sh and compare.sh with
+              only their scratch path changed: the load client built at main 54528efb and at the tip 6bf9e00f, each run
+              once against a raw TCP capture with the new variables unset, with them rendered empty as the existing
+              rows render them, and (committed-host) with CLIENT_HOST set. compare.txt: with the settings unset or
+              empty every masked comparison is equal, 15 of 15, the GET 173 bytes and the POST 476; with CLIENT_HOST
+              set the ONLY differences are the `Host:` line of each request and the line's added `host` key.
+              runs/<label>/ holds each capture as <name>.escaped.txt, the raw bytes with each carriage return written
+              <CR> (escape-requests.py beside them), because the repository converts CRLF on commit; runs/originals.txt
+              carries each raw file's size and sha256, and the raw files stay in a scratch directory.
+  tdd/        the red runs: the package failing to build with the tests of the cancel setting (red-cancel.txt) and of
+              the Host setting (red-host.txt) before their code existed.
+  preflight*.txt  go build / vet / gofmt, go test ./..., -race on fixtures/loadgen, make test, uv lock --check and
+              pytest, at each commit and at the tip: 7 packages ok, 28 `ok` lines, 86 passed.
+
+THE BUILD
+  rebuild.sh, build.txt, timings.csv, rebuild-driver.txt -- from `make teardown` of the cluster B-3 built through
+  `make step-3`, make targets only, no manual step, each timed, the checkout clean before each. Seven targets, all
+  exit 0, 413.162 s. The drivers put a lab-scoped istioctl 1.31.0 first on their own PATH and gave Helm an empty
+  repository file and a cache of the lab's own under a scratch path, as B-3's controller rulings of 2026-09-21
+  required; nothing on the host was changed by this task, and `helm repo update` was not run. The host's Homebrew
+  istioctl is 1.31.1 and was not used.
+  tools.txt   the lab-scoped istioctl, re-verified in this task: the release record and the published checksum file
+              fetched again (2026-09-22T16:29:00Z and 16:29:02Z), both giving a0c4d353... for the tarball B-3 fetched,
+              whose sha256 is that value; the binary extracted from it has sha256 763caa1c..., the value B-3 recorded,
+              and reports client version 1.31.0.
+  MASKED LINE: build.txt line 81, the `git worktree list` line, has the checkout's home directory written <HOME>.
+  rebuild.sh does that itself, in the line that prints it; no other line of this directory was masked for a home path,
+  and `git grep` finds no other home path in what this task adds.
+
+THE STANDARD PROOF
+  proof.sh ran, in order and each once: the last record's checks.sh with ONLY=part1, its versions-readback.sh, that
+  checks.sh with ONLY=knobs, and the last proof's comparison program standard-counts-vs-rebuild-2.py, all unedited and
+  run from the records that hold them. checks-driver.txt is its console output, checks.txt the checks' own log.
+  standard-counts-vs-last-proof.txt compares this proof with B-3's directory: 61 rows same, 6 DIFFERS. The six have
+  two causes and nothing else:
+    (1) FIVE of them are one reading: the plaintext probe's own pod. Here ztunnel attributed the refusal of the probe's
+        connection to the WORKER to `src.workload="mtls-probe"`; in B-3's run that same line carried no source workload.
+        The probe itself read the same on both sides (http=000, curl_exit=56 at both receivers, two policy-rejection
+        lines naming istio-system/istio_converted_static_strict). The five rows are: the legs present on both sides
+        (23 here, 24 there, the two sides differing only in that leg's source columns), the named leg "plaintext probe
+        -> worker", the count of rejections attributed to mtls-probe (2 here, 1 there), the other ztunnel error lines
+        (20 here, 21 there) and, of those, the `policy rejection` count (0 here, 1 there) -- the line B-3 counted among
+        "other" because it was unattributed.
+    (2) ONE is the Prometheus scrape leg's connection count, 24 here against 16 there: the cell the author ruled on
+        2026-09-20 stays as recorded. It is the number of scrape connections since the telemetry stack came up, one per
+        15 s (deploy/step-3-stress/prometheus-values.yaml, scrape_interval: 15s). The Prometheus pod started at
+        17:05:58Z and the leg was read at 17:11:55Z, 357 s later, which is 23.8 scrapes for the 24 counted. B-3's
+        record does not hold its Prometheus pod's start, but its step-3 ran 21:09:18Z-21:11:14Z and its reading was at
+        21:14:57Z, which bounds its elapsed time at 223-339 s, or 14.9-22.6 scrapes, and it counted 16.
+  Everything else is equal, the clean check 1/1/1/1/1 COMPLETED at both receivers, the spans and their dangling-parent
+  and GenAI summaries, Prometheus 7 of 7 up, the STRICT posture and its mutual_tls legs, both proxies' config dumps,
+  and the retry knobs 1>0>2>0>1>0>0, ending at 0 on every route.
+  NOT COMMITTED: checks.sh's own byte copies. The script keeps a copy of itself under checks-as-run/ at each run and
+  its line 40 is a `cd` to the checkout's absolute path, so the two copies of this run were moved to a scratch
+  directory instead of being committed, as B-3's record did by ruling:
+    checks.sh.as-run-20260922T170824Z-part1  sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00
+    checks.sh.as-run-20260922T171157Z-knobs  sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00
+  Both equal, byte for byte, the committed experiments/runs/2026-09-20-experiment-a-agentgateway-only/checks.sh, whose
+  own sha256 is 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00 and which checks.txt prints at both
+  runs; all four values are equal. Part two of checks.sh was not run, so this directory's images/, ingress-shape/ and
+  worker-span/ stay empty and git keeps no empty directory.
+
+THE ROWS
+  rows.sh     the row driver (its sha256 is printed at the start of control.txt and of dry/control/control.txt).
+              DRY=yes sends one repetition per receiver into dry/ instead.
+  counts.py   the counting: it parses every stamp, joins on identity, reads the final state from the executor's state
+              lines, counts EVERY invocation line including stale-closed (none appeared: 0 of 40), and marks each
+              repetition sleep_affected from that repetition's own window against sleep-events.csv. It tallies each
+              receiver twice, over the clean repetitions and over all of them.
+  control/    the counted row: control.txt (the driver's own log), summary.csv, counts.txt, and one directory per
+              repetition with ingress.jsonl, execution.jsonl, invocation.jsonl, client.jsonl (make ledgers),
+              client-sub.jsonl (Job 2's lines), steps.txt, jobs.txt, both proxies' access-log lines since the
+              repetition began, apply-1.yaml and apply-2.yaml (the rendered Job each kubectl apply was given) and
+              ledgers-stderr.txt. Each Job's apply output (apply-N.log) is ignored by the repository's .gitignore.
+  dry/        the dry repetitions, sent 17:13:46Z-17:15:52Z (work items b4-ct-go-b4dry1-01 and b4-ct-py-b4dry1-01),
+              recorded by the controller's ruling and NOT counted in the entry's figures. They read as the counted
+              repetitions read.
+  THE IMAGE, once per row: `ko build` of fixtures/loadgen with KO_DOCKER_REPO=kind.local, which loads it into the kind
+  nodes and prints the reference `ko apply` would put in the Job (kind.local/loadgen-<hash>:<digest>). Each Job is then
+  the template with that image line and the row's substitutions, applied with `kubectl apply`. image.txt in each row
+  directory records the build and the reference. This is what takes the image build out of Job 2's start.
+  THE ORCHESTRATOR ran in model mode for the py half: DOWNSTREAM_A2A_URL removed, PLAN_MODEL_CALL=off and
+  MODEL_MAX_RETRIES=0 read and recorded before the switch, and the variable restored after the half (control.txt).
+  The restore puts the variable back at the end of the container's env list, so the pod template differs from
+  step-2b's in that order and the pod name hash moved; cluster-after.txt reads the value.
+
+THINGS TO KNOW WHEN READING THE ROWS
+  - The Go half's path is the author's note of 2026-09-22: TARGET_URL is the agentgateway ingress's Service,
+    CLIENT_DIAL=target and CLIENT_HOST=worker.lab.internal, so the card GET and the POST both cross the ingress on
+    lab/worker-ingress. The Python half is B-3's: the orchestrator's Service, whose card advertises the ingress, so its
+    card GET crosses agw-central on lab/orchestrator and its POSTs the ingress on lab/orchestrator-ingress. That
+    asymmetry is in the counts as `a2a_at_ingress` and `a2a_at_agw_central`.
+  - The sender of every arrival is read from the receiver's own ingress ledger (`remote`), against the proxy pod IPs
+    the driver recorded at the row's start: the ingress pod in 80 of 80 arrivals, agw-central in none.
+  - A repetition's control reset (a POST to the receiver's Service before each half's first repetition) crosses
+    agw-central and is not an A2A line; counts.py leaves /control/ paths out of the path columns.
+  - Job 1 ends Failed with exit 3 in every repetition, and that is the row: a cancelled stream ends with no terminal
+    event, which is the client's own non-zero status. The lines are the record, not the Job's status.
+
+THE HOST SLEPT DURING THE ROW
+  sleep-events.sh reads `pmset -g log` and writes sleep-events.csv as kind,utc only: the four kinds chosen by pmset's
+  own event-kind column, "Wake Requests" left out of it, and no line's text kept. 14 events, 17:24:34Z-17:52:24Z, all
+  inside the go half.
+  windows.csv lists the counted windows; host-sleep.txt is the last record's host-sleep.sh, unedited, over them. Its
+  counts: over the whole task and over the row, Sleep=7 Wake=2 DarkWake=5 Maintenance=0 Wake Requests=6, every one of
+  them inside row-control-go-half; row-control-py-half, the rebuild, the proof, the dry repetitions and the code phase
+  count 0 of every kind.
+  MASKED: the recorder lists each line it counts, and pmset writes each line with its own text -- the wake source, the
+  power source, the process that asked for the next wake. CLAUDE.md allows no device or product name and no
+  power-assertion owner in a committed file, so the committed host-sleep.txt is mask-sleep-lines.py's output: every
+  listed line keeps its indentation, its stamp with pmset's own offset and its kind, and loses the rest; 60 lines were
+  cut. The recorder's counts, its guard's count, the assertion counts and the keep-awake section pass through
+  untouched. The unedited output stays in a scratch directory and is not committed. host-sleep.txt's first line names
+  follow-ups 19 task 4b: that is the unedited script's own header, not this task.
+  own-keepawake-lines.txt counts this directory's own lines naming caffeinate or pmset and, of them, lines that would
+  start a keep-awake or set a power value: 6 lines match the test and every one is printed there, all of them inside
+  own-keepawake-lines.py's own docstring and match strings. This task started no keep-awake and changed no power
+  setting, and does not claim none was active: the agent harness holds its own, and host-sleep.txt's keep-awake section
+  reads what `ps` showed.
+  WHAT THE SLEEP DID to the readings is in the entry: two repetitions of the go half, b4-ct-go-r171600-10 and -11, have
+  a sleep inside their own window, and only the intervals that span it are unreadable. The interval from the executor's
+  working line to its terminal line reads 1 226 688.0 and 476 540.2 ms in those two against 45 002.5-45 021.3 ms in the
+  clean repetitions (see the review-round note at the end of this file), while the mock's own latency for the same call
+  reads 45 003.7 and 45 001.1 ms: the mock measures the
+  delay inside the MOCK's container, while the executor's state lines carry the RECEIVER's container's wall clock, and
+  the two agree here, both pods running on the one kind node, so together they show the workloads frozen and the clock
+  jumped at the wake, not a longer model call. In -11 the interval from the driver
+  applying Job 2 to the arrival at the receiver reads -91 862.8 ms, a host-stamped apply against an in-cluster arrival
+  across the wake, the two clocks disagreeing. That one figure is the only one here of its kind; the three kinds of
+  figure, and which of them a jump or the freeze can reach, are set out in the second review round's note at the end of
+  this file. Intervals inside one clock -- the two ledgers, the executor's state lines, the mock's latency, the
+  client's own stamps -- are readable throughout, and in those two repetitions they read as the clean ones do.
+
+TWO READINGS TAKEN AFTER THE ROW, for the preparation's §8 item 6
+  path-after-row/  the ztunnel connection series, read 18:2xZ by the same programs the standard proof runs
+              (experiments/runs/2026-09-12-mtls-enforced/promq.sh security and follow-ups 18's hops.py, both
+              unedited). The proof's own reading was taken BEFORE the row, when no request had yet crossed the
+              ingress-to-worker leg, so that file reads `0/no-series/0` for it; after the row the leg is there,
+              mutual_tls on both sides, 23 connections opened, the ingress's SPIFFE identity to the worker's.
+  trace-b4/go/  the trace of one Go repetition (b4-ct-go-r171600-20) exported by `make export-trace`, 22 spans:
+              loadgen -> agentgateway-ingress (route lab/worker-ingress) -> worker for the card GET and the POST of
+              both Jobs, and agw-central only on the model route between the worker and the mock. No A2A hop of that
+              repetition crosses agw-central.
+
+NOTES OF 2026-09-22, THE REVIEW ROUND (the review of the record commit, .superpowers/sdd/experiment-b/review-b4.md;
+the controller's ruling of that date). The sections above stand as written except where one of these says otherwise.
+
+  I-1, THE ONE IMPORTANT, and the correction it asks for. The sleep section above and the findings entry compared the
+  two sleep-affected working-to-terminal intervals against "44.4 s in the clean repetitions". That figure is from no
+  file: it was typed while the record was being drafted and was never derived, and `counts.py` at the time computed no
+  such interval (its state-line intervals were working-to-cancel, cancel-to-completed, working-to-subscription-arrival
+  and subscription-arrival-to-completed). Re-derived here, from the executor's own two `state` lines per repetition,
+  by this round's `counts.py`, which now carries the interval as `working_to_terminal_ms`:
+      go, the 18 clean   45 002.5 - 45 007.3 ms
+      py, the 20 clean   45 005.0 - 45 021.3 ms
+      the 38 clean       45 002.5 - 45 021.3 ms, that is 45.0 s
+      the dry pair       45 005.1 ms (go) and 45 024.2 ms (py)
+      the two affected   1 226 688.0 ms (b4-ct-go-r171600-10) and 476 540.2 ms (-11), reproduced unchanged
+  Both files now read 45 002.5-45 021.3 ms (45.0 s). Nothing else moves: the conclusion the sentence supports -- that
+  those intervals are not readable -- is stronger against 45.0 s than against the figure that was there. `counts.py`,
+  `control/summary.csv`, `control/counts.txt` and the dry pair's two files were re-generated in this round with the
+  added column, and nothing else in them changed.
+
+  M-3, what the sleep spans. The entry said "three figures"; there are seven, and the entry now names the kind rather
+  than a count: every interval of those two repetitions that ends at the terminal state (working-to-terminal,
+  cancel-to-completed, subscription-arrival-to-completed: six figures) and, in -11, the one interval that joins a host
+  stamp to an in-cluster stamp across the wake (the driver's apply of Job 2 to the arrival, -91 862.8 ms). Four further
+  figures of -10 are READABLE and sit outside the clean band for a different reason -- that Job started more slowly
+  after the wake: apply 176.2 ms, apply-to-arrival 480.6 ms, cancel-to-arrival 685.9 ms, working-to-arrival 5686.4 ms.
+  The entry quotes them.
+
+  M-1, an SDK difference on the very event this row is about, now in the entry. On the execution ledger's `result`
+  line for the cancelled `SendStreamingMessage`, the Go receiver carries `error: "queue read failed: context
+  canceled"` in 20 of 20 and the Python receiver carries no `error` key at all in 20 of 20 (read from the raw lines:
+  20 with, 0 without at the worker; 0 with, 20 without at the orchestrator). Both carry `stream_end: consumer-gone`,
+  which is what the row counts, so no count moves. It belongs beside the two asymmetries the record already carried
+  (the Python content type's `; charset=utf-8`, and the Python card GET crossing agw-central).
+
+  M-2, what else the sleep cost. It took access-log lines as well as intervals. The go half holds 77 ingress access
+  lines, not 80: b4-ct-go-r171600-11 holds 1 where the other nineteen hold 4 (its two card GETs and its Job 1 POST are
+  missing), because that repetition's collection window, taken with `--since`, moved under the sleep. The py half holds
+  40, 2 per repetition, complete. The paths claim does not rest on these lines: the arrivals are the receivers' own
+  ingress ledgers, 80 of 80, complete, and the `a2a_at_ingress` column shows that repetition with its one POST.
+
+  M-7, the Prometheus start. The 17:05:58Z the sixth DIFFERS rests on is now committed, in prometheus-start.txt, read
+  on this cluster, whose Prometheus pod has 0 restarts: pod startTime 17:05:44Z, container started 17:05:58Z. The same
+  start is bounded without that reading by step-3's own helm output for the release (build.txt line 2364, LAST DEPLOYED
+  20:05:44 local = 17:05:44Z) and by the step-3 window in timings.csv.
+
+  M-9, two labels an artefact-only reader would misread.
+    - standard-counts-vs-last-proof.txt heads its right-hand column REBUILD-2. That word is hardcoded in the unedited
+      comparison program; proof.sh points it at B-3's directory, so the right-hand column holds B-3's values, as the
+      file's name, these notes and the entry all say.
+    - the reason for not committing checks.sh's as-run copies, above, cites its line 40, the `cd` to the checkout's
+      absolute path. That exact line is itself already committed, in the record that holds checks.sh; the copies are
+      left out because this task adds no second copy of it under a new path, following B-3's ruling, and the sha256
+      chain above is what makes them auditable.
+
+  M-4, M-5, M-6, M-8, M-10: the masked line is build.txt line 81, not 102 (corrected above); the entry now cites B-3's
+  Job 2 start as about 17 s, 15.7-18.1 s, as B-3's own notes give it; the Versions line now says six of the eight pins
+  are cluster reads and a2a-go and a2a-spec are read at the built tree, as versions-readback.txt itself states; the
+  entry no longer says every other deployed path is as the last rebuild's, since experiments/gate2-a2.sh and
+  experiments/gate3-matrix.sh changed too, as build.txt records; and the entry now says the Go receiver was reached
+  through the ingress from an IN-CLUSTER client for the first time, the lab's earlier worker-through-ingress rows
+  being the out-of-cluster curl and the replay harness.
+
+  TWO CARRIES FOR B-5, from the reviewer, recorded here and not as findings of this step.
+    - No redirect policy is pinned. internal/httpclient.New leaves http.Client.CheckRedirect at Go's default, so up to
+      ten redirects would be followed and identityTransport would re-apply CLIENT_HOST to each. No lab route answers
+      3xx today and nothing in this step changes that, but CLIENT_HOST is the first setting that decides WHICH route
+      answers, and B-5 removes a proxy, which is when a gateway is likeliest to answer something other than a 2xx. A
+      test pinning that a 3xx is not followed would close it before B-5 needs it.
+    - ended_before_cancel has a microsecond-wide race. canceller.stop() sets `ended` only after readEvents returns, so
+      a timer firing between the iterator returning and stop() taking the lock would report cancel_fired true and
+      ended_before_cancel false for a stream that had just ended. At k = 5 s against a 45 s task the window is nowhere
+      near, and mutant C13 pins the guard in the other direction, but B-5 cuts streams at moments the client does not
+      choose, and there the window matters.
+
+  NOTES OF THE SECOND REVIEW ROUND, 2026-09-22 (the reviewer's judgement of the three amended statements, and the
+  controller's ruling on it).
+
+  WHICH CLOCK IS WHOSE. The sentence above and the entry said "the mock measures its delay inside its own container
+  and the executor's state lines carry that container's wall clock". The executor's state lines carry the RECEIVER's
+  container's clock, not the mock's. Both are corrected. Nothing downstream moves: the two agree here, the mock and
+  the receiver running on the one kind node, which is why the pair reads as it does.
+
+  THE THREE KINDS OF FIGURE, now complete in the entry. in-cluster, both stamps from the cluster (the two ledgers, the
+  executor's state lines, the mock's latency, the client pods' stamps): a clock jump cannot reach them, and every
+  comparison this row rests on is one of these. host-to-host, both stamps the driver's own (job2_apply_ms, and
+  endline_read_to_job2_apply_ms): a jump cannot reach these either, since both ends are the host's clock, but the
+  FREEZE can and did -- rep-10's apply reads 176.2 ms against 81.1-102.4 ms over the clean, which is among the four
+  readable figures the entry already quotes. host-to-cluster, one figure: rep-11's apply to arrival, -91 862.8 ms,
+  which the jump did reach.
+
+  SLEEP-EVENTS.CSV TRIMMED TO THIS TASK'S WINDOW. As first written the file held the whole of what pmset keeps: 2845
+  rows from 2026-09-15T21:25:11Z to 2026-09-22T17:52:24Z, a week of the host's history in a record of one run. It now
+  holds this task's own window, its first phase stamp to its closing reading, 2026-09-22T16:10:29Z to 18:58:04Z:
+  14 rows, the 14 events of the row's go half. sleep-events.sh takes the two bounds as optional arguments and says in
+  the file which window it wrote; run without them it writes the whole log, and that unedited output is kept in a
+  scratch directory and is not committed. Nothing else changed: counts.py re-run with the trimmed file marks the same
+  two repetitions sleep-affected and control/summary.csv is byte-identical to the one the trim replaced. The claim
+  that the code phase, the rebuild, the standard proof, the dry repetitions and the whole py half count 0 events of
+  every kind rests on rows inside the committed file: all five windows lie inside 16:10:29Z..18:58:04Z, so a zero
+  there is the file's own zero, and host-sleep.txt counts those same five windows at 0 from the full log.
+
+  WHAT THE I-1 FIX CHANGED IN THE REGENERATED FILES, checked cell by cell against the versions it replaced:
+    control/summary.csv      40 rows before and after; 70 columns -> 71, the added one working_to_terminal_ms;
+                             0 cells differing among the 70 columns both versions share.
+    dry/control/summary.csv  2 rows before and after; 68 columns -> 71, the added ones working_to_terminal_ms,
+                             sleep_affected and sleep_kinds_in_window -- that file had been written before the sleep
+                             marking existed; 0 cells differing among the 68 columns both versions share.
+    the two counts.txt       the same tallies with the new figure's line added, and for the dry pair the two tallies
+                             per receiver (clean and all) that its earlier version predated.
+  No count moved; the interval was added and the tallies re-taken, nothing else.

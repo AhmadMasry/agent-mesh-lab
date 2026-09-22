@@ -1,0 +1,14 @@
+leg,reporter_asked,series,connection_security_policy,connections_opened,source_principal,destination_principal
+"caller (loadgen) -> agw-central, to the worker Service",source,1,mutual_tls,3,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+"caller (loadgen) -> agw-central, to the orchestrator Service (the card)",source,1,mutual_tls,45,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+agw-central -> worker,destination,1,mutual_tls,3,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central,spiffe://cluster.local/ns/lab/sa/default
+agw-central -> orchestrator,destination,1,mutual_tls,3,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central,spiffe://cluster.local/ns/lab/sa/default
+"worker -> model host, via agw-central",source,1,mutual_tls,3,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+"orchestrator -> worker Service (the forward), via agw-central",source,1,mutual_tls,3,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+agw-central -> mockllm (neither end captured),any,0,no-series,0,,
+"caller (loadgen) -> agentgateway-ingress, source side",source,1,mutual_tls,87,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress
+"caller (loadgen) -> agentgateway-ingress, destination side",destination,1,mutual_tls,87,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress
+agentgateway-ingress -> orchestrator,destination,1,mutual_tls,24,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress,spiffe://cluster.local/ns/lab/sa/default
+agentgateway-ingress -> worker,destination,1,mutual_tls,23,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress,spiffe://cluster.local/ns/lab/sa/default
+plaintext probe -> worker,destination,1,unknown,1,unknown,spiffe://cluster.local/ns/lab/sa/default
+plaintext probe -> orchestrator,destination,1,unknown,1,unknown,spiffe://cluster.local/ns/lab/sa/default

@@ -1,0 +1,23 @@
+# mutant pass over fixtures/loadgen at commit e6e2aff4 (git archive into scratch; test(loadgen): pin a re-send after a failed round trip, ...), started 2026-09-22T16:15:38Z
+# unmutated: ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen	3.614s
+R1 the outermost transport re-sends a POST whose round trip failed: KILLED by TestModes_APostWhoseRoundTripFailsIsNotSentAgain
+    stream_test.go:525: server saw 2 POSTs [SendStreamingMessage SendStreamingMessage], want exactly 1
+    stream_test.go:525: server saw 2 POSTs [SubscribeToTask SubscribeToTask], want exactly 1
+R1b stream mode sends the stream again after an error before any event: KILLED by TestModes_APostWhoseRoundTripFailsIsNotSentAgain
+    stream_test.go:525: server saw 2 POSTs [SendStreamingMessage SendStreamingMessage], want exactly 1
+    stream_test.go:531: posts = 2, want 1 (line map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:55128] card_protocol_versions:[1.0] card_streaming:true content_type: dialled_url:http://127.0.0.1:55128 error:failed 
+R1c subscribe mode subscribes again after an error before any event: KILLED by TestModes_APostWhoseRoundTripFailsIsNotSentAgain,TestSubscribe_NothingIsSentAfterTheOneRequestHoweverItEnds
+    stream_test.go:525: server saw 2 POSTs [SubscribeToTask SubscribeToTask], want exactly 1
+    stream_test.go:531: posts = 2, want 1 (line map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:55202] card_protocol_versions:[1.0] card_streaming:true content_type: dialled_url:http://127.0.0.1:55202 error:failed 
+    stream_test.go:666: server saw 2 POSTs, want exactly 1: [{method:SubscribeToTask params:[123 34 105 100 34 58 34 116 97 115 107 45 49 34 125] id:[34 53 100 98 53 102 54 57 53 45 48 56 99 49 45 52 99 99 53 45 97 49 48
+    stream_test.go:669: posts = 2, want 1 (line map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:55218] card_protocol_versions:[1.0] card_streaming:true content_type: dialled_url:http://127.0.0.1:55218 error:unexpec
+R5 stream mode sends a second SendStreamingMessage after a quiet end: KILLED by TestStream_AQuietEndAfterOneWorkingEventSendsNothingMore
+    stream_test.go:434: server saw 2 POSTs [SendStreamingMessage SendStreamingMessage], want exactly the one SendStreamingMessage
+    stream_test.go:443: posts = 2, want 1 (line map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:55265] card_protocol_versions:[1.0] card_streaming:true content_type:text/event-stream dialled_url:http://127.0.0.1:55
+R5b stream mode subscribes to the task after a quiet end: KILLED by TestStream_AQuietEndAfterOneWorkingEventSendsNothingMore
+    stream_test.go:434: server saw 2 POSTs [SendStreamingMessage SubscribeToTask], want exactly the one SendStreamingMessage
+    stream_test.go:443: posts = 2, want 1 (line map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:55337] card_protocol_versions:[1.0] card_streaming:true content_type:text/event-stream dialled_url:http://127.0.0.1:55
+R6 the wire observer reads only the first data: payload: KILLED by TestStream_AnErrorEventAfterOtherEventsIsRecordedFromTheWire
+    stream_test.go:745: wire_error_code = 0, want -32603 (line map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:55438] card_protocol_versions:[1.0] card_streaming:true content_type:text/event-stream dialled_url:http
+    stream_test.go:746: wire_error_message = "", want "queue read failed: context canceled" (line map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:55438] card_protocol_versions:[1.0] card_streaming:true content_type
+# finished 2026-09-22T16:16:07Z

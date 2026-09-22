@@ -1,0 +1,19 @@
+# B-4 path probe, read stamp 2026-09-22T16:10:44Z, cluster kind-agent-mesh-lab (B-3's, to be torn down)
+$ getent hosts worker.lab.internal (nslookup in the curl image)
+  Server:		10.96.0.10
+  Address:	10.96.0.10:53
+  
+  Non-authoritative answer:
+  
+  ** server can't find worker.lab.internal: NXDOMAIN
+  
+  command terminated with exit code 1
+$ curl --retry 0 -sS http://worker.lab.internal/.well-known/agent-card.json
+  curl: (6) Could not resolve host: worker.lab.internal
+  http=000
+  command terminated with exit code 6
+$ curl --retry 0 -sS http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json  (no Host override)
+  {"name":"orchestrator","url":["http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local"]}
+$ curl --retry 0 -sS -H "Host: worker.lab.internal" http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json
+  {"name":"worker","url":["http://worker.lab.svc.cluster.local:8080"]}
+# done 2026-09-22T16:10:45Z

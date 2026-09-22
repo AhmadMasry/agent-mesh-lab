@@ -1,0 +1,93 @@
+{
+  "agentgateway_version": {
+    "build_profile": "release",
+    "build_target": "aarch64-unknown-linux-gnu",
+    "git_revision": "fe6732474a96a0363dfb9822859af4e9bab360fa",
+    "rust_version": "1.98.0",
+    "version": "1.5.0"
+  },
+  "config": {
+    "tracing": null,
+    "xds": {
+      "address": "https://agentgateway.agentgateway-system.svc.cluster.local:9978",
+      "auth": {
+        "token": [
+          "./var/run/secrets/xds-tokens/xds-token",
+          "Kubernetes"
+        ]
+      },
+      "caCert": {
+        "File": "/etc/xds-tls/ca.crt"
+      },
+      "gateway": "agentgateway-ingress",
+      "headers": [],
+      "localConfig": "/config/config.yaml",
+      "namespace": "agentgateway-ingress"
+    }
+  },
+  "policies": [
+    {
+      "key": "frontend/agentgateway-ingress/access-logs:frontend-logging:agentgateway-ingress/agentgateway-ingress",
+      "name": {
+        "kind": "AgentgatewayPolicy",
+        "name": "access-logs",
+        "namespace": "agentgateway-ingress"
+      },
+      "policy": {
+        "frontend": {
+          "accessLog": {
+            "otlp": {
+              "protocol": "grpc",
+              "service": {
+                "name": "telemetry/otel-collector.telemetry.svc.cluster.local",
+                "port": 4317
+              }
+            }
+          }
+        }
+      },
+      "target": {
+        "gateway": {
+          "gatewayName": "agentgateway-ingress",
+          "gatewayNamespace": "agentgateway-ingress",
+          "listenerName": null
+        }
+      }
+    },
+    {
+      "key": "frontend/agentgateway-ingress/tracing:frontend-tracing:agentgateway-ingress/agentgateway-ingress",
+      "name": {
+        "kind": "AgentgatewayPolicy",
+        "name": "tracing",
+        "namespace": "agentgateway-ingress"
+      },
+      "policy": {
+        "frontend": {
+          "tracing": {
+            "attributes": {},
+            "clientSampling": "true",
+            "path": "/v1/traces",
+            "protocol": "grpc",
+            "randomSampling": "true",
+            "remove": [],
+            "resources": {},
+            "service": {
+              "name": "telemetry/otel-collector.telemetry.svc.cluster.local",
+              "port": 4317
+            }
+          }
+        }
+      },
+      "target": {
+        "gateway": {
+          "gatewayName": "agentgateway-ingress",
+          "gatewayNamespace": "agentgateway-ingress",
+          "listenerName": null
+        }
+      }
+    }
+  ],
+  "policies_count": 2,
+  "source_bytes": 44354,
+  "source_sha256": "4895ceb52116d735df043dc58d083cf926443c37fd8bec1613b2685005c344a7"
+}
