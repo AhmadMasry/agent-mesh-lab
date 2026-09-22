@@ -128,6 +128,9 @@ type runConfig struct {
 	sdkResend bool
 	dial      dialMode
 	mode      modeConfig
+	// cancelAfter is CANCEL_AFTER_MS, 0 when off; only the stream mode reads it
+	// (cancel.go).
+	cancelAfter time.Duration
 }
 
 // runMode makes this process's one request in the mode asked for and prints its
@@ -212,6 +215,9 @@ type streamEnd struct {
 	CardStreaming        bool     `json:"card_streaming"`
 	AdvertisedURLs       []string `json:"advertised_urls"`
 	DialledURL           string   `json:"dialled_url"`
+	// The cancel's facts, after every key B-3 recorded, and only when
+	// CANCEL_AFTER_MS is on: a nil embedded pointer adds no key (cancel.go).
+	*cancelFacts
 }
 
 const (
@@ -289,6 +295,7 @@ func streamOnce(ctx context.Context, hc *http.Client, c runConfig, out io.Writer
 
 	var events iter.Seq2[a2a.Event, error]
 	var invoke *labotel.AgentSpan
+	var cx *canceller
 	callCtx := ctx
 	if c.mode.mode == modeSubscribe {
 		end.TaskID = c.mode.taskID
@@ -300,18 +307,46 @@ func streamOnce(ctx context.Context, hc *http.Client, c runConfig, out io.Writer
 		// A subscription invokes nothing; its HTTP client span is its trace.
 		callCtx, invoke = labotel.InvokeAgent(ctx, agent,
 			labotel.Identity{WorkItem: c.workItem, MessageID: req.Message.ID, Caller: "loadgen"})
+		// CANCEL_AFTER_MS (cancel.go): the stream's own context, cancelled once
+		// by the canceller and by nothing else. configFromEnv lets the setting
+		// through with the stream mode only; the check is repeated here so that
+		// no other mode can ever be given a canceller.
+		if c.mode.mode == modeStream && c.cancelAfter > 0 {
+			var cancel context.CancelFunc
+			callCtx, cancel = context.WithCancel(callCtx)
+			defer cancel()
+			cx = &canceller{after: c.cancelAfter, cancel: cancel}
+		}
 		events = client.SendStreamingMessage(callCtx, req)
 	}
 
 	end.TSSent = time.Now().UTC().Format(time.RFC3339Nano)
 	end.StreamEnd = streamEndEOF
-	var iterErr error
+	// The SDK sends the POST when the iteration starts, so the cancel is counted
+	// from here, the stamp just taken.
+	cx.start()
+	iterErr := readEvents(events, c, method, &end, cx, invoke, out)
+	end.cancelFacts = cx.stop()
+	if iterErr != nil {
+		end.StreamEnd = streamEndError
+		end.Error = iterErr.Error()
+	}
+	invoke.End(iterErr)
+	return finish()
+}
+
+// readEvents ranges over the SDK's events for this process's one request. It
+// prints a line per event, fills the end line's event fields, tells the
+// canceller of each event (nil when the setting is off), and returns the error
+// the SDK yielded, if any. It sends nothing.
+func readEvents(events iter.Seq2[a2a.Event, error], c runConfig, method string, end *streamEnd, cx *canceller,
+	invoke *labotel.AgentSpan, out io.Writer) error {
 	for ev, err := range events {
 		if err != nil {
-			iterErr = err
-			break
+			return err
 		}
 		kind, taskID, contextID, state, terminal := eventFacts(ev)
+		cx.sawEvent(kind, state)
 		end.Events++
 		line := streamEvent{Ledger: "client", TS: time.Now().UTC().Format(time.RFC3339Nano), Mode: string(c.mode.mode),
 			Method: method, Line: "event", Seq: end.Events, LogicalWorkItemID: c.workItem, MessageID: end.MessageID,
@@ -330,12 +365,7 @@ func streamOnce(ctx context.Context, hc *http.Client, c runConfig, out io.Writer
 			end.TerminalSeen = true
 		}
 	}
-	if iterErr != nil {
-		end.StreamEnd = streamEndError
-		end.Error = iterErr.Error()
-	}
-	invoke.End(iterErr)
-	return finish()
+	return nil
 }
 
 // wireObserver is the outermost transport of the stream and subscribe modes.

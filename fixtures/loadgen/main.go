@@ -51,6 +51,15 @@
 // anything is sent (modeFromEnv), and so is either mode with a retry knob on
 // (checkModeKnobs). The HTTP client of the two modes differs from the unary one
 // in one setting, recorded in stream.go.
+//
+// One more setting, for Experiment B's control row (cancel.go):
+//
+//   - CANCEL_AFTER_MS=<k>    with MODE=stream only: the stream's request context
+//     is cancelled k ms after the send, once, and nothing is sent after it.
+//
+// Unset or empty it is off (TestCancel_DefaultOff). Anything that is not a
+// positive whole number below the process's bound, and the setting with any
+// other mode, is refused before anything is sent (cancelFromEnv).
 package main
 
 import (
@@ -244,8 +253,9 @@ type sendConfig struct {
 
 // configFromEnv reads everything main needs from the environment and refuses,
 // before anything is sent, what must never run: a missing TARGET_URL or LWI, an
-// unknown CLIENT_DIAL or MODE, a TASK_ID the mode cannot use, and a retry knob
-// on a stream or a subscription. It is main's
+// unknown CLIENT_DIAL or MODE, a TASK_ID the mode cannot use, a retry knob on a
+// stream or a subscription, and a CANCEL_AFTER_MS that is not a positive whole
+// number below requestBound or that comes with any mode but the stream. It is main's
 // opening, moved here on 2026-09-21 so a test can assert the refusals are wired
 // in and not only written; its messages are the ones main printed before.
 func configFromEnv() (runConfig, knobs, error) {
@@ -266,8 +276,18 @@ func configFromEnv() (runConfig, knobs, error) {
 	if err := checkModeKnobs(mode.mode, k); err != nil {
 		return runConfig{}, knobs{}, err
 	}
-	return runConfig{target: target, workItem: lwi, text: getenv("TEXT", "hello"), sdkResend: k.sdkResend, dial: dial, mode: mode}, k, nil
+	cancelAfter, err := cancelFromEnv(mode.mode)
+	if err != nil {
+		return runConfig{}, knobs{}, err
+	}
+	return runConfig{target: target, workItem: lwi, text: getenv("TEXT", "hello"), sdkResend: k.sdkResend, dial: dial, mode: mode,
+		cancelAfter: cancelAfter}, k, nil
 }
+
+// requestBound is the whole process's bound on its one request, the context
+// main gives it: the same 2 minutes the unary send always had. A CANCEL_AFTER_MS
+// at or past it could never be made, so cancelFromEnv refuses one.
+const requestBound = 2 * time.Minute
 
 // httpClientFor is the HTTP client this process's one request is sent with: the
 // knobs' client for the unary send, as it always was, and the stream client for
@@ -304,7 +324,7 @@ func main() {
 		os.Exit(code)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), requestBound)
 	defer cancel()
 	hc := instrument(httpClientFor(c.mode.mode, k, 90*time.Second), c.workItem)
 
