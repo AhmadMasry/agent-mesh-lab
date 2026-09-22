@@ -412,6 +412,37 @@ func TestStream_AQuietEndWithoutATerminalEventIsSaidSo(t *testing.T) {
 	wantField(t, end, "last_state", "TASK_STATE_WORKING")
 }
 
+// Rule 4 on a quiet end (the B-3 review's R5): a body that ends cleanly after
+// one WORKING event, with no terminal event, is the end of this process's one
+// request. Nothing is sent after it, neither the stream again nor a
+// subscription to the task the event named. It is the ending a stream closed
+// cleanly under the client would give, and the SDK raises nothing for it, so
+// only the server's count can tell a second request apart.
+func TestStream_AQuietEndAfterOneWorkingEventSendsNothingMore(t *testing.T) {
+	srv := newScriptedServer(t, true, func(w http.ResponseWriter, _ *http.Request, rpc rpcSeen) {
+		sseStart(w)
+		sseEvent(t, w, rpc.id, taskEvent(a2a.TaskStateWorking))
+	})
+	code, lines := runModeLines(t, streamClientForTest(), srv.URL, modeConfig{mode: modeStream})
+	if code != 3 {
+		t.Errorf("exit status %d, want 3: the stream ended without a terminal event", code)
+	}
+	// Give a would-be second request time to arrive before counting.
+	time.Sleep(200 * time.Millisecond)
+	_, posts := srv.seen()
+	if len(posts) != 1 || posts[0].method != "SendStreamingMessage" {
+		t.Errorf("server saw %d POSTs %v, want exactly the one SendStreamingMessage", len(posts), methodsOf(posts))
+	}
+	end := theEnd(t, lines)
+	wantField(t, end, "events", float64(1))
+	wantField(t, end, "terminal_seen", false)
+	wantField(t, end, "stream_end", "eof")
+	wantField(t, end, "error", "")
+	wantField(t, end, "last_state", "TASK_STATE_WORKING")
+	wantField(t, end, "taskId", "task-1")
+	wantField(t, end, "posts", float64(1))
+}
+
 // cutAfterTask sends the submitted Task and then drops the connection in the
 // middle of the chunked body, with no terminating chunk.
 func cutAfterTask(t *testing.T) func(http.ResponseWriter, *http.Request, rpcSeen) {
@@ -445,6 +476,63 @@ func TestStream_ACutIsAnErrorAndNothingIsSentAfterIt(t *testing.T) {
 	}
 	if _, posts := srv.seen(); len(posts) != 1 {
 		t.Errorf("server saw %d POSTs, want exactly 1: %+v", len(posts), posts)
+	}
+}
+
+// methodsOf names the JSON-RPC method of each POST, in the order received, for
+// a failure message.
+func methodsOf(posts []rpcSeen) []string {
+	var out []string
+	for _, p := range posts {
+		out = append(out, p.method)
+	}
+	return out
+}
+
+// closeOnPost closes the connection as soon as the POST has arrived, without
+// writing any answer: the scripted server has already read and recorded the
+// whole request, so the round trip fails after the POST was written and before
+// any byte of an answer.
+func closeOnPost(t *testing.T) func(http.ResponseWriter, *http.Request, rpcSeen) {
+	return func(w http.ResponseWriter, _ *http.Request, _ rpcSeen) {
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Errorf("hijack: %v", err)
+			return
+		}
+		_ = conn.Close()
+	}
+}
+
+// Rule 4 below the SDK (the B-3 review's R1): a POST whose round trip fails
+// before any answer is not sent again by anything in this client, in either
+// mode. Go's transport replays a request only when none of it was written, and
+// never a written POST (internal/httpclient records the rule), so exactly one
+// POST reaches the server. The end line's posts reads 1 either way, because it
+// counts what the SDK handed the outermost transport; this test counts at the
+// server, which is where a re-send below that transport would show.
+func TestModes_APostWhoseRoundTripFailsIsNotSentAgain(t *testing.T) {
+	for _, m := range []modeConfig{{mode: modeStream}, {mode: modeSubscribe, taskID: "task-1"}} {
+		t.Run(string(m.mode), func(t *testing.T) {
+			srv := newScriptedServer(t, true, closeOnPost(t))
+			code, lines := runModeLines(t, streamClientForTest(), srv.URL, m)
+			if code != 3 {
+				t.Errorf("exit status %d, want 3", code)
+			}
+			// Give a would-be second request time to arrive before counting.
+			time.Sleep(200 * time.Millisecond)
+			if _, posts := srv.seen(); len(posts) != 1 {
+				t.Errorf("server saw %d POSTs %v, want exactly 1", len(posts), methodsOf(posts))
+			}
+			end := theEnd(t, lines)
+			wantField(t, end, "events", float64(0))
+			wantField(t, end, "stream_end", "error")
+			wantField(t, end, "http_status", float64(0))
+			wantField(t, end, "posts", float64(1))
+			if msg, _ := end["error"].(string); msg == "" {
+				t.Errorf("a failed round trip recorded no error text")
+			}
+		})
 	}
 }
 
@@ -630,6 +718,33 @@ func TestSubscribe_ARefusalAsAnEventIsRecordedFromTheWire(t *testing.T) {
 	wantField(t, end, "wire_error_code", float64(-32001))
 	wantField(t, end, "wire_error_message", "task not found: no active execution")
 	if msg, _ := end["error"].(string); !strings.Contains(msg, "task not found: no active execution") {
+		t.Errorf("error = %q, want the SDK's error carrying the wire text", msg)
+	}
+}
+
+// The wire observer reads every "data:" payload in order, not only the first
+// (the B-3 review's M-6, R6): an error event that follows other events, the
+// shape of an SDK error in the middle of a stream, is recorded with its code
+// and text.
+func TestStream_AnErrorEventAfterOtherEventsIsRecordedFromTheWire(t *testing.T) {
+	srv := newScriptedServer(t, true, func(w http.ResponseWriter, _ *http.Request, rpc rpcSeen) {
+		sseStart(w)
+		sseEvent(t, w, rpc.id, taskEvent(a2a.TaskStateSubmitted))
+		sseEvent(t, w, rpc.id, statusEvent(a2a.TaskStateWorking))
+		sseRPCError(w, rpc.id, -32603, "queue read failed: context canceled")
+	})
+	code, lines := runModeLines(t, streamClientForTest(), srv.URL, modeConfig{mode: modeStream})
+	if code != 3 {
+		t.Errorf("exit status %d, want 3", code)
+	}
+	end := theEnd(t, lines)
+	wantField(t, end, "events", float64(2))
+	wantField(t, end, "last_state", "TASK_STATE_WORKING")
+	wantField(t, end, "stream_end", "error")
+	wantField(t, end, "content_type", "text/event-stream")
+	wantField(t, end, "wire_error_code", float64(-32603))
+	wantField(t, end, "wire_error_message", "queue read failed: context canceled")
+	if msg, _ := end["error"].(string); !strings.Contains(msg, "queue read failed: context canceled") {
 		t.Errorf("error = %q, want the SDK's error carrying the wire text", msg)
 	}
 }

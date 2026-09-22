@@ -177,8 +177,11 @@ type streamEvent struct {
 // JSON-RPC error object found there is recorded, whether it came as a plain JSON
 // body or as an event; 0 and "" mean none was found.
 //
-// posts counts the POSTs this process's transport carried: 1 unless something
-// sent twice, which nothing here does.
+// posts counts the POST round trips the SDK handed to this process's outermost
+// transport, the wireObserver. That is not a count of POSTs on the wire: a POST
+// re-sent below the observer would not be counted. What reached the receiver is
+// its ingress ledger's count. The tests count POSTs at the server, and nothing
+// in this client sends twice.
 type streamEnd struct {
 	Ledger               string   `json:"ledger"`
 	TS                   string   `json:"ts"`
