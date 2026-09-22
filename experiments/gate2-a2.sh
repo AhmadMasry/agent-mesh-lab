@@ -422,10 +422,13 @@ one_rep() { # $1 = repetition number
 	# MODE and TASK_ID (added on 2026-09-21, for Experiment B) are rendered empty
 	# too: A.2's client sends the one SendMessage it always sent. Left
 	# unsubstituted, any of the three would make the client refuse to start.
+	# CANCEL_AFTER_MS (added on 2026-09-22, for Experiment B's control row) is
+	# rendered empty as well: nothing here is cancelled, and left unsubstituted
+	# it too would make the client refuse to start.
 	sed -e "s/\${LWI}/${lwi}/g" -e "s#\${TARGET_URL}#${TARGET_URL}#g" \
 		-e "s/\${CLIENT_RETRIES}/${JOB_RETRIES}/g" -e "s/\${CLIENT_SDK_RESEND}/${JOB_SDK_RESEND}/g" \
 		-e "s/\${CLIENT_RETRY_ON}/${JOB_RETRY_ON}/g" -e "s/\${CLIENT_DIAL}//g" \
-		-e "s/\${MODE}//g" -e "s/\${TASK_ID}//g" \
+		-e "s/\${MODE}//g" -e "s/\${TASK_ID}//g" -e "s/\${CANCEL_AFTER_MS}//g" \
 		"$JOB_TEMPLATE" \
 		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME="$CLUSTER_NAME" ko apply --platform="linux/$(go env GOARCH)" -f - >"${d}/apply.log" 2>&1 || rc=$?
 	if [ "$rc" != "0" ]; then notes="${notes}ko_apply_rc=${rc};"; fi

@@ -35,6 +35,17 @@
 # unsubstituted placeholder included, stops the Job before it sends
 # (TestModeFromEnv_KnownValuesAndRefusals), and so does either mode with a retry
 # knob on (TestMode_RetryKnobsAreRefusedOnAStreamOrASubscription).
+#
+# CANCEL_AFTER_MS (added on 2026-09-22, for Experiment B's control row, B-4)
+# says whether the one stream is cancelled by the client itself: empty, never;
+# a positive whole number k with MODE=stream, the stream's request context is
+# cancelled k ms after the send, once, and nothing is sent after it
+# (fixtures/loadgen/cancel.go). It is rendered empty by every script that
+# renders this template and is not a B-4 row, and the client reads empty as
+# off (TestCancel_DefaultOff). Any other value, an unsubstituted placeholder
+# included, stops the Job before it sends, and so does the setting with any
+# mode but MODE=stream (TestCancelFromEnv_AnythingElseIsRefused,
+# TestCancelFromEnv_RefusedWithAnyModeButStream).
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -120,3 +131,5 @@ spec:
               value: "${MODE}"
             - name: TASK_ID
               value: "${TASK_ID}"
+            - name: CANCEL_AFTER_MS
+              value: "${CANCEL_AFTER_MS}"
