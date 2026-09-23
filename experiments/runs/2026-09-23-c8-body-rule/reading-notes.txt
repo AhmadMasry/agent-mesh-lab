@@ -1,0 +1,105 @@
+Experiment C, step C-8 -- reading notes. What each file in this directory is, what produced it, and what differs from
+what was planned. Stamps UTC from date -u. The findings entry that cites this directory is "Experiment C / both
+receivers / C-8, agentgateway's authorization on the request body". The cluster is the one C-5 rebuilt and proved
+(experiments/runs/2026-09-23-c5-istio-policy-agw-central/), standing at step 3 with nothing applied after C-7.
+
+THE BUFFER LIMIT
+  2,097,152 bytes, the default; the lab sets none. agentgateway v1.5.0 source: crates/agentgateway/src/lib.rs l.339-340
+  (defaults::max_buffer_size), types/frontend.rs l.51-52 (the frontend HTTP policy's serde default), types/agent_xds.rs
+  l.3326-3329 (unwrap_or_else to that default), crates/http/src/lib.rs l.6 (DEFAULT_BUFFER_LIMIT). API field:
+  agentgateway_policy_types.go l.735-740, "If unset, this defaults to 2mb". Website buffering page at v1.5.0 l.6, "up
+  to 2mb". deploy/ holds 0 lines naming maxBufferSize or buffer. Every reading counts maxBufferSize keys in both
+  proxies' dumps: 0 in all eight readings of each proxy.
+
+FILES
+  run-c8.sh    the order the step ran in, one stage per call (before, deny, row1, deny-probes, deny-off, require,
+               row2, require-probes, require-off, after).
+  c8.sh        applies and removes the overlays, reads every layer, sends rows 3 and 4's curl probes, and reads host
+               power events for the window.
+  overlay-c8-deny/, overlay-c8-require/   two AgentgatewayPolicies each, one per ingress route the receivers use
+               (lab/worker-ingress, lab/orchestrator-ingress), traffic.authorization Deny on
+               json(request.body).method == "SubscribeToTask", and Require on json(request.body).method != "SubscribeToTask".
+  readings-<label>.txt, config-dump-<proxy>-<label>.json   before, deny-applied, deny-end, deny-removed,
+               require-applied, require-end, require-removed, after: every AgentgatewayPolicy with its authorization flag
+               and ancestor conditions, AuthorizationPolicies, retry stanzas, the controller log, both proxies'
+               non-request log lines, both proxies' dumps with each policy they hold and their maxBufferSize keys. The
+               -end readings take their log window from the overlay's apply stamp, so they hold every non-request line
+               either proxy wrote while that rule was in force: 0 lines on the ingress in both windows (grep exit 1).
+               Between before and after, each proxy's policy list is identical (jq -cS); the dumps differ only in
+               per-endpoint request counters and latencies.
+  apply-*.txt, remove-*.txt   the applies and deletes.
+  c8d/, c8r/   one directory per send. Rows 1 and 2 by C-6's sends.sh, run from
+               experiments/runs/2026-09-23-c6-httproute/ with RUNREL set to this directory and the load client image C-6
+               resolved (its image.txt; fixtures and template tree ids equal to this step's HEAD). Rows 3 and 4 by
+               c8.sh probe, from the same curl pod (c6-curl) to the same ingress Service with the same headers as
+               sends.sh's curl send. For the padded probe the 2,200,000-byte body is not kept: request-head.txt (first
+               200 bytes), request-tail.txt (last 40), and the client line's body_len and body_sha256 are.
+  crd-authorization-policy-explain.txt   the installed CRD's own description of the authorization policy, which carries
+               the sentence "Deny is not recommended because expression failures fail to deny".
+  receiver-lines-deny-probes.txt, receiver-lines-require-probes.txt   every ledger line the worker, the orchestrator and
+               the mock wrote in each probe window, by the line's own stamp: 10 lines in the Deny window, of which the
+               only execution lines are the worker's received and result for the padded SubscribeToTask; 0 lines in the
+               Require window.
+  counts.py -> counts.csv, counts.txt   reads only this directory.
+  upstream-search.txt   the search before the draft (docs/upstream/agentgateway-deny-on-request-body-over-buffer-limit.md).
+  sources.txt  the documents and source files this step read, with stamps and hashes.
+  after/, after-driver.txt   the committed gate2-single-clean.sh after the first two windows were removed.
+  sleep-events.csv, own-keepawake-lines.txt   host power events of four kinds, 0 in 19:18:28Z-19:58:11Z (the task's first fetch to
+               its close); the counter: only its own header.
+
+ADDED AFTER THE CONTROLLER'S RULINGS OF 2026-09-23 (one amend of the first commit, before any review)
+  run-c8.sh stages pod-up, deny2, deny2-probe, deny2-off, scoped, row5, scoped-probes, scoped-off, after2.
+  c8p/         the Python pad in a field the specification defines: SubscribeToTaskRequest has tenant and id (a2a.proto at
+               3303592, l.748-754); one 2,200,000-byte SubscribeToTask padded inside params.tenant (c8.sh probe kind
+               padt), under overlay-c8-deny re-applied 19:49:38Z-19:50:03Z. receiver-lines-deny2-probe.txt holds the 4
+               ledger lines of its window.
+  overlay-c8-require-scoped/, c8s/   Require on request.method == "GET" || json(request.body).method != "SubscribeToTask",
+               applied 19:50:14Z-19:54:19Z; per receiver 5 of each of the four kinds and one pad.
+               receiver-lines-scoped-probes.txt holds the pad window: 0 ledger lines.
+  readings-deny2-*, readings-scoped-*, config-dump-*-deny2-*, config-dump-*-scoped-*   as the first windows' readings.
+  after-2/, after-2-driver.txt, readings-after-2.txt   the second clean check, at the end: 1/1/1/1/1 on both receivers.
+  The CEL citation for || is source, not a page: crates/cel-fork/cel/src/objects.rs at v1.5.0 l.770-786, the fork the
+  workspace builds (Cargo.toml l.57). sources.txt also holds SECURITY.md at v1.5.0 and main, the website's
+  reference/vulnerabilities.md at v1.5.0, and schema/cel.md and authorization.rs at main, read for the draft.
+
+WHAT DIFFERS FROM THE PLAN, OR NEEDS A WORD
+  - The brief asked for a pad in "a field the receiver ignores". a2a-go ignored the top-level x_pad member; a2a-python
+    did not: it answered -32600 "Invalid request. Extra fields: {'x_pad'}". The Python receiver's pre-dispatch ledger
+    recorded the arrival (method SubscribeToTask, body_len 2200000), and its SDK dispatched nothing.
+  - The batch probes carry no identity in their bodies, and the receivers' ledgers fill identity only from a JSON object,
+    so make ledgers found no line by work-item id and exited 2 (its recipe's "no ledger lines of any kind"). Their
+    arrival and response lines were found by the body hash the client recorded, and kept as ingress-by-body-hash.txt in
+    each batch directory; counts.py reads them from there. For every refused send make ledgers also exits 2 and writes
+    no ledger file; the refusal and the absence of ledgers are what counts.py reads.
+  - A SubscribeToTask dispatched by the SDK is recorded in the execution ledger as received and result, with no
+    execute line. counts.py counts received lines (sdk_received) beside executes.
+  - curl's padded sends went with Expect: 100-continue, and their response.txt holds the interim 100 Continue block
+    before the final status; counts.py skips it.
+  - The clean check's own curl pod (gate2-curl) was still Terminating at 19:38:33Z, which is that script's cleanup. This
+    step's curl pod (c6-curl) was deleted at 19:37:34Z.
+
+LINE ENDINGS
+  The curl sends' response.txt, curl-stderr.txt and request-headers-as-sent.txt hold HTTP header lines, CRLF on the wire;
+  this checkout's core.autocrlf is input, so the committed files end them in LF. counts.py reads either.
+
+THE CLUSTER LEFT: at step 3, nothing applied -- 0 AuthorizationPolicy, the four deployed AgentgatewayPolicies only
+  (access logs and tracing on each Gateway, none with authorization), 2 policies in each proxy's dump, 0 retry stanzas,
+  no curl pod of this step's. The finished Job pods of this step's sends remain, as every earlier run's have.
+
+REVIEW ROUND (2026-09-23, review-c8: approve with three Important fixes in the draft and six Minors; no send and no
+probe in this round, and no count changed)
+  I-1  The draft's Status now quotes SECURITY.md at v1.5.0 on both sides at the same weight (l.5, l.8-9, l.14; l.23 in
+       full, l.29; l.25, l.26, l.46, l.47) and states the two readings symmetrically, leaving the channel to the author.
+  I-2  The website's buffering page at v1.5.0, l.6 (413 or a disconnect for over-limit bodies that must be buffered) is
+       quoted in the draft beside cel.md l.14 and in the entry's Interpretation, with what was counted (a forward with
+       200) and that no document read says whether a body buffered for CEL is one that must be buffered.
+  I-3  The draft's image id is cited to versions.yaml (agentgateway-controlplane, observed.proxy_image_id); this run
+       directory records the tag only.
+  M-1  "in each of the four rule windows", not "both".
+  M-2  "nothing is logged" is stated at the default log level, which deploy/ does not change, in the draft and entry.
+  M-3  The draft's reproduction is labelled as the minimal form of c8.sh's probes, not run as written, with counted
+       results and the headers the counted probes also sent.
+  M-4  The draft and the entry say that curl sent Expect: 100-continue for the padded bodies only, and that no control
+       padded to just under the limit was sent; the entry's Not covered lists both, and a non-default log level.
+  M-5  "a client that pads its request past the limit (counted: curl, on two routes)".
+  M-6  #3215 is named in the draft's search list with why it is not on point.

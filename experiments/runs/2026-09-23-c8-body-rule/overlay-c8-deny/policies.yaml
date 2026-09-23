@@ -1,0 +1,40 @@
+# Experiment C, step C-8, the Deny row: agentgateway's own authorization on the request body. The rule reads the
+# JSON-RPC method from the body with json(request.body).method. request.body is "The request's body, buffered up to
+# maxBufferSize. If the body exceeds the max buffer size, this field is not available and will fail to evaluate.
+# Including this attribute in an expression will trigger the body to be buffered." (schema/cel.md at v1.5.0, l.14);
+# json() parses a string or bytes as JSON (schema/cel-functions.md at v1.5.0, l.20). The website's authorization page
+# at v1.5.0 warns that a Deny over a missing field "evaluates to false and the rule does not fire" (l.276).
+# One policy per ingress route the receivers use, as in C-7; the routes themselves are not edited.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c8-deny-subscribe-worker-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'json(request.body).method == "SubscribeToTask"'
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c8-deny-subscribe-orchestrator-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'json(request.body).method == "SubscribeToTask"'
