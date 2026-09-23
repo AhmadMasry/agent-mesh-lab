@@ -145,6 +145,12 @@ func main() {
 	if os.Getenv("DOWNSTREAM_A2A_URL") != "" {
 		log.Fatal("worker: DOWNSTREAM_A2A_URL is set but forward mode is not implemented in this gate")
 	}
+	// Read before anything else starts: a value that is not an operation this
+	// agent can refuse stops the process here, rather than serving everything.
+	refuse, err := refuseOperationFrom(os.Getenv(refuseOperationEnv))
+	if err != nil {
+		log.Fatalf("worker: %v", err)
+	}
 
 	// Tracing, if OTEL_EXPORTER_OTLP_ENDPOINT names a collector; nothing at all
 	// otherwise. The deferred shutdown flushes whatever the batch processor is
@@ -172,7 +178,7 @@ func main() {
 	modelHTTP.Transport = labotel.Transport(modelHTTP.Transport)
 	ledger := newLineWriter(os.Stdout)
 	executor := newLabExecutor(name, newModelClient(modelBase, modelName, modelKey, modelHTTP), ledger)
-	handler := newExecutionLedger(a2asrv.NewHandler(executor), ledger)
+	handler := newRequestHandler(executor, ledger, refuse)
 
 	card := buildCard(name, publicURL)
 
@@ -198,7 +204,7 @@ func main() {
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
-	log.Printf("worker %q listening on %s; card at %s; model %s (timeout %s, MODEL_RETRIES=%d)", name, listen, a2asrv.WellKnownAgentCardPath, modelBase, modelTimeout(), modelRetries())
+	log.Printf("worker %q listening on %s; card at %s; model %s (timeout %s, MODEL_RETRIES=%d, %s=%q)", name, listen, a2asrv.WellKnownAgentCardPath, modelBase, modelTimeout(), modelRetries(), refuseOperationEnv, refuse)
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
