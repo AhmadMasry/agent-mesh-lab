@@ -321,3 +321,14 @@ pod in `lab`). The load client therefore gains one setting, off by default, that
 receivers' B rows cross the same proxy from the same in-cluster client. For Experiment B only, this departs from the stimulus path
 rule recorded in the note of 2026-09-09 (an in-cluster stimulus goes through the receiver's in-cluster gateway); every B entry
 names the path it used. The proposal text is unchanged.
+
+## 2026-09-23 — Experiment C: the second operation, one identity, and the A2A marking switched on for one step
+
+Decision by the author. C's enforcement half refuses one operation and allows another on one endpoint, so it needs a second
+operation on the wire. It uses the ones Experiment B already made the load client send: `SendMessage` is the operation allowed
+and `SubscribeToTask` the one refused, so no fixture learns a new operation. Every workload in `lab` keeps the one default
+ServiceAccount: identity was tested at ztunnel in C-3, and at agentgateway an identity rule is recorded as a limit of this
+configuration — one value for every caller — rather than exercised with new accounts. One step marks the agent Services as A2A,
+the marking agentgateway's A2A handling keys on, so that the "A2A-aware gateway" of §4.4 C is switched on in this lab at least
+once; it is a step of its own, rebuilt from a deleted cluster, and it counts what the gateway then records and whether anything
+else moved. The proposal text is unchanged.
