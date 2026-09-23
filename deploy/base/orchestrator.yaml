@@ -78,6 +78,14 @@ spec:
               value: "unused"
             - name: MODEL_MAX_RETRIES
               value: "0"
+            # REFUSE_OPERATION (added on 2026-09-24, Experiment C, step C-10): the
+            # one A2A operation this agent refuses in the application, by its
+            # canonical name, SendMessage, SendStreamingMessage or SubscribeToTask.
+            # Empty is off and is what every step renders; any other value stops
+            # the process at start. A run sets it with kubectl set env and
+            # restores it empty. The code: agents/orchestrator/orchestrator/refuse.py.
+            - name: REFUSE_OPERATION
+              value: ""
           readinessProbe:
             httpGet:
               path: /healthz
