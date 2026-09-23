@@ -29,6 +29,7 @@ from a2a.types import (
 from orchestrator.forward import Forwarder
 from orchestrator.ledger import LineWriter, current_delivery, execution_line
 from orchestrator.model import Identity, ModelClient
+from orchestrator.refuse import refusal
 
 # How a streamed sequence of events ended, as the handler can observe it:
 # complete when the SDK's generator ran out, consumer-gone when the transport
@@ -161,12 +162,24 @@ class LabExecutor(AgentExecutor):
 
 class LedgerRequestHandler(DefaultRequestHandler):
     """DefaultRequestHandler with the execution ledger around the two send
-    methods and the resubscription."""
+    methods and the resubscription.
 
-    def __init__(self, *args: Any, writer: LineWriter, card: AgentCard, **kwargs: Any) -> None:
+    refuse names the one operation REFUSE_OPERATION refuses (orchestrator.refuse),
+    "" for none. The refusal is in each of the three wrappers, after the
+    "received" line and before the SDK's own handler is called, inside the same
+    try as that call: a refused request keeps its "received" line and gains a
+    "result" line carrying the refusal, as the Go worker's does, and the
+    executor, which writes "execute", is never entered."""
+
+    def __init__(self, *args: Any, writer: LineWriter, card: AgentCard, refuse: str = "", **kwargs: Any) -> None:
         super().__init__(*args, agent_card=card, **kwargs)
         self.writer = writer
         self.card = card
+        self.refuse = refuse
+
+    def _refuse_if(self, operation: str) -> None:
+        if self.refuse == operation:
+            raise refusal(operation)
 
     def _received(self, method: str, params: SendMessageRequest) -> dict[str, Any]:
         """Record that the SDK accepted this request, before the inner handler runs.
@@ -230,6 +243,7 @@ class LedgerRequestHandler(DefaultRequestHandler):
     async def on_message_send(self, params: SendMessageRequest, context: ServerCallContext) -> Message | Task:
         base = self._received("SendMessage", params)
         try:
+            self._refuse_if("SendMessage")
             result = await super().on_message_send(params, context)
         except Exception as exc:
             self._result(base, None, error=str(exc))
@@ -260,6 +274,7 @@ class LedgerRequestHandler(DefaultRequestHandler):
         error = ""
         stream_end = STREAM_END_COMPLETE
         try:
+            self._refuse_if("SendStreamingMessage")
             async for event in super().on_message_send_stream(params, context):
                 self._delivered(base, event)
                 if isinstance(event, (Task, Message)):
@@ -295,6 +310,7 @@ class LedgerRequestHandler(DefaultRequestHandler):
         error = ""
         stream_end = STREAM_END_COMPLETE
         try:
+            self._refuse_if("SubscribeToTask")
             async for event in super().on_subscribe_to_task(params, context):
                 self._delivered(base, event)
                 if isinstance(event, (Task, Message)):
@@ -331,8 +347,8 @@ def build_card(name: str, public_url: str) -> AgentCard:
 
 
 def build_handler(*, name: str, model: ModelClient | None, forwarder: Forwarder | None, out: TextIO | None,
-                  public_url: str, plan_model_call: bool = False) -> LedgerRequestHandler:
+                  public_url: str, plan_model_call: bool = False, refuse: str = "") -> LedgerRequestHandler:
     writer = LineWriter(out)
     executor = LabExecutor(name=name, model=model, forwarder=forwarder, writer=writer, plan_model_call=plan_model_call)
     return LedgerRequestHandler(agent_executor=executor, task_store=InMemoryTaskStore(),
-                                card=build_card(name, public_url), writer=writer)
+                                card=build_card(name, public_url), writer=writer, refuse=refuse)
