@@ -1,0 +1,48 @@
+# C-9: the candidates of tracker-search.txt read by number from the GitHub REST API, 2026-09-23T23:44:30Z. For a merged pull request, whether its merge commit is contained in the tag v1.5.0 (compare API: status behind or identical means contained).
+#3500 issue state=open created=2026-09-16T09:47:56Z closed=null comments=0 title=A2A agent card rewrite doubles path and replaces authority when route URLRewrite prefix differs from backend agent path (regression of #2981 on v1.5.0)
+**Product / version:** agentgateway `v1.5.0` (Kubernetes agentgateway.dev CRDs: `AgentgatewayBackend` with `spec.a2a`)  ## What's wrong  Follow-up to #2981 (fixed by #2983, in v1.5.0). A related variant still reproduces on v1.5.0 when the **route's path rewrite prefix differs from the backend's agent path**, and in our deployment the rewrite also **replaces the card's authority with the in-cluster data-plane address** instead of the public listener host.  ## Setup  - `HTTPRoute` matches `PathPrefix /a2a/agents` with `URLRewrite` `ReplacePrefixMatch /firefly/agents`, backend = `AgentgatewayBackend` `spec.a2a.host: firefly.firefly.svc.cluster.local`. - The backend agent advertises an **already
+
+
+#3453 PR state=open created=2026-09-14T09:54:59Z closed=null comments=0 title=fix(proxy): inject X-Forwarded-Proto on TLS termination
+## Description  When the gateway terminates TLS at an HTTPS listener and forwards plaintext HTTP to backends, `X-Forwarded-Proto` is not set. Backends (e.g. Authentik) then build `http://` URLs, causing mixed-content blocks.  ## Changes  Add `set_forwarded_proto()` in `proxy_internal()` right after `normalize_uri()`. It sets `X-Forwarded-Proto` based on `TLSConnectionInfo` presence — `https` if TLS was terminated, `http` otherwise. Always overwrites to prevent client spoofing, matching Envoy's `use_remote_address` behavior.  ## Tests  - 5 unit tests + 1 integration test (HTTPS→gateway→HTTP backend, verifying header arrives) - All existing TLS, httpproxy, and X-Forwarded-Proto cons
+
+   merged=false merged_at=null merge_commit=0888da2fb667a4723f84d91e00ca16d3c2ef2462
+
+#1829 issue state=open created=2026-05-15T08:49:38Z closed=null comments=1 title=HTTPS listener should set X-Forwarded-Proto on forwarded plaintext requests
+I'm running agentgateway v1.1.0 as a Gateway API controller in front of plain-HTTP backends. When the gateway terminates TLS at the HTTPS listener and forwards over HTTP to the upstream Service, X-Forwarded-Proto is not added.  The concrete impact: Authentik builds absolute URLs from request.scheme. Its SPA reads window.authentik.api.base out of the inline HTML, and without the header that value comes out as http://auth.localtest.me/. The HTML loads fine over HTTPS but the SPA's XHRs to its own API are blocked as mixed content. Verified by curling the same URL with -H 'X-Forwarded-Proto: https' — the SPA then emits base: "https://..." and everything works.  Browsing the source, the header co
+
+
+#1031 issue state=closed created=2026-02-23T07:21:46Z closed=2026-04-28T16:49:38Z comments=0 title=a2a: Honor X-Forwarded-Proto
+Currently if agentgateway is behind a reverse proxy that does TLS termination for it, and it rewrite an A2A agent card for an agent, it will report the A2A endpoint as http:// instead of https:// even though it should be https:// .  The reverse proxy provides X-Forwarded-Proto to tell agentgateway that TLS is in use even if the connection agentgateway received was not itself TLS.  Request: add an option to honor X-Forwarded-Proto incoming header and rewrite URLs to https:// in this case.  
+
+#1678 PR state=closed created=2026-04-28T15:57:11Z closed=2026-04-28T16:49:37Z comments=0 title=a2a: respect X-Forwarded-proto
+Fixes https://github.com/agentgateway/agentgateway/issues/1031  Signed-off-by: John Howard <john.howard@solo.io>  
+   merged=true merged_at=2026-04-28T16:49:37Z merge_commit=e174a00396b5b30e191ac6950ea33a144b9bc729
+
+#105 issue state=closed created=2025-05-08T00:07:21Z closed=2025-05-08T00:20:57Z comments=1 title=Cannot reach an A2A agent at a host/path
+I am trying to add an A2A target that has an A2A agent running at:  ```bash http://localhost:8083/api/a2a/kagent/k8s-agent/ ```  From the UI, I get the following error when trying to connect to it in the UI:  ```bash Failed to connect: RpcError: Could not retrieve agent card: HTTP error 500 fetching agent card from http://localhost:5555/a2a-kagent-demo/.well-known/agent.json: Internal Server Error ```   
+
+#2701 issue state=open created=2026-07-27T17:48:28Z closed=null comments=0 title=Define and test an A2A v1.0/1.0.1 proxy conformance profile
+## Problem  Agentgateway has useful A2A-aware behavior, but current `main` does not define or verify an A2A v1.0/1.0.1 conformance profile.  At `83c952731ee79b4372e3a031382c4ff419ddfee1`, the A2A implementation primarily:  - recognizes Agent Card requests; - classifies JSON-RPC POST requests for telemetry; - rewrites v0.3 top-level `url` and v1.0 `supportedInterfaces[].url` values in Agent Cards; - inspects JSON-RPC responses for outcome, error, result-kind, and task-state telemetry; and - relies on the gateway's general authentication, authorization, routing, and observability policies.  The implementation does not currently parse or enforce `A2A-Version`, verify protocol-native Agent Card 
+
+
+#2983 PR state=closed created=2026-08-12T12:16:51Z closed=2026-08-13T16:37:57Z comments=3 title=fix(a2a): correct interface URL rewriting when path rewrite policy is active
+## Description  Fixes #2981  When a URL rewrite policy changes the gateway path prefix (e.g., `/a2a/tick` -> `/a2a/tock`), the agent card interface URLs were incorrectly constructed by naively appending the backend path to the gateway base, resulting in malformed URLs.  ## Problem  The A2A agent card response rewriting logic was using the backend request path directly when constructing interface URLs. When a URL rewrite policy modifies the path before forwarding to the backend, the interface URLs would incorrectly include the backend's internal path instead of being relative to the gateway path where the client requested the agent card.  **Example:** - Client requests: `http://gateway/a2a/ti
+
+   merged=true merged_at=2026-08-13T16:37:57Z merge_commit=f69411d2eb33e61cce417305b5b975f9ebc29c8e
+
+#3358 PR state=open created=2026-09-06T12:50:04Z closed=null comments=1 title=feat(a2a): support custom agent card path for non-standard agents
+## Summary  Add support for A2A agents that host their agent card at non-standard paths (not `/.well-known/agent.json` or `/.well-known/agent-card.json`).  Fixes #3018  ## Changes  - Add `agent_card_path` field to `A2aPolicy` (Rust) and proto - Update `classify_request` to match custom paths - Update `strip_agent_card_suffix` to handle custom suffixes - Update Go controller to read annotation from Service - Add unit tests for non-standard agent card paths  ## Usage  ```yaml apiVersion: v1 kind: Service metadata:   name: my-agent   annotations:     agentgateway.dev/a2a-agent-card-path: "/api/agents/my-agent/agent.json" spec:   ports:     - port: 8080       appProtoco
+
+   merged=false merged_at=null merge_commit=null
+
+#1678 merge_commit e174a00396b5b30e191ac6950ea33a144b9bc729 vs v1.5.0: behind (contained in v1.5.0)
+#2983 merge_commit f69411d2eb33e61cce417305b5b975f9ebc29c8e vs v1.5.0: behind (contained in v1.5.0)
+#2251 merge_commit c86dc1692b3d9645178a52106d186d0638a6457d vs v1.5.0: behind (contained in v1.5.0)
+#2646 merge_commit eda2c94024eb7769db74013119137cf2cf065968 vs v1.5.0: behind (contained in v1.5.0)
+
+# 2026-09-24, added after the controller's review: #3069, named by the reviewer, read by number 2026-09-24T15:11:18Z. It bears on the source of the draft's scheme reading and is not a duplicate.
+#3069 PR state=closed created=2026-08-17T20:36:30Z closed=2026-08-17T22:30:26Z comments=0 title=mesh: retain identity with nested TLS in HBONE
+Also log it by default  Signed-off-by: John Howard <john.howard@solo.io>  
+   merged=true merged_at=2026-08-17T22:30:26Z merge_commit=9009899b1117afc35d796cb21a33476bdb17e564
+#3069 merge_commit 9009899b1117afc35d796cb21a33476bdb17e564 vs v1.5.0: behind (contained in v1.5.0)

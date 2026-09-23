@@ -1,0 +1,14 @@
+leg,reporter_asked,series,connection_security_policy,connections_opened,source_principal,destination_principal
+"caller (loadgen) -> agw-central, to the worker Service",source,1,mutual_tls,6,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+"caller (loadgen) -> agw-central, to the orchestrator Service (the card)",source,1,mutual_tls,6,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+agw-central -> worker,destination,1,mutual_tls,6,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central,spiffe://cluster.local/ns/lab/sa/default
+agw-central -> orchestrator,destination,1,mutual_tls,6,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central,spiffe://cluster.local/ns/lab/sa/default
+"worker -> model host, via agw-central",source,0,no-series,0,,
+"orchestrator -> worker Service (the forward), via agw-central",source,0,no-series,0,,
+agw-central -> mockllm (neither end captured),any,0,no-series,0,,
+"caller (loadgen) -> agentgateway-ingress, source side",source,0,no-series,0,,
+"caller (loadgen) -> agentgateway-ingress, destination side",destination,0,no-series,0,,
+agentgateway-ingress -> orchestrator,destination,0,no-series,0,,
+agentgateway-ingress -> worker,destination,0,no-series,0,,
+plaintext probe -> worker,destination,0,no-series,0,,
+plaintext probe -> orchestrator,destination,1,unknown,1,unknown,spiffe://cluster.local/ns/lab/sa/default

@@ -1,0 +1,188 @@
+# Experiment C, step C-9: reading notes. Stamps are from date -u. Nothing here was edited after the reading it describes.
+
+## Layout
+  c9.sh              the reading driver, run once for the baseline (phase base, 1 repetition, on C-10's standing cluster,
+                     unmarked) and once for the after-reading (phase after, 5 repetitions, on the cluster rebuilt with the
+                     marking). The file was not edited between the two runs. Its sha256 is logged at the head of both
+                     readings/base/phase.txt and readings/after/phase.txt.
+  counts.py          counts from readings/ alone -> counts.txt (base, then after). readings/base-counts.txt and
+                     readings/after-counts.txt are the same program's output taken during the task. The base half of
+                     counts.txt equals readings/base-counts.txt line for line.
+  cards.sh           the controller's ruling (b): one card GET per path and ONE X-Forwarded-Proto probe, GETs only
+                     -> readings/cards-after/.
+  fwd.sh             the controller's ruling (a), the orchestrator's own forward: ONE SendMessage along the path whose
+                     card still dials -> readings/forward/.
+  rebuild.sh, build.txt, timings.csv, rebuild-driver.txt
+                     the rebuild from a deleted cluster (C-10's rebuild.sh adapted; see its header).
+  proof.sh, proof-driver.txt, checks-driver.txt, standard-counts-vs-last-proof.txt, clean-check/, trace/, strict/,
+  proxies/, retry-knobs/, cluster/, images/, ingress-shape/, worker-span/, prometheus-targets.txt, versions-readback.txt
+                     the standard proof, run by C-10's proof.sh adapted, against C-10's directory.
+  tools.txt          the lab-scoped istioctl 1.31.0 re-verified and the empty Helm scope.
+  tracker-search.sh, tracker-search.txt, items-read.txt
+                     rule 11's search. Issues and pull requests, any state, 15 queries, total_count beside each page,
+                     the search rate limit read before each call, 0 FAILED. Each candidate was then read by number,
+                     and each merged pull request's containment in v1.5.0 by the compare API.
+  sources/fetch-log.txt
+                     every source file fetched in this task, with its stamp, http code, sha256 prefix and line count.
+  sleep-events.csv   B-6's sleep-events.sh, unedited, over this task's window 2026-09-23T22:59:19Z..23:52:39Z (the
+                     first fetch to the forward's end): 0 events of each of the four kinds.
+  collector-start.txt
+                     the telemetry pods' created and Ready stamps beside the ztunnel no-healthy-upstream lines.
+  code-proof/        the render proof of the code commit (C-10's render-proof.sh adapted in its header, its awk and its
+                     placeholder value).
+
+## NOT COMMITTED
+  checks.sh's two byte copies of itself (checks-as-run/), sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00.
+  This is the same sha256 as the committed file under experiments/runs/2026-09-20-experiment-a-agentgateway-only/;
+  C-10 did the same. proxies/raw/ and the Job apply logs are ignored by .gitignore.
+  Absolute scratch paths in the copied driver outputs were written as ${TMPDIR}/ and the checkout as <REPO>; no other
+  byte was changed.
+
+## Sources (agentgateway v1.5.0 = fe6732474a96a0363dfb9822859af4e9bab360fa; main 3528a428 read 2026-09-23T23:42:27Z)
+  controller/pkg/agentgateway/plugins/a2a_plugin.go l.19-20: legacyA2aProtocol = kgateway.dev/a2a, a2aProtocol =
+  agentgateway.dev/a2a. l.57: either value marks the port. l.78: the policy goes to every Gateway with a route to the
+  Service (both proxies here). Measured: after the rebuild each config dump holds 4 policies, 2 of them A2A. Before
+  the marking each held 2, 0 of them A2A.
+  crates/agentgateway/src/a2a/mod.rs:
+  - l.20-61: classification. A GET of the agent card, a POST with a JSON body whose method is read, or unknown.
+  - l.29-34: the card's base URL is OriginalUrl or the request URI, through apply_forwarded_scheme.
+  - l.81-137: the response fields.
+  - l.157-224: the card rewrite. v1.0 supportedInterfaces[].url becomes the gateway base plus the relative path,
+    l.201-207 and l.296.
+  - l.226-232: response attributes are read only from an application/json response.
+  crates/http/src/lib.rs l.75-87 (x_headers::apply_forwarded_scheme): the scheme is replaced only when
+  X-Forwarded-Proto is present. Note: crates/agentgateway/src/http/x_headers.rs does not exist at the tag (404,
+  recorded in fetch-log.txt); the module is inline in crates/http/src/lib.rs and re-exported by
+  crates/agentgateway/src/http/mod.rs l.38-41.
+  crates/agentgateway/src/proxy/httpproxy.rs:
+  - l.4287-4310 normalize_uri: scheme HTTPS when the downstream connection has TLS info, else HTTP (HTTP/1.x). On
+    main, l.4561-4580, the same branch is there.
+  - l.214-215 and l.377-384: authorization.
+  - l.403-418: the A2A request block, which runs after both authorizations.
+  - l.2945-2954: the response block.
+  crates/agentgateway/src/telemetry/log.rs l.1535-1570: the seven keys protocol, a2a.method, a2a.response.outcome,
+  a2a.response.error_code, a2a.result.kind, a2a.task.state, a2a.context.id.
+  Website main d88aff01 (committed 2026-09-23T17:29:20Z):
+  - agent/a2a.md (sha256 c666dc31, the same bytes the preparation read) names only appProtocol kgateway.dev/a2a
+    (l.30, 67, 75, 112, 153, 245, 282, 286). It sends method tasks/send (l.349, 366, 390).
+  - traces/attribute-reference.md (sha256 868f01a7) holds "a2a" 0 times.
+
+## The standard proof's 41 DIFFERS, sorted
+Follow from the failed clean check (the two clean work items and the four trace work items all resolved the card at
+agw-central, got https, and sent nothing past the proxy):
+   2  clean check, worker and orchestrator, 0/0/0/0/0 and "/ error" against 1/1/1/1/1 COMPLETED.
+  16  trace per work item, r1/r2 x worker/orchestrator x spans, spans_by_service, hops_without_span and
+      lab_work_item_on_all. The traces hold the load client and the card GET only: no receiver POST span, no
+      ingress hop and no mock.
+   4  dangling parents, the span count half. dangling_parents is 0 on both sides, 4 of 4.
+   4  GenAI, chat 0 (no model call) and missing expected 1 (the chat span).
+   3  STRICT legs rows, 17 against 24; mutual_tls legs, 8 against 14; legs on both sides, 17 against 24. The 7 legs
+      only in C-10 are the ingress legs (loadgen to ingress, both sides; ingress to orchestrator, both sides), the
+      forward, the model leg, and the ingress's own export to the collector. No request reached the ingress, the
+      forward or the model.
+   1  STRICT unknown legs, 9 against 10. The missing one is agentgateway-ingress to otel-collector: the ingress
+      served nothing in the window, so it exported nothing.
+   5  named legs that read no-series: worker to model host, the orchestrator's forward, loadgen to ingress (source
+      and destination), ingress to orchestrator.
+  35  in all.
+Not established as following from it (6):
+   1  "of them no healthy upstream", 11 against 13. All 11 lines are to the collector's Service port 4318, between
+      23:14:45.08Z and 23:14:55.08Z, before the collector pod was Ready at 23:14:56Z (collector-start.txt). This is
+      C-10's own explanation of its 13, and it does not follow from the clean check.
+   1  "of the common legs, connection counts equal on", 12 against 17. The five differing counts:
+      - loadgen to agw-central, to the worker Service and to the orchestrator Service, 6 against 3 each. Three work
+        items went to each Service (the clean one and two trace ones), as in C-10. Each one's card GET and its https
+        attempt crossed this leg. The doubled count is consistent with two connections per work item, but that is not read
+        line by line.
+      - agw-central to worker and to orchestrator, 6 against 1 each: agw-central opened 6 upstream connections to
+        each agent where C-10 counted 1. This is NOT explained here. Only the card GETs reached the agents. Whether
+        the rewrite path, which re-serialises the card body and drops Content-Length (mod.rs l.217-218), stops the
+        upstream connection being reused was not read.
+      - The Prometheus scrape of the ingress, 87 against 16: the scrape-per-15 s count, which grows with the
+        telemetry stack's age at the reading. The proof's trace step took 13 min 46 s here (23:22:46Z-23:36:32Z),
+        with work items that failed.
+   4  the named legs with those same four counts: loadgen to agw-central (worker Service, orchestrator Service), 6
+      against 3; agw-central to worker and to orchestrator, 6 against 1. Each is still mutual_tls with the same
+      identity; only the count moved, as above.
+Held as in C-10: Prometheus targets; the STRICT posture; the plaintext probe refused at both receivers (curl exit 56);
+the retry knobs 1>0>2>0>1>0>0, ending at 0; both config dumps taken (the A2A policies above). The cluster-facts lines
+that differ are the new cluster's addresses, pod names and certificates.
+
+## Every lab script or check that assumes the pre-marking path, and what would read differently (none was changed)
+MEASURED in this task:
+  experiments/gate2-single-clean.sh (the clean check). Both work items resolve the card at the Service address
+    through agw-central, get https, and fail before the POST (clean-check/). The header's orchestrator sentence,
+    "the card advertises the agentgateway ingress, so the SendMessage POST enters through the ingress", no longer
+    describes the path.
+  experiments/gate3-trace-per-work-item.sh (the proof's trace step). The same, r1 and r2 (trace/).
+  experiments/runs/2026-09-20-experiment-a-agentgateway-only/checks.sh, its STRICT named legs. Five legs read
+    no-series because nothing crosses them (strict/legs.csv).
+  C-6's sends.sh Python path (TARGET_URL the orchestrator Service, CLIENT_DIAL and CLIENT_HOST empty), which c9.sh
+    uses unchanged: 15 of 15 load-client sends fail at the client with the https error. The Go path of the same
+    script (TARGET_URL the ingress, CLIENT_DIAL=target, CLIENT_HOST worker.lab.internal) is unaffected, 20 of 20
+    sends reach the worker.
+  The orchestrator's own forward (agents/orchestrator/orchestrator/forward.py, DOWNSTREAM_A2A_URL the worker
+    Service). One SendMessage reached the orchestrator through the ingress, whose card still advertises the
+    ingress over http. The orchestrator fetched the worker's card through agw-central (lab/worker, GET 200), got
+    https, and failed its forward: its state line reads TASK_STATE_FAILED with "Network communication error: [SSL:
+    WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1082)". The worker's ingress ledger holds 0 arrivals for the
+    work item, and the invocation ledger 0 (readings/forward/).
+READ FROM THE SCRIPT, not run in this task:
+  C-6's c6.sh, C-7's c7.sh, C-8's c8.sh and run-c8.sh, C-10's c10.sh. Each sends load-client Jobs through
+    sends.sh, so its Python load-client sends fail as above and its Go sends do not.
+    - Their curl sends name their URL themselves and do not read a card, so they reach the receiver. A curl
+      SendMessage that reaches the orchestrator then fails at the forward, as measured above.
+    - C-7's and C-8's rules sit on lab/orchestrator and lab/orchestrator-ingress. Which route a Python load-client
+      POST takes is now "none", so any row that counted a Python load-client POST on lab/orchestrator-ingress
+      would read 0.
+  B-3/B-4/B-5's rows.sh. The Python half's TARGET_URL is the orchestrator Service, so it fails at the client. The
+    Go half through the ingress with CLIENT_HOST does not. B-4's orchestrator in model mode has no forward.
+  experiments/gate3-matrix.sh:
+    - Every row without SUB sends a load-client Job that dials the card's URL. The Go rows address the worker
+      Service (card https: fail at the client). The Python rows address the orchestrator Service (card https: fail
+      at the client).
+    - SUB=waypoint (Go only) sends to the worker Service with CLIENT_DIAL empty, so it fails at the client like
+      the rows without SUB. SUB=service (Python only) is the one sub-row that sets CLIENT_DIAL=target: its POST
+      goes over http to the orchestrator Service through agw-central and reaches the receiver, then fails at the
+      forward.
+    - SUB=ingress sends curl from outside the cluster through the ingress, naming the URL itself. It reaches the
+      receiver, and a Python one fails at the forward.
+    - The header's reasoning (the Python card advertises the ingress, so R2 SUB=waypoint is refused for Python and
+      R4 composes with the ingress route) describes the unmarked cluster only.
+  experiments/gate1-baseline.sh, gate1-three-ledgers.sh, gate1-wire-version.sh, gate2-a2.sh,
+    gate3-gateway-retry-mechanics.sh. Each sends load-client Jobs addressed to a Service with CLIENT_DIAL empty,
+    except gate2-a2.sh's target mode, so they resolve the https card and fail at the client. gate1-wire-version.sh
+    captures A2A-Version from a real request, which now does not reach the receiver on those paths.
+  experiments/lib/derive-layer.sh (make test fixtures). Its header describes the Python POST on
+    lab/orchestrator-ingress; its fixtures are committed traces and do not read the cluster.
+  The replay harness (fixtures/replay) and gate1-mockllm-deterministic.sh / gate2-a1.sh send by curl or by the
+    harness to a URL they name, and read no card (0 card reads in fixtures/replay outside tests). They reach the
+    receiver; a Python SendMessage then fails at the forward.
+  Makefile targets built on the above: verify-baseline, replay*, matrix, and the clean check the rebuild rule
+    requires, which failed here.
+
+## 2026-09-24, added after the controller's review of the record (the notes above stand as written)
+  agw-central-log/   agw-central's whole log, read-only, by kubectl logs of its one pod at 2026-09-24T15:08:00Z, before
+                     any teardown (read.txt names the command, the pod and the sha256). c9.sh kept request lines only
+                     (l.116-117), so no earlier file holds its warn lines.
+                     - invalid-method-lines.csv: the 22 lines "proxy error: invalid HTTP method parsed", each with its
+                       src.addr named by pod.
+                     - counts.txt: the counts.
+                     The 22 are one per failed https attempt: the 2 clean-check load clients, the 4 trace-step load
+                     clients, the 15 after-reading Python load clients and the orchestrator at the forward. agw-central
+                     parsed each TLS ClientHello as HTTP and answered in plain HTTP, which is the answer the clients
+                     report.
+  The DIFFERS section above, corrected by this capture:
+  - loadgen to agw-central 6 against 3 is accounted for: each failed work item's card GET, and its https attempt
+    logged here, 3 per Service in the proof.
+  - agw-central to each agent 6 against 1 stays unexplained.
+  Sources added for the draft's scheme reading, at v1.5.0 (sources/fetch-log.txt):
+  - transport/stream.rs l.258-266, Socket::from_hbone wrapping the outer extension (l.259), and the comment at l.266;
+  - proxy/gateway.rs l.1466 (Socket::from_hbone for the waypoint) and l.1277-1289 (the outer Istio mTLS connection's
+    TLSConnectionInfo kept);
+  - proxy/httpproxy.rs l.746 (log.tls_info from the request's TLSConnectionInfo) and l.763 (normalize_uri called with
+    it).
+  That the request inside the HBONE stream carries the outer handshake's TLSConnectionInfo at l.746 is inferred, not
+  traced. The main 3528a428 files relied on are now in the fetch log as well.
+  counts.py now writes its four side CSVs with LF line ends (lineterminator), so a run from a clean archive of the
+  commit reproduces them and counts.txt byte for byte.
