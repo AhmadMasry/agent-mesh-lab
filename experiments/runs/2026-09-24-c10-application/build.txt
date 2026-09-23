@@ -1,0 +1,2405 @@
+# Experiment C, step C-10 -- the rebuild from a deleted cluster at the tree of the commit named by subject below; its deployed paths are compared below with the tree C-5 proved.
+# No manual step is permitted: no pod deletion, no rollout restart, no helm or kubectl call outside a make target.
+#
+# The commit, named by subject: feat(deploy): both agent Deployments carry REFUSE_OPERATION, rendered empty on every step
+# The run directory and the findings entry are added in C-10's record commit on top of it AFTER the build; they touch no
+# deployed path, so what identifies the built tree is the deployed subtree and script blob ids below.
+# Started 2026-09-23T22:18:34Z (epoch 1790201914.753). Local date at the start: 2026-09-24.
+#
+# $ git rev-parse --abbrev-ref HEAD -> experiment-c10
+# $ git rev-parse HEAD           -> 5aee78d0b18b2d68579cd88b9c678426502edb73
+# $ git rev-parse HEAD^{tree}    -> ee328ef8ebe544a1a4ef366844cf32b6b93890bb
+# $ git log --format=%s -1       -> feat(deploy): both agent Deployments carry REFUSE_OPERATION, rendered empty on every step
+# $ git status --short         -> (empty)
+# (this log is written outside the repository while the build runs and copied in afterwards)
+#
+# deployed subtree and blob IDs at that commit (git rev-parse HEAD:<path>), beside the tree the last rebuild
+# proved (experiments/runs/2026-09-23-c5-istio-policy-agw-central/, built at the tree of that commit; main carries it with the same deployed subtrees), the commit whose subject is: docs(proposal-notes): the author's decision of 2026-09-23 — Experiment C's second operation, one identity, and the A2A marking
+# (git rev-parse of it -> 511fb1454cde42b30055371ce802f589b9750757, tree bcbbdf14d8f869d5ed39434dfca4d3c5185f03e5; commits on it up to HEAD: 7):
+#   deploy             bda7213261b8a7bee4585410362ac1375c9c8486  LAST: f89a47199f1f2653b338400b4e96653730ad1b0e  CHANGED
+#   Makefile           7244d6718923bf97258cc320384689fe181e9698  LAST: 7244d6718923bf97258cc320384689fe181e9698  same
+#   agents             fe3bafed7f3b5c78b2c17aab278c3c9b87f5f657  LAST: 324396fd246e86ecffe46263b297f5039ed815be  CHANGED
+#   fixtures           d143d67093737d1cb498a909bdee807cbb426202  LAST: d143d67093737d1cb498a909bdee807cbb426202  same
+#   experiments/lib    bad5771f9500c52b2664b2045650367a57b2818a  LAST: bad5771f9500c52b2664b2045650367a57b2818a  same
+#   .ko.yaml           2dcd19898e03215672f4d46b546607aa73b335ce  LAST: 2dcd19898e03215672f4d46b546607aa73b335ce  same
+#   go.mod             a8314e0b85f317776d659b7c5b0214582cbdc2f3  LAST: a8314e0b85f317776d659b7c5b0214582cbdc2f3  same
+#   go.sum             53b265e52f3ed166d45a547a83e62707fc5b5e76  LAST: 53b265e52f3ed166d45a547a83e62707fc5b5e76  same
+#   internal           f63b96cc72514f3aa29d4c4d4e40bf3ccb17240c  LAST: f63b96cc72514f3aa29d4c4d4e40bf3ccb17240c  same
+#   kind-config.yaml   aa98aa461ddc41c129eb2f37de64db667a4ed629  LAST: aa98aa461ddc41c129eb2f37de64db667a4ed629  same
+#   experiments/*.sh blobs:
+#     experiments/gate1-baseline.sh                5cc6554d8b8378c2a22367fc90cbad07825cf666  same
+#     experiments/gate1-mockllm-deterministic.sh   47846b108c4920a5ca01f85cd20456afeecec289  same
+#     experiments/gate1-three-ledgers.sh           1f197f9d4786f09fb959d0cf603a537698abae6f  same
+#     experiments/gate1-wire-version.sh            8ec5eed18855d8733a157f17dcf07d76d832b415  same
+#     experiments/gate2-a1.sh                      08b4027d33cc7decc6af42a2dee4926c35e002d7  same
+#     experiments/gate2-a2.sh                      52f3a7634200ecca7668da4330229481a987a4ce  same
+#     experiments/gate2-single-clean.sh            f53d5e980170c5eecf5b4e5706dfece4b3edae63  same
+#     experiments/gate3-gateway-retry-mechanics.sh 265e3950f0d71dc32b11deb453ea617571ecdb21  same
+#     experiments/gate3-matrix.sh                  6ebbbb1528c92ad51ab2193075f09f56a2ad6c98  same
+#     experiments/gate3-trace-per-work-item.sh     0f550834a6543031af01c16627f9abd38e196254  same
+#     experiments/scan-images.sh                   c8e0064da9b86d5faab348807f7de495deb2b8dd  same
+#   inside the deployed subtrees: the files the commits between the two trees touch, and the worker's and the
+#   orchestrator's subtrees and the orchestrator's build inputs:
+#     agents/worker                                f97dc9c0d5760f7974522d73c4abccfd4647c4d2  LAST: f278085c85f0ca4dc6621db1cde8558690df68b6  CHANGED
+#     agents/worker/main.go                        ed14ba0cd0a27da38c058b3a0ccf5b13bec76189  LAST: 6f418769cc81c017ad30cf568c44f6d2675cad7b  CHANGED
+#     agents/worker/refuse.go                      2723d2d22ac90f2498711694c8edc1ee634dd3c7  LAST: (absent at the last rebuild's tree)  CHANGED
+#     agents/worker/refuse_test.go                 0b9ca09fcb9e500fcd7ae04e76d2e13191592317  LAST: (absent at the last rebuild's tree)  CHANGED
+#     agents/orchestrator                          d6dd27b97d1fe279ccc033ad556a2eebad15fd68  LAST: 7432ee4403648fdef7e388a43e5b1262ff0bd36b  CHANGED
+#     agents/orchestrator/orchestrator             9a1cf06875043390cd7fc90917127631686586ad  LAST: 9d5166dae5e29746c21652d552aeb3ce0a62ae28  CHANGED
+#     agents/orchestrator/orchestrator/agent.py    ff4eb8edecf5e51bc53e03198e2796c26322b696  LAST: 6e9b27915b1ef8cfa94bc0dfff53e7c530bbbefd  CHANGED
+#     agents/orchestrator/orchestrator/server.py   d45d50fe2d11fe15c46751a52c9f4ceb95b63e87  LAST: c7547e2b4010260bb8a39c5b74d170e1258ee581  CHANGED
+#     agents/orchestrator/orchestrator/refuse.py   55d66d46c007e018ac8de1eed3c93354a281f882  LAST: (absent at the last rebuild's tree)  CHANGED
+#     agents/orchestrator/tests                    a0d4bfe837dc148ad00304c10c46220cc7aea252  LAST: 8d6b9ee1111dbbb7cd70352c903c4752593d6a0c  CHANGED
+#     agents/orchestrator/Dockerfile               ae6993e3f913272d0f243e7e5a474834b47e5e79  LAST: ae6993e3f913272d0f243e7e5a474834b47e5e79  same
+#     agents/orchestrator/uv.lock                  a9136a8800fe033670cbaa6460e77190c812dbae  LAST: a9136a8800fe033670cbaa6460e77190c812dbae  same
+#     agents/orchestrator/pyproject.toml           aac08acf9eb262b16d874971c588cc84eb570173  LAST: aac08acf9eb262b16d874971c588cc84eb570173  same
+#     deploy/base                                  7b8c1a7234c2cf2963a7dfa6ded60b883f329d55  LAST: 04c1552cb5f1fb63fce92d0e68631fb9c08828e1  CHANGED
+#     deploy/base/worker.yaml                      de63ad8f0889d080f83fe7595597b14559216390  LAST: 2952d017a5d503cfe26cc3db11d89518fd5525c7  CHANGED
+#     deploy/base/orchestrator.yaml                c2deb96de12065b8c6c3ef5809aaa23fde78e9fc  LAST: 6e4dec204e65a5ce7105d5b48bcb0aab6a462a60  CHANGED
+#     fixtures                                     d143d67093737d1cb498a909bdee807cbb426202  LAST: d143d67093737d1cb498a909bdee807cbb426202  same
+#     internal                                     f63b96cc72514f3aa29d4c4d4e40bf3ccb17240c  LAST: f63b96cc72514f3aa29d4c4d4e40bf3ccb17240c  same
+#   $ git diff --stat <the last rebuild's tree> HEAD -- <the deployed paths>
+#      agents/orchestrator/orchestrator/agent.py  |  24 +-
+#      agents/orchestrator/orchestrator/refuse.py |  48 +++
+#      agents/orchestrator/orchestrator/server.py |  11 +-
+#      agents/orchestrator/tests/test_refuse.py   | 309 +++++++++++++++++
+#      agents/worker/main.go                      |  10 +-
+#      agents/worker/refuse.go                    |  89 +++++
+#      agents/worker/refuse_test.go               | 517 +++++++++++++++++++++++++++++
+#      deploy/base/orchestrator.yaml              |   8 +
+#      deploy/base/worker.yaml                    |   8 +
+#      9 files changed, 1015 insertions(+), 9 deletions(-)
+#   $ git diff --name-status <the last rebuild's tree> HEAD -- <the deployed paths>
+#     M	agents/orchestrator/orchestrator/agent.py
+#     A	agents/orchestrator/orchestrator/refuse.py
+#     M	agents/orchestrator/orchestrator/server.py
+#     A	agents/orchestrator/tests/test_refuse.py
+#     M	agents/worker/main.go
+#     A	agents/worker/refuse.go
+#     A	agents/worker/refuse_test.go
+#     M	deploy/base/orchestrator.yaml
+#     M	deploy/base/worker.yaml
+#
+# git status reads clean although worktrees of the controller's live under .claude/worktrees/: that path is
+# excluded locally in .git/info/exclude (never committed). Recorded so the clean status is not read as their absence:
+#   $ git worktree list
+#     <HOME>/PycharmProjects/agent-mesh-lab 5aee78d0 [experiment-c10]
+#   $ tail -2 .git/info/exclude
+#     # a worktree-isolated agent of the controller lives here (2026-09-19, the central-waypoint spike); local only, never committed
+#     .claude/worktrees/
+#
+# host:     Darwin arm64
+# make:     GNU Make 3.81
+# helm:     v4.3.0+gbec5b06
+# kubectl:  Client Version: v1.37.0
+# istioctl: client version: 1.31.0
+#   the istioctl on PATH for this build: ${TMPDIR}/c10/tools/istioctl-1.31.0/istioctl -- ${TMPDIR}/c10/tools/istioctl-1.31.0/istioctl
+#   binary sha256 763caa1c906c62a0cb6f07653de94446600dc81d25af33e2c047cc124b674840; from istioctl-1.31.0-osx-arm64.tar.gz, sha256 a0c4d35320f930e5254de119512f0761f65a76fb614973281bf9435e24306d66
+#   the release's published checksum file (istioctl-1.31.0-osx-arm64.tar.gz.sha256, fetched in this task): a0c4d35320f930e5254de119512f0761f65a76fb614973281bf9435e24306d66 istioctl-1.31.0-osx-arm64.tar.gz
+#   source https://github.com/istio/istio/releases/tag/1.31.0 (the tarball fetched 2026-09-21T20:58:42Z by B-3; the checksum file and the release record re-fetched in this task 2026-09-23T22:17:42Z and 22:17:45Z; see tools.txt)
+#   the host's Homebrew istioctl is 1.31.1 (since 2026-09-21T18:55:13Z) and is NOT used by this build
+# helm environment for this build (the controller's second ruling):
+#   HELM_REPOSITORY_CONFIG=${TMPDIR}/c10/tools/helm-scope/config/repositories.yaml (0 bytes: an empty file)
+#   HELM_REPOSITORY_CACHE=${TMPDIR}/c10/tools/helm-scope/cache/repository (0 entries at the start)
+#   HELM_CACHE_HOME=${TMPDIR}/c10/tools/helm-scope/cache
+#   the host's repositories file and cache are neither read for the installs nor changed by this build
+# kind:     kind v0.33.0 go1.27.0 darwin/arm64
+# ko:       0.19.1
+# docker:   29.8.0 (server 29.8.0)
+# go:       go version go1.27.1 darwin/arm64
+# uv:       uv 0.12.18 (Homebrew 2026-09-22 aarch64-apple-darwin)
+
+## the cluster being deleted: the one C-5 built (experiments/runs/2026-09-23-c5-istio-policy-agw-central/), after C-5, C-6, C-7
+## and C-8's rows, at step 3 with nothing applied. make teardown of it is authorized by the brief; nothing on it was repaired.
+agent-mesh-lab
+## header reads: 1.195 s
+
+## git status --short (whole checkout) before make teardown -> (empty)
+## git status --short (deployed paths)  before make teardown -> (empty)
+## make teardown  started 2026-09-23T22:18:36Z  epoch 1790201916.172
+kind delete cluster --name agent-mesh-lab
+Deleting cluster "agent-mesh-lab" ...
+Deleted nodes: ["agent-mesh-lab-worker" "agent-mesh-lab-control-plane"]
+## make teardown  finished 2026-09-23T22:18:37Z  epoch 1790201917.969  exit=0  wall=1.797s
+
+## git status --short (whole checkout) before make cluster-kind -> (empty)
+## git status --short (deployed paths)  before make cluster-kind -> (empty)
+## make cluster-kind  started 2026-09-23T22:18:38Z  epoch 1790201918.240
+Creating cluster "agent-mesh-lab" ...
+ • Ensuring node image (kindest/node:v1.37.0) 🖼️  ...
+ ✓ Ensuring node image (kindest/node:v1.37.0) 🖼️
+ • Preparing nodes 📦 📦   ...
+ ✓ Preparing nodes 📦 📦 
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+ • Joining worker nodes 🚜  ...
+ ✓ Joining worker nodes 🚜
+Set kubectl context to "kind-agent-mesh-lab"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-agent-mesh-lab
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+## make cluster-kind  finished 2026-09-23T22:18:58Z  epoch 1790201938.101  exit=0  wall=19.861s
+
+## git status --short (whole checkout) before make step-1 -> (empty)
+## git status --short (deployed paths)  before make step-1 -> (empty)
+## make step-1  started 2026-09-23T22:18:58Z  epoch 1790201938.356
+docker build --pull --no-cache --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 16.99kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for ghcr.io/astral-sh/uv:latest
+#2 DONE 2.2s
+
+#3 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#3 DONE 2.6s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 569B done
+#4 DONE 0.0s
+
+#5 FROM ghcr.io/astral-sh/uv:latest@sha256:3adc3706091ce7c2fe595e669628caedd6d951551b92b258b7e7dbe06d9440bc
+#5 resolve ghcr.io/astral-sh/uv:latest@sha256:3adc3706091ce7c2fe595e669628caedd6d951551b92b258b7e7dbe06d9440bc done
+#5 CACHED
+
+#6 [builder 1/9] FROM public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:06da5a3362eda00c5114227ac81abe56dd9b943395553b7c64a310457f4d9e2b
+#6 resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:06da5a3362eda00c5114227ac81abe56dd9b943395553b7c64a310457f4d9e2b done
+#6 CACHED
+
+#7 [internal] load build context
+#7 transferring context: 24.06kB done
+#7 DONE 0.0s
+
+#8 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#8 ...
+
+#9 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#9 7.241 Amazon Linux 2023 repository                     14 MB/s |  79 MB     00:05    
+#9 ...
+
+#8 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#8 9.462 Amazon Linux 2023 repository                     10 MB/s |  79 MB     00:07    
+#8 ...
+
+#9 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#9 14.68 Last metadata expiration check: 0:00:11 ago on Wed Sep 23 22:19:04 2026.
+#9 15.31 Dependencies resolved.
+#9 15.32 ================================================================================
+#9 15.32  Package                Arch      Version                   Repository     Size
+#9 15.32 ================================================================================
+#9 15.32 Installing:
+#9 15.32  python3.14             aarch64   3.14.7-1.amzn2023.0.1     amazonlinux    30 k
+#9 15.32 Installing dependencies:
+#9 15.32  mpdecimal              aarch64   2.5.1-3.amzn2023.0.3      amazonlinux   103 k
+#9 15.32  python3.14-libs        aarch64   3.14.7-1.amzn2023.0.1     amazonlinux    10 M
+#9 15.32  python3.14-pip-wheel   noarch    26.1.1-1.amzn2023.0.3     amazonlinux   1.2 M
+#9 15.32 
+#9 15.32 Transaction Summary
+#9 15.32 ================================================================================
+#9 15.32 Install  4 Packages
+#9 15.32 
+#9 15.32 Total download size: 11 M
+#9 15.32 Installed size: 56 M
+#9 15.32 Downloading Packages:
+#9 16.12 (1/4): python3.14-3.14.7-1.amzn2023.0.1.aarch64 436 kB/s |  30 kB     00:00    
+#9 16.19 (2/4): mpdecimal-2.5.1-3.amzn2023.0.3.aarch64.r 752 kB/s | 103 kB     00:00    
+#9 16.38 (3/4): python3.14-pip-wheel-26.1.1-1.amzn2023.0 4.5 MB/s | 1.2 MB     00:00    
+#9 16.87 (4/4): python3.14-libs-3.14.7-1.amzn2023.0.1.aa  13 MB/s |  10 MB     00:00    
+#9 16.87 --------------------------------------------------------------------------------
+#9 16.87 Total                                           7.4 MB/s |  11 MB     00:01     
+#9 16.91 Running transaction check
+#9 16.92 Transaction check succeeded.
+#9 16.92 Running transaction test
+#9 16.96 Transaction test succeeded.
+#9 16.96 Running transaction
+#9 16.99   Preparing        :                                                        1/1 
+#9 17.00   Installing       : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch      1/4 
+#9 17.01   Installing       : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                 2/4 
+#9 17.01   Installing       : python3.14-3.14.7-1.amzn2023.0.1.aarch64               3/4 
+#9 17.15   Installing       : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64          4/4 
+#9 17.16   Running scriptlet: python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64          4/4 
+#9 17.42   Verifying        : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                 1/4 
+#9 17.42   Verifying        : python3.14-3.14.7-1.amzn2023.0.1.aarch64               2/4 
+#9 17.42   Verifying        : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64          3/4 
+#9 17.42   Verifying        : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch      4/4 
+#9 17.45 
+#9 17.45 Installed:
+#9 17.45   mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                                        
+#9 17.45   python3.14-3.14.7-1.amzn2023.0.1.aarch64                                      
+#9 17.45   python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64                                 
+#9 17.45   python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch                             
+#9 17.45 
+#9 17.45 Complete!
+#9 17.53 9 files removed
+#9 DONE 17.5s
+
+#10 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+#10 DONE 0.0s
+
+#11 [builder 4/9] RUN uv --version
+#11 0.075 uv 0.12.18 (aarch64-unknown-linux-musl)
+#11 DONE 0.1s
+
+#12 [builder 5/9] RUN python3.14 -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.version'
+#12 DONE 0.1s
+
+#13 [builder 6/9] WORKDIR /app
+#13 DONE 0.0s
+
+#8 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#8 16.89 Last metadata expiration check: 0:00:13 ago on Wed Sep 23 22:19:05 2026.
+#8 17.52 Dependencies resolved.
+#8 17.53 ==============================================================================================
+#8 17.53  Package                        Arch     Version                            Repository    Size
+#8 17.53 ==============================================================================================
+#8 17.53 Installing:
+#8 17.53  ca-certificates                noarch   2025.2.76-1.0.amzn2023.0.3         amazonlinux  738 k
+#8 17.53  python3.14                     aarch64  3.14.7-1.amzn2023.0.1              amazonlinux   30 k
+#8 17.53  system-release                 noarch   2023.12.20260918-0.amzn2023        amazonlinux   24 k
+#8 17.53 Installing dependencies:
+#8 17.53  alternatives                   aarch64  1.15-2.amzn2023.0.2                amazonlinux   36 k
+#8 17.53  amazon-linux-repo-cdn          noarch   2023.12.20260918-0.amzn2023        amazonlinux   13 k
+#8 17.53  basesystem                     noarch   11-11.amzn2023.0.2                 amazonlinux  7.8 k
+#8 17.53  bash                           aarch64  5.2.15-1.amzn2023.0.2              amazonlinux  1.8 M
+#8 17.53  bzip2-libs                     aarch64  1.0.8-6.amzn2023.0.2               amazonlinux   44 k
+#8 17.53  coreutils                      aarch64  8.32-30.amzn2023.0.5               amazonlinux  1.2 M
+#8 17.53  coreutils-common               aarch64  8.32-30.amzn2023.0.5               amazonlinux  2.0 M
+#8 17.53  crypto-policies                noarch   20260224-1.gitea0f072.amzn2023.0.6 amazonlinux   58 k
+#8 17.53  expat                          aarch64  2.8.3-1.amzn2023.0.1               amazonlinux  129 k
+#8 17.53  filesystem                     aarch64  3.14-5.amzn2023.0.3                amazonlinux   22 k
+#8 17.53  gdbm-libs                      aarch64  1:1.19-2.amzn2023.0.2              amazonlinux   53 k
+#8 17.53  glibc                          aarch64  2.34-231.amzn2023.0.5              amazonlinux  1.7 M
+#8 17.53  glibc-common                   aarch64  2.34-231.amzn2023.0.5              amazonlinux  289 k
+#8 17.53  glibc-minimal-langpack         aarch64  2.34-231.amzn2023.0.5              amazonlinux   23 k
+#8 17.53  gmp                            aarch64  1:6.2.1-2.amzn2023.0.2             amazonlinux  276 k
+#8 17.53  grep                           aarch64  3.8-1.amzn2023.0.4                 amazonlinux  282 k
+#8 17.53  libacl                         aarch64  2.4.0-1.amzn2023.0.1               amazonlinux   27 k
+#8 17.53  libattr                        aarch64  2.5.1-3.amzn2023.0.2               amazonlinux   19 k
+#8 17.53  libcap                         aarch64  2.73-1.amzn2023.0.7                amazonlinux   86 k
+#8 17.53  libffi                         aarch64  3.4.4-1.amzn2023.0.1               amazonlinux   37 k
+#8 17.53  libgcc                         aarch64  14.2.1-7.amzn2023.0.2              amazonlinux  123 k
+#8 17.53  libselinux                     aarch64  3.4-5.amzn2023.0.2                 amazonlinux   87 k
+#8 17.53  libsepol                       aarch64  3.4-3.amzn2023.0.3                 amazonlinux  311 k
+#8 17.53  libstdc++                      aarch64  14.2.1-7.amzn2023.0.2              amazonlinux  818 k
+#8 17.53  libtasn1                       aarch64  4.19.0-1.amzn2023.0.6              amazonlinux   75 k
+#8 17.53  libuuid                        aarch64  2.37.4-1.amzn2023.0.6              amazonlinux   26 k
+#8 17.53  libzstd                        aarch64  1.5.5-1.amzn2023.0.1               amazonlinux  284 k
+#8 17.53  mpdecimal                      aarch64  2.5.1-3.amzn2023.0.3               amazonlinux  103 k
+#8 17.53  ncurses-base                   noarch   6.6-1.amzn2023.0.1                 amazonlinux   65 k
+#8 17.53  ncurses-libs                   aarch64  6.6-1.amzn2023.0.1                 amazonlinux  331 k
+#8 17.53  openssl-fips-provider-latest   aarch64  1:3.5.8-1.amzn2023.0.1             amazonlinux  744 k
+#8 17.53  openssl-libs                   aarch64  1:3.5.8-1.amzn2023.0.1             amazonlinux  2.2 M
+#8 17.53  p11-kit                        aarch64  0.24.1-2.amzn2023.0.3              amazonlinux  346 k
+#8 17.53  p11-kit-trust                  aarch64  0.24.1-2.amzn2023.0.3              amazonlinux  138 k
+#8 17.53  pcre2                          aarch64  10.40-1.amzn2023.0.3               amazonlinux  220 k
+#8 17.53  pcre2-syntax                   noarch   10.40-1.amzn2023.0.3               amazonlinux  142 k
+#8 17.53  python3.14-libs                aarch64  3.14.7-1.amzn2023.0.1              amazonlinux   10 M
+#8 17.53  python3.14-pip-wheel           noarch   26.1.1-1.amzn2023.0.3              amazonlinux  1.2 M
+#8 17.53  readline                       aarch64  8.1-2.amzn2023.0.2                 amazonlinux  212 k
+#8 17.53  sed                            aarch64  4.8-7.amzn2023.0.2                 amazonlinux  295 k
+#8 17.53  setup                          noarch   2.13.7-3.amzn2023.0.2              amazonlinux  141 k
+#8 17.53  sqlite-libs                    aarch64  3.40.0-1.amzn2023.0.8              amazonlinux  657 k
+#8 17.53  tzdata                         noarch   2026c-1.amzn2023.0.1               amazonlinux  429 k
+#8 17.53  xz-libs                        aarch64  5.2.5-9.amzn2023.0.2               amazonlinux   92 k
+#8 17.53  zlib                           aarch64  1.2.11-33.amzn2023.0.6             amazonlinux   91 k
+#8 17.53 
+#8 17.53 Transaction Summary
+#8 17.53 ==============================================================================================
+#8 17.53 Install  48 Packages
+#8 17.53 
+#8 17.54 Total download size: 28 M
+#8 17.54 Installed size: 141 M
+#8 17.54 Downloading Packages:
+#8 18.43 (1/48): basesystem-11-11.amzn2023.0.2.noarch.rp  96 kB/s | 7.8 kB     00:00    
+#8 18.52 (2/48): amazon-linux-repo-cdn-2023.12.20260918- 155 kB/s |  13 kB     00:00    
+#8 18.52 (3/48): alternatives-1.15-2.amzn2023.0.2.aarch6 317 kB/s |  36 kB     00:00    
+#8 19.19 (4/48): bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64  66 kB/s |  44 kB     00:00    
+#8 19.33 (5/48): ca-certificates-2025.2.76-1.0.amzn2023. 914 kB/s | 738 kB     00:00    
+#8 19.33 (6/48): bash-5.2.15-1.amzn2023.0.2.aarch64.rpm  2.0 MB/s | 1.8 MB     00:00    
+#8 ...
+
+#14 [builder 7/9] RUN --mount=type=cache,target=/root/.cache/uv     --mount=type=bind,source=uv.lock,target=uv.lock     --mount=type=bind,source=pyproject.toml,target=pyproject.toml     uv sync --locked --no-install-project --no-dev
+#14 0.119 Using CPython 3.14.7 interpreter at: /usr/bin/python3.14
+#14 0.119 Creating virtual environment at: .venv
+#14 0.122 Resolved 66 packages in 0.73ms
+#14 0.542 Downloading cryptography (4.5MiB)
+#14 0.551 Downloading openai (2.0MiB)
+#14 0.552 Downloading pydantic-core (1.9MiB)
+#14 1.206  Downloaded pydantic-core
+#14 1.208  Downloaded openai
+#14 1.329  Downloaded cryptography
+#14 1.329 Prepared 53 packages in 1.20s
+#14 1.499 Installed 53 packages in 170ms
+#14 1.743 Bytecode compiled 3420 files in 243ms
+#14 1.743  + a2a-sdk==1.1.4
+#14 1.743  + annotated-types==0.8.0
+#14 1.743  + anyio==4.15.1
+#14 1.743  + asgiref==3.12.1
+#14 1.743  + certifi==2026.7.22
+#14 1.743  + cffi==2.1.1
+#14 1.743  + charset-normalizer==3.5.1
+#14 1.743  + click==8.5.0
+#14 1.743  + cryptography==50.0.1
+#14 1.743  + google-api-core==2.38.0
+#14 1.743  + google-auth==2.58.0
+#14 1.743  + googleapis-common-protos==1.75.3
+#14 1.743  + h11==0.16.0
+#14 1.743  + httpcore==1.0.9
+#14 1.743  + httpcore2==2.13.0
+#14 1.743  + httpx==0.28.1
+#14 1.743  + httpx2==2.13.0
+#14 1.743  + idna==3.20
+#14 1.743  + jiter==0.17.0
+#14 1.743  + json-rpc==1.15.0
+#14 1.743  + openai==3.16.2
+#14 1.743  + opentelemetry-api==1.44.0
+#14 1.743  + opentelemetry-distro==0.65b0
+#14 1.743  + opentelemetry-exporter-otlp-proto-common==1.44.0
+#14 1.743  + opentelemetry-exporter-otlp-proto-http==1.44.0
+#14 1.743  + opentelemetry-instrumentation==0.65b0
+#14 1.743  + opentelemetry-instrumentation-asgi==0.65b0
+#14 1.743  + opentelemetry-instrumentation-httpx==0.65b0
+#14 1.743  + opentelemetry-instrumentation-openai-v2==2.4b0
+#14 1.743  + opentelemetry-instrumentation-starlette==0.65b0
+#14 1.743  + opentelemetry-proto==1.44.0
+#14 1.743  + opentelemetry-sdk==1.44.0
+#14 1.743  + opentelemetry-semantic-conventions==0.65b0
+#14 1.743  + opentelemetry-util-genai==1.1b0
+#14 1.743  + opentelemetry-util-http==0.65b0
+#14 1.743  + packaging==26.3
+#14 1.743  + proto-plus==1.28.4
+#14 1.743  + protobuf==6.33.6
+#14 1.743  + pyasn1==0.6.4
+#14 1.743  + pyasn1-modules==0.4.2
+#14 1.743  + pycparser==3.0
+#14 1.743  + pydantic==2.13.5
+#14 1.743  + pydantic-core==2.46.5
+#14 1.743  + requests==2.34.2
+#14 1.743  + sniffio==1.3.1
+#14 1.743  + sse-starlette==3.4.11
+#14 1.743  + starlette==1.6.0
+#14 1.743  + truststore==0.10.4
+#14 1.743  + typing-extensions==4.16.0
+#14 1.743  + typing-inspection==0.4.4
+#14 1.743  + urllib3==2.8.0
+#14 1.743  + uvicorn==0.53.0
+#14 1.744  + wrapt==2.4.1
+#14 DONE 1.8s
+
+#15 [builder 8/9] COPY . /app
+#15 DONE 0.0s
+
+#8 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#8 19.56 (7/48): coreutils-8.32-30.amzn2023.0.5.aarch64. 3.1 MB/s | 1.2 MB     00:00    
+#8 19.72 (8/48): crypto-policies-20260224-1.gitea0f072.a 150 kB/s |  58 kB     00:00    
+#8 ...
+
+#16 [builder 9/9] RUN --mount=type=cache,target=/root/.cache/uv     uv sync --locked --no-dev --no-editable
+#16 0.096 Resolved 66 packages in 0.49ms
+#16 0.146 Bytecode compiled 3420 files in 48ms
+#16 DONE 0.2s
+
+#8 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#8 19.87 (9/48): coreutils-common-8.32-30.amzn2023.0.5.a 3.6 MB/s | 2.0 MB     00:00    
+#8 19.88 (10/48): expat-2.8.3-1.amzn2023.0.1.aarch64.rpm 402 kB/s | 129 kB     00:00    
+#8 19.89 (11/48): filesystem-3.14-5.amzn2023.0.3.aarch64 130 kB/s |  22 kB     00:00    
+#8 19.93 (12/48): gdbm-libs-1.19-2.amzn2023.0.2.aarch64. 858 kB/s |  53 kB     00:00    
+#8 20.12 (13/48): glibc-common-2.34-231.amzn2023.0.5.aar 1.2 MB/s | 289 kB     00:00    
+#8 20.21 (14/48): glibc-2.34-231.amzn2023.0.5.aarch64.rp 5.2 MB/s | 1.7 MB     00:00    
+#8 20.21 (15/48): glibc-minimal-langpack-2.34-231.amzn20  84 kB/s |  23 kB     00:00    
+#8 20.25 (16/48): gmp-6.2.1-2.amzn2023.0.2.aarch64.rpm   2.1 MB/s | 276 kB     00:00    
+#8 20.27 (17/48): libacl-2.4.0-1.amzn2023.0.1.aarch64.rp 455 kB/s |  27 kB     00:00    
+#8 20.30 (18/48): grep-3.8-1.amzn2023.0.4.aarch64.rpm    3.0 MB/s | 282 kB     00:00    
+#8 20.31 (19/48): libattr-2.5.1-3.amzn2023.0.2.aarch64.r 325 kB/s |  19 kB     00:00    
+#8 20.34 (20/48): libcap-2.73-1.amzn2023.0.7.aarch64.rpm 1.3 MB/s |  86 kB     00:00    
+#8 20.36 (21/48): libffi-3.4.4-1.amzn2023.0.1.aarch64.rp 643 kB/s |  37 kB     00:00    
+#8 20.38 (22/48): libgcc-14.2.1-7.amzn2023.0.2.aarch64.r 1.7 MB/s | 123 kB     00:00    
+#8 20.40 (23/48): libselinux-3.4-5.amzn2023.0.2.aarch64. 1.4 MB/s |  87 kB     00:00    
+#8 20.45 (24/48): libsepol-3.4-3.amzn2023.0.3.aarch64.rp 3.3 MB/s | 311 kB     00:00    
+#8 20.54 (25/48): libstdc++-14.2.1-7.amzn2023.0.2.aarch6 4.9 MB/s | 818 kB     00:00    
+#8 20.54 (26/48): libtasn1-4.19.0-1.amzn2023.0.6.aarch64 519 kB/s |  75 kB     00:00    
+#8 20.55 (27/48): libuuid-2.37.4-1.amzn2023.0.6.aarch64. 281 kB/s |  26 kB     00:00    
+#8 20.62 (28/48): libzstd-1.5.5-1.amzn2023.0.1.aarch64.r 3.5 MB/s | 284 kB     00:00    
+#8 20.62 (29/48): mpdecimal-2.5.1-3.amzn2023.0.3.aarch64 1.2 MB/s | 103 kB     00:00    
+#8 20.71 (30/48): ncurses-libs-6.6-1.amzn2023.0.1.aarch6 3.5 MB/s | 331 kB     00:00    
+#8 20.78 (31/48): openssl-fips-provider-latest-3.5.8-1.a 4.6 MB/s | 744 kB     00:00    
+#8 21.00 (32/48): openssl-libs-3.5.8-1.amzn2023.0.1.aarc 7.8 MB/s | 2.2 MB     00:00    
+#8 21.02 (33/48): p11-kit-0.24.1-2.amzn2023.0.3.aarch64. 1.4 MB/s | 346 kB     00:00    
+#8 21.03 (34/48): ncurses-base-6.6-1.amzn2023.0.1.noarch 136 kB/s |  65 kB     00:00    
+#8 21.07 (35/48): p11-kit-trust-0.24.1-2.amzn2023.0.3.aa 1.9 MB/s | 138 kB     00:00    
+#8 21.09 (36/48): pcre2-10.40-1.amzn2023.0.3.aarch64.rpm 3.0 MB/s | 220 kB     00:00    
+#8 21.14 (37/48): python3.14-3.14.7-1.amzn2023.0.1.aarch 437 kB/s |  30 kB     00:00    
+#8 21.15 (38/48): pcre2-syntax-10.40-1.amzn2023.0.3.noar 1.1 MB/s | 142 kB     00:00    
+#8 21.74 (39/48): readline-8.1-2.amzn2023.0.2.aarch64.rp 358 kB/s | 212 kB     00:00    
+#8 21.76 (40/48): python3.14-pip-wheel-26.1.1-1.amzn2023 1.9 MB/s | 1.2 MB     00:00    
+#8 21.95 (41/48): python3.14-libs-3.14.7-1.amzn2023.0.1.  12 MB/s |  10 MB     00:00    
+#8 21.96 (42/48): sed-4.8-7.amzn2023.0.2.aarch64.rpm     1.3 MB/s | 295 kB     00:00    
+#8 21.96 (43/48): setup-2.13.7-3.amzn2023.0.2.noarch.rpm 708 kB/s | 141 kB     00:00    
+#8 22.03 (44/48): system-release-2023.12.20260918-0.amzn 336 kB/s |  24 kB     00:00    
+#8 22.06 (45/48): sqlite-libs-3.40.0-1.amzn2023.0.8.aarc 6.3 MB/s | 657 kB     00:00    
+#8 22.06 (46/48): tzdata-2026c-1.amzn2023.0.1.noarch.rpm 4.0 MB/s | 429 kB     00:00    
+#8 22.09 (47/48): xz-libs-5.2.5-9.amzn2023.0.2.aarch64.r 1.6 MB/s |  92 kB     00:00    
+#8 22.11 (48/48): zlib-1.2.11-33.amzn2023.0.6.aarch64.rp 1.6 MB/s |  91 kB     00:00    
+#8 22.12 --------------------------------------------------------------------------------
+#8 22.12 Total                                           6.1 MB/s |  28 MB     00:04     
+#8 22.12 Amazon Linux 2023 repository                    1.7 MB/s | 1.8 kB     00:00    
+#8 22.14 Importing GPG key 0xD832C631:
+#8 22.14  Userid     : "Amazon Linux <amazon-linux@amazon.com>"
+#8 22.14  Fingerprint: B21C 50FA 44A9 9720 EAA7 2F7F E951 904A D832 C631
+#8 22.14  From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-amazon-linux-2023
+#8 22.14 Key imported successfully
+#8 22.38 Running transaction check
+#8 22.39 Transaction check succeeded.
+#8 22.39 Running transaction test
+#8 22.48 Transaction test succeeded.
+#8 22.48 Running transaction
+#8 22.61   Running scriptlet: filesystem-3.14-5.amzn2023.0.3.aarch64                 1/1 
+#8 22.62   Preparing        :                                                        1/1 
+#8 22.67   Installing       : tzdata-2026c-1.amzn2023.0.1.noarch                    1/48 
+#8 22.68   Installing       : pcre2-syntax-10.40-1.amzn2023.0.3.noarch              2/48 
+#8 22.69   Installing       : ncurses-base-6.6-1.amzn2023.0.1.noarch                3/48 
+#8 22.70   Installing       : ncurses-libs-6.6-1.amzn2023.0.1.aarch64               4/48 
+#8 22.70   Installing       : amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.    5/48 
+#8 22.72   Installing       : bash-5.2.15-1.amzn2023.0.2.aarch64                    6/48 
+#8 22.72   Running scriptlet: bash-5.2.15-1.amzn2023.0.2.aarch64                    6/48 
+#8 22.73   Installing       : system-release-2023.12.20260918-0.amzn2023.noarch     7/48 
+#8 22.73   Installing       : setup-2.13.7-3.amzn2023.0.2.noarch                    8/48 
+#8 22.73   Running scriptlet: setup-2.13.7-3.amzn2023.0.2.noarch                    8/48 
+#8 22.75   Installing       : filesystem-3.14-5.amzn2023.0.3.aarch64                9/48 
+#8 22.75   Installing       : basesystem-11-11.amzn2023.0.2.noarch                 10/48 
+#8 22.75   Installing       : libgcc-14.2.1-7.amzn2023.0.2.aarch64                 11/48 
+#8 22.75   Running scriptlet: libgcc-14.2.1-7.amzn2023.0.2.aarch64                 11/48 
+#8 22.76   Installing       : glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch   12/48 
+#8 22.76   Installing       : glibc-common-2.34-231.amzn2023.0.5.aarch64           13/48 
+#8 22.76   Running scriptlet: glibc-2.34-231.amzn2023.0.5.aarch64                  14/48 
+#8 22.78   Installing       : glibc-2.34-231.amzn2023.0.5.aarch64                  14/48 
+#8 22.78   Running scriptlet: glibc-2.34-231.amzn2023.0.5.aarch64                  14/48 
+#8 23.05   Installing       : zlib-1.2.11-33.amzn2023.0.6.aarch64                  15/48 
+#8 23.05   Installing       : libacl-2.4.0-1.amzn2023.0.1.aarch64                  16/48 
+#8 23.05   Installing       : libffi-3.4.4-1.amzn2023.0.1.aarch64                  17/48 
+#8 23.07   Installing       : p11-kit-0.24.1-2.amzn2023.0.3.aarch64                18/48 
+#8 23.07   Installing       : pcre2-10.40-1.amzn2023.0.3.aarch64                   19/48 
+#8 23.08   Installing       : grep-3.8-1.amzn2023.0.4.aarch64                      20/48 
+#8 23.08   Installing       : sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64            21/48 
+#8 23.08   Installing       : alternatives-1.15-2.amzn2023.0.2.aarch64             22/48 
+#8 23.09   Installing       : bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64              23/48 
+#8 23.09   Installing       : expat-2.8.3-1.amzn2023.0.1.aarch64                   24/48 
+#8 23.09   Installing       : gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64              25/48 
+#8 23.09   Installing       : gmp-1:6.2.1-2.amzn2023.0.2.aarch64                   26/48 
+#8 23.09   Installing       : libattr-2.5.1-3.amzn2023.0.2.aarch64                 27/48 
+#8 23.10   Installing       : libcap-2.73-1.amzn2023.0.7.aarch64                   28/48 
+#8 23.10   Installing       : libsepol-3.4-3.amzn2023.0.3.aarch64                  29/48 
+#8 23.10   Installing       : libselinux-3.4-5.amzn2023.0.2.aarch64                30/48 
+#8 23.10   Installing       : sed-4.8-7.amzn2023.0.2.aarch64                       31/48 
+#8 23.11   Installing       : libstdc++-14.2.1-7.amzn2023.0.2.aarch64              32/48 
+#8 23.11   Installing       : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64               33/48 
+#8 23.12   Installing       : libtasn1-4.19.0-1.amzn2023.0.6.aarch64               34/48 
+#8 23.12   Installing       : p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48 
+#8 23.12   Running scriptlet: p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48 
+#8 23.25   Installing       : libuuid-2.37.4-1.amzn2023.0.6.aarch64                36/48 
+#8 23.26   Installing       : libzstd-1.5.5-1.amzn2023.0.1.aarch64                 37/48 
+#8 23.26   Installing       : readline-8.1-2.amzn2023.0.2.aarch64                  38/48 
+#8 23.26   Installing       : xz-libs-5.2.5-9.amzn2023.0.2.aarch64                 39/48 
+#8 23.27   Installing       : crypto-policies-20260224-1.gitea0f072.amzn2023.0.6   40/48 
+#8 23.27   Running scriptlet: crypto-policies-20260224-1.gitea0f072.amzn2023.0.6   40/48 
+#8 23.29   Installing       : coreutils-common-8.32-30.amzn2023.0.5.aarch64        41/48 
+#8 23.30   Installing       : openssl-fips-provider-latest-1:3.5.8-1.amzn2023.0.   42/48 
+#8 23.31   Installing       : openssl-libs-1:3.5.8-1.amzn2023.0.1.aarch64          43/48 
+#8 23.35   Installing       : coreutils-8.32-30.amzn2023.0.5.aarch64               44/48 
+#8 23.35   Running scriptlet: ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    45/48 
+#8 23.49   Installing       : ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    45/48 
+#8 23.49   Running scriptlet: ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    45/48 
+#8 23.93   Installing       : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch    46/48 
+#8 23.93   Installing       : python3.14-3.14.7-1.amzn2023.0.1.aarch64             47/48 
+#8 24.07   Installing       : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64        48/48 
+#8 24.08   Running scriptlet: filesystem-3.14-5.amzn2023.0.3.aarch64               48/48 
+#8 24.21   Running scriptlet: ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    48/48 
+#8 24.65   Running scriptlet: python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64        48/48 
+#8 24.92   Verifying        : alternatives-1.15-2.amzn2023.0.2.aarch64              1/48 
+#8 24.92   Verifying        : amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.    2/48 
+#8 24.92   Verifying        : basesystem-11-11.amzn2023.0.2.noarch                  3/48 
+#8 24.92   Verifying        : bash-5.2.15-1.amzn2023.0.2.aarch64                    4/48 
+#8 24.92   Verifying        : bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64               5/48 
+#8 24.92   Verifying        : ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch     6/48 
+#8 24.92   Verifying        : coreutils-8.32-30.amzn2023.0.5.aarch64                7/48 
+#8 24.92   Verifying        : coreutils-common-8.32-30.amzn2023.0.5.aarch64         8/48 
+#8 24.92   Verifying        : crypto-policies-20260224-1.gitea0f072.amzn2023.0.6    9/48 
+#8 24.92   Verifying        : expat-2.8.3-1.amzn2023.0.1.aarch64                   10/48 
+#8 24.92   Verifying        : filesystem-3.14-5.amzn2023.0.3.aarch64               11/48 
+#8 24.92   Verifying        : gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64              12/48 
+#8 24.92   Verifying        : glibc-2.34-231.amzn2023.0.5.aarch64                  13/48 
+#8 24.92   Verifying        : glibc-common-2.34-231.amzn2023.0.5.aarch64           14/48 
+#8 24.92   Verifying        : glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch   15/48 
+#8 24.92   Verifying        : gmp-1:6.2.1-2.amzn2023.0.2.aarch64                   16/48 
+#8 24.92   Verifying        : grep-3.8-1.amzn2023.0.4.aarch64                      17/48 
+#8 24.92   Verifying        : libacl-2.4.0-1.amzn2023.0.1.aarch64                  18/48 
+#8 24.92   Verifying        : libattr-2.5.1-3.amzn2023.0.2.aarch64                 19/48 
+#8 24.92   Verifying        : libcap-2.73-1.amzn2023.0.7.aarch64                   20/48 
+#8 24.92   Verifying        : libffi-3.4.4-1.amzn2023.0.1.aarch64                  21/48 
+#8 24.92   Verifying        : libgcc-14.2.1-7.amzn2023.0.2.aarch64                 22/48 
+#8 24.92   Verifying        : libselinux-3.4-5.amzn2023.0.2.aarch64                23/48 
+#8 24.92   Verifying        : libsepol-3.4-3.amzn2023.0.3.aarch64                  24/48 
+#8 24.92   Verifying        : libstdc++-14.2.1-7.amzn2023.0.2.aarch64              25/48 
+#8 24.92   Verifying        : libtasn1-4.19.0-1.amzn2023.0.6.aarch64               26/48 
+#8 24.92   Verifying        : libuuid-2.37.4-1.amzn2023.0.6.aarch64                27/48 
+#8 24.92   Verifying        : libzstd-1.5.5-1.amzn2023.0.1.aarch64                 28/48 
+#8 24.92   Verifying        : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64               29/48 
+#8 24.92   Verifying        : ncurses-base-6.6-1.amzn2023.0.1.noarch               30/48 
+#8 24.92   Verifying        : ncurses-libs-6.6-1.amzn2023.0.1.aarch64              31/48 
+#8 24.92   Verifying        : openssl-fips-provider-latest-1:3.5.8-1.amzn2023.0.   32/48 
+#8 24.92   Verifying        : openssl-libs-1:3.5.8-1.amzn2023.0.1.aarch64          33/48 
+#8 24.92   Verifying        : p11-kit-0.24.1-2.amzn2023.0.3.aarch64                34/48 
+#8 24.92   Verifying        : p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48 
+#8 24.92   Verifying        : pcre2-10.40-1.amzn2023.0.3.aarch64                   36/48 
+#8 24.92   Verifying        : pcre2-syntax-10.40-1.amzn2023.0.3.noarch             37/48 
+#8 24.92   Verifying        : python3.14-3.14.7-1.amzn2023.0.1.aarch64             38/48 
+#8 24.92   Verifying        : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64        39/48 
+#8 24.92   Verifying        : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch    40/48 
+#8 24.92   Verifying        : readline-8.1-2.amzn2023.0.2.aarch64                  41/48 
+#8 24.92   Verifying        : sed-4.8-7.amzn2023.0.2.aarch64                       42/48 
+#8 24.92   Verifying        : setup-2.13.7-3.amzn2023.0.2.noarch                   43/48 
+#8 24.92   Verifying        : sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64            44/48 
+#8 24.92   Verifying        : system-release-2023.12.20260918-0.amzn2023.noarch    45/48 
+#8 24.92   Verifying        : tzdata-2026c-1.amzn2023.0.1.noarch                   46/48 
+#8 24.92   Verifying        : xz-libs-5.2.5-9.amzn2023.0.2.aarch64                 47/48 
+#8 24.92   Verifying        : zlib-1.2.11-33.amzn2023.0.6.aarch64                  48/48 
+#8 24.98 
+#8 24.98 Installed:
+#8 24.98   alternatives-1.15-2.amzn2023.0.2.aarch64                                      
+#8 24.98   amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.noarch                      
+#8 24.98   basesystem-11-11.amzn2023.0.2.noarch                                          
+#8 24.98   bash-5.2.15-1.amzn2023.0.2.aarch64                                            
+#8 24.98   bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64                                       
+#8 24.98   ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch                             
+#8 24.98   coreutils-8.32-30.amzn2023.0.5.aarch64                                        
+#8 24.98   coreutils-common-8.32-30.amzn2023.0.5.aarch64                                 
+#8 24.98   crypto-policies-20260224-1.gitea0f072.amzn2023.0.6.noarch                     
+#8 24.98   expat-2.8.3-1.amzn2023.0.1.aarch64                                            
+#8 24.98   filesystem-3.14-5.amzn2023.0.3.aarch64                                        
+#8 24.98   gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64                                       
+#8 24.98   glibc-2.34-231.amzn2023.0.5.aarch64                                           
+#8 24.98   glibc-common-2.34-231.amzn2023.0.5.aarch64                                    
+#8 24.98   glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch64                          
+#8 24.98   gmp-1:6.2.1-2.amzn2023.0.2.aarch64                                            
+#8 24.98   grep-3.8-1.amzn2023.0.4.aarch64                                               
+#8 24.98   libacl-2.4.0-1.amzn2023.0.1.aarch64                                           
+#8 24.98   libattr-2.5.1-3.amzn2023.0.2.aarch64                                          
+#8 24.98   libcap-2.73-1.amzn2023.0.7.aarch64                                            
+#8 24.98   libffi-3.4.4-1.amzn2023.0.1.aarch64                                           
+#8 24.98   libgcc-14.2.1-7.amzn2023.0.2.aarch64                                          
+#8 24.98   libselinux-3.4-5.amzn2023.0.2.aarch64                                         
+#8 24.98   libsepol-3.4-3.amzn2023.0.3.aarch64                                           
+#8 24.98   libstdc++-14.2.1-7.amzn2023.0.2.aarch64                                       
+#8 24.98   libtasn1-4.19.0-1.amzn2023.0.6.aarch64                                        
+#8 24.98   libuuid-2.37.4-1.amzn2023.0.6.aarch64                                         
+#8 24.98   libzstd-1.5.5-1.amzn2023.0.1.aarch64                                          
+#8 24.98   mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                                        
+#8 24.98   ncurses-base-6.6-1.amzn2023.0.1.noarch                                        
+#8 24.98   ncurses-libs-6.6-1.amzn2023.0.1.aarch64                                       
+#8 24.98   openssl-fips-provider-latest-1:3.5.8-1.amzn2023.0.1.aarch64                   
+#8 24.98   openssl-libs-1:3.5.8-1.amzn2023.0.1.aarch64                                   
+#8 24.98   p11-kit-0.24.1-2.amzn2023.0.3.aarch64                                         
+#8 24.98   p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64                                   
+#8 24.98   pcre2-10.40-1.amzn2023.0.3.aarch64                                            
+#8 24.98   pcre2-syntax-10.40-1.amzn2023.0.3.noarch                                      
+#8 24.98   python3.14-3.14.7-1.amzn2023.0.1.aarch64                                      
+#8 24.98   python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64                                 
+#8 24.98   python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch                             
+#8 24.98   readline-8.1-2.amzn2023.0.2.aarch64                                           
+#8 24.98   sed-4.8-7.amzn2023.0.2.aarch64                                                
+#8 24.98   setup-2.13.7-3.amzn2023.0.2.noarch                                            
+#8 24.98   sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64                                     
+#8 24.98   system-release-2023.12.20260918-0.amzn2023.noarch                             
+#8 24.98   tzdata-2026c-1.amzn2023.0.1.noarch                                            
+#8 24.98   xz-libs-5.2.5-9.amzn2023.0.2.aarch64                                          
+#8 24.98   zlib-1.2.11-33.amzn2023.0.6.aarch64                                           
+#8 24.98 
+#8 24.98 Complete!
+#8 25.12 Last metadata expiration check: 0:00:21 ago on Wed Sep 23 22:19:05 2026.
+#8 25.18 Dependencies resolved.
+#8 25.20 Nothing to do.
+#8 25.20 Complete!
+#8 25.30 9 files removed
+#8 25.32 alternatives-1.15-2.amzn2023.0.2.aarch64
+#8 25.32 amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.noarch
+#8 25.32 basesystem-11-11.amzn2023.0.2.noarch
+#8 25.32 bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64
+#8 25.32 ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch
+#8 25.32 crypto-policies-20260224-1.gitea0f072.amzn2023.0.6.noarch
+#8 25.32 expat-2.8.3-1.amzn2023.0.1.aarch64
+#8 25.32 filesystem-3.14-5.amzn2023.0.3.aarch64
+#8 25.32 gdbm-libs-1.19-2.amzn2023.0.2.aarch64
+#8 25.32 glibc-2.34-231.amzn2023.0.5.aarch64
+#8 25.32 glibc-common-2.34-231.amzn2023.0.5.aarch64
+#8 25.32 glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch64
+#8 25.32 gmp-6.2.1-2.amzn2023.0.2.aarch64
+#8 25.32 gpg-pubkey-d832c631-6515c85e
+#8 25.32 grep-3.8-1.amzn2023.0.4.aarch64
+#8 25.32 libacl-2.4.0-1.amzn2023.0.1.aarch64
+#8 25.32 libattr-2.5.1-3.amzn2023.0.2.aarch64
+#8 25.32 libcap-2.73-1.amzn2023.0.7.aarch64
+#8 25.32 libffi-3.4.4-1.amzn2023.0.1.aarch64
+#8 25.32 libgcc-14.2.1-7.amzn2023.0.2.aarch64
+#8 25.32 libselinux-3.4-5.amzn2023.0.2.aarch64
+#8 25.32 libsepol-3.4-3.amzn2023.0.3.aarch64
+#8 25.32 libstdc++-14.2.1-7.amzn2023.0.2.aarch64
+#8 25.32 libtasn1-4.19.0-1.amzn2023.0.6.aarch64
+#8 25.32 libuuid-2.37.4-1.amzn2023.0.6.aarch64
+#8 25.32 libzstd-1.5.5-1.amzn2023.0.1.aarch64
+#8 25.32 mpdecimal-2.5.1-3.amzn2023.0.3.aarch64
+#8 25.32 ncurses-base-6.6-1.amzn2023.0.1.noarch
+#8 25.32 ncurses-libs-6.6-1.amzn2023.0.1.aarch64
+#8 25.32 openssl-fips-provider-latest-3.5.8-1.amzn2023.0.1.aarch64
+#8 25.32 openssl-libs-3.5.8-1.amzn2023.0.1.aarch64
+#8 25.32 p11-kit-0.24.1-2.amzn2023.0.3.aarch64
+#8 25.32 p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64
+#8 25.32 pcre2-10.40-1.amzn2023.0.3.aarch64
+#8 25.32 pcre2-syntax-10.40-1.amzn2023.0.3.noarch
+#8 25.32 python3.14-3.14.7-1.amzn2023.0.1.aarch64
+#8 25.32 python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64
+#8 25.32 python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch
+#8 25.32 readline-8.1-2.amzn2023.0.2.aarch64
+#8 25.32 sed-4.8-7.amzn2023.0.2.aarch64
+#8 25.32 setup-2.13.7-3.amzn2023.0.2.noarch
+#8 25.32 sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64
+#8 25.32 system-release-2023.12.20260918-0.amzn2023.noarch
+#8 25.32 tzdata-2026c-1.amzn2023.0.1.noarch
+#8 25.32 xz-libs-5.2.5-9.amzn2023.0.2.aarch64
+#8 25.32 zlib-1.2.11-33.amzn2023.0.6.aarch64
+#8 DONE 25.3s
+
+#17 [stage-2 1/5] COPY --from=rootfs /rootfs /
+#17 DONE 0.2s
+
+#18 [stage-2 2/5] RUN ["/usr/bin/python3.14", "-c", "import sys; assert sys.version_info[:2] == (3, 14), sys.version"]
+#18 DONE 0.2s
+
+#19 [stage-2 3/5] COPY --from=builder /app/.venv /app/.venv
+#19 DONE 0.4s
+
+#20 [stage-2 4/5] COPY orchestrator /app/orchestrator
+#20 DONE 0.0s
+
+#21 [stage-2 5/5] WORKDIR /app
+#21 DONE 0.0s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 1.5s done
+#22 exporting manifest sha256:5cb1b5f28350866dce7b90c047013d778c6df35008978e4f0ec042307fc04ca6 done
+#22 exporting config sha256:15ca11b7428ba13315e75850cf45b135dbe7e5b9b9c981bd45071140d7303931 done
+#22 exporting attestation manifest sha256:eb4342d279086bc30ce8780d9cae2c00afa6f5f13a0204f81f71d9e896a4978f done
+#22 exporting manifest list sha256:769d326e3b2a183252864e4ca14416451e499ebe6ef8ce631c2eaf1cb183f4b9 done
+#22 naming to docker.io/library/orchestrator:dev done
+#22 unpacking to docker.io/library/orchestrator:dev
+#22 unpacking to docker.io/library/orchestrator:dev 1.0s done
+#22 DONE 2.6s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/6nodg9u50cltf3g7ig4a5ulsz
+kind load docker-image orchestrator:dev --name agent-mesh-lab
+Image: "orchestrator:dev" with ID "sha256:769d326e3b2a183252864e4ca14416451e499ebe6ef8ce631c2eaf1cb183f4b9" not yet present on node "agent-mesh-lab-worker", loading...
+Image: "orchestrator:dev" with ID "sha256:769d326e3b2a183252864e4ca14416451e499ebe6ef8ce631c2eaf1cb183f4b9" not yet present on node "agent-mesh-lab-control-plane", loading...
+kubectl kustomize deploy/step-1-nomesh | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/24 01:19:33 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+2026/09/24 01:19:33 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+2026/09/24 01:19:34 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:19:34 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:19:34 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm for linux/arm64/v8
+2026/09/24 01:19:34 Building github.com/AhmadMasry/agent-mesh-lab/agents/worker for linux/arm64/v8
+2026/09/24 01:19:36 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:19:36 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:19:50 Loaded kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:19:50 Adding tag latest
+2026/09/24 01:19:51 Added tag latest
+2026/09/24 01:19:51 Loaded kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:19:51 Adding tag latest
+2026/09/24 01:19:51 Added tag latest
+namespace/lab created
+service/mockllm created
+service/orchestrator created
+service/worker created
+deployment.apps/mockllm created
+deployment.apps/orchestrator created
+deployment.apps/worker created
+# The orchestrator image keeps one tag, so a rebuilt image needs an explicit restart to be picked up.
+kubectl -n lab rollout restart deployment/orchestrator
+deployment.apps/orchestrator restarted
+kubectl -n lab rollout status deployment/mockllm --timeout=120s
+Waiting for deployment "mockllm" rollout to finish: 0 of 1 updated replicas are available...
+deployment "mockllm" successfully rolled out
+kubectl -n lab rollout status deployment/worker --timeout=120s
+deployment "worker" successfully rolled out
+kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+deployment "orchestrator" successfully rolled out
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=5027b5b33ef8817be4cf197f2c70d530bf0685f3
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+## make step-1  finished 2026-09-23T22:19:54Z  epoch 1790201994.655  exit=0  wall=56.299s
+
+## git status --short (whole checkout) before make step-2 -> (empty)
+## git status --short (deployed paths)  before make step-2 -> (empty)
+## make step-2  started 2026-09-23T22:19:54Z  epoch 1790201994.900
+helm: /opt/homebrew/bin/helm
+docker build --pull --no-cache --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 16.99kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#2 ...
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:latest
+#3 DONE 0.7s
+
+#2 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#2 DONE 1.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 569B done
+#4 DONE 0.0s
+
+#5 FROM ghcr.io/astral-sh/uv:latest@sha256:3adc3706091ce7c2fe595e669628caedd6d951551b92b258b7e7dbe06d9440bc
+#5 resolve ghcr.io/astral-sh/uv:latest@sha256:3adc3706091ce7c2fe595e669628caedd6d951551b92b258b7e7dbe06d9440bc done
+#5 CACHED
+
+#6 [builder 1/9] FROM public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:06da5a3362eda00c5114227ac81abe56dd9b943395553b7c64a310457f4d9e2b
+#6 resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:06da5a3362eda00c5114227ac81abe56dd9b943395553b7c64a310457f4d9e2b done
+#6 CACHED
+
+#7 [internal] load build context
+#7 transferring context: 531B done
+#7 DONE 0.0s
+
+#8 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#8 ...
+
+#9 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#9 6.361 Amazon Linux 2023 repository                     13 MB/s |  79 MB     00:06    
+#9 ...
+
+#8 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#8 8.048 Amazon Linux 2023 repository                     10 MB/s |  79 MB     00:07    
+#8 ...
+
+#9 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#9 13.85 Last metadata expiration check: 0:00:12 ago on Wed Sep 23 22:19:58 2026.
+#9 14.48 Dependencies resolved.
+#9 14.50 ================================================================================
+#9 14.50  Package                Arch      Version                   Repository     Size
+#9 14.50 ================================================================================
+#9 14.50 Installing:
+#9 14.50  python3.14             aarch64   3.14.7-1.amzn2023.0.1     amazonlinux    30 k
+#9 14.50 Installing dependencies:
+#9 14.50  mpdecimal              aarch64   2.5.1-3.amzn2023.0.3      amazonlinux   103 k
+#9 14.50  python3.14-libs        aarch64   3.14.7-1.amzn2023.0.1     amazonlinux    10 M
+#9 14.50  python3.14-pip-wheel   noarch    26.1.1-1.amzn2023.0.3     amazonlinux   1.2 M
+#9 14.50 
+#9 14.50 Transaction Summary
+#9 14.50 ================================================================================
+#9 14.50 Install  4 Packages
+#9 14.50 
+#9 14.50 Total download size: 11 M
+#9 14.50 Installed size: 56 M
+#9 14.50 Downloading Packages:
+#9 17.41 (1/4): python3.14-3.14.7-1.amzn2023.0.1.aarch64 423 kB/s |  30 kB     00:00    
+#9 17.48 (2/4): mpdecimal-2.5.1-3.amzn2023.0.3.aarch64.r 705 kB/s | 103 kB     00:00    
+#9 17.71 (3/4): python3.14-pip-wheel-26.1.1-1.amzn2023.0 3.9 MB/s | 1.2 MB     00:00    
+#9 18.05 (4/4): python3.14-libs-3.14.7-1.amzn2023.0.1.aa  14 MB/s |  10 MB     00:00    
+#9 18.05 --------------------------------------------------------------------------------
+#9 18.05 Total                                           3.2 MB/s |  11 MB     00:03     
+#9 18.10 Running transaction check
+#9 18.11 Transaction check succeeded.
+#9 18.11 Running transaction test
+#9 18.15 Transaction test succeeded.
+#9 18.15 Running transaction
+#9 18.19   Preparing        :                                                        1/1 
+#9 18.19   Installing       : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch      1/4 
+#9 18.20   Installing       : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                 2/4 
+#9 18.20   Installing       : python3.14-3.14.7-1.amzn2023.0.1.aarch64               3/4 
+#9 18.35   Installing       : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64          4/4 
+#9 18.35   Running scriptlet: python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64          4/4 
+#9 18.46   Verifying        : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                 1/4 
+#9 18.46   Verifying        : python3.14-3.14.7-1.amzn2023.0.1.aarch64               2/4 
+#9 18.46   Verifying        : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64          3/4 
+#9 18.46   Verifying        : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch      4/4 
+#9 18.49 
+#9 18.49 Installed:
+#9 18.49   mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                                        
+#9 18.49   python3.14-3.14.7-1.amzn2023.0.1.aarch64                                      
+#9 18.49   python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64                                 
+#9 18.49   python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch                             
+#9 18.49 
+#9 18.49 Complete!
+#9 18.57 9 files removed
+#9 DONE 18.6s
+
+#10 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+#10 DONE 0.0s
+
+#11 [builder 4/9] RUN uv --version
+#11 0.072 uv 0.12.18 (aarch64-unknown-linux-musl)
+#11 DONE 0.1s
+
+#12 [builder 5/9] RUN python3.14 -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.version'
+#12 DONE 0.1s
+
+#8 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#8 15.51 Last metadata expiration check: 0:00:11 ago on Wed Sep 23 22:20:00 2026.
+#8 16.11 Dependencies resolved.
+#8 16.13 ==============================================================================================
+#8 16.13  Package                        Arch     Version                            Repository    Size
+#8 16.13 ==============================================================================================
+#8 16.13 Installing:
+#8 16.13  ca-certificates                noarch   2025.2.76-1.0.amzn2023.0.3         amazonlinux  738 k
+#8 16.13  python3.14                     aarch64  3.14.7-1.amzn2023.0.1              amazonlinux   30 k
+#8 16.13  system-release                 noarch   2023.12.20260918-0.amzn2023        amazonlinux   24 k
+#8 16.13 Installing dependencies:
+#8 16.13  alternatives                   aarch64  1.15-2.amzn2023.0.2                amazonlinux   36 k
+#8 16.13  amazon-linux-repo-cdn          noarch   2023.12.20260918-0.amzn2023        amazonlinux   13 k
+#8 16.13  basesystem                     noarch   11-11.amzn2023.0.2                 amazonlinux  7.8 k
+#8 16.13  bash                           aarch64  5.2.15-1.amzn2023.0.2              amazonlinux  1.8 M
+#8 16.13  bzip2-libs                     aarch64  1.0.8-6.amzn2023.0.2               amazonlinux   44 k
+#8 16.13  coreutils                      aarch64  8.32-30.amzn2023.0.5               amazonlinux  1.2 M
+#8 16.13  coreutils-common               aarch64  8.32-30.amzn2023.0.5               amazonlinux  2.0 M
+#8 16.13  crypto-policies                noarch   20260224-1.gitea0f072.amzn2023.0.6 amazonlinux   58 k
+#8 16.13  expat                          aarch64  2.8.3-1.amzn2023.0.1               amazonlinux  129 k
+#8 16.13  filesystem                     aarch64  3.14-5.amzn2023.0.3                amazonlinux   22 k
+#8 16.13  gdbm-libs                      aarch64  1:1.19-2.amzn2023.0.2              amazonlinux   53 k
+#8 16.13  glibc                          aarch64  2.34-231.amzn2023.0.5              amazonlinux  1.7 M
+#8 16.13  glibc-common                   aarch64  2.34-231.amzn2023.0.5              amazonlinux  289 k
+#8 16.13  glibc-minimal-langpack         aarch64  2.34-231.amzn2023.0.5              amazonlinux   23 k
+#8 16.13  gmp                            aarch64  1:6.2.1-2.amzn2023.0.2             amazonlinux  276 k
+#8 16.13  grep                           aarch64  3.8-1.amzn2023.0.4                 amazonlinux  282 k
+#8 16.13  libacl                         aarch64  2.4.0-1.amzn2023.0.1               amazonlinux   27 k
+#8 16.13  libattr                        aarch64  2.5.1-3.amzn2023.0.2               amazonlinux   19 k
+#8 16.13  libcap                         aarch64  2.73-1.amzn2023.0.7                amazonlinux   86 k
+#8 16.13  libffi                         aarch64  3.4.4-1.amzn2023.0.1               amazonlinux   37 k
+#8 16.13  libgcc                         aarch64  14.2.1-7.amzn2023.0.2              amazonlinux  123 k
+#8 16.13  libselinux                     aarch64  3.4-5.amzn2023.0.2                 amazonlinux   87 k
+#8 16.13  libsepol                       aarch64  3.4-3.amzn2023.0.3                 amazonlinux  311 k
+#8 16.13  libstdc++                      aarch64  14.2.1-7.amzn2023.0.2              amazonlinux  818 k
+#8 16.13  libtasn1                       aarch64  4.19.0-1.amzn2023.0.6              amazonlinux   75 k
+#8 16.13  libuuid                        aarch64  2.37.4-1.amzn2023.0.6              amazonlinux   26 k
+#8 16.13  libzstd                        aarch64  1.5.5-1.amzn2023.0.1               amazonlinux  284 k
+#8 16.13  mpdecimal                      aarch64  2.5.1-3.amzn2023.0.3               amazonlinux  103 k
+#8 16.13  ncurses-base                   noarch   6.6-1.amzn2023.0.1                 amazonlinux   65 k
+#8 16.13  ncurses-libs                   aarch64  6.6-1.amzn2023.0.1                 amazonlinux  331 k
+#8 16.13  openssl-fips-provider-latest   aarch64  1:3.5.8-1.amzn2023.0.1             amazonlinux  744 k
+#8 16.13  openssl-libs                   aarch64  1:3.5.8-1.amzn2023.0.1             amazonlinux  2.2 M
+#8 16.13  p11-kit                        aarch64  0.24.1-2.amzn2023.0.3              amazonlinux  346 k
+#8 16.13  p11-kit-trust                  aarch64  0.24.1-2.amzn2023.0.3              amazonlinux  138 k
+#8 16.13  pcre2                          aarch64  10.40-1.amzn2023.0.3               amazonlinux  220 k
+#8 16.13  pcre2-syntax                   noarch   10.40-1.amzn2023.0.3               amazonlinux  142 k
+#8 16.13  python3.14-libs                aarch64  3.14.7-1.amzn2023.0.1              amazonlinux   10 M
+#8 16.13  python3.14-pip-wheel           noarch   26.1.1-1.amzn2023.0.3              amazonlinux  1.2 M
+#8 16.13  readline                       aarch64  8.1-2.amzn2023.0.2                 amazonlinux  212 k
+#8 16.13  sed                            aarch64  4.8-7.amzn2023.0.2                 amazonlinux  295 k
+#8 16.13  setup                          noarch   2.13.7-3.amzn2023.0.2              amazonlinux  141 k
+#8 16.13  sqlite-libs                    aarch64  3.40.0-1.amzn2023.0.8              amazonlinux  657 k
+#8 16.13  tzdata                         noarch   2026c-1.amzn2023.0.1               amazonlinux  429 k
+#8 16.13  xz-libs                        aarch64  5.2.5-9.amzn2023.0.2               amazonlinux   92 k
+#8 16.13  zlib                           aarch64  1.2.11-33.amzn2023.0.6             amazonlinux   91 k
+#8 16.13 
+#8 16.13 Transaction Summary
+#8 16.13 ==============================================================================================
+#8 16.13 Install  48 Packages
+#8 16.13 
+#8 16.13 Total download size: 28 M
+#8 16.13 Installed size: 141 M
+#8 16.13 Downloading Packages:
+#8 18.00 (1/48): basesystem-11-11.amzn2023.0.2.noarch.rp  80 kB/s | 7.8 kB     00:00    
+#8 18.03 (2/48): alternatives-1.15-2.amzn2023.0.2.aarch6 173 kB/s |  36 kB     00:00    
+#8 18.08 (3/48): amazon-linux-repo-cdn-2023.12.20260918- 164 kB/s |  13 kB     00:00    
+#8 18.34 (4/48): bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64 145 kB/s |  44 kB     00:00    
+#8 18.46 (5/48): ca-certificates-2025.2.76-1.0.amzn2023. 1.9 MB/s | 738 kB     00:00    
+#8 18.46 (6/48): bash-5.2.15-1.amzn2023.0.2.aarch64.rpm  3.8 MB/s | 1.8 MB     00:00    
+#8 18.47 (7/48): coreutils-8.32-30.amzn2023.0.5.aarch64. 9.0 MB/s | 1.2 MB     00:00    
+#8 18.55 (8/48): crypto-policies-20260224-1.gitea0f072.a 626 kB/s |  58 kB     00:00    
+#8 18.59 (9/48): expat-2.8.3-1.amzn2023.0.1.aarch64.rpm  1.0 MB/s | 129 kB     00:00    
+#8 18.59 (10/48): coreutils-common-8.32-30.amzn2023.0.5.  15 MB/s | 2.0 MB     00:00    
+#8 18.61 (11/48): filesystem-3.14-5.amzn2023.0.3.aarch64 390 kB/s |  22 kB     00:00    
+#8 18.64 (12/48): gdbm-libs-1.19-2.amzn2023.0.2.aarch64. 1.0 MB/s |  53 kB     00:00    
+#8 18.71 (13/48): glibc-2.34-231.amzn2023.0.5.aarch64.rp  15 MB/s | 1.7 MB     00:00    
+#8 18.71 (14/48): glibc-common-2.34-231.amzn2023.0.5.aar 2.7 MB/s | 289 kB     00:00    
+#8 18.71 (15/48): glibc-minimal-langpack-2.34-231.amzn20 315 kB/s |  23 kB     00:00    
+#8 18.77 (16/48): gmp-6.2.1-2.amzn2023.0.2.aarch64.rpm   4.3 MB/s | 276 kB     00:00    
+#8 18.78 (17/48): grep-3.8-1.amzn2023.0.4.aarch64.rpm    4.4 MB/s | 282 kB     00:00    
+#8 18.78 (18/48): libacl-2.4.0-1.amzn2023.0.1.aarch64.rp 415 kB/s |  27 kB     00:00    
+#8 ...
+
+#13 [builder 6/9] WORKDIR /app
+#13 DONE 0.0s
+
+#8 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#8 18.83 (19/48): libattr-2.5.1-3.amzn2023.0.2.aarch64.r 343 kB/s |  19 kB     00:00    
+#8 18.84 (20/48): libffi-3.4.4-1.amzn2023.0.1.aarch64.rp 675 kB/s |  37 kB     00:00    
+#8 18.84 (21/48): libcap-2.73-1.amzn2023.0.7.aarch64.rpm 1.3 MB/s |  86 kB     00:00    
+#8 18.89 (22/48): libgcc-14.2.1-7.amzn2023.0.2.aarch64.r 2.0 MB/s | 123 kB     00:00    
+#8 18.89 (23/48): libselinux-3.4-5.amzn2023.0.2.aarch64. 1.5 MB/s |  87 kB     00:00    
+#8 18.91 (24/48): libsepol-3.4-3.amzn2023.0.3.aarch64.rp 4.9 MB/s | 311 kB     00:00    
+#8 18.97 (25/48): libstdc++-14.2.1-7.amzn2023.0.2.aarch6 9.3 MB/s | 818 kB     00:00    
+#8 18.97 (26/48): libtasn1-4.19.0-1.amzn2023.0.6.aarch64 937 kB/s |  75 kB     00:00    
+#8 18.97 (27/48): libuuid-2.37.4-1.amzn2023.0.6.aarch64. 381 kB/s |  26 kB     00:00    
+#8 19.04 (28/48): libzstd-1.5.5-1.amzn2023.0.1.aarch64.r 4.0 MB/s | 284 kB     00:00    
+#8 19.04 (29/48): mpdecimal-2.5.1-3.amzn2023.0.3.aarch64 1.5 MB/s | 103 kB     00:00    
+#8 19.04 (30/48): ncurses-base-6.6-1.amzn2023.0.1.noarch 935 kB/s |  65 kB     00:00    
+#8 19.13 (31/48): openssl-fips-provider-latest-3.5.8-1.a 8.0 MB/s | 744 kB     00:00    
+#8 19.13 (32/48): ncurses-libs-6.6-1.amzn2023.0.1.aarch6 3.5 MB/s | 331 kB     00:00    
+#8 19.27 (33/48): openssl-libs-3.5.8-1.amzn2023.0.1.aarc 9.6 MB/s | 2.2 MB     00:00    
+#8 19.28 (34/48): p11-kit-0.24.1-2.amzn2023.0.3.aarch64. 2.4 MB/s | 346 kB     00:00    
+#8 19.28 (35/48): p11-kit-trust-0.24.1-2.amzn2023.0.3.aa 961 kB/s | 138 kB     00:00    
+#8 19.34 (36/48): pcre2-10.40-1.amzn2023.0.3.aarch64.rpm 3.3 MB/s | 220 kB     00:00    
+#8 19.34 (37/48): pcre2-syntax-10.40-1.amzn2023.0.3.noar 2.1 MB/s | 142 kB     00:00    
+#8 19.34 (38/48): python3.14-3.14.7-1.amzn2023.0.1.aarch 458 kB/s |  30 kB     00:00    
+#8 19.41 (39/48): readline-8.1-2.amzn2023.0.2.aarch64.rp 3.0 MB/s | 212 kB     00:00    
+#8 19.63 (40/48): python3.14-pip-wheel-26.1.1-1.amzn2023 4.1 MB/s | 1.2 MB     00:00    
+#8 19.93 (41/48): python3.14-libs-3.14.7-1.amzn2023.0.1.  17 MB/s |  10 MB     00:00    
+#8 19.94 (42/48): sed-4.8-7.amzn2023.0.2.aarch64.rpm     563 kB/s | 295 kB     00:00    
+#8 19.94 (43/48): setup-2.13.7-3.amzn2023.0.2.noarch.rpm 464 kB/s | 141 kB     00:00    
+#8 20.01 (44/48): sqlite-libs-3.40.0-1.amzn2023.0.8.aarc 8.5 MB/s | 657 kB     00:00    
+#8 20.01 (45/48): system-release-2023.12.20260918-0.amzn 321 kB/s |  24 kB     00:00    
+#8 20.03 (46/48): tzdata-2026c-1.amzn2023.0.1.noarch.rpm 4.6 MB/s | 429 kB     00:00    
+#8 20.07 (47/48): xz-libs-5.2.5-9.amzn2023.0.2.aarch64.r 1.6 MB/s |  92 kB     00:00    
+#8 20.07 (48/48): zlib-1.2.11-33.amzn2023.0.6.aarch64.rp 1.4 MB/s |  91 kB     00:00    
+#8 20.07 --------------------------------------------------------------------------------
+#8 20.07 Total                                           7.1 MB/s |  28 MB     00:03     
+#8 20.08 Amazon Linux 2023 repository                    1.7 MB/s | 1.8 kB     00:00    
+#8 20.10 Importing GPG key 0xD832C631:
+#8 20.10  Userid     : "Amazon Linux <amazon-linux@amazon.com>"
+#8 20.10  Fingerprint: B21C 50FA 44A9 9720 EAA7 2F7F E951 904A D832 C631
+#8 20.10  From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-amazon-linux-2023
+#8 20.10 Key imported successfully
+#8 20.34 Running transaction check
+#8 20.35 Transaction check succeeded.
+#8 20.35 Running transaction test
+#8 20.44 Transaction test succeeded.
+#8 20.44 Running transaction
+#8 20.57   Running scriptlet: filesystem-3.14-5.amzn2023.0.3.aarch64                 1/1 
+#8 20.58   Preparing        :                                                        1/1 
+#8 20.63   Installing       : tzdata-2026c-1.amzn2023.0.1.noarch                    1/48 
+#8 20.64   Installing       : pcre2-syntax-10.40-1.amzn2023.0.3.noarch              2/48 
+#8 20.65   Installing       : ncurses-base-6.6-1.amzn2023.0.1.noarch                3/48 
+#8 20.65   Installing       : ncurses-libs-6.6-1.amzn2023.0.1.aarch64               4/48 
+#8 20.65   Installing       : amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.    5/48 
+#8 20.68   Installing       : bash-5.2.15-1.amzn2023.0.2.aarch64                    6/48 
+#8 20.68   Running scriptlet: bash-5.2.15-1.amzn2023.0.2.aarch64                    6/48 
+#8 20.68   Installing       : system-release-2023.12.20260918-0.amzn2023.noarch     7/48 
+#8 20.69   Installing       : setup-2.13.7-3.amzn2023.0.2.noarch                    8/48 
+#8 20.69   Running scriptlet: setup-2.13.7-3.amzn2023.0.2.noarch                    8/48 
+#8 20.71   Installing       : filesystem-3.14-5.amzn2023.0.3.aarch64                9/48 
+#8 20.71   Installing       : basesystem-11-11.amzn2023.0.2.noarch                 10/48 
+#8 20.71   Installing       : libgcc-14.2.1-7.amzn2023.0.2.aarch64                 11/48 
+#8 20.71   Running scriptlet: libgcc-14.2.1-7.amzn2023.0.2.aarch64                 11/48 
+#8 20.71   Installing       : glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch   12/48 
+#8 20.72   Installing       : glibc-common-2.34-231.amzn2023.0.5.aarch64           13/48 
+#8 20.72   Running scriptlet: glibc-2.34-231.amzn2023.0.5.aarch64                  14/48 
+#8 20.74   Installing       : glibc-2.34-231.amzn2023.0.5.aarch64                  14/48 
+#8 20.74   Running scriptlet: glibc-2.34-231.amzn2023.0.5.aarch64                  14/48 
+#8 21.01   Installing       : zlib-1.2.11-33.amzn2023.0.6.aarch64                  15/48 
+#8 21.01   Installing       : libacl-2.4.0-1.amzn2023.0.1.aarch64                  16/48 
+#8 21.02   Installing       : libffi-3.4.4-1.amzn2023.0.1.aarch64                  17/48 
+#8 21.03   Installing       : p11-kit-0.24.1-2.amzn2023.0.3.aarch64                18/48 
+#8 21.04   Installing       : pcre2-10.40-1.amzn2023.0.3.aarch64                   19/48 
+#8 21.04   Installing       : grep-3.8-1.amzn2023.0.4.aarch64                      20/48 
+#8 21.05   Installing       : sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64            21/48 
+#8 21.05   Installing       : alternatives-1.15-2.amzn2023.0.2.aarch64             22/48 
+#8 21.05   Installing       : bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64              23/48 
+#8 21.05   Installing       : expat-2.8.3-1.amzn2023.0.1.aarch64                   24/48 
+#8 21.05   Installing       : gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64              25/48 
+#8 21.06   Installing       : gmp-1:6.2.1-2.amzn2023.0.2.aarch64                   26/48 
+#8 21.06   Installing       : libattr-2.5.1-3.amzn2023.0.2.aarch64                 27/48 
+#8 21.06   Installing       : libcap-2.73-1.amzn2023.0.7.aarch64                   28/48 
+#8 21.06   Installing       : libsepol-3.4-3.amzn2023.0.3.aarch64                  29/48 
+#8 21.07   Installing       : libselinux-3.4-5.amzn2023.0.2.aarch64                30/48 
+#8 21.07   Installing       : sed-4.8-7.amzn2023.0.2.aarch64                       31/48 
+#8 21.08   Installing       : libstdc++-14.2.1-7.amzn2023.0.2.aarch64              32/48 
+#8 21.08   Installing       : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64               33/48 
+#8 21.08   Installing       : libtasn1-4.19.0-1.amzn2023.0.6.aarch64               34/48 
+#8 21.08   Installing       : p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48 
+#8 21.08   Running scriptlet: p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48 
+#8 21.22   Installing       : libuuid-2.37.4-1.amzn2023.0.6.aarch64                36/48 
+#8 21.23   Installing       : libzstd-1.5.5-1.amzn2023.0.1.aarch64                 37/48 
+#8 21.23   Installing       : readline-8.1-2.amzn2023.0.2.aarch64                  38/48 
+#8 21.23   Installing       : xz-libs-5.2.5-9.amzn2023.0.2.aarch64                 39/48 
+#8 21.24   Installing       : crypto-policies-20260224-1.gitea0f072.amzn2023.0.6   40/48 
+#8 21.24   Running scriptlet: crypto-policies-20260224-1.gitea0f072.amzn2023.0.6   40/48 
+#8 21.26   Installing       : coreutils-common-8.32-30.amzn2023.0.5.aarch64        41/48 
+#8 21.27   Installing       : openssl-fips-provider-latest-1:3.5.8-1.amzn2023.0.   42/48 
+#8 21.28   Installing       : openssl-libs-1:3.5.8-1.amzn2023.0.1.aarch64          43/48 
+#8 21.32   Installing       : coreutils-8.32-30.amzn2023.0.5.aarch64               44/48 
+#8 21.32   Running scriptlet: ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    45/48 
+#8 21.46   Installing       : ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    45/48 
+#8 21.47   Running scriptlet: ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    45/48 
+#8 21.92   Installing       : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch    46/48 
+#8 21.92   Installing       : python3.14-3.14.7-1.amzn2023.0.1.aarch64             47/48 
+#8 22.06   Installing       : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64        48/48 
+#8 22.07   Running scriptlet: filesystem-3.14-5.amzn2023.0.3.aarch64               48/48 
+#8 22.21   Running scriptlet: ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    48/48 
+#8 22.66   Running scriptlet: python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64        48/48 
+#8 22.96   Verifying        : alternatives-1.15-2.amzn2023.0.2.aarch64              1/48 
+#8 22.96   Verifying        : amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.    2/48 
+#8 22.96   Verifying        : basesystem-11-11.amzn2023.0.2.noarch                  3/48 
+#8 22.96   Verifying        : bash-5.2.15-1.amzn2023.0.2.aarch64                    4/48 
+#8 22.96   Verifying        : bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64               5/48 
+#8 22.96   Verifying        : ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch     6/48 
+#8 22.96   Verifying        : coreutils-8.32-30.amzn2023.0.5.aarch64                7/48 
+#8 22.96   Verifying        : coreutils-common-8.32-30.amzn2023.0.5.aarch64         8/48 
+#8 22.96   Verifying        : crypto-policies-20260224-1.gitea0f072.amzn2023.0.6    9/48 
+#8 22.96   Verifying        : expat-2.8.3-1.amzn2023.0.1.aarch64                   10/48 
+#8 22.96   Verifying        : filesystem-3.14-5.amzn2023.0.3.aarch64               11/48 
+#8 22.96   Verifying        : gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64              12/48 
+#8 22.96   Verifying        : glibc-2.34-231.amzn2023.0.5.aarch64                  13/48 
+#8 22.96   Verifying        : glibc-common-2.34-231.amzn2023.0.5.aarch64           14/48 
+#8 22.96   Verifying        : glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch   15/48 
+#8 22.96   Verifying        : gmp-1:6.2.1-2.amzn2023.0.2.aarch64                   16/48 
+#8 22.96   Verifying        : grep-3.8-1.amzn2023.0.4.aarch64                      17/48 
+#8 22.96   Verifying        : libacl-2.4.0-1.amzn2023.0.1.aarch64                  18/48 
+#8 22.96   Verifying        : libattr-2.5.1-3.amzn2023.0.2.aarch64                 19/48 
+#8 22.96   Verifying        : libcap-2.73-1.amzn2023.0.7.aarch64                   20/48 
+#8 22.96   Verifying        : libffi-3.4.4-1.amzn2023.0.1.aarch64                  21/48 
+#8 22.96   Verifying        : libgcc-14.2.1-7.amzn2023.0.2.aarch64                 22/48 
+#8 22.96   Verifying        : libselinux-3.4-5.amzn2023.0.2.aarch64                23/48 
+#8 22.96   Verifying        : libsepol-3.4-3.amzn2023.0.3.aarch64                  24/48 
+#8 22.96   Verifying        : libstdc++-14.2.1-7.amzn2023.0.2.aarch64              25/48 
+#8 22.96   Verifying        : libtasn1-4.19.0-1.amzn2023.0.6.aarch64               26/48 
+#8 22.96   Verifying        : libuuid-2.37.4-1.amzn2023.0.6.aarch64                27/48 
+#8 22.96   Verifying        : libzstd-1.5.5-1.amzn2023.0.1.aarch64                 28/48 
+#8 22.96   Verifying        : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64               29/48 
+#8 22.96   Verifying        : ncurses-base-6.6-1.amzn2023.0.1.noarch               30/48 
+#8 22.96   Verifying        : ncurses-libs-6.6-1.amzn2023.0.1.aarch64              31/48 
+#8 22.96   Verifying        : openssl-fips-provider-latest-1:3.5.8-1.amzn2023.0.   32/48 
+#8 22.96   Verifying        : openssl-libs-1:3.5.8-1.amzn2023.0.1.aarch64          33/48 
+#8 22.96   Verifying        : p11-kit-0.24.1-2.amzn2023.0.3.aarch64                34/48 
+#8 22.96   Verifying        : p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48 
+#8 22.96   Verifying        : pcre2-10.40-1.amzn2023.0.3.aarch64                   36/48 
+#8 22.96   Verifying        : pcre2-syntax-10.40-1.amzn2023.0.3.noarch             37/48 
+#8 22.96   Verifying        : python3.14-3.14.7-1.amzn2023.0.1.aarch64             38/48 
+#8 22.96   Verifying        : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64        39/48 
+#8 22.96   Verifying        : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch    40/48 
+#8 22.96   Verifying        : readline-8.1-2.amzn2023.0.2.aarch64                  41/48 
+#8 22.96   Verifying        : sed-4.8-7.amzn2023.0.2.aarch64                       42/48 
+#8 22.96   Verifying        : setup-2.13.7-3.amzn2023.0.2.noarch                   43/48 
+#8 22.96   Verifying        : sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64            44/48 
+#8 22.96   Verifying        : system-release-2023.12.20260918-0.amzn2023.noarch    45/48 
+#8 22.96   Verifying        : tzdata-2026c-1.amzn2023.0.1.noarch                   46/48 
+#8 22.96   Verifying        : xz-libs-5.2.5-9.amzn2023.0.2.aarch64                 47/48 
+#8 22.96   Verifying        : zlib-1.2.11-33.amzn2023.0.6.aarch64                  48/48 
+#8 23.01 
+#8 23.01 Installed:
+#8 23.01   alternatives-1.15-2.amzn2023.0.2.aarch64                                      
+#8 23.01   amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.noarch                      
+#8 23.01   basesystem-11-11.amzn2023.0.2.noarch                                          
+#8 23.01   bash-5.2.15-1.amzn2023.0.2.aarch64                                            
+#8 23.01   bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64                                       
+#8 23.01   ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch                             
+#8 23.01   coreutils-8.32-30.amzn2023.0.5.aarch64                                        
+#8 23.01   coreutils-common-8.32-30.amzn2023.0.5.aarch64                                 
+#8 23.01   crypto-policies-20260224-1.gitea0f072.amzn2023.0.6.noarch                     
+#8 23.01   expat-2.8.3-1.amzn2023.0.1.aarch64                                            
+#8 23.01   filesystem-3.14-5.amzn2023.0.3.aarch64                                        
+#8 23.01   gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64                                       
+#8 23.01   glibc-2.34-231.amzn2023.0.5.aarch64                                           
+#8 23.01   glibc-common-2.34-231.amzn2023.0.5.aarch64                                    
+#8 23.01   glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch64                          
+#8 23.01   gmp-1:6.2.1-2.amzn2023.0.2.aarch64                                            
+#8 23.01   grep-3.8-1.amzn2023.0.4.aarch64                                               
+#8 23.01   libacl-2.4.0-1.amzn2023.0.1.aarch64                                           
+#8 23.01   libattr-2.5.1-3.amzn2023.0.2.aarch64                                          
+#8 23.01   libcap-2.73-1.amzn2023.0.7.aarch64                                            
+#8 23.01   libffi-3.4.4-1.amzn2023.0.1.aarch64                                           
+#8 23.01   libgcc-14.2.1-7.amzn2023.0.2.aarch64                                          
+#8 23.01   libselinux-3.4-5.amzn2023.0.2.aarch64                                         
+#8 23.01   libsepol-3.4-3.amzn2023.0.3.aarch64                                           
+#8 23.01   libstdc++-14.2.1-7.amzn2023.0.2.aarch64                                       
+#8 23.01   libtasn1-4.19.0-1.amzn2023.0.6.aarch64                                        
+#8 23.01   libuuid-2.37.4-1.amzn2023.0.6.aarch64                                         
+#8 23.01   libzstd-1.5.5-1.amzn2023.0.1.aarch64                                          
+#8 23.01   mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                                        
+#8 23.01   ncurses-base-6.6-1.amzn2023.0.1.noarch                                        
+#8 23.01   ncurses-libs-6.6-1.amzn2023.0.1.aarch64                                       
+#8 23.01   openssl-fips-provider-latest-1:3.5.8-1.amzn2023.0.1.aarch64                   
+#8 23.01   openssl-libs-1:3.5.8-1.amzn2023.0.1.aarch64                                   
+#8 23.01   p11-kit-0.24.1-2.amzn2023.0.3.aarch64                                         
+#8 23.01   p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64                                   
+#8 23.01   pcre2-10.40-1.amzn2023.0.3.aarch64                                            
+#8 23.01   pcre2-syntax-10.40-1.amzn2023.0.3.noarch                                      
+#8 23.01   python3.14-3.14.7-1.amzn2023.0.1.aarch64                                      
+#8 23.01   python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64                                 
+#8 23.01   python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch                             
+#8 23.01   readline-8.1-2.amzn2023.0.2.aarch64                                           
+#8 23.01   sed-4.8-7.amzn2023.0.2.aarch64                                                
+#8 23.01   setup-2.13.7-3.amzn2023.0.2.noarch                                            
+#8 23.01   sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64                                     
+#8 23.01   system-release-2023.12.20260918-0.amzn2023.noarch                             
+#8 23.01   tzdata-2026c-1.amzn2023.0.1.noarch                                            
+#8 23.01   xz-libs-5.2.5-9.amzn2023.0.2.aarch64                                          
+#8 23.01   zlib-1.2.11-33.amzn2023.0.6.aarch64                                           
+#8 23.01 
+#8 23.01 Complete!
+#8 23.15 Last metadata expiration check: 0:00:19 ago on Wed Sep 23 22:20:00 2026.
+#8 23.22 Dependencies resolved.
+#8 23.23 Nothing to do.
+#8 23.23 Complete!
+#8 23.35 9 files removed
+#8 23.37 alternatives-1.15-2.amzn2023.0.2.aarch64
+#8 23.37 amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.noarch
+#8 23.37 basesystem-11-11.amzn2023.0.2.noarch
+#8 23.37 bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64
+#8 23.37 ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch
+#8 23.37 crypto-policies-20260224-1.gitea0f072.amzn2023.0.6.noarch
+#8 23.37 expat-2.8.3-1.amzn2023.0.1.aarch64
+#8 23.37 filesystem-3.14-5.amzn2023.0.3.aarch64
+#8 23.37 gdbm-libs-1.19-2.amzn2023.0.2.aarch64
+#8 23.37 glibc-2.34-231.amzn2023.0.5.aarch64
+#8 23.37 glibc-common-2.34-231.amzn2023.0.5.aarch64
+#8 23.37 glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch64
+#8 23.37 gmp-6.2.1-2.amzn2023.0.2.aarch64
+#8 23.37 gpg-pubkey-d832c631-6515c85e
+#8 23.37 grep-3.8-1.amzn2023.0.4.aarch64
+#8 23.37 libacl-2.4.0-1.amzn2023.0.1.aarch64
+#8 23.37 libattr-2.5.1-3.amzn2023.0.2.aarch64
+#8 23.37 libcap-2.73-1.amzn2023.0.7.aarch64
+#8 23.37 libffi-3.4.4-1.amzn2023.0.1.aarch64
+#8 23.37 libgcc-14.2.1-7.amzn2023.0.2.aarch64
+#8 23.37 libselinux-3.4-5.amzn2023.0.2.aarch64
+#8 23.37 libsepol-3.4-3.amzn2023.0.3.aarch64
+#8 23.37 libstdc++-14.2.1-7.amzn2023.0.2.aarch64
+#8 23.37 libtasn1-4.19.0-1.amzn2023.0.6.aarch64
+#8 23.37 libuuid-2.37.4-1.amzn2023.0.6.aarch64
+#8 23.37 libzstd-1.5.5-1.amzn2023.0.1.aarch64
+#8 23.37 mpdecimal-2.5.1-3.amzn2023.0.3.aarch64
+#8 23.37 ncurses-base-6.6-1.amzn2023.0.1.noarch
+#8 23.37 ncurses-libs-6.6-1.amzn2023.0.1.aarch64
+#8 23.37 openssl-fips-provider-latest-3.5.8-1.amzn2023.0.1.aarch64
+#8 23.37 openssl-libs-3.5.8-1.amzn2023.0.1.aarch64
+#8 23.37 p11-kit-0.24.1-2.amzn2023.0.3.aarch64
+#8 23.37 p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64
+#8 23.37 pcre2-10.40-1.amzn2023.0.3.aarch64
+#8 23.37 pcre2-syntax-10.40-1.amzn2023.0.3.noarch
+#8 23.37 python3.14-3.14.7-1.amzn2023.0.1.aarch64
+#8 23.37 python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64
+#8 23.37 python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch
+#8 23.37 readline-8.1-2.amzn2023.0.2.aarch64
+#8 23.37 sed-4.8-7.amzn2023.0.2.aarch64
+#8 23.37 setup-2.13.7-3.amzn2023.0.2.noarch
+#8 23.37 sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64
+#8 23.37 system-release-2023.12.20260918-0.amzn2023.noarch
+#8 23.37 tzdata-2026c-1.amzn2023.0.1.noarch
+#8 23.37 xz-libs-5.2.5-9.amzn2023.0.2.aarch64
+#8 23.37 zlib-1.2.11-33.amzn2023.0.6.aarch64
+#8 DONE 23.4s
+
+#14 [builder 7/9] RUN --mount=type=cache,target=/root/.cache/uv     --mount=type=bind,source=uv.lock,target=uv.lock     --mount=type=bind,source=pyproject.toml,target=pyproject.toml     uv sync --locked --no-install-project --no-dev
+#14 0.128 Using CPython 3.14.7 interpreter at: /usr/bin/python3.14
+#14 0.128 Creating virtual environment at: .venv
+#14 0.131 Resolved 66 packages in 0.71ms
+#14 0.508 Downloading pydantic-core (1.9MiB)
+#14 0.509 Downloading cryptography (4.5MiB)
+#14 0.520 Downloading openai (2.0MiB)
+#14 ...
+
+#15 [stage-2 1/5] COPY --from=rootfs /rootfs /
+#15 DONE 0.2s
+
+#16 [stage-2 2/5] RUN ["/usr/bin/python3.14", "-c", "import sys; assert sys.version_info[:2] == (3, 14), sys.version"]
+#16 DONE 0.2s
+
+#14 [builder 7/9] RUN --mount=type=cache,target=/root/.cache/uv     --mount=type=bind,source=uv.lock,target=uv.lock     --mount=type=bind,source=pyproject.toml,target=pyproject.toml     uv sync --locked --no-install-project --no-dev
+#14 6.448  Downloaded pydantic-core
+#14 6.600  Downloaded openai
+#14 7.639  Downloaded cryptography
+#14 7.639 Prepared 53 packages in 7.50s
+#14 7.797 Installed 53 packages in 158ms
+#14 8.039 Bytecode compiled 3420 files in 241ms
+#14 8.039  + a2a-sdk==1.1.4
+#14 8.039  + annotated-types==0.8.0
+#14 8.039  + anyio==4.15.1
+#14 8.039  + asgiref==3.12.1
+#14 8.039  + certifi==2026.7.22
+#14 8.039  + cffi==2.1.1
+#14 8.039  + charset-normalizer==3.5.1
+#14 8.039  + click==8.5.0
+#14 8.039  + cryptography==50.0.1
+#14 8.039  + google-api-core==2.38.0
+#14 8.039  + google-auth==2.58.0
+#14 8.039  + googleapis-common-protos==1.75.3
+#14 8.039  + h11==0.16.0
+#14 8.039  + httpcore==1.0.9
+#14 8.039  + httpcore2==2.13.0
+#14 8.039  + httpx==0.28.1
+#14 8.039  + httpx2==2.13.0
+#14 8.039  + idna==3.20
+#14 8.040  + jiter==0.17.0
+#14 8.040  + json-rpc==1.15.0
+#14 8.040  + openai==3.16.2
+#14 8.040  + opentelemetry-api==1.44.0
+#14 8.040  + opentelemetry-distro==0.65b0
+#14 8.040  + opentelemetry-exporter-otlp-proto-common==1.44.0
+#14 8.040  + opentelemetry-exporter-otlp-proto-http==1.44.0
+#14 8.040  + opentelemetry-instrumentation==0.65b0
+#14 8.040  + opentelemetry-instrumentation-asgi==0.65b0
+#14 8.040  + opentelemetry-instrumentation-httpx==0.65b0
+#14 8.040  + opentelemetry-instrumentation-openai-v2==2.4b0
+#14 8.040  + opentelemetry-instrumentation-starlette==0.65b0
+#14 8.040  + opentelemetry-proto==1.44.0
+#14 8.040  + opentelemetry-sdk==1.44.0
+#14 8.040  + opentelemetry-semantic-conventions==0.65b0
+#14 8.040  + opentelemetry-util-genai==1.1b0
+#14 8.040  + opentelemetry-util-http==0.65b0
+#14 8.040  + packaging==26.3
+#14 8.040  + proto-plus==1.28.4
+#14 8.040  + protobuf==6.33.6
+#14 8.040  + pyasn1==0.6.4
+#14 8.040  + pyasn1-modules==0.4.2
+#14 8.040  + pycparser==3.0
+#14 8.040  + pydantic==2.13.5
+#14 8.040  + pydantic-core==2.46.5
+#14 8.040  + requests==2.34.2
+#14 8.040  + sniffio==1.3.1
+#14 8.040  + sse-starlette==3.4.11
+#14 8.041  + starlette==1.6.0
+#14 8.041  + truststore==0.10.4
+#14 8.041  + typing-extensions==4.16.0
+#14 8.041  + typing-inspection==0.4.4
+#14 8.041  + urllib3==2.8.0
+#14 8.041  + uvicorn==0.53.0
+#14 8.041  + wrapt==2.4.1
+#14 DONE 8.1s
+
+#17 [builder 8/9] COPY . /app
+#17 DONE 0.0s
+
+#18 [builder 9/9] RUN --mount=type=cache,target=/root/.cache/uv     uv sync --locked --no-dev --no-editable
+#18 0.086 Resolved 66 packages in 0.46ms
+#18 0.137 Bytecode compiled 3420 files in 49ms
+#18 DONE 0.1s
+
+#19 [stage-2 3/5] COPY --from=builder /app/.venv /app/.venv
+#19 DONE 0.4s
+
+#20 [stage-2 4/5] COPY orchestrator /app/orchestrator
+#20 DONE 0.0s
+
+#21 [stage-2 5/5] WORKDIR /app
+#21 DONE 0.0s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 1.5s done
+#22 exporting manifest sha256:ad8869c2473455fd612bb6dc0cce7a4fbfb014b16f7dfdbdab6e8a6fdc3f3bd6 done
+#22 exporting config sha256:765cb48c8e730c685e63b2238eeb90cc602e0d84048d4af828571e6480955db4 done
+#22 exporting attestation manifest sha256:c07ff7b616aee0452be59eae1d80d95ee7147198a387c82f5fd88868779642b2 done
+#22 exporting manifest list sha256:0fefab4cb65fc0ea61c9e2decb97cb6ec3e27dd0dc84b5c40b3b5d4d4eae92de done
+#22 naming to docker.io/library/orchestrator:dev done
+#22 unpacking to docker.io/library/orchestrator:dev
+#22 unpacking to docker.io/library/orchestrator:dev 1.0s done
+#22 DONE 2.6s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/prt0ya6jq4pziqk45mlu7upcj
+kind load docker-image orchestrator:dev --name agent-mesh-lab
+Image: "orchestrator:dev" with ID "sha256:0fefab4cb65fc0ea61c9e2decb97cb6ec3e27dd0dc84b5c40b3b5d4d4eae92de" not yet present on node "agent-mesh-lab-worker", loading...
+Image: "orchestrator:dev" with ID "sha256:0fefab4cb65fc0ea61c9e2decb97cb6ec3e27dd0dc84b5c40b3b5d4d4eae92de" not yet present on node "agent-mesh-lab-control-plane", loading...
+# Applied unconditionally: a present CRD does not tell us the channel it came
+# from, and the experimental channel is what carries HTTPRoute.Retry.
+kubectl apply --server-side -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/experimental-install.yaml
+customresourcedefinition.apiextensions.k8s.io/backendtlspolicies.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/gatewayclasses.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/gateways.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/grpcroutes.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/httproutes.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/listenersets.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/referencegrants.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/tcproutes.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/tlsroutes.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/udproutes.gateway.networking.k8s.io serverside-applied
+validatingadmissionpolicy.admissionregistration.k8s.io/safe-upgrades.gateway.networking.k8s.io serverside-applied
+validatingadmissionpolicybinding.admissionregistration.k8s.io/safe-upgrades.gateway.networking.k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/xbackends.gateway.networking.x-k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/xbackendtrafficpolicies.gateway.networking.x-k8s.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/xmeshes.gateway.networking.x-k8s.io serverside-applied
+# istioctl is this lab's debugging client, not its installer. step-3's certificate
+# check and the experiment scripts read the mesh with `istioctl ztunnel-config`,
+# and those reads were recorded with the client at the pinned version, so the
+# client on PATH is held to the pin here.
+istioctl version --remote=false
+client version: 1.31.0
+istioctl version --remote=false | grep -q 1.31.0 || { echo "istioctl on PATH is not the pinned 1.31.0 (see versions.yaml)" >&2; exit 1; }
+# Istio, by Helm (see the HELM comment at the top of this file): the four charts the
+# ambient Helm install page installs, in the page's order, each pinned to 1.31.0 and
+# each from the repository URL that page's `helm repo add` line gives. `--repo` is
+# used instead of `helm repo add` so the target adds nothing to the user's Helm
+# configuration. `helm upgrade -i` rather than the page's `helm install`, so a re-run
+# of this target is not an error -- the same substitution the agentgateway installs
+# below make. The page
+# passes `--set profile=ambient` to istiod and cni and nothing to ztunnel or base;
+# here istiod takes the profile from istio-values.yaml, which also carries the mesh
+# configuration (the OpenTelemetry tracing provider, and since 2026-09-19 the tracing
+# and metrics default providers and the sampling rate, in place of Telemetry objects) and
+# istiod's default workload certificate lifetime. ztunnel takes a values file of its
+# own, for the certificate lifetime it asks for and for the ambient profile; the page
+# passes ztunnel nothing, but without the profile the ztunnel chart ran the
+# non-distroless image and lacked ISTIO_META_ENABLE_HBONE (measured 2026-09-12), and
+# the reason neither key can live in istio-values.yaml is in ztunnel-values.yaml's
+# header.
+step-2: Istio via Helm (/opt/homebrew/bin/helm), charts pinned to 1.31.0
+helm upgrade -i istio-base base --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
+		-n istio-system --create-namespace --wait
+Release "istio-base" does not exist. Installing it now.
+NAME: istio-base
+LAST DEPLOYED: Thu Sep 24 01:20:34 2026
+NAMESPACE: istio-system
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+Istio base successfully installed!
+
+To learn more about the release, try:
+  $ helm status istio-base -n istio-system
+  $ helm get all istio-base -n istio-system
+helm upgrade -i istiod istiod --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
+		-n istio-system -f deploy/step-2-ambient-agw/istio-values.yaml --wait
+Release "istiod" does not exist. Installing it now.
+NAME: istiod
+LAST DEPLOYED: Thu Sep 24 01:20:36 2026
+NAMESPACE: istio-system
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+"istiod" successfully installed!
+
+To learn more about the release, try:
+  $ helm status istiod -n istio-system
+  $ helm get all istiod -n istio-system
+
+Next steps:
+  * Get started with ambient: https://istio.io/latest/docs/ops/ambient/getting-started/
+  * Review ambient's architecture: https://istio.io/latest/docs/ops/ambient/architecture/
+  * Review the list of actively supported releases, CVE publications and our hardening guide:
+    * https://istio.io/latest/docs/releases/supported-releases/
+    * https://istio.io/latest/news/security/
+    * https://istio.io/latest/docs/ops/best-practices/security/
+
+For further documentation see https://istio.io website
+helm upgrade -i istio-cni cni --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
+		-n istio-system --set profile=ambient --wait
+Release "istio-cni" does not exist. Installing it now.
+I0924 01:20:51.353623   51607 warnings.go:107] "Warning: spec.template.metadata.annotations[container.apparmor.security.beta.kubernetes.io/install-cni]: deprecated since v1.30; use the \"appArmorProfile\" field instead"
+NAME: istio-cni
+LAST DEPLOYED: Thu Sep 24 01:20:51 2026
+NAMESPACE: istio-system
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+"istio-cni" successfully installed!
+
+To learn more about the release, try:
+  $ helm status istio-cni -n istio-system
+  $ helm get all istio-cni -n istio-system
+helm upgrade -i ztunnel ztunnel --repo https://blob.istio.io/istio-release/charts --version 1.31.0 \
+		-n istio-system -f deploy/step-2-ambient-agw/ztunnel-values.yaml --wait
+Release "ztunnel" does not exist. Installing it now.
+NAME: ztunnel
+LAST DEPLOYED: Thu Sep 24 01:21:08 2026
+NAMESPACE: istio-system
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+ztunnel successfully installed!
+
+To learn more about the release, try:
+  $ helm status ztunnel -n istio-system
+  $ helm get all ztunnel -n istio-system
+# The agentgateway control plane, by Helm, after Istio: the proxy it deploys for the
+# overlay's Gateway has `istio.enabled` and takes its identity from istiod. One route
+# only: the agentgateway documentation installs its control plane by Helm from two OCI
+# charts, agentgateway-crds and agentgateway from oci://cr.agentgateway.dev/charts, and
+# documents no other way, which is a fact about the project's install surface and is
+# recorded as one in findings.md (versions.yaml, agentgateway-controlplane). The
+# documented install adds --set controller.image.pullPolicy=Always, which is omitted
+# here because a pinned tag is not re-pulled. Both installs were step-2b's until
+# 2026-09-19 and are unchanged but for their place and the values file's path.
+#
+# agentgateway-system holds the control plane only and is not labelled ambient, so the
+# controller is outside the mesh by its namespace: it is not on the traffic path. The
+# values file sets nothing, and its header says what it set before and why that is gone.
+step-2: agentgateway control plane via Helm (/opt/homebrew/bin/helm), charts pinned to v1.5.0
+helm upgrade -i agentgateway-crds oci://cr.agentgateway.dev/charts/agentgateway-crds \
+		--create-namespace --namespace agentgateway-system --version v1.5.0
+Release "agentgateway-crds" does not exist. Installing it now.
+Pulled: cr.agentgateway.dev/charts/agentgateway-crds:v1.5.0
+Digest: sha256:3a6cf44559c612ac8afb7f867aace69bbd4cdba765f1def6377b7a3186c603e3
+NAME: agentgateway-crds
+LAST DEPLOYED: Thu Sep 24 01:21:22 2026
+NAMESPACE: agentgateway-system
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+Thank you for installing the agentgateway-crds chart.
+
+Your release "agentgateway-crds" has been deployed in the "agentgateway-system" namespace.
+
+This chart installs the Custom Resource Definitions (CRDs) required by agentgateway.
+
+To check the installed CRDs:
+
+  kubectl get crds | grep agentgateway.dev
+helm upgrade -i agentgateway oci://cr.agentgateway.dev/charts/agentgateway \
+		--namespace agentgateway-system --version v1.5.0 \
+		-f deploy/step-2-ambient-agw/agentgateway-values.yaml --wait
+Release "agentgateway" does not exist. Installing it now.
+Pulled: cr.agentgateway.dev/charts/agentgateway:v1.5.0
+Digest: sha256:9216ce83965ad2ce0888014d14aac5e71333fd9d4057cd167da92b37630fbee1
+NAME: agentgateway
+LAST DEPLOYED: Thu Sep 24 01:21:24 2026
+NAMESPACE: agentgateway-system
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+Thank you for installing the agentgateway chart.
+
+Your release "agentgateway" has been deployed in the "agentgateway-system" namespace.
+
+To check the status of the deployment:
+
+  helm status agentgateway --namespace agentgateway-system
+
+To view the resources created by this chart:
+
+  kubectl get all -n agentgateway-system
+
+To learn how to access and use agentgateway, please visit the official documentation:
+
+  https://agentgateway.dev/docs/kubernetes/latest/
+
+To uninstall the agentgateway deployment:
+
+  helm uninstall agentgateway --namespace agentgateway-system
+kubectl kustomize deploy/step-2-ambient-agw | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/24 01:21:33 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+2026/09/24 01:21:33 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+2026/09/24 01:21:34 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:21:34 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm for linux/arm64/v8
+2026/09/24 01:21:34 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:21:34 Building github.com/AhmadMasry/agent-mesh-lab/agents/worker for linux/arm64/v8
+2026/09/24 01:21:34 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:21:35 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:21:50 Loaded kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:21:50 Adding tag latest
+2026/09/24 01:21:50 Added tag latest
+2026/09/24 01:21:51 Loaded kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:21:51 Adding tag latest
+2026/09/24 01:21:51 Added tag latest
+namespace/agentgateway-waypoint created
+namespace/lab configured
+service/mockllm unchanged
+service/orchestrator unchanged
+service/worker configured
+deployment.apps/mockllm unchanged
+deployment.apps/orchestrator configured
+deployment.apps/worker configured
+agentgatewayparameters.agentgateway.dev/agw-central-params created
+gateway.gateway.networking.k8s.io/agw-central created
+httproute.gateway.networking.k8s.io/worker created
+peerauthentication.security.istio.io/default created
+# ztunnel captures a pod when it starts, so pods that predate the namespace's
+# ambient label are restarted to be enrolled.
+kubectl -n lab rollout restart deployment/mockllm deployment/worker deployment/orchestrator
+deployment.apps/mockllm restarted
+deployment.apps/worker restarted
+deployment.apps/orchestrator restarted
+# The central proxy. Programmed is the wait agentgateway's egress page uses for this
+# Gateway shape, and it says the controller accepted the Gateway; the rollout wait
+# after it says the proxy pod is ready to carry traffic. The controller creates that
+# Deployment, named after the Gateway, some time after the apply above, and `rollout
+# status` on an object that does not exist yet is an error rather than a wait, so its
+# creation is waited for first. None of the three is a retry of anything measured.
+kubectl -n agentgateway-waypoint wait --for=condition=Programmed gateway/agw-central --timeout=180s
+gateway.gateway.networking.k8s.io/agw-central condition met
+kubectl -n agentgateway-waypoint wait --for=create deployment/agw-central --timeout=180s
+deployment.apps/agw-central condition met
+kubectl -n agentgateway-waypoint rollout status deployment/agw-central --timeout=180s
+Waiting for deployment "agw-central" rollout to finish: 0 of 1 updated replicas are available...
+deployment "agw-central" successfully rolled out
+# The worker's route on it: Accepted by agentgateway's controller, the wait its egress
+# page uses for its own route. If the controller wrote no such status, the target fails.
+kubectl -n lab wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/worker --timeout=180s
+httproute.gateway.networking.k8s.io/worker condition met
+kubectl -n lab rollout status deployment/mockllm --timeout=120s
+deployment "mockllm" successfully rolled out
+kubectl -n lab rollout status deployment/worker --timeout=120s
+deployment "worker" successfully rolled out
+kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+deployment "orchestrator" successfully rolled out
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=5027b5b33ef8817be4cf197f2c70d530bf0685f3
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+## make step-2  finished 2026-09-23T22:21:58Z  epoch 1790202118.179  exit=0  wall=123.279s
+
+## git status --short (whole checkout) before make step-2b -> (empty)
+## git status --short (deployed paths)  before make step-2b -> (empty)
+## make step-2b  started 2026-09-23T22:21:58Z  epoch 1790202118.429
+docker build --pull --no-cache --platform linux/arm64 -t orchestrator:dev -f agents/orchestrator/Dockerfile agents/orchestrator
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 16.99kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#2 ...
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:latest
+#3 DONE 2.0s
+
+#2 [internal] load metadata for public.ecr.aws/amazonlinux/amazonlinux:2023
+#2 DONE 2.4s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 569B done
+#4 DONE 0.0s
+
+#5 [builder 1/9] FROM public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:06da5a3362eda00c5114227ac81abe56dd9b943395553b7c64a310457f4d9e2b
+#5 resolve public.ecr.aws/amazonlinux/amazonlinux:2023@sha256:06da5a3362eda00c5114227ac81abe56dd9b943395553b7c64a310457f4d9e2b done
+#5 CACHED
+
+#6 FROM ghcr.io/astral-sh/uv:latest@sha256:3adc3706091ce7c2fe595e669628caedd6d951551b92b258b7e7dbe06d9440bc
+#6 resolve ghcr.io/astral-sh/uv:latest@sha256:3adc3706091ce7c2fe595e669628caedd6d951551b92b258b7e7dbe06d9440bc done
+#6 CACHED
+
+#7 [internal] load build context
+#7 transferring context: 531B done
+#7 DONE 0.0s
+
+#8 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#8 ...
+
+#9 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#9 8.389 Amazon Linux 2023 repository                     12 MB/s |  79 MB     00:06    
+#9 ...
+
+#8 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#8 10.32 Amazon Linux 2023 repository                    9.2 MB/s |  79 MB     00:08    
+#8 ...
+
+#9 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#9 16.07 Last metadata expiration check: 0:00:12 ago on Wed Sep 23 22:22:05 2026.
+#9 16.71 Dependencies resolved.
+#9 16.73 ==============================================================================================
+#9 16.73  Package                        Arch     Version                            Repository    Size
+#9 16.73 ==============================================================================================
+#9 16.73 Installing:
+#9 16.73  ca-certificates                noarch   2025.2.76-1.0.amzn2023.0.3         amazonlinux  738 k
+#9 16.73  python3.14                     aarch64  3.14.7-1.amzn2023.0.1              amazonlinux   30 k
+#9 16.73  system-release                 noarch   2023.12.20260918-0.amzn2023        amazonlinux   24 k
+#9 16.73 Installing dependencies:
+#9 16.73  alternatives                   aarch64  1.15-2.amzn2023.0.2                amazonlinux   36 k
+#9 16.73  amazon-linux-repo-cdn          noarch   2023.12.20260918-0.amzn2023        amazonlinux   13 k
+#9 16.73  basesystem                     noarch   11-11.amzn2023.0.2                 amazonlinux  7.8 k
+#9 16.73  bash                           aarch64  5.2.15-1.amzn2023.0.2              amazonlinux  1.8 M
+#9 16.73  bzip2-libs                     aarch64  1.0.8-6.amzn2023.0.2               amazonlinux   44 k
+#9 16.73  coreutils                      aarch64  8.32-30.amzn2023.0.5               amazonlinux  1.2 M
+#9 16.73  coreutils-common               aarch64  8.32-30.amzn2023.0.5               amazonlinux  2.0 M
+#9 16.73  crypto-policies                noarch   20260224-1.gitea0f072.amzn2023.0.6 amazonlinux   58 k
+#9 16.73  expat                          aarch64  2.8.3-1.amzn2023.0.1               amazonlinux  129 k
+#9 16.73  filesystem                     aarch64  3.14-5.amzn2023.0.3                amazonlinux   22 k
+#9 16.73  gdbm-libs                      aarch64  1:1.19-2.amzn2023.0.2              amazonlinux   53 k
+#9 16.73  glibc                          aarch64  2.34-231.amzn2023.0.5              amazonlinux  1.7 M
+#9 16.73  glibc-common                   aarch64  2.34-231.amzn2023.0.5              amazonlinux  289 k
+#9 16.73  glibc-minimal-langpack         aarch64  2.34-231.amzn2023.0.5              amazonlinux   23 k
+#9 16.73  gmp                            aarch64  1:6.2.1-2.amzn2023.0.2             amazonlinux  276 k
+#9 16.73  grep                           aarch64  3.8-1.amzn2023.0.4                 amazonlinux  282 k
+#9 16.73  libacl                         aarch64  2.4.0-1.amzn2023.0.1               amazonlinux   27 k
+#9 16.73  libattr                        aarch64  2.5.1-3.amzn2023.0.2               amazonlinux   19 k
+#9 16.73  libcap                         aarch64  2.73-1.amzn2023.0.7                amazonlinux   86 k
+#9 16.73  libffi                         aarch64  3.4.4-1.amzn2023.0.1               amazonlinux   37 k
+#9 16.73  libgcc                         aarch64  14.2.1-7.amzn2023.0.2              amazonlinux  123 k
+#9 16.73  libselinux                     aarch64  3.4-5.amzn2023.0.2                 amazonlinux   87 k
+#9 16.73  libsepol                       aarch64  3.4-3.amzn2023.0.3                 amazonlinux  311 k
+#9 16.73  libstdc++                      aarch64  14.2.1-7.amzn2023.0.2              amazonlinux  818 k
+#9 16.73  libtasn1                       aarch64  4.19.0-1.amzn2023.0.6              amazonlinux   75 k
+#9 16.73  libuuid                        aarch64  2.37.4-1.amzn2023.0.6              amazonlinux   26 k
+#9 16.73  libzstd                        aarch64  1.5.5-1.amzn2023.0.1               amazonlinux  284 k
+#9 16.73  mpdecimal                      aarch64  2.5.1-3.amzn2023.0.3               amazonlinux  103 k
+#9 16.73  ncurses-base                   noarch   6.6-1.amzn2023.0.1                 amazonlinux   65 k
+#9 16.73  ncurses-libs                   aarch64  6.6-1.amzn2023.0.1                 amazonlinux  331 k
+#9 16.73  openssl-fips-provider-latest   aarch64  1:3.5.8-1.amzn2023.0.1             amazonlinux  744 k
+#9 16.73  openssl-libs                   aarch64  1:3.5.8-1.amzn2023.0.1             amazonlinux  2.2 M
+#9 16.73  p11-kit                        aarch64  0.24.1-2.amzn2023.0.3              amazonlinux  346 k
+#9 16.73  p11-kit-trust                  aarch64  0.24.1-2.amzn2023.0.3              amazonlinux  138 k
+#9 16.73  pcre2                          aarch64  10.40-1.amzn2023.0.3               amazonlinux  220 k
+#9 16.73  pcre2-syntax                   noarch   10.40-1.amzn2023.0.3               amazonlinux  142 k
+#9 16.73  python3.14-libs                aarch64  3.14.7-1.amzn2023.0.1              amazonlinux   10 M
+#9 16.73  python3.14-pip-wheel           noarch   26.1.1-1.amzn2023.0.3              amazonlinux  1.2 M
+#9 16.73  readline                       aarch64  8.1-2.amzn2023.0.2                 amazonlinux  212 k
+#9 16.73  sed                            aarch64  4.8-7.amzn2023.0.2                 amazonlinux  295 k
+#9 16.73  setup                          noarch   2.13.7-3.amzn2023.0.2              amazonlinux  141 k
+#9 16.73  sqlite-libs                    aarch64  3.40.0-1.amzn2023.0.8              amazonlinux  657 k
+#9 16.73  tzdata                         noarch   2026c-1.amzn2023.0.1               amazonlinux  429 k
+#9 16.73  xz-libs                        aarch64  5.2.5-9.amzn2023.0.2               amazonlinux   92 k
+#9 16.73  zlib                           aarch64  1.2.11-33.amzn2023.0.6             amazonlinux   91 k
+#9 16.73 
+#9 16.73 Transaction Summary
+#9 16.73 ==============================================================================================
+#9 16.73 Install  48 Packages
+#9 16.73 
+#9 16.73 Total download size: 28 M
+#9 16.73 Installed size: 141 M
+#9 16.73 Downloading Packages:
+#9 18.18 (1/48): basesystem-11-11.amzn2023.0.2.noarch.rp 128 kB/s | 7.8 kB     00:00    
+#9 18.19 (2/48): amazon-linux-repo-cdn-2023.12.20260918- 179 kB/s |  13 kB     00:00    
+#9 18.22 (3/48): alternatives-1.15-2.amzn2023.0.2.aarch6 368 kB/s |  36 kB     00:00    
+#9 18.52 (4/48): bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64 134 kB/s |  44 kB     00:00    
+#9 18.65 (5/48): bash-5.2.15-1.amzn2023.0.2.aarch64.rpm  3.8 MB/s | 1.8 MB     00:00    
+#9 18.65 (6/48): ca-certificates-2025.2.76-1.0.amzn2023. 1.7 MB/s | 738 kB     00:00    
+#9 18.65 (7/48): coreutils-8.32-30.amzn2023.0.5.aarch64. 8.9 MB/s | 1.2 MB     00:00    
+#9 18.73 (8/48): crypto-policies-20260224-1.gitea0f072.a 669 kB/s |  58 kB     00:00    
+#9 18.74 (9/48): expat-2.8.3-1.amzn2023.0.1.aarch64.rpm  1.5 MB/s | 129 kB     00:00    
+#9 18.79 (10/48): coreutils-common-8.32-30.amzn2023.0.5.  14 MB/s | 2.0 MB     00:00    
+#9 18.79 (11/48): filesystem-3.14-5.amzn2023.0.3.aarch64 389 kB/s |  22 kB     00:00    
+#9 18.79 (12/48): gdbm-libs-1.19-2.amzn2023.0.2.aarch64. 968 kB/s |  53 kB     00:00    
+#9 18.89 (13/48): glibc-common-2.34-231.amzn2023.0.5.aar 2.9 MB/s | 289 kB     00:00    
+#9 18.92 (14/48): glibc-2.34-231.amzn2023.0.5.aarch64.rp  13 MB/s | 1.7 MB     00:00    
+#9 18.92 (15/48): glibc-minimal-langpack-2.34-231.amzn20 185 kB/s |  23 kB     00:00    
+#9 18.95 (16/48): gmp-6.2.1-2.amzn2023.0.2.aarch64.rpm   4.2 MB/s | 276 kB     00:00    
+#9 18.97 (17/48): libacl-2.4.0-1.amzn2023.0.1.aarch64.rp 520 kB/s |  27 kB     00:00    
+#9 18.98 (18/48): grep-3.8-1.amzn2023.0.4.aarch64.rpm    4.1 MB/s | 282 kB     00:00    
+#9 19.01 (19/48): libattr-2.5.1-3.amzn2023.0.2.aarch64.r 361 kB/s |  19 kB     00:00    
+#9 19.03 (20/48): libcap-2.73-1.amzn2023.0.7.aarch64.rpm 1.4 MB/s |  86 kB     00:00    
+#9 19.04 (21/48): libffi-3.4.4-1.amzn2023.0.1.aarch64.rp 661 kB/s |  37 kB     00:00    
+#9 19.06 (22/48): libgcc-14.2.1-7.amzn2023.0.2.aarch64.r 2.1 MB/s | 123 kB     00:00    
+#9 19.17 (23/48): libselinux-3.4-5.amzn2023.0.2.aarch64. 612 kB/s |  87 kB     00:00    
+#9 19.18 (24/48): libsepol-3.4-3.amzn2023.0.3.aarch64.rp 2.2 MB/s | 311 kB     00:00    
+#9 19.18 (25/48): libstdc++-14.2.1-7.amzn2023.0.2.aarch6 6.9 MB/s | 818 kB     00:00    
+#9 19.24 (26/48): libuuid-2.37.4-1.amzn2023.0.6.aarch64. 450 kB/s |  26 kB     00:00    
+#9 19.25 (27/48): libzstd-1.5.5-1.amzn2023.0.1.aarch64.r 4.3 MB/s | 284 kB     00:00    
+#9 19.25 (28/48): libtasn1-4.19.0-1.amzn2023.0.6.aarch64 1.0 MB/s |  75 kB     00:00    
+#9 19.30 (29/48): mpdecimal-2.5.1-3.amzn2023.0.3.aarch64 1.7 MB/s | 103 kB     00:00    
+#9 19.31 (30/48): ncurses-base-6.6-1.amzn2023.0.1.noarch 1.0 MB/s |  65 kB     00:00    
+#9 19.32 (31/48): ncurses-libs-6.6-1.amzn2023.0.1.aarch6 4.3 MB/s | 331 kB     00:00    
+#9 19.39 (32/48): openssl-fips-provider-latest-3.5.8-1.a 8.2 MB/s | 744 kB     00:00    
+#9 19.47 (33/48): openssl-libs-3.5.8-1.amzn2023.0.1.aarc  14 MB/s | 2.2 MB     00:00    
+#9 19.48 (34/48): p11-kit-0.24.1-2.amzn2023.0.3.aarch64. 2.2 MB/s | 346 kB     00:00    
+#9 19.48 (35/48): p11-kit-trust-0.24.1-2.amzn2023.0.3.aa 1.4 MB/s | 138 kB     00:00    
+#9 19.54 (36/48): pcre2-10.40-1.amzn2023.0.3.aarch64.rpm 3.1 MB/s | 220 kB     00:00    
+#9 19.54 (37/48): pcre2-syntax-10.40-1.amzn2023.0.3.noar 2.1 MB/s | 142 kB     00:00    
+#9 19.54 (38/48): python3.14-3.14.7-1.amzn2023.0.1.aarch 464 kB/s |  30 kB     00:00    
+#9 19.71 (39/48): readline-8.1-2.amzn2023.0.2.aarch64.rp 1.3 MB/s | 212 kB     00:00    
+#9 19.72 (40/48): python3.14-pip-wheel-26.1.1-1.amzn2023 6.8 MB/s | 1.2 MB     00:00    
+#9 20.13 (41/48): python3.14-libs-3.14.7-1.amzn2023.0.1.  17 MB/s |  10 MB     00:00    
+#9 20.14 (42/48): setup-2.13.7-3.amzn2023.0.2.noarch.rpm 337 kB/s | 141 kB     00:00    
+#9 20.14 (43/48): sed-4.8-7.amzn2023.0.2.aarch64.rpm     686 kB/s | 295 kB     00:00    
+#9 20.28 (44/48): system-release-2023.12.20260918-0.amzn 168 kB/s |  24 kB     00:00    
+#9 20.31 (45/48): sqlite-libs-3.40.0-1.amzn2023.0.8.aarc 3.7 MB/s | 657 kB     00:00    
+#9 20.33 (46/48): tzdata-2026c-1.amzn2023.0.1.noarch.rpm 2.2 MB/s | 429 kB     00:00    
+#9 20.34 (47/48): xz-libs-5.2.5-9.amzn2023.0.2.aarch64.r 1.4 MB/s |  92 kB     00:00    
+#9 20.37 (48/48): zlib-1.2.11-33.amzn2023.0.6.aarch64.rp 1.4 MB/s |  91 kB     00:00    
+#9 20.37 --------------------------------------------------------------------------------
+#9 20.37 Total                                           7.6 MB/s |  28 MB     00:03     
+#9 20.38 Amazon Linux 2023 repository                    1.7 MB/s | 1.8 kB     00:00    
+#9 20.40 Importing GPG key 0xD832C631:
+#9 20.40  Userid     : "Amazon Linux <amazon-linux@amazon.com>"
+#9 20.40  Fingerprint: B21C 50FA 44A9 9720 EAA7 2F7F E951 904A D832 C631
+#9 20.40  From       : /etc/pki/rpm-gpg/RPM-GPG-KEY-amazon-linux-2023
+#9 20.40 Key imported successfully
+#9 20.65 Running transaction check
+#9 20.65 Transaction check succeeded.
+#9 20.65 Running transaction test
+#9 20.75 Transaction test succeeded.
+#9 20.75 Running transaction
+#9 20.88   Running scriptlet: filesystem-3.14-5.amzn2023.0.3.aarch64                 1/1 
+#9 20.89   Preparing        :                                                        1/1 
+#9 20.95   Installing       : tzdata-2026c-1.amzn2023.0.1.noarch                    1/48 
+#9 20.95   Installing       : pcre2-syntax-10.40-1.amzn2023.0.3.noarch              2/48 
+#9 20.96   Installing       : ncurses-base-6.6-1.amzn2023.0.1.noarch                3/48 
+#9 20.97   Installing       : ncurses-libs-6.6-1.amzn2023.0.1.aarch64               4/48 
+#9 20.98   Installing       : amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.    5/48 
+#9 21.00   Installing       : bash-5.2.15-1.amzn2023.0.2.aarch64                    6/48 
+#9 21.01   Running scriptlet: bash-5.2.15-1.amzn2023.0.2.aarch64                    6/48 
+#9 21.01   Installing       : system-release-2023.12.20260918-0.amzn2023.noarch     7/48 
+#9 21.01   Installing       : setup-2.13.7-3.amzn2023.0.2.noarch                    8/48 
+#9 21.01   Running scriptlet: setup-2.13.7-3.amzn2023.0.2.noarch                    8/48 
+#9 21.04   Installing       : filesystem-3.14-5.amzn2023.0.3.aarch64                9/48 
+#9 21.04   Installing       : basesystem-11-11.amzn2023.0.2.noarch                 10/48 
+#9 21.04   Installing       : libgcc-14.2.1-7.amzn2023.0.2.aarch64                 11/48 
+#9 21.04   Running scriptlet: libgcc-14.2.1-7.amzn2023.0.2.aarch64                 11/48 
+#9 21.04   Installing       : glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch   12/48 
+#9 21.05   Installing       : glibc-common-2.34-231.amzn2023.0.5.aarch64           13/48 
+#9 21.05   Running scriptlet: glibc-2.34-231.amzn2023.0.5.aarch64                  14/48 
+#9 21.07   Installing       : glibc-2.34-231.amzn2023.0.5.aarch64                  14/48 
+#9 21.07   Running scriptlet: glibc-2.34-231.amzn2023.0.5.aarch64                  14/48
+#9 ...
+
+#8 [builder 2/9] RUN dnf -y install python3.14 && dnf clean all
+#8 17.99 Last metadata expiration check: 0:00:14 ago on Wed Sep 23 22:22:05 2026.
+#8 18.60 Dependencies resolved.
+#8 18.61 ================================================================================
+#8 18.61  Package                Arch      Version                   Repository     Size
+#8 18.61 ================================================================================
+#8 18.61 Installing:
+#8 18.61  python3.14             aarch64   3.14.7-1.amzn2023.0.1     amazonlinux    30 k
+#8 18.61 Installing dependencies:
+#8 18.61  mpdecimal              aarch64   2.5.1-3.amzn2023.0.3      amazonlinux   103 k
+#8 18.61  python3.14-libs        aarch64   3.14.7-1.amzn2023.0.1     amazonlinux    10 M
+#8 18.61  python3.14-pip-wheel   noarch    26.1.1-1.amzn2023.0.3     amazonlinux   1.2 M
+#8 18.61 
+#8 18.61 Transaction Summary
+#8 18.61 ================================================================================
+#8 18.61 Install  4 Packages
+#8 18.61 
+#8 18.61 Total download size: 11 M
+#8 18.61 Installed size: 56 M
+#8 18.61 Downloading Packages:
+#8 19.56 (1/4): python3.14-3.14.7-1.amzn2023.0.1.aarch64 334 kB/s |  30 kB     00:00    
+#8 19.71 (2/4): mpdecimal-2.5.1-3.amzn2023.0.3.aarch64.r 420 kB/s | 103 kB     00:00    
+#8 20.23 (3/4): python3.14-pip-wheel-26.1.1-1.amzn2023.0 1.8 MB/s | 1.2 MB     00:00    
+#8 20.81 (4/4): python3.14-libs-3.14.7-1.amzn2023.0.1.aa 7.5 MB/s |  10 MB     00:01    
+#8 20.81 --------------------------------------------------------------------------------
+#8 20.81 Total                                           5.2 MB/s |  11 MB     00:02     
+#8 20.86 Running transaction check
+#8 20.87 Transaction check succeeded.
+#8 20.87 Running transaction test
+#8 20.91 Transaction test succeeded.
+#8 20.91 Running transaction
+#8 20.95   Preparing        :                                                        1/1 
+#8 20.96   Installing       : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch      1/4 
+#8 20.97   Installing       : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                 2/4 
+#8 20.97   Installing       : python3.14-3.14.7-1.amzn2023.0.1.aarch64               3/4 
+#8 21.14   Installing       : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64          4/4 
+#8 21.15   Running scriptlet: python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64          4/4 
+#8 21.32   Verifying        : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                 1/4 
+#8 21.32   Verifying        : python3.14-3.14.7-1.amzn2023.0.1.aarch64               2/4 
+#8 21.32   Verifying        : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64          3/4 
+#8 21.32   Verifying        : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch      4/4 
+#8 21.35 
+#8 21.35 Installed:
+#8 21.35   mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                                        
+#8 21.35   python3.14-3.14.7-1.amzn2023.0.1.aarch64                                      
+#8 21.35   python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64                                 
+#8 21.35   python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch                             
+#8 21.35 
+#8 21.35 Complete!
+#8 21.43 9 files removed
+#8 DONE 21.4s
+
+#10 [builder 3/9] COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+#10 DONE 0.0s
+
+#9 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#9 21.07   Running scriptlet: glibc-2.34-231.amzn2023.0.5.aarch64                  14/48 
+#9 21.47   Installing       : zlib-1.2.11-33.amzn2023.0.6.aarch64                  15/48 
+#9 21.47   Installing       : libacl-2.4.0-1.amzn2023.0.1.aarch64                  16/48 
+#9 21.47   Installing       : libffi-3.4.4-1.amzn2023.0.1.aarch64                  17/48 
+#9 21.51   Installing       : p11-kit-0.24.1-2.amzn2023.0.3.aarch64                18/48 
+#9 21.51   Installing       : pcre2-10.40-1.amzn2023.0.3.aarch64                   19/48 
+#9 21.52   Installing       : grep-3.8-1.amzn2023.0.4.aarch64                      20/48 
+#9 21.53   Installing       : sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64            21/48 
+#9 21.53   Installing       : alternatives-1.15-2.amzn2023.0.2.aarch64             22/48 
+#9 21.53   Installing       : bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64              23/48 
+#9 21.53   Installing       : expat-2.8.3-1.amzn2023.0.1.aarch64                   24/48 
+#9 21.53   Installing       : gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64              25/48
+#9 ...
+
+#11 [builder 4/9] RUN uv --version
+#11 0.080 uv 0.12.18 (aarch64-unknown-linux-musl)
+#11 DONE 0.1s
+
+#12 [builder 5/9] RUN python3.14 -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.version'
+#12 DONE 0.1s
+
+#9 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#9 21.53   Installing       : gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64              25/48 
+#9 21.54   Installing       : gmp-1:6.2.1-2.amzn2023.0.2.aarch64                   26/48 
+#9 21.54   Installing       : libattr-2.5.1-3.amzn2023.0.2.aarch64                 27/48 
+#9 21.54   Installing       : libcap-2.73-1.amzn2023.0.7.aarch64                   28/48 
+#9 21.54   Installing       : libsepol-3.4-3.amzn2023.0.3.aarch64                  29/48 
+#9 21.55   Installing       : libselinux-3.4-5.amzn2023.0.2.aarch64                30/48 
+#9 21.55   Installing       : sed-4.8-7.amzn2023.0.2.aarch64                       31/48 
+#9 21.56   Installing       : libstdc++-14.2.1-7.amzn2023.0.2.aarch64              32/48 
+#9 21.56   Installing       : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64               33/48 
+#9 21.56   Installing       : libtasn1-4.19.0-1.amzn2023.0.6.aarch64               34/48 
+#9 21.57   Installing       : p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48 
+#9 21.57   Running scriptlet: p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48
+#9 ...
+
+#13 [builder 6/9] WORKDIR /app
+#13 DONE 0.0s
+
+#9 [rootfs 2/2] RUN dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs         install python3.14 system-release ca-certificates     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" --setopt=install_weak_deps=False --setopt=tsflags=nodocs upgrade     && rpm --root=/rootfs -e --nodeps bash coreutils $(rpm --root=/rootfs -q coreutils-common >/dev/null 2>&1 && echo coreutils-common)     && dnf -y --installroot=/rootfs --releasever="$(rpm -q --qf '%{VERSION}' system-release)" clean all     && rm -rf /rootfs/var/cache/* /rootfs/var/log/* /rootfs/var/lib/dnf /rootfs/etc/dnf /rootfs/etc/yum.repos.d     && rm -rf /rootfs/usr/share/man /rootfs/usr/share/doc /rootfs/usr/share/info /rootfs/usr/share/locale     && printf 'root:x:0:0:root:/root:/sbin/nologin\nnonroot:x:65532:65532::/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd     && printf 'root:x:0:\nnonroot:x:65532:\n' > /rootfs/etc/group     && rpm --root=/rootfs -qa | sort
+#9 21.57   Running scriptlet: p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48 
+#9 21.71   Installing       : libuuid-2.37.4-1.amzn2023.0.6.aarch64                36/48 
+#9 21.72   Installing       : libzstd-1.5.5-1.amzn2023.0.1.aarch64                 37/48 
+#9 21.73   Installing       : readline-8.1-2.amzn2023.0.2.aarch64                  38/48 
+#9 21.73   Installing       : xz-libs-5.2.5-9.amzn2023.0.2.aarch64                 39/48 
+#9 21.74   Installing       : crypto-policies-20260224-1.gitea0f072.amzn2023.0.6   40/48 
+#9 21.74   Running scriptlet: crypto-policies-20260224-1.gitea0f072.amzn2023.0.6   40/48 
+#9 21.77   Installing       : coreutils-common-8.32-30.amzn2023.0.5.aarch64        41/48 
+#9 21.77   Installing       : openssl-fips-provider-latest-1:3.5.8-1.amzn2023.0.   42/48 
+#9 21.79   Installing       : openssl-libs-1:3.5.8-1.amzn2023.0.1.aarch64          43/48 
+#9 21.82   Installing       : coreutils-8.32-30.amzn2023.0.5.aarch64               44/48 
+#9 21.83   Running scriptlet: ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    45/48 
+#9 21.98   Installing       : ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    45/48 
+#9 21.98   Running scriptlet: ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    45/48 
+#9 22.44   Installing       : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch    46/48 
+#9 22.44   Installing       : python3.14-3.14.7-1.amzn2023.0.1.aarch64             47/48 
+#9 22.58   Installing       : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64        48/48 
+#9 22.59   Running scriptlet: filesystem-3.14-5.amzn2023.0.3.aarch64               48/48 
+#9 22.74   Running scriptlet: ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch    48/48 
+#9 23.21   Running scriptlet: python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64        48/48 
+#9 23.46   Verifying        : alternatives-1.15-2.amzn2023.0.2.aarch64              1/48 
+#9 23.46   Verifying        : amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.    2/48 
+#9 23.46   Verifying        : basesystem-11-11.amzn2023.0.2.noarch                  3/48 
+#9 23.46   Verifying        : bash-5.2.15-1.amzn2023.0.2.aarch64                    4/48 
+#9 23.46   Verifying        : bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64               5/48 
+#9 23.46   Verifying        : ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch     6/48 
+#9 23.46   Verifying        : coreutils-8.32-30.amzn2023.0.5.aarch64                7/48 
+#9 23.46   Verifying        : coreutils-common-8.32-30.amzn2023.0.5.aarch64         8/48 
+#9 23.46   Verifying        : crypto-policies-20260224-1.gitea0f072.amzn2023.0.6    9/48 
+#9 23.46   Verifying        : expat-2.8.3-1.amzn2023.0.1.aarch64                   10/48 
+#9 23.46   Verifying        : filesystem-3.14-5.amzn2023.0.3.aarch64               11/48 
+#9 23.46   Verifying        : gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64              12/48 
+#9 23.46   Verifying        : glibc-2.34-231.amzn2023.0.5.aarch64                  13/48 
+#9 23.46   Verifying        : glibc-common-2.34-231.amzn2023.0.5.aarch64           14/48 
+#9 23.46   Verifying        : glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch   15/48 
+#9 23.46   Verifying        : gmp-1:6.2.1-2.amzn2023.0.2.aarch64                   16/48 
+#9 23.46   Verifying        : grep-3.8-1.amzn2023.0.4.aarch64                      17/48 
+#9 23.46   Verifying        : libacl-2.4.0-1.amzn2023.0.1.aarch64                  18/48 
+#9 23.46   Verifying        : libattr-2.5.1-3.amzn2023.0.2.aarch64                 19/48 
+#9 23.46   Verifying        : libcap-2.73-1.amzn2023.0.7.aarch64                   20/48 
+#9 23.46   Verifying        : libffi-3.4.4-1.amzn2023.0.1.aarch64                  21/48 
+#9 23.46   Verifying        : libgcc-14.2.1-7.amzn2023.0.2.aarch64                 22/48 
+#9 23.46   Verifying        : libselinux-3.4-5.amzn2023.0.2.aarch64                23/48 
+#9 23.46   Verifying        : libsepol-3.4-3.amzn2023.0.3.aarch64                  24/48 
+#9 23.46   Verifying        : libstdc++-14.2.1-7.amzn2023.0.2.aarch64              25/48 
+#9 23.46   Verifying        : libtasn1-4.19.0-1.amzn2023.0.6.aarch64               26/48 
+#9 23.46   Verifying        : libuuid-2.37.4-1.amzn2023.0.6.aarch64                27/48 
+#9 23.46   Verifying        : libzstd-1.5.5-1.amzn2023.0.1.aarch64                 28/48 
+#9 23.46   Verifying        : mpdecimal-2.5.1-3.amzn2023.0.3.aarch64               29/48 
+#9 23.46   Verifying        : ncurses-base-6.6-1.amzn2023.0.1.noarch               30/48 
+#9 23.46   Verifying        : ncurses-libs-6.6-1.amzn2023.0.1.aarch64              31/48 
+#9 23.46   Verifying        : openssl-fips-provider-latest-1:3.5.8-1.amzn2023.0.   32/48 
+#9 23.46   Verifying        : openssl-libs-1:3.5.8-1.amzn2023.0.1.aarch64          33/48 
+#9 23.46   Verifying        : p11-kit-0.24.1-2.amzn2023.0.3.aarch64                34/48 
+#9 23.46   Verifying        : p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64          35/48 
+#9 23.46   Verifying        : pcre2-10.40-1.amzn2023.0.3.aarch64                   36/48 
+#9 23.46   Verifying        : pcre2-syntax-10.40-1.amzn2023.0.3.noarch             37/48 
+#9 23.46   Verifying        : python3.14-3.14.7-1.amzn2023.0.1.aarch64             38/48 
+#9 23.46   Verifying        : python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64        39/48 
+#9 23.46   Verifying        : python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch    40/48 
+#9 23.46   Verifying        : readline-8.1-2.amzn2023.0.2.aarch64                  41/48 
+#9 23.46   Verifying        : sed-4.8-7.amzn2023.0.2.aarch64                       42/48 
+#9 23.46   Verifying        : setup-2.13.7-3.amzn2023.0.2.noarch                   43/48 
+#9 23.46   Verifying        : sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64            44/48 
+#9 23.46   Verifying        : system-release-2023.12.20260918-0.amzn2023.noarch    45/48 
+#9 23.46   Verifying        : tzdata-2026c-1.amzn2023.0.1.noarch                   46/48 
+#9 23.46   Verifying        : xz-libs-5.2.5-9.amzn2023.0.2.aarch64                 47/48 
+#9 23.46   Verifying        : zlib-1.2.11-33.amzn2023.0.6.aarch64                  48/48 
+#9 23.51 
+#9 23.51 Installed:
+#9 23.51   alternatives-1.15-2.amzn2023.0.2.aarch64                                      
+#9 23.51   amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.noarch                      
+#9 23.51   basesystem-11-11.amzn2023.0.2.noarch                                          
+#9 23.51   bash-5.2.15-1.amzn2023.0.2.aarch64                                            
+#9 23.51   bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64                                       
+#9 23.51   ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch                             
+#9 23.51   coreutils-8.32-30.amzn2023.0.5.aarch64                                        
+#9 23.51   coreutils-common-8.32-30.amzn2023.0.5.aarch64                                 
+#9 23.51   crypto-policies-20260224-1.gitea0f072.amzn2023.0.6.noarch                     
+#9 23.51   expat-2.8.3-1.amzn2023.0.1.aarch64                                            
+#9 23.51   filesystem-3.14-5.amzn2023.0.3.aarch64                                        
+#9 23.51   gdbm-libs-1:1.19-2.amzn2023.0.2.aarch64                                       
+#9 23.51   glibc-2.34-231.amzn2023.0.5.aarch64                                           
+#9 23.51   glibc-common-2.34-231.amzn2023.0.5.aarch64                                    
+#9 23.51   glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch64                          
+#9 23.51   gmp-1:6.2.1-2.amzn2023.0.2.aarch64                                            
+#9 23.51   grep-3.8-1.amzn2023.0.4.aarch64                                               
+#9 23.51   libacl-2.4.0-1.amzn2023.0.1.aarch64                                           
+#9 23.51   libattr-2.5.1-3.amzn2023.0.2.aarch64                                          
+#9 23.51   libcap-2.73-1.amzn2023.0.7.aarch64                                            
+#9 23.51   libffi-3.4.4-1.amzn2023.0.1.aarch64                                           
+#9 23.51   libgcc-14.2.1-7.amzn2023.0.2.aarch64                                          
+#9 23.51   libselinux-3.4-5.amzn2023.0.2.aarch64                                         
+#9 23.51   libsepol-3.4-3.amzn2023.0.3.aarch64                                           
+#9 23.51   libstdc++-14.2.1-7.amzn2023.0.2.aarch64                                       
+#9 23.51   libtasn1-4.19.0-1.amzn2023.0.6.aarch64                                        
+#9 23.51   libuuid-2.37.4-1.amzn2023.0.6.aarch64                                         
+#9 23.51   libzstd-1.5.5-1.amzn2023.0.1.aarch64                                          
+#9 23.51   mpdecimal-2.5.1-3.amzn2023.0.3.aarch64                                        
+#9 23.51   ncurses-base-6.6-1.amzn2023.0.1.noarch                                        
+#9 23.51   ncurses-libs-6.6-1.amzn2023.0.1.aarch64                                       
+#9 23.51   openssl-fips-provider-latest-1:3.5.8-1.amzn2023.0.1.aarch64                   
+#9 23.51   openssl-libs-1:3.5.8-1.amzn2023.0.1.aarch64                                   
+#9 23.51   p11-kit-0.24.1-2.amzn2023.0.3.aarch64                                         
+#9 23.51   p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64                                   
+#9 23.51   pcre2-10.40-1.amzn2023.0.3.aarch64                                            
+#9 23.51   pcre2-syntax-10.40-1.amzn2023.0.3.noarch                                      
+#9 23.51   python3.14-3.14.7-1.amzn2023.0.1.aarch64                                      
+#9 23.51   python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64                                 
+#9 23.51   python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch                             
+#9 23.51   readline-8.1-2.amzn2023.0.2.aarch64                                           
+#9 23.51   sed-4.8-7.amzn2023.0.2.aarch64                                                
+#9 23.51   setup-2.13.7-3.amzn2023.0.2.noarch                                            
+#9 23.51   sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64                                     
+#9 23.51   system-release-2023.12.20260918-0.amzn2023.noarch                             
+#9 23.51   tzdata-2026c-1.amzn2023.0.1.noarch                                            
+#9 23.51   xz-libs-5.2.5-9.amzn2023.0.2.aarch64                                          
+#9 23.51   zlib-1.2.11-33.amzn2023.0.6.aarch64                                           
+#9 23.51 
+#9 23.51 Complete!
+#9 23.65 Last metadata expiration check: 0:00:19 ago on Wed Sep 23 22:22:05 2026.
+#9 23.72 Dependencies resolved.
+#9 23.74 Nothing to do.
+#9 23.74 Complete!
+#9 23.86 9 files removed
+#9 23.88 alternatives-1.15-2.amzn2023.0.2.aarch64
+#9 23.88 amazon-linux-repo-cdn-2023.12.20260918-0.amzn2023.noarch
+#9 23.88 basesystem-11-11.amzn2023.0.2.noarch
+#9 23.88 bzip2-libs-1.0.8-6.amzn2023.0.2.aarch64
+#9 23.88 ca-certificates-2025.2.76-1.0.amzn2023.0.3.noarch
+#9 23.88 crypto-policies-20260224-1.gitea0f072.amzn2023.0.6.noarch
+#9 23.88 expat-2.8.3-1.amzn2023.0.1.aarch64
+#9 23.88 filesystem-3.14-5.amzn2023.0.3.aarch64
+#9 23.88 gdbm-libs-1.19-2.amzn2023.0.2.aarch64
+#9 23.88 glibc-2.34-231.amzn2023.0.5.aarch64
+#9 23.88 glibc-common-2.34-231.amzn2023.0.5.aarch64
+#9 23.88 glibc-minimal-langpack-2.34-231.amzn2023.0.5.aarch64
+#9 23.88 gmp-6.2.1-2.amzn2023.0.2.aarch64
+#9 23.88 gpg-pubkey-d832c631-6515c85e
+#9 23.88 grep-3.8-1.amzn2023.0.4.aarch64
+#9 23.88 libacl-2.4.0-1.amzn2023.0.1.aarch64
+#9 23.88 libattr-2.5.1-3.amzn2023.0.2.aarch64
+#9 23.88 libcap-2.73-1.amzn2023.0.7.aarch64
+#9 23.88 libffi-3.4.4-1.amzn2023.0.1.aarch64
+#9 23.88 libgcc-14.2.1-7.amzn2023.0.2.aarch64
+#9 23.88 libselinux-3.4-5.amzn2023.0.2.aarch64
+#9 23.88 libsepol-3.4-3.amzn2023.0.3.aarch64
+#9 23.88 libstdc++-14.2.1-7.amzn2023.0.2.aarch64
+#9 23.88 libtasn1-4.19.0-1.amzn2023.0.6.aarch64
+#9 23.88 libuuid-2.37.4-1.amzn2023.0.6.aarch64
+#9 23.88 libzstd-1.5.5-1.amzn2023.0.1.aarch64
+#9 23.88 mpdecimal-2.5.1-3.amzn2023.0.3.aarch64
+#9 23.88 ncurses-base-6.6-1.amzn2023.0.1.noarch
+#9 23.88 ncurses-libs-6.6-1.amzn2023.0.1.aarch64
+#9 23.88 openssl-fips-provider-latest-3.5.8-1.amzn2023.0.1.aarch64
+#9 23.88 openssl-libs-3.5.8-1.amzn2023.0.1.aarch64
+#9 23.88 p11-kit-0.24.1-2.amzn2023.0.3.aarch64
+#9 23.88 p11-kit-trust-0.24.1-2.amzn2023.0.3.aarch64
+#9 23.88 pcre2-10.40-1.amzn2023.0.3.aarch64
+#9 23.88 pcre2-syntax-10.40-1.amzn2023.0.3.noarch
+#9 23.88 python3.14-3.14.7-1.amzn2023.0.1.aarch64
+#9 23.88 python3.14-libs-3.14.7-1.amzn2023.0.1.aarch64
+#9 23.88 python3.14-pip-wheel-26.1.1-1.amzn2023.0.3.noarch
+#9 23.88 readline-8.1-2.amzn2023.0.2.aarch64
+#9 23.88 sed-4.8-7.amzn2023.0.2.aarch64
+#9 23.88 setup-2.13.7-3.amzn2023.0.2.noarch
+#9 23.88 sqlite-libs-3.40.0-1.amzn2023.0.8.aarch64
+#9 23.88 system-release-2023.12.20260918-0.amzn2023.noarch
+#9 23.88 tzdata-2026c-1.amzn2023.0.1.noarch
+#9 23.88 xz-libs-5.2.5-9.amzn2023.0.2.aarch64
+#9 23.88 zlib-1.2.11-33.amzn2023.0.6.aarch64
+#9 DONE 23.9s
+
+#14 [builder 7/9] RUN --mount=type=cache,target=/root/.cache/uv     --mount=type=bind,source=uv.lock,target=uv.lock     --mount=type=bind,source=pyproject.toml,target=pyproject.toml     uv sync --locked --no-install-project --no-dev
+#14 0.108 Using CPython 3.14.7 interpreter at: /usr/bin/python3.14
+#14 0.108 Creating virtual environment at: .venv
+#14 0.111 Resolved 66 packages in 0.63ms
+#14 0.591 Downloading openai (2.0MiB)
+#14 0.592 Downloading cryptography (4.5MiB)
+#14 0.593 Downloading pydantic-core (1.9MiB)
+#14 ...
+
+#15 [stage-2 1/5] COPY --from=rootfs /rootfs /
+#15 DONE 0.2s
+
+#16 [stage-2 2/5] RUN ["/usr/bin/python3.14", "-c", "import sys; assert sys.version_info[:2] == (3, 14), sys.version"]
+#16 DONE 0.2s
+
+#14 [builder 7/9] RUN --mount=type=cache,target=/root/.cache/uv     --mount=type=bind,source=uv.lock,target=uv.lock     --mount=type=bind,source=pyproject.toml,target=pyproject.toml     uv sync --locked --no-install-project --no-dev
+#14 3.355  Downloaded pydantic-core
+#14 3.393  Downloaded openai
+#14 3.614  Downloaded cryptography
+#14 3.614 Prepared 53 packages in 3.50s
+#14 3.780 Installed 53 packages in 166ms
+#14 4.017 Bytecode compiled 3420 files in 236ms
+#14 4.017  + a2a-sdk==1.1.4
+#14 4.017  + annotated-types==0.8.0
+#14 4.017  + anyio==4.15.1
+#14 4.017  + asgiref==3.12.1
+#14 4.017  + certifi==2026.7.22
+#14 4.017  + cffi==2.1.1
+#14 4.017  + charset-normalizer==3.5.1
+#14 4.017  + click==8.5.0
+#14 4.018  + cryptography==50.0.1
+#14 4.018  + google-api-core==2.38.0
+#14 4.018  + google-auth==2.58.0
+#14 4.018  + googleapis-common-protos==1.75.3
+#14 4.018  + h11==0.16.0
+#14 4.018  + httpcore==1.0.9
+#14 4.018  + httpcore2==2.13.0
+#14 4.018  + httpx==0.28.1
+#14 4.018  + httpx2==2.13.0
+#14 4.018  + idna==3.20
+#14 4.018  + jiter==0.17.0
+#14 4.018  + json-rpc==1.15.0
+#14 4.018  + openai==3.16.2
+#14 4.018  + opentelemetry-api==1.44.0
+#14 4.018  + opentelemetry-distro==0.65b0
+#14 4.018  + opentelemetry-exporter-otlp-proto-common==1.44.0
+#14 4.018  + opentelemetry-exporter-otlp-proto-http==1.44.0
+#14 4.018  + opentelemetry-instrumentation==0.65b0
+#14 4.018  + opentelemetry-instrumentation-asgi==0.65b0
+#14 4.018  + opentelemetry-instrumentation-httpx==0.65b0
+#14 4.018  + opentelemetry-instrumentation-openai-v2==2.4b0
+#14 4.018  + opentelemetry-instrumentation-starlette==0.65b0
+#14 4.018  + opentelemetry-proto==1.44.0
+#14 4.018  + opentelemetry-sdk==1.44.0
+#14 4.018  + opentelemetry-semantic-conventions==0.65b0
+#14 4.018  + opentelemetry-util-genai==1.1b0
+#14 4.018  + opentelemetry-util-http==0.65b0
+#14 4.018  + packaging==26.3
+#14 4.018  + proto-plus==1.28.4
+#14 4.018  + protobuf==6.33.6
+#14 4.018  + pyasn1==0.6.4
+#14 4.018  + pyasn1-modules==0.4.2
+#14 4.018  + pycparser==3.0
+#14 4.018  + pydantic==2.13.5
+#14 4.018  + pydantic-core==2.46.5
+#14 4.018  + requests==2.34.2
+#14 4.018  + sniffio==1.3.1
+#14 4.018  + sse-starlette==3.4.11
+#14 4.018  + starlette==1.6.0
+#14 4.018  + truststore==0.10.4
+#14 4.018  + typing-extensions==4.16.0
+#14 4.018  + typing-inspection==0.4.4
+#14 4.018  + urllib3==2.8.0
+#14 4.018  + uvicorn==0.53.0
+#14 4.018  + wrapt==2.4.1
+#14 DONE 4.1s
+
+#17 [builder 8/9] COPY . /app
+#17 DONE 0.0s
+
+#18 [builder 9/9] RUN --mount=type=cache,target=/root/.cache/uv     uv sync --locked --no-dev --no-editable
+#18 0.083 Resolved 66 packages in 0.44ms
+#18 0.140 Bytecode compiled 3420 files in 55ms
+#18 DONE 0.2s
+
+#19 [stage-2 3/5] COPY --from=builder /app/.venv /app/.venv
+#19 DONE 0.4s
+
+#20 [stage-2 4/5] COPY orchestrator /app/orchestrator
+#20 DONE 0.0s
+
+#21 [stage-2 5/5] WORKDIR /app
+#21 DONE 0.0s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 1.6s done
+#22 exporting manifest sha256:2b91632708258f0f643cbce2a7862d4fb36204bbb0e77fc5f71e465c620cd763 done
+#22 exporting config sha256:812b77d447233c87ca7bde31f745b7d4eb0a8bf71ee437464e82b296227a10eb done
+#22 exporting attestation manifest sha256:25c798b5f451389235aaa2089beb3f57342ce1fdb27c76e57b6126c2288dfac4 done
+#22 exporting manifest list sha256:343367d870c689c071d458d454981ab2a430b4f1e86b0c7739535a99b117e534 done
+#22 naming to docker.io/library/orchestrator:dev done
+#22 unpacking to docker.io/library/orchestrator:dev
+#22 unpacking to docker.io/library/orchestrator:dev 1.0s done
+#22 DONE 2.7s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/844dtmhbgsvu2403smd6nzc1l
+kind load docker-image orchestrator:dev --name agent-mesh-lab
+Image: "orchestrator:dev" with ID "sha256:343367d870c689c071d458d454981ab2a430b4f1e86b0c7739535a99b117e534" not yet present on node "agent-mesh-lab-worker", loading...
+Image: "orchestrator:dev" with ID "sha256:343367d870c689c071d458d454981ab2a430b4f1e86b0c7739535a99b117e534" not yet present on node "agent-mesh-lab-control-plane", loading...
+# The ingress proxy's namespace, agentgateway-ingress, is created by the overlay with
+# the ambient label the ingress page asks for, so the hop from the gateway pod to the
+# backend pod is HBONE like every other hop in the mesh and the proxy pod is captured
+# from its creation. Until follow-ups 12 the ingress ran in agentgateway-system and
+# this target labelled that namespace here.
+kubectl kustomize deploy/step-2b-agw-ingress-egress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/24 01:22:34 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+2026/09/24 01:22:34 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+2026/09/24 01:22:35 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:22:35 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm for linux/arm64/v8
+2026/09/24 01:22:35 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:22:35 Building github.com/AhmadMasry/agent-mesh-lab/agents/worker for linux/arm64/v8
+2026/09/24 01:22:35 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:22:36 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:22:51 Loaded kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:22:51 Adding tag latest
+2026/09/24 01:22:51 Added tag latest
+2026/09/24 01:22:51 Loaded kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:22:51 Adding tag latest
+2026/09/24 01:22:51 Added tag latest
+namespace/agentgateway-ingress created
+namespace/agentgateway-waypoint unchanged
+namespace/lab unchanged
+service/mockllm unchanged
+service/orchestrator unchanged
+service/worker unchanged
+deployment.apps/mockllm unchanged
+deployment.apps/orchestrator configured
+deployment.apps/worker configured
+agentgatewaybackend.agentgateway.dev/mockllm created
+agentgatewayparameters.agentgateway.dev/agentgateway-ingress-params created
+agentgatewayparameters.agentgateway.dev/agw-central-params unchanged
+gateway.gateway.networking.k8s.io/agentgateway-ingress created
+gateway.gateway.networking.k8s.io/agw-central unchanged
+httproute.gateway.networking.k8s.io/model-via-agw created
+httproute.gateway.networking.k8s.io/orchestrator-ingress created
+httproute.gateway.networking.k8s.io/worker configured
+serviceentry.networking.istio.io/model-external created
+peerauthentication.security.istio.io/agentgateway-ingress-metrics created
+peerauthentication.security.istio.io/default unchanged
+kubectl -n agentgateway-ingress wait --for=condition=Programmed gateway/agentgateway-ingress --timeout=180s
+gateway.gateway.networking.k8s.io/agentgateway-ingress condition met
+# The model route on the central proxy: Accepted, by the wait agentgateway's egress
+# page uses for its own route. If the controller wrote no such status for the route,
+# this wait runs out and the target fails, instead of the step ending with a route
+# that nothing serves.
+kubectl -n agentgateway-waypoint wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/model-via-agw --timeout=180s
+httproute.gateway.networking.k8s.io/model-via-agw condition met
+# ko rebuilds the Go images, so the mock can rotate on this apply too.
+kubectl -n lab rollout status deployment/mockllm --timeout=120s
+deployment "mockllm" successfully rolled out
+kubectl -n lab rollout status deployment/worker --timeout=180s
+Waiting for deployment "worker" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "worker" rollout to finish: 1 old replicas are pending termination...
+deployment "worker" successfully rolled out
+kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+deployment "orchestrator" successfully rolled out
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=5027b5b33ef8817be4cf197f2c70d530bf0685f3
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+## make step-2b  finished 2026-09-23T22:22:55Z  epoch 1790202175.123  exit=0  wall=56.694s
+
+## git status --short (whole checkout) before make step-2c -> (empty)
+## git status --short (deployed paths)  before make step-2c -> (empty)
+## make step-2c  started 2026-09-23T22:22:55Z  epoch 1790202175.373
+kubectl kustomize deploy/step-2c-gate2 | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/24 01:22:56 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+2026/09/24 01:22:56 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+2026/09/24 01:22:57 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:22:57 Building github.com/AhmadMasry/agent-mesh-lab/agents/worker for linux/arm64/v8
+2026/09/24 01:22:57 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:22:57 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm for linux/arm64/v8
+2026/09/24 01:22:58 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:22:58 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:23:13 Loaded kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:23:13 Adding tag latest
+2026/09/24 01:23:13 Added tag latest
+2026/09/24 01:23:13 Loaded kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:23:13 Adding tag latest
+2026/09/24 01:23:13 Added tag latest
+namespace/agentgateway-ingress unchanged
+namespace/agentgateway-waypoint unchanged
+namespace/lab unchanged
+service/mockllm unchanged
+service/orchestrator configured
+service/worker unchanged
+deployment.apps/mockllm unchanged
+deployment.apps/orchestrator configured
+deployment.apps/worker configured
+agentgatewaybackend.agentgateway.dev/mockllm unchanged
+agentgatewayparameters.agentgateway.dev/agentgateway-ingress-params unchanged
+agentgatewayparameters.agentgateway.dev/agw-central-params unchanged
+gateway.gateway.networking.k8s.io/agentgateway-ingress unchanged
+gateway.gateway.networking.k8s.io/agw-central unchanged
+httproute.gateway.networking.k8s.io/model-via-agw configured
+httproute.gateway.networking.k8s.io/orchestrator created
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker configured
+httproute.gateway.networking.k8s.io/worker-ingress created
+serviceentry.networking.istio.io/model-external unchanged
+peerauthentication.security.istio.io/agentgateway-ingress-metrics unchanged
+peerauthentication.security.istio.io/default unchanged
+# No proxy is created by this overlay, so there is no Gateway or rollout to wait for.
+# What it adds to the central proxy is one route, waited for the way step-2b waits
+# for the model route: Accepted by agentgateway's controller, or the target fails.
+kubectl -n lab wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/orchestrator --timeout=180s
+httproute.gateway.networking.k8s.io/orchestrator condition met
+kubectl -n lab rollout status deployment/worker --timeout=180s
+deployment "worker" successfully rolled out
+kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+deployment "orchestrator" successfully rolled out
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=5027b5b33ef8817be4cf197f2c70d530bf0685f3
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+## make step-2c  finished 2026-09-23T22:23:14Z  epoch 1790202194.354  exit=0  wall=18.981s
+
+## git status --short (whole checkout) before make step-3 -> (empty)
+## git status --short (deployed paths)  before make step-3 -> (empty)
+## make step-3  started 2026-09-23T22:23:14Z  epoch 1790202194.592
+helm: /opt/homebrew/bin/helm
+== certificate check ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           723f8bc7fc4ab0a53769da9a8cc5e4f5     2026-09-30T22:22:53Z     2026-09-23T22:20:53Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           f21776fe0ddb26d00e2a918cf88fe47a     2036-09-20T22:20:46Z     2026-09-23T22:20:46Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           f71d7069ce323323bd9f6d31092bf326     2026-09-30T22:21:51Z     2026-09-23T22:19:51Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           f21776fe0ddb26d00e2a918cf88fe47a     2036-09-20T22:20:46Z     2026-09-23T22:20:46Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted
+# The telemetry components, by Helm (see the HELM comment at the top of this file):
+# each of the three from its project's chart, pinned above, with its values file in
+# deploy/step-3-stress. The namespace is created by the configuration overlay, which
+# is applied first so `--create-namespace` is not needed and the namespace's own
+# labels are the overlay's.
+step-3: telemetry via Helm (/opt/homebrew/bin/helm); collector chart 0.173.1, jaeger chart 4.13.1, prometheus chart 29.31.1
+kubectl kustomize deploy/step-3-stress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/24 01:23:15 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+2026/09/24 01:23:15 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+2026/09/24 01:23:16 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:23:16 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm for linux/arm64/v8
+2026/09/24 01:23:16 git doesn't contain any tags. Tag info will not be available
+2026/09/24 01:23:16 Building github.com/AhmadMasry/agent-mesh-lab/agents/worker for linux/arm64/v8
+2026/09/24 01:23:17 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:23:17 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:23:32 Loaded kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:421467e76f72399155bec5cc6c885acb64af79d9b39e7bb4e35d0b141273ac7f
+2026/09/24 01:23:32 Adding tag latest
+2026/09/24 01:23:32 Added tag latest
+2026/09/24 01:23:32 Loaded kind.local/worker-918a018b7a581926ead34dec2ba0fb83:b5110bae41fc4f2325fcef509aa499af0c5cb3c8bb5088b125c2db647ba4f95e
+2026/09/24 01:23:32 Adding tag latest
+2026/09/24 01:23:32 Added tag latest
+namespace/agentgateway-ingress unchanged
+namespace/agentgateway-waypoint unchanged
+namespace/lab unchanged
+namespace/telemetry created
+service/mockllm unchanged
+service/orchestrator unchanged
+service/worker unchanged
+deployment.apps/mockllm configured
+deployment.apps/orchestrator configured
+deployment.apps/worker configured
+agentgatewaybackend.agentgateway.dev/mockllm unchanged
+agentgatewayparameters.agentgateway.dev/agentgateway-ingress-params unchanged
+agentgatewayparameters.agentgateway.dev/agw-central-params unchanged
+agentgatewaypolicy.agentgateway.dev/access-logs created
+agentgatewaypolicy.agentgateway.dev/tracing created
+agentgatewaypolicy.agentgateway.dev/access-logs created
+agentgatewaypolicy.agentgateway.dev/tracing created
+gateway.gateway.networking.k8s.io/agentgateway-ingress unchanged
+gateway.gateway.networking.k8s.io/agw-central unchanged
+httproute.gateway.networking.k8s.io/model-via-agw configured
+httproute.gateway.networking.k8s.io/orchestrator configured
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+serviceentry.networking.istio.io/model-external unchanged
+peerauthentication.security.istio.io/agentgateway-ingress-metrics unchanged
+peerauthentication.security.istio.io/default unchanged
+helm upgrade -i otel-collector opentelemetry-collector --repo https://open-telemetry.github.io/opentelemetry-helm-charts \
+		--version 0.173.1 -n telemetry \
+		-f deploy/step-3-stress/otel-collector-values.yaml --wait
+Release "otel-collector" does not exist. Installing it now.
+NAME: otel-collector
+LAST DEPLOYED: Thu Sep 24 01:23:36 2026
+NAMESPACE: telemetry
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+[WARNING] No resource limits or requests were set. Consider setting resource requests and limits for your collector(s) via the `resources` field.
+
+[WARNING] "useGOMEMLIMIT" is enabled but memory limits have not been supplied so the GOMEMLIMIT env var could not be added. Solve this problem by setting resources.limits.memory or disabling useGOMEMLIMIT
+
+[DEPRECATION] Exporter 'otlp' has been renamed to 'otlp_grpc'. Your config has been automatically rewritten for this release. Please update your values.yaml — auto-rewrite will be removed in a future release. See UPGRADING.md.
+[DEPRECATION] Pipeline 'traces' references renamed exporter 'otlp'. It has been automatically rewritten to 'otlp_grpc' for this release. Please update your values.yaml — auto-rewrite will be removed in a future release. See UPGRADING.md.
+helm upgrade -i jaeger jaeger --repo https://jaegertracing.github.io/helm-charts \
+		--version 4.13.1 -n telemetry \
+		-f deploy/step-3-stress/jaeger-values.yaml --wait
+Release "jaeger" does not exist. Installing it now.
+NAME: jaeger
+LAST DEPLOYED: Thu Sep 24 01:23:52 2026
+NAMESPACE: telemetry
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+###################################################################
+### ⚠️  EXPERIMENTAL - NO STABILITY GUARANTEES                  ###
+###                                                             ###
+### This chart is under active development.                     ###
+### Breaking changes may occur in minor versions.               ###
+###                                                             ###
+### See README.md for configuration details.                    ###
+###################################################################
+
+🚀 Congratulations on successfully installing Jaeger v2.20.0 (Chart v4.13.1)!
+
+To access the query UI:
+  export POD_NAME=$(kubectl get pods --namespace telemetry -l "app.kubernetes.io/instance=jaeger,app.kubernetes.io/component=all-in-one" -o jsonpath="{.items[0].metadata.name}")
+  kubectl port-forward --namespace telemetry $POD_NAME 16686:16686 --address 0.0.0.0 &
+  Visit http://127.0.0.1:16686/
+helm upgrade -i prometheus prometheus --repo https://prometheus-community.github.io/helm-charts \
+		--version 29.31.1 -n telemetry \
+		-f deploy/step-3-stress/prometheus-values.yaml --wait
+Release "prometheus" does not exist. Installing it now.
+NAME: prometheus
+LAST DEPLOYED: Thu Sep 24 01:24:15 2026
+NAMESPACE: telemetry
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+The Prometheus server can be accessed via port 9090 on the following DNS name from within your cluster:
+prometheus.telemetry.svc.cluster.local
+
+
+Get the Prometheus server URL by running these commands in the same shell:
+  export POD_NAME=$(kubectl get pods --namespace telemetry -l "app.kubernetes.io/name=prometheus,app.kubernetes.io/instance=prometheus" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace telemetry port-forward $POD_NAME 9090
+#################################################################################
+######   WARNING: Persistence is disabled!!! You will lose your data when   #####
+######            the Server pod is terminated.                             #####
+#################################################################################
+
+
+
+
+
+For more information on running Prometheus, visit:
+https://prometheus.io/
+kubectl -n telemetry rollout status deployment/otel-collector --timeout=180s
+deployment "otel-collector" successfully rolled out
+kubectl -n telemetry rollout status deployment/jaeger --timeout=180s
+deployment "jaeger" successfully rolled out
+kubectl -n telemetry rollout status deployment/prometheus --timeout=180s
+deployment "prometheus" successfully rolled out
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=5027b5b33ef8817be4cf197f2c70d530bf0685f3
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+
+trace backend query Service: jaeger.telemetry.svc.cluster.local:16686 (its own UI and API; nothing else is installed)
+read it from this host with: kubectl -n telemetry port-forward svc/jaeger 16686:16686  then open http://127.0.0.1:16686
+## make step-3  finished 2026-09-23T22:25:00Z  epoch 1790202300.488  exit=0  wall=105.896s
+
+## git status --short (whole checkout) after make step-3 -> (empty)
+# build finished 2026-09-23T22:25:00Z (epoch 1790202300.624); from the first line of this log 385.871 s

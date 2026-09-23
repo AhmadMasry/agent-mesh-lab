@@ -1,0 +1,84 @@
+Experiment C, step C-10 -- the application layer: REFUSE_OPERATION=SubscribeToTask on both agents. What each file is.
+Every stamp is UTC from date -u; the local date of the run is 2026-09-24, the UTC date 2026-09-23.
+
+THE CODE (commits on branch experiment-c10, cited by subject)
+  feat(worker): REFUSE_OPERATION, a call interceptor that refuses one operation before the SDK's handler runs, off by default
+  feat(orchestrator): REFUSE_OPERATION, the request handler refuses one operation before the SDK's handler runs, off by default
+  feat(deploy): both agent Deployments carry REFUSE_OPERATION, rendered empty on every step
+  code-proof/render-proof.sh, render-summary.txt   the render proof: every kustomization under deploy/ and the three Job
+               templates, at the parent of the deploy commit and at its tree; 17 renders, 6 differ by exactly the two
+               REFUSE_OPERATION lines in each agent Deployment, 11 byte-identical, 0 placeholders left
+  code-proof/run-go-mutants.py, go-mutants.txt     14 of 14 killed, the unmutated copy G00 passing (SURVIVED is its
+               expected verdict: it is the control). <REPO> stands for the checkout; set it to run the file.
+  code-proof/run-py-mutants.py, py-mutants.txt     18 of 18 killed, P00 the control passing
+  The error chosen: UnsupportedOperationError, -32004. The A2A specification at 3303592 (docs/specification.md, fetched
+  2026-09-23T21:52:02Z, 155498 bytes, sha256 627ccfe6ffb1be2c56811c3dcc18780deb419f41cdc98248095c939b2d9dc9cb) l.558
+  defines it, l.1185 maps it to -32004, l.574 requires it for SubscribeToTask from an agent without streaming; the
+  authorization category, l.511-515, names no JSON-RPC code ("JSON-RPC custom error").
+
+THE REBUILD
+  tools.txt            the lab-scoped istioctl 1.31.0 re-verified against the release's published SHA-256, and a fresh
+                       empty Helm scope, both under TMPDIR/c10; the host's istioctl (1.31.1) and Helm untouched
+  rebuild.sh           the driver: C-5's attempt-1/rebuild.sh adapted (the header says in what); teardown, cluster-kind,
+                       step-1, step-2, step-2b, step-2c, step-3, make targets only, no manual step
+  build.txt            its log; the header compares every deployed path with the tree C-5 built: deploy and agents
+                       CHANGED (the three code commits), Makefile, fixtures, internal, experiments/lib, go.mod, go.sum,
+                       .ko.yaml, kind-config.yaml and all 11 experiments/*.sh the same
+  timings.csv, rebuild-driver.txt   every target exit 0; no wait timed out
+
+THE STANDARD PROOF
+  proof.sh             C-5's proof.sh adapted (LASTPROOF = C-5's directory); runs the last proof's checks.sh (part1, then
+                       knobs last), versions-readback.sh and standard-counts-vs-rebuild-2.py, unedited, from the records
+                       that hold them
+  checks-driver.txt    its log, every step exit 0
+  standard-counts-vs-last-proof.txt   61 rows same, 6 DIFFERS, each explained:
+    - "no healthy upstream" 13 here, 15 in C-5 (and so "other ztunnel error lines" is 16 against 17 in part): every one
+      of the 13 is to 10.96.180.62:4318, the collector's Service, 22:23:38Z-22:23:50Z, before the collector pod was
+      Ready (created 22:23:36Z, Ready 22:23:51Z; collector-start.txt). C-5 explained its own the same way.
+    - the plaintext probe's first connection, to the worker at 22:28:08.162Z, was refused by
+      istio-system/istio_converted_static_strict exactly as in C-5 (curl exit 56 at both receivers, 2 policy-rejection
+      lines, both naming that policy), but ztunnel's line for it carries no src.workload, where the probe to the
+      orchestrator 55 ms later names mtls-probe (strict/plaintext-probe-ztunnel.txt). That one line is the other five
+      DIFFERS: the ztunnel leg reads source unknown instead of mtls-probe (legs by every column 23 | 24), the named
+      leg "plaintext probe -> worker" reads no-series, "attributed to src.workload=mtls-probe" 1 | 2, and the line is
+      counted once more among "other ztunnel error lines" (16 | 17 with the collector lines) and as their
+      "policy rejection" (1 | 0). The refusal itself is the same. Why ztunnel did not name the probe pod is not
+      established here; that it had not yet learned the new pod's workload is a reading, not a measurement.
+    The cluster-facts lines that differ are instance values: Service addresses, pod names, certificate serials.
+  NOT COMMITTED: checks.sh's two byte copies of itself (checks-as-run/), sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00
+  both, the committed file's own hash; they carry the checkout's absolute path and stay in a scratch directory, as
+  B-3, B-4 and C-5 did.
+  versions-readback.txt   the Versions line of the entry; equal to C-5's line for line but for its stamps
+
+THE ROW
+  c10.sh               the row driver: readings, the setting in by kubectl set env on both Deployments (rollouts waited
+                       for), the sends, and the EXIT trap that restores it empty and reads again
+  row-driver.txt       its output
+  setting.txt          both set env calls and rollout statuses, in and out
+  readings-before.txt, readings-set.txt, readings-restored.txt   each under its command and stamp: the lab's pods with
+                       uid, restarts, IP and start; the proxies' pod IPs; the setting on each Deployment and in each
+                       running pod's spec; the ReplicaSets; the worker's own start line, which names the value it read
+  c10r/<work item>/    one send each, by C-6's sends.sh run from C-6's run directory unedited (sha256 in phases.txt):
+                       the rendered Job or the curl request, the client lines, the ingress proxy's and agw-central's
+                       access lines in the send's window, and its three ledgers by make ledgers
+  c10p/<work item>/    the two pads, by C-8's c8.sh probe run from C-8's run directory unedited: go pad (top-level x_pad),
+                       py padt (params.tenant), 2 200 000 bytes each; the body is not kept, its head, tail, length and hash are
+  image.txt            the load client image the Jobs ran (ko build at the built tree)
+  counts.py            the counts, from this directory alone; counts.csv one row per send, counts.txt the tally
+  after/, after-driver.txt   the committed gate2-single-clean.sh after the restore: 1/1/1/1/1 TASK_STATE_COMPLETED at both
+  phases.txt           every step with its stamp
+  sleep-events.csv     host power events of four kinds over the task's own window, 21:52:02Z (its first fetch) to
+                       22:40:11Z: 0
+  own-keepawake-lines.txt   counts of keep-awake patterns in this directory's own files
+
+WHERE THE REMOTE ADDRESS POINTS
+  10.244.1.16 is agentgateway-ingress-5f6566b686-wzvwp (readings-set.txt and readings-restored.txt); agw-central is 10.244.1.13.
+
+THE CALL CONTEXT, READ FROM SOURCE AT THE PINNED VERSIONS (not measured)
+  a2a-go v2.5.0 (the module cache the worker is built from): a2asrv/jsonrpc.go l.50 builds the call context from
+  NewServiceParams(req.Header); a2asrv/middleware.go l.36-40 sets User{Authenticated: false}; l.47-49 User "can be set
+  by authentication middleware". a2a-python 1.1.4 (the orchestrator's locked environment): server/routes/common.py
+  l.64-104, the default builder puts request.headers into state['headers'] and the user from request.user when
+  Starlette set it, else UnauthenticatedUser. agents/ has 0 matches for AuthenticationMiddleware, CallContextFrom,
+  ServiceParams or context_builder outside tests. So the only route by which a caller identity could reach either
+  application is a request header; which headers the proxies forward to the receivers was not captured in this step.

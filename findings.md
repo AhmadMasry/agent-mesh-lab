@@ -2284,3 +2284,113 @@ place, and its `summary.csv` and `counts.txt` still reproduce byte-identically f
   - Its Status line records the security policy: SECURITY.md at v1.5.0 names a GitHub private vulnerability report and says to report privately when unsure (l.5, l.8-9), and lists "A dangerous but documented default or behavior." and "A user's CEL expression producing unintended behavior, including failing to compile or evaluate as the author expected." among what is generally a bug (l.46-47). It also notes that the website's vulnerabilities page at v1.5.0 still names kgateway's channel.
   - The search, issues and pull requests (upstream-search.txt): related and not this case, #2615 and #2678 (merged, in v1.5.0), #2677 (merged, in v1.5.0, "docs: recommend against Deny policies"), #3523 (open, the same fail-open shape for rate limiting), #3610 (open, A2A guardrails). 4 published security advisories, none on point. main is 259 commits past v1.5.0 with the request.body text and the Deny comment unchanged; no fix found.
   - No draft for the batch (each SDK refused it) or for the naive Require's refusal of the card GET (as documented: a Require that is false denies).
+
+## Experiment C / both receivers / C-10, the application refuses the operation — with REFUSE_OPERATION=SubscribeToTask in each SDK, where does each ledger line sit relative to the refusal, what does each client see, and does the application hold where C-8's Deny did not?
+
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.4 openai-python=3.16.2 (read back from the rebuilt cluster, versions-readback.txt, equal to C-5's but for its stamps; a2a-go and a2a-spec are read at the built tree, from go.mod and versions.yaml)
+- Environment: kind
+- Method: C's enforcement half (the author's notes of 2026-09-20 and 2026-09-23) at the last layer the note of 2026-09-20 names, the application, which knows the operation because the SDK has decoded it.
+  - **The code**, three commits before this record, cited by subject:
+    - "feat(worker): REFUSE_OPERATION, a call interceptor that refuses one operation before the SDK's handler runs, off by default"
+    - "feat(orchestrator): REFUSE_OPERATION, the request handler refuses one operation before the SDK's handler runs, off by default"
+    - "feat(deploy): both agent Deployments carry REFUSE_OPERATION, rendered empty on every step"
+  - **The setting.** One setting, REFUSE_OPERATION, the same on both agents. Empty is off. It accepts SendMessage, SendStreamingMessage or SubscribeToTask; any other value stops the process at start.
+  - **Go.** a2asrv.WithCallInterceptors on a2asrv.NewHandler; Before returns an error, and "the actual handler will not be called" (a2a-go v2.5.0 a2asrv/middleware.go l.93-99).
+  - **Python.** a2a-python has no server-side interceptor. The check is the first statement inside the try of each of LedgerRequestHandler's three wrappers, after the execution ledger's "received" line and before the SDK's DefaultRequestHandler method is called.
+  - **The error.** UnsupportedOperationError, -32004, from the A2A specification at 3303592 (l.558, l.1185, fetched this task, sha256 627ccfe6ffb1be2c). It is the one A2A error with a JSON-RPC code of its own that both SDKs map alike, and the specification already requires it for SubscribeToTask from an agent without streaming (l.574). The authorization category (l.511-515) names no JSON-RPC code. The message reads "this operation is not supported: SubscribeToTask is refused by this agent (REFUSE_OPERATION)".
+  - **The code's own proof.**
+    - Tests: go test ./... in 7 packages, and -race on the worker; pytest 137.
+    - Mutants, each on a copy of the tree with an unmutated control passing: 14 of 14 killed in Go and 18 of 18 in Python. One Go mutant (main never passing the setting on) first survived. A test sending a SubscribeToTask to the started process was added, and it was then killed.
+    - Render proof, 17 renders: the 6 kustomizations that hold the agents differ by exactly "- name: REFUSE_OPERATION" / "value: """ in each agent Deployment; the 8 retry route sets and the 3 Job templates are byte-identical (code-proof/).
+  - **The rebuild.** From a deleted cluster at the tree of the deploy commit, make targets only, no manual step.
+    - Driver: C-5's attempt-1 rebuild.sh adapted.
+    - Tools: a lab-scoped istioctl 1.31.0 re-verified against the release's published SHA-256, and an empty Helm scope; nothing on the host changed (tools.txt).
+    - Tree: against the tree C-5 built, deploy and agents changed, and every other deployed path and all 11 experiments/*.sh are the same (build.txt).
+  - **The standard proof.** The last record's checks.sh, unedited (part one, then the retry knobs last), its versions-readback.sh, and the comparison program against C-5's directory.
+  - **The row**, on B-4's ingress paths, by C-6's sends.sh and C-8's c8.sh run unedited from their own run directories:
+    - Paths: the Go receiver by the load client with TARGET_URL the ingress Service, CLIENT_DIAL=target, CLIENT_HOST=worker.lab.internal (route lab/worker-ingress); the Python receiver by the load client with TARGET_URL the orchestrator's Service, whose card sends the POST to the ingress (route lab/orchestrator-ingress). The orchestrator stays in forward mode.
+    - The setting: REFUSE_OPERATION=SubscribeToTask on both Deployments together by kubectl set env, 22:29:33Z to 22:37:13Z, both rollouts waited for; restored empty by the driver's EXIT trap (c10.sh, setting.txt).
+    - Sends, per receiver, 10 rounds of four kinds: load-client SendMessage; load-client SubscribeToTask naming no task (a refusal happens before dispatch and needs none); load-client SendStreamingMessage; a curl SubscribeToTask with curl's own headers.
+    - Pads: ONE SubscribeToTask of 2 200 000 bytes per receiver, of the shapes C-8 sent. They are bodies built afresh by C-8's c8.sh, not C-8's bytes. For Go, a top-level x_pad member. For Python, the pad in params.tenant, by the controller's ruling: a2a-python refuses a top-level extra member on its own validation (C-8), which would test the validation, not this refusal.
+    - Per send: its three ledgers by make ledgers, its client lines, and both proxies' access lines in its own window.
+    - Readings before, set and restored: the agents' pod uids, restarts and IPs, the proxies' pod IPs, the setting on each Deployment and in each pod's spec, and the worker's own start line naming the value it read.
+    - After the restore: the committed gate2-single-clean.sh.
+  - **Counts** by counts.py from the run directory alone; no figure is taken from an access-line timestamp.
+  - **Rules.** A2A-Version 1.0 on every stimulus. One send per Job or curl, every curl --retry 0, nothing re-sent. No retry logic.
+  - **Keep-awake.** This task started no keep-awake and changed no power setting, and keep-awake is not claimed absent: the host recorded 0 Sleep, 0 Wake, 0 DarkWake and 0 Maintenance events between 21:52:02Z, the task's first fetch, and 22:40:11Z (sleep-events.csv).
+- Result: run outputs under experiments/runs/2026-09-24-c10-application/ (counts.txt, counts.csv, reading-notes.txt).
+  - **The rebuild** (timings.csv), every exit 0, no wait timed out:
+
+    | target | wall |
+    |---|---|
+    | teardown | 1.797 s |
+    | cluster-kind | 19.861 s |
+    | step-1 | 56.299 s |
+    | step-2 | 123.279 s |
+    | step-2b | 56.694 s |
+    | step-2c | 18.981 s |
+    | step-3 | 105.896 s |
+
+  - **The standard proof** beside C-5's: 61 rows same, 6 DIFFERS (standard-counts-vs-last-proof.txt), from two causes.
+    - Collector start. "no healthy upstream" reads 13 here against 15. All 13 lines are to 4318, the collector's Service, 22:23:38Z-22:23:50Z, before the collector pod was Ready at 22:23:51Z (collector-start.txt), as C-5 explained its own.
+    - The row "other ztunnel error lines, all", 16 here against 17, is the net of both causes: 2 fewer collector lines, and 1 more line, the probe line described next.
+    - One ztunnel line, the other five DIFFERS. The plaintext probe's first connection, to the worker, was refused by istio_converted_static_strict as in C-5, but ztunnel's line for it names no src.workload, where the probe to the orchestrator 55 ms later names mtls-probe. That one line moves the ztunnel leg from mtls-probe to unknown, "plaintext probe -> worker" to no-series, the attributed count from 2 to 1, and "other policy rejection" from 0 to 1; policy-rejection lines total 2 on both sides, and both probes were refused.
+    - Held as in C-5: the clean check 1/1/1/1/1 TASK_STATE_COMPLETED at both receivers; 0 dangling parents; the GenAI summary equal; Prometheus 7 of 7; 24 legs with 14 mutual_tls; the plaintext probe refused (curl exit 56) at both receivers; the retry knobs 1>0>2>0>1>0>0, ending at 0. Both proxies' config dumps were taken (checks-driver.txt, exit 0) and are not a compared row.
+  - **The setting's rollout** (readings-*.txt):
+    - Each Deployment moved from generation 5 to 6 and back to 7 with REFUSE_OPERATION empty.
+    - The worker's start line read REFUSE_OPERATION="SubscribeToTask" in the window and "" after it.
+    - Pod uids changed at both rollouts, as a template change does; the restore returned to the original pod-template hashes. Restarts were 0 at every reading.
+  - **Go receiver**, 10 of each kind (counts.txt):
+
+    | send | client's record | proxy | ingress ledger | execution ledger | invocations |
+    |---|---|---|---|---|---|
+    | SendMessage | TASK_STATE_COMPLETED | 200 | 1 arrival | received, execute, COMPLETED | 1 |
+    | load-client SubscribeToTask | end line: http 200, text/event-stream, wire error -32004 with the refusal message, 0 events, stream_end=error, the SDK's error the refusal text | 200 | 1 arrival, method SubscribeToTask; response 200/stream_end=complete | received:SubscribeToTask, then result carrying the refusal with stream_end=error; 0 execute | 0 |
+    | SendStreamingMessage | 4 events, eof | 200 | 1 arrival | 1 execute | 1 |
+    | curl SubscribeToTask | 200 text/event-stream, data: error -32004 | 200 | as the load client's | as the load client's | 0 |
+
+  - **Python receiver**, 10 of each kind:
+
+    | send | client's record | proxy | ingress ledger | execution ledger | invocations |
+    |---|---|---|---|---|---|
+    | SendMessage | TASK_STATE_COMPLETED | 200 | 1 arrival | 2 executes: the orchestrator's, and the worker's for the forwarded SendMessage | 1 |
+    | load-client SubscribeToTask | see below | 200 | 1 arrival; response 200 with no stream_end, which this ledger writes only for a text/event-stream answer | received, then result carrying the refusal with stream_end=error; 0 execute | 0 |
+    | SendStreamingMessage | 4 events, eof | 200 | 1 arrival | 2 executes | 1 |
+    | curl SubscribeToTask | 200 application/json, error -32004 with the refusal message | 200 | as the load client's | as the load client's | 0 |
+
+  - **The Python load-client SubscribeToTask**, the same 10 requests read at the client:
+    - The client's wire observer (the bytes of the answer as the SDK read them): http 200, content type application/json, error -32004 with the refusal message.
+    - The SDK: 0 events, stream_end=eof, error "".
+    - The Job ended Failed with exit 3, from the load client's own end check, not from anything the SDK raised. That check exits 0 only when the stream ended at eof with a terminal event seen, no error and no wire error (fixtures/loadgen/stream.go, streamOnce). Here two of its conditions failed on all 10: terminal_seen was false, and the wire observer read -32004.
+  - **The pads**, 2 200 000 bytes, one per receiver:
+    - Go, top-level x_pad: proxy 200; 1 arrival, body_len 2200000, method SubscribeToTask; received and result with the refusal; 0 execute, 0 invocations; curl read SSE error -32004.
+    - Python, params.tenant: the same shape, and curl read application/json error -32004.
+  - **Totals.** 42 SubscribeToTask sends refused, 21 per receiver: 42 of 42 arrived at the ingress ledger, 42 of 42 have a received and a result line carrying the refusal, 0 executes, 0 invocations, and the proxy's access line reads 200 on 42 of 42. The 40 sends not refused were served: 40 of 40 have an execute line on the receiver asked, and 40 of 40 have 1 invocation.
+  - **Caller identity.** On all 82 arrivals the ingress ledger's remote is 10.244.1.16, the agentgateway-ingress pod, and 0 of 82 arrival lines carry an identity, principal, user, caller, auth or certificate key.
+  - **After the restore**: both Deployments and pods read REFUSE_OPERATION empty; 4 AgentgatewayPolicies (the deployed ones), 0 AuthorizationPolicy, 0 retry stanzas; the clean check 1/1/1/1/1 TASK_STATE_COMPLETED at both receivers (after/summary.csv).
+- Interpretation: under this configuration the application holds the rule on both receivers, including past the buffer limit.
+  - **The rule and the pads.** Each SDK refused SubscribeToTask and served SendMessage and SendStreamingMessage on one endpoint: 42 of 42 refusals, 40 of 40 served. Two 2 200 000-byte bodies of the shapes that passed C-8's Deny and were dispatched by both SDKs there were refused here: the application reads the operation after the body is decoded. The pads were one per receiver, of one size, and only in the two shapes C-8 sent.
+  - **Where each ledger line sits.**
+    - The ingress ledger is in front of the refusal: every refused request arrived there, 42 of 42, with its method.
+    - The execution ledger straddles it: its "received" line is written before the refusal, and its "result" line carries the refusal. That is where both implementations put it: in Go the execution ledger wraps the SDK's intercepted handler, and in Python the check is inside the ledger's wrapper.
+    - The executor and the model are behind it: 0 execute lines and 0 invocations.
+    - The proxy sees none of it: it forwarded all 42 and wrote 200, because the refusal is a JSON-RPC error inside an HTTP 200. At this layer, the application's record is the only record of the refusal.
+  - **What each client saw.** It differs by receiver, from how each SDK sends a refused streamed operation.
+    - Go: a2a-go answers inside text/event-stream, and the a2a-go client surfaced the refusal as an error, 10 of 10.
+    - Python: a2a-python reads a streamed operation's first event before choosing the response (jsonrpc_dispatcher.py l.377-380), so a refusal raised before any event leaves as an application/json body. The a2a-go client read that as an empty stream: no event and no error, 10 of 10, while its own wire observer read -32004 in the same bytes.
+    - This is the behaviour of docs/upstream/a2a-go-client-reads-a-json-answer-to-a-streaming-method-as-an-empty-stream.md (B-6's draft), reproduced on a new path: an application-level refusal, and not only a terminal-task answer.
+    - A caller using the a2a-go client against the Python receiver cannot tell this refusal from a task that emitted nothing, unless it reads the wire. curl, which reads the body, saw the error 10 of 10 at both receivers.
+  - **Caller identity** (the preparation's §4 question 6).
+    - Counted: nothing in the ingress ledger carries a caller identity, and its remote is the proxy's address, not the caller's.
+    - Read from source at the pinned versions, not measured: a2a-go builds its call context with User{Authenticated: false} and the request headers as ServiceParams (a2asrv/jsonrpc.go l.50, middleware.go l.36-40). a2a-python's default builder uses UnauthenticatedUser unless Starlette set a user, and keeps the request headers (server/routes/common.py l.64-104). The lab installs no authentication middleware.
+    - So a caller identity can reach the application only as a request header. Which headers the proxies forward was not captured in this step, so whether one arrives is not established. With every workload on the one default ServiceAccount (C-7), no header could tell the lab's callers apart in any case.
+  - **Not covered by C-10**:
+    - operations other than the three the setting accepts;
+    - a refusal of SendMessage or SendStreamingMessage on the cluster (the tests cover them; the row refused SubscribeToTask only);
+    - a2a-python as a client;
+    - the agent card's security schemes and any authentication middleware;
+    - the headers as they arrive at the receivers;
+    - the REST and gRPC bindings;
+    - the Services marked A2A;
+    - the sample sizes: 10 sends per kind per receiver and one pad per receiver.
+- Follow-up: none new. The client-side reading is the a2a-go behaviour already drafted in docs/upstream/a2a-go-client-reads-a-json-answer-to-a-streaming-method-as-an-empty-stream.md; this entry is a second path that reproduces it, for the author to cite if the draft is filed.

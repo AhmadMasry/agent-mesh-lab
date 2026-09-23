@@ -1,0 +1,55 @@
+
+# read 2026-09-23T22:29:32Z
+$ kubectl -n lab get pods -o custom-columns=NAME:.metadata.name,UID:.metadata.uid,RESTARTS:.status.containerStatuses[0].restartCount,IP:.status.podIP,READY:.status.containerStatuses[0].ready,START:.status.startTime --sort-by=.metadata.name
+NAME                                      UID                                    RESTARTS   IP            READY   START
+loadgen-a3t-fu3ct-r1-orchestrator-6l44x   86351b20-1d03-4eee-9caa-4a4cbaa05e12   0          10.244.1.28   false   2026-09-23T22:26:56Z
+loadgen-a3t-fu3ct-r1-worker-vt2hr         127bef4c-c0e0-44c4-be96-72826fee84b7   0          10.244.1.27   false   2026-09-23T22:26:25Z
+loadgen-a3t-fu3ct-r2-orchestrator-j7q7t   9faa0d65-14a3-4f95-91b4-61a870614ffa   0          10.244.1.30   false   2026-09-23T22:27:54Z
+loadgen-a3t-fu3ct-r2-worker-2mxhg         80af7a6a-d768-4748-b9d4-ed6a1f4480b1   0          10.244.1.29   false   2026-09-23T22:27:25Z
+loadgen-g2c-fu3cc-orchestrator-kx86s      cf56d288-d2bc-4835-bb55-a05008e7ca30   0          10.244.1.25   false   2026-09-23T22:26:02Z
+loadgen-g2c-fu3cc-worker-g8s2j            40d8671b-84fe-45f7-b789-1da3cd689555   0          10.244.1.24   false   2026-09-23T22:25:40Z
+mockllm-697c6bc776-xbhbk                  b66a4567-01b9-4b46-a01d-dd1bc9e6fb2f   0          10.244.1.17   true    2026-09-23T22:23:33Z
+orchestrator-5fb76977c6-q82r7             6f64655d-643c-4bde-b792-4b1de9d62402   0          10.244.1.18   true    2026-09-23T22:23:33Z
+worker-798c9bf655-v6trw                   2d43173c-e63c-4825-a680-074fc7ffe2be   0          10.244.1.19   true    2026-09-23T22:23:33Z
+# exit 0
+
+# read 2026-09-23T22:29:32Z
+$ kubectl -n agentgateway-ingress get pods -o wide --no-headers | awk '{print $1, $6}'
+agentgateway-ingress-5f6566b686-wzvwp 10.244.1.16
+# exit 0
+
+# read 2026-09-23T22:29:32Z
+$ kubectl -n agentgateway-waypoint get pods -o wide --no-headers | awk '{print $1, $6}'
+agw-central-5b4476b87f-65x7g 10.244.1.13
+# exit 0
+
+# read 2026-09-23T22:29:32Z
+$ for d in worker orchestrator; do printf '%s deployment REFUSE_OPERATION=[%s] generation=%s\n' $d "$(kubectl -n lab get deploy $d -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="REFUSE_OPERATION")].value}')" "$(kubectl -n lab get deploy $d -o jsonpath='{.metadata.generation}')"; done
+worker deployment REFUSE_OPERATION=[] generation=5
+orchestrator deployment REFUSE_OPERATION=[] generation=5
+# exit 0
+
+# read 2026-09-23T22:29:32Z
+$ for p in $(kubectl -n lab get pods -l 'app in (worker,orchestrator)' -o name); do printf '%s pod REFUSE_OPERATION=[%s] uid=%s restarts=%s\n' $p "$(kubectl -n lab get $p -o jsonpath='{.spec.containers[0].env[?(@.name=="REFUSE_OPERATION")].value}')" "$(kubectl -n lab get $p -o jsonpath='{.metadata.uid}')" "$(kubectl -n lab get $p -o jsonpath='{.status.containerStatuses[0].restartCount}')"; done
+pod/orchestrator-5fb76977c6-q82r7 pod REFUSE_OPERATION=[] uid=6f64655d-643c-4bde-b792-4b1de9d62402 restarts=0
+pod/worker-798c9bf655-v6trw pod REFUSE_OPERATION=[] uid=2d43173c-e63c-4825-a680-074fc7ffe2be restarts=0
+# exit 0
+
+# read 2026-09-23T22:29:32Z
+$ kubectl -n lab get rs -l 'app in (worker,orchestrator)' -o custom-columns=NAME:.metadata.name,DESIRED:.spec.replicas,READY:.status.readyReplicas,REVISION:.metadata.annotations.deployment\.kubernetes\.io/revision
+NAME                      DESIRED   READY    REVISION
+orchestrator-5854947b85   0         <none>   <none>
+orchestrator-5fb76977c6   1         1        <none>
+orchestrator-64d9ff659f   0         <none>   <none>
+orchestrator-6b4fb857fd   0         <none>   <none>
+orchestrator-96cf88c66    0         <none>   <none>
+worker-785958dc4f         0         <none>   <none>
+worker-798c9bf655         1         1        <none>
+worker-7d57564749         0         <none>   <none>
+worker-7f69d9b5c9         0         <none>   <none>
+# exit 0
+
+# read 2026-09-23T22:29:33Z
+$ kubectl -n lab logs deploy/worker | grep 'listening on'
+2026/09/23 22:23:33 worker "worker" listening on :8080; card at /.well-known/agent-card.json; model http://model.lab.internal:8080/v1 (timeout 1m0s, MODEL_RETRIES=0, REFUSE_OPERATION="")
+# exit 0
