@@ -1,0 +1,65 @@
+Experiment C, step C-7 -- reading notes. What each file in this directory is, what produced it, and what differs from
+what was planned. Stamps UTC from date -u. The findings entry that cites this directory is "Experiment C / both
+receivers / C-7, agentgateway's authorization on headers and on identity". The cluster is the one C-5 rebuilt and
+proved (experiments/runs/2026-09-23-c5-istio-policy-agw-central/), with C-5's policy and C-6's routes removed and a
+clean check after each.
+
+c7.sh        applies and removes the two overlays, reads every layer, and sends part 2's probes.
+readings-<label>.txt   before, header-applied, header-removed, identity-applied, identity-removed: every
+             AgentgatewayPolicy with its authorization flag and ancestor conditions, AuthorizationPolicies, retry stanzas,
+             agentgateway's controller log, both proxies' non-request log lines, and both proxies' /config_dump
+             (config-dump-<proxy>-<label>.json) with each policy they hold.
+apply-*.txt, remove-*.txt   the applies and deletes.
+
+PART 1, HEADERS (overlay-c7-header/, c7h/)
+  overlay-c7-header/policies.yaml  two AgentgatewayPolicies, one per ingress route, traffic.authorization Deny on
+             request.headers['accept'] == 'text/event-stream', and in its header why a Deny.
+  c7h/       the sends, by C-6's sends.sh run from experiments/runs/2026-09-23-c6-httproute/ with RUNREL set to this
+             directory, and the load client image C-6 resolved (its image.txt): per receiver 3 each of SendMessage,
+             SubscribeToTask, SendStreamingMessage (load client) and 3 SubscribeToTask by curl with curl's own headers.
+  counts.py -> counts.csv (part 1), identity-counts.csv (part 2), counts.txt   reads only this directory; the part-1
+             table is C-6's program with its glob, its refusal status and its docstring changed.
+
+PART 2, IDENTITY (overlay-c7-identity/, identity/)
+  overlay-c7-identity/policies.yaml  one AgentgatewayPolicy per route a caller path crosses (the two ingress routes and
+             agw-central's lab/worker and lab/orchestrator), each a Deny that can match only a request carrying
+             x-c7-probe: identity AND whose CEL source.identity.serviceAccount is default. A reading of the value, not a
+             rule that refuses callers: no other request can match.
+  identity-in-force-clean/   the committed gate2-single-clean.sh with the four policies in force, BEFORE the probes:
+             1/1/1/1/1 on both receivers -- the lab's own traffic through both proxies was not refused.
+  identity/  one SendMessage probe per directory, 3 per caller path: ingress-go and ingress-py (a curl pod in lab to the
+             ingress Service, the worker's host and the ingress's own host), agw-go and agw-py (a curl pod in lab to the
+             worker and orchestrator Services, which cross agw-central), pf-go (this host through kubectl port-forward
+             to the ingress, the worker's host).
+    Differs from plan, cosmetic: for a refused probe make ledgers finds no line and exits 2 (make's status for its
+    recipe's exit 1, "no ledger lines of any kind"), writes no ledger file, and c7.sh's summary line then printed
+    wc errors on stderr and empty counts; the refusal and the absence of ledgers are what counts.py reads.
+  after/     the committed gate2-single-clean.sh after the removal: 1/1/1/1/1 on both receivers.
+
+OTHER
+  sources.txt  the documents this step cites, rows of the task's fetch log (all rows are in C-5's sources.txt).
+  sleep-events.csv  0 Sleep, Wake, DarkWake or Maintenance events 18:52:47Z-18:59:46Z.
+  own-keepawake-lines.txt  only the counter's own header.
+
+LINE ENDINGS
+  The curl sends' response.txt, curl-stderr.txt and request-headers-as-sent.txt hold HTTP header lines, CRLF on the wire;
+  this checkout's core.autocrlf is input, so the committed files end them in LF. No count reads a carriage return.
+
+THE CLUSTER LEFT: at step 3, nothing applied -- 0 AuthorizationPolicy, the four deployed AgentgatewayPolicies only
+  (access logs and tracing on each Gateway, none with authorization), 2 policies in each proxy's dump, 0 retry stanzas,
+  no curl pod. The finished Job pods of this task's sends remain, as every earlier run's have.
+
+REVIEW ROUND (2026-09-23)
+  The two identity readings agree on all 15 probes: the proxy's own access line (src.identity, which the access log
+  writes only when the downstream connection has one, telemetry/log.rs at v1.5.0 l.1504-1512) and the probe rule's
+  outcome. On the ingress, 9 of 9 lines carry no src.identity and the rule fired 0 of 9 times, with the rule present
+  in the ingress's own dump at phase route (config-dump-ingress-identity-applied.json); on agw-central, 6 of 6 lines
+  carry spiffe://cluster.local/ns/lab/sa/default and the rule fired 6 of 6 times.
+  The entry was corrected in four places: it states what was counted for identity (a Deny, 6 of 6 fired on agw-central,
+  0 of 9 on the ingress) and gives Allow and Require only as what the documents imply, labelled so; it scopes the
+  ztunnel explanation to the two in-cluster paths (the port-forward path comes from 127.0.0.1 and never crosses
+  ztunnel); it says the ztunnel identity row is the load client's, read in C-5's proof, and that the curl pod's
+  connections were not read at ztunnel; and it cites json() where it is documented, schema/cel-functions.md at v1.5.0
+  l.20 (fetched in the review round, row added to sources.txt), since cel.md documents request.body (l.14) but not json().
+  counts.py now writes its CSVs with LF line ends, as C-6's does; re-run from the committed files, counts.csv,
+  identity-counts.csv and counts.txt are byte-identical to the committed ones.
