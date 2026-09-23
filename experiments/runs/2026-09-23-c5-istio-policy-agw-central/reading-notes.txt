@@ -1,0 +1,83 @@
+Experiment C, step C-5 -- reading notes. What each file in this directory is, what produced it, and what differs from
+what was planned. Stamps UTC from date -u. The findings entry that cites this directory is "Experiment C /
+agw-central / C-5, Istio's AuthorizationPolicy with targetRefs naming agw-central".
+
+THE REBUILD (make targets only, from a deleted cluster, ONE re-invocation of make step-2, no manual step)
+  attempt-1/   rebuild.sh (the driver, adapted from B-4's), build.txt, timings.csv, rebuild-driver.txt. It ran
+               teardown 1.338 s, cluster-kind 18.981 s, step-1 535.072 s, and stopped at make step-2 (exit 2, 578.027 s)
+               when the Makefile's "kubectl -n agentgateway-waypoint rollout status deployment/agw-central
+               --timeout=180s" timed out: the agw-central pod was ContainerCreating, its one kubelet event "Pulling image
+               cr.agentgateway.dev/agentgateway:v1.5.0". Nothing was repaired. Reported to the controller, who ruled a
+               resume on the standing cluster rather than a second attempt from teardown (a teardown throws away the
+               image being pulled), after a read-only wait for the pull.
+  pull-wait.txt  the read-only wait (kubectl get pods and events only, limit 20 min): the kubelet event "Successfully
+               pulled image cr.agentgateway.dev/agentgateway:v1.5.0 in 6m40.973s (6m40.973s including waiting). Image
+               size: 39070952 bytes." at 18:22:32Z; the pod Running from 18:22:32Z; no error event.
+  resume.sh    the same driver, changed only in one header paragraph, its log names, the header lines that say so, and
+               the target list (step-2 once, then step-2b, step-2c, step-3). Before it ran, the Makefile's step-2 recipe
+               was read and every command in it is re-runnable: helm upgrade -i (the Makefile chose -i so a re-run is not
+               an error), kubectl apply --server-side, ko apply, rollout restart, the waits, annotate --overwrite; its
+               guards only read; its orchestrator-image prerequisite (docker build --pull --no-cache, kind load) is also a
+               prerequisite of step-1 and step-2b, so every build runs it three times.
+  build-resume.txt, timings-resume.csv, resume-driver.txt   step-2 186.042 s, step-2b 118.383 s, step-2c 18.678 s,
+               step-3 107.159 s, every exit 0, done 18:30:17Z.
+  helm-releases.txt  the six step-2 releases read revision 2 (installed by attempt 1, upgraded once by the resume), the
+               three step-3 releases revision 1.
+  The day's network, as a reading: step-1 took 535.072 s here against 66.463 s in B-4 (its two builds pull images);
+               the agentgateway image pull took 6m40.973s for 39070952 bytes.
+  The built tree: 511fb145 (tree bcbbdf14), whose deployed subtrees and top-level experiments/*.sh blobs equal those of
+               6bf9e00f, the tree B-4 rebuilt (the header of build-resume.txt lists each, "same" on every line).
+  tools.txt    the lab-scoped istioctl 1.31.0, re-verified in this task against the SHA-256 the release publishes, and
+               the fresh empty Helm scope under the task's scratch path. The host's istioctl (1.31.1) and Helm unchanged.
+
+THE STANDARD PROOF (proof.sh: the last record's checks.sh part1 and knobs, versions-readback.sh, and the comparison
+program, all unedited, against B-4's directory)
+  checks-driver.txt, checks.txt and the directories the proof writes (clean-check/, trace/, strict/, proxies/,
+  cluster/, images/, retry-knobs/, worker-span/, ingress-shape/), prometheus-targets.txt, versions-readback.txt,
+  standard-counts-vs-last-proof.txt: 64 rows same, 3 DIFFERS, each read below.
+  - the Prometheus scrape leg's connection count, 16 here, 24 in B-4: one connection per 15 s scrape since the
+    Prometheus container started (18:29:46Z, prometheus-start.txt); the leg was read 18:33:36Z-18:34:11Z, 230-265 s
+    later, 15.3-17.7 scrapes. B-4's 24 was read 357 s after its start.
+  - ztunnel's other error lines, 17 here and 20 in B-4, and of them "no healthy upstream", 15 and 18: every one of
+    those lines on both sides is to port 4318, the OTLP collector's Service (10.96.187.87 here), in the seconds after
+    the collector pod was created and before it was ready: here 18:28:55Z-18:29:08Z, the pod created 18:28:54Z and
+    Ready at 18:29:09Z (collector-start.txt, read in the review round on the same cluster, the pod not restarted).
+    The other 2 lines are the same on both sides; policy rejection 0 and 0.
+  The cluster-facts lines that differ are instance values: Service addresses, pod names, certificate serials.
+  NOT COMMITTED: checks.sh's two byte copies of itself (checks-as-run/), sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00
+  both, the committed file's own hash; they carry the checkout's absolute path and stay in a scratch directory, as
+  B-3 and B-4 did.
+
+C-5 (c5.sh, overlay-c5/)
+  overlay-c5/policy.yaml  the one policy, and in its header why this rule: DENY on a header only the probe carries.
+  readings-before.txt, readings-applied.txt (6 s after the apply), readings-p1-after.txt (58 s after), readings-removed.txt
+               each reading under its command and stamp: the policy object and status, ztunnel's policies on both nodes,
+               istiod's and agentgateway's controller logs since the apply, agw-central's non-request log lines, and
+               agw-central's /config_dump (config-dump-agw-central-<label>.json).
+  config-dump-compare.txt  the policies array's hash in each of the four dumps (equal in all four) and the keys of every
+               changed line against the "before" dump: the curl pod's workload entry (10.244.1.35, created after the
+               "before" dump) and endpoint request counters, nothing else.
+  apply.txt, removal.txt   the apply and delete.
+  p0/, p1/     one directory per probe: request.json, the headers as curl sent them, the response with its headers,
+               the client line, and the three ledgers by make ledgers.
+  agw-central-access.txt   agw-central's access lines 18:35:55Z onward, each probe found by its trace id.
+  counts.sh -> counts.csv, counts.txt   reads only this directory.
+  after/       the committed gate2-single-clean.sh after the removal (RUN_ID=c5after): 1/1/1/1/1 on both receivers.
+  sources.txt  every document this task fetched, with its read stamp, status, size and hash (C-6 and C-7 cite rows of it
+               too); upstream-search.txt the searches, each with the rate-limit reading taken before it and the API's
+               total_count.
+  sleep-events.csv, own-keepawake-lines.txt   the host's Sleep, Wake, DarkWake and Maintenance events in this task's window
+               (0 of each), and the count of lines in this directory that would start a keep-awake (only the counter's
+               own header).
+
+LINE ENDINGS
+  response.txt, curl-stderr.txt and request-headers-as-sent.txt under p0/ and p1/ hold HTTP header lines, which end in
+  CRLF on the wire; this checkout's core.autocrlf is input, so the committed files end those lines in LF. No count
+  reads a carriage return, and counts.sh reproduces counts.csv from the committed files.
+
+REVIEW ROUND (2026-09-23)
+  The probes that carried x-c5-probe: deny while the policy was in force number 12, 6 per receiver (3 SendMessage and
+  3 SubscribeToTask each), and 12 of 12 were delivered. The first write-up gave the per-receiver figure, 6, as the
+  total, in the entry and in the commit subject; the slip began in this task's own first reading of the counts (its
+  progress line of 18:39:04Z, "6 with header under policy"), not in the raw files, which counts.csv reads as 12.
+  The entry and the subject were corrected before any push. collector-start.txt was added then as well.

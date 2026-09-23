@@ -1,0 +1,435 @@
+
+# read 2026-09-23T18:35:53Z
+$ kubectl get authorizationpolicy -A -o yaml
+apiVersion: v1
+items: []
+kind: List
+metadata:
+  resourceVersion: ""
+# exit 0
+
+# read 2026-09-23T18:35:53Z
+$ kubectl get authorizationpolicy -A --no-headers | wc -l
+No resources found
+       0
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json
+[
+    {
+        "name": "converted_peer_authentication_agentgateway-ingress-metrics",
+        "namespace": "agentgateway-ingress",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notDestinationPorts": [
+                            15020
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    },
+    {
+        "name": "istio_converted_static_strict",
+        "namespace": "istio-system",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    }
+]
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-control-plane -o json
+[
+    {
+        "name": "converted_peer_authentication_agentgateway-ingress-metrics",
+        "namespace": "agentgateway-ingress",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notDestinationPorts": [
+                            15020
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    },
+    {
+        "name": "istio_converted_static_strict",
+        "namespace": "istio-system",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    }
+]
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ kubectl -n istio-system logs deploy/istiod --since-time=2026-09-23T18:30:17Z
+2026-09-23T18:30:38.014303Z	info	ads	Push debounce stable[46] 1 for config Address//Kubernetes//Pod/lab/gate2-curl: 101.05125ms since last change, 101.051209ms since last push, forced=false
+2026-09-23T18:30:38.014370Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:30:38Z/46
+2026-09-23T18:30:38.014435Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:185B
+2026-09-23T18:30:38.014443Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:185B
+2026-09-23T18:30:57.214733Z	info	ads	Push debounce stable[47] 1 for config Address//Kubernetes//Pod/lab/loadgen-g2c-fu3cc-worker-xrsjb: 102.338875ms since last change, 102.338792ms since last push, forced=false
+2026-09-23T18:30:57.214801Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:30:57Z/47
+2026-09-23T18:30:57.214860Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:236B
+2026-09-23T18:30:57.214866Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:236B
+2026-09-23T18:30:58.082878Z	info	ads	Push debounce stable[48] 1 for config Address//Kubernetes//Pod/lab/loadgen-g2c-fu3cc-worker-xrsjb: 100.939917ms since last change, 100.93975ms since last push, forced=false
+2026-09-23T18:30:58.083137Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:30:58Z/48
+2026-09-23T18:30:58.083329Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:239B
+2026-09-23T18:30:58.083330Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:239B
+2026-09-23T18:30:59.049038Z	info	status	object is removed, no action needed	key=Kubernetes//Pod/lab/loadgen-g2c-fu3cc-worker-xrsjb
+2026-09-23T18:30:59.151792Z	info	ads	Push debounce stable[49] 1 for config Address//Kubernetes//Pod/lab/loadgen-g2c-fu3cc-worker-xrsjb: 102.685833ms since last change, 102.685792ms since last push, forced=false
+2026-09-23T18:30:59.151872Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:30:59Z/49
+2026-09-23T18:30:59.151974Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:30:59.151973Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:31:25.695706Z	info	ads	Push debounce stable[50] 1 for config Address//Kubernetes//Pod/lab/loadgen-g2c-fu3cc-orchestrator-nz5md: 100.22375ms since last change, 100.223625ms since last push, forced=false
+2026-09-23T18:31:25.695807Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:31:25Z/50
+2026-09-23T18:31:25.695871Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:254B
+2026-09-23T18:31:25.695882Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:254B
+2026-09-23T18:31:26.194324Z	info	ads	Push debounce stable[51] 1 for config Address//Kubernetes//Pod/lab/loadgen-g2c-fu3cc-orchestrator-nz5md: 100.896542ms since last change, 100.896375ms since last push, forced=false
+2026-09-23T18:31:26.194444Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:31:26Z/51
+2026-09-23T18:31:26.194590Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:257B
+2026-09-23T18:31:26.194638Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:257B
+2026-09-23T18:31:27.172355Z	info	status	object is removed, no action needed	key=Kubernetes//Pod/lab/loadgen-g2c-fu3cc-orchestrator-nz5md
+2026-09-23T18:31:27.272686Z	info	ads	Push debounce stable[52] 1 for config Address//Kubernetes//Pod/lab/loadgen-g2c-fu3cc-orchestrator-nz5md: 100.277375ms since last change, 100.277333ms since last push, forced=false
+2026-09-23T18:31:27.272782Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:31:27Z/52
+2026-09-23T18:31:27.272864Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:31:27.272863Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:31:29.869227Z	info	ads	Push debounce stable[53] 1 for config Address//Kubernetes//Pod/lab/gate2-curl: 101.055375ms since last change, 101.055291ms since last push, forced=false
+2026-09-23T18:31:29.869311Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:31:29Z/53
+2026-09-23T18:31:29.869370Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:188B
+2026-09-23T18:31:29.869439Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:188B
+2026-09-23T18:31:30.851759Z	info	ads	Push debounce stable[54] 1 for config Address//Kubernetes//Pod/lab/a3t-curl: 100.238459ms since last change, 100.238459ms since last push, forced=false
+2026-09-23T18:31:30.851858Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:31:30Z/54
+2026-09-23T18:31:30.851922Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:177B
+2026-09-23T18:31:30.851936Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:177B
+2026-09-23T18:31:48.092955Z	info	ads	Push debounce stable[55] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r1-worker-hrzks: 100.63825ms since last change, 100.638042ms since last push, forced=false
+2026-09-23T18:31:48.093049Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:31:48Z/55
+2026-09-23T18:31:48.093120Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:245B
+2026-09-23T18:31:48.093121Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:245B
+2026-09-23T18:31:49.296378Z	info	ads	Push debounce stable[56] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r1-worker-hrzks: 100.816041ms since last change, 100.816ms since last push, forced=false
+2026-09-23T18:31:49.296633Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:31:49Z/56
+2026-09-23T18:31:49.296875Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:248B
+2026-09-23T18:31:49.296893Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:248B
+2026-09-23T18:31:50.252462Z	info	status	object is removed, no action needed	key=Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r1-worker-hrzks
+2026-09-23T18:31:50.354778Z	info	ads	Push debounce stable[57] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r1-worker-hrzks: 102.191542ms since last change, 102.191501ms since last push, forced=false
+2026-09-23T18:31:50.354950Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:31:50Z/57
+2026-09-23T18:31:50.355104Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:31:50.355105Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:31:59.865994Z	info	status	object is removed, no action needed	key=Kubernetes//Pod/lab/gate2-curl
+2026-09-23T18:31:59.967117Z	info	ads	Push debounce stable[58] 1 for config Address//Kubernetes//Pod/lab/gate2-curl: 101.05075ms since last change, 101.050666ms since last push, forced=false
+2026-09-23T18:31:59.967248Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:31:59Z/58
+2026-09-23T18:31:59.967395Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:31:59.967395Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:32:17.781555Z	info	ads	Push debounce stable[59] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r1-orchestrator-hp5r4: 100.891209ms since last change, 100.891167ms since last push, forced=false
+2026-09-23T18:32:17.781620Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:32:17Z/59
+2026-09-23T18:32:17.781675Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:263B
+2026-09-23T18:32:17.781676Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:263B
+2026-09-23T18:32:18.409828Z	info	ads	Push debounce stable[60] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r1-orchestrator-hp5r4: 105.966542ms since last change, 105.966417ms since last push, forced=false
+2026-09-23T18:32:18.409950Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:32:18Z/60
+2026-09-23T18:32:18.410039Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:266B
+2026-09-23T18:32:18.410055Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:266B
+2026-09-23T18:32:19.372043Z	info	status	object is removed, no action needed	key=Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r1-orchestrator-hp5r4
+2026-09-23T18:32:19.473176Z	info	ads	Push debounce stable[61] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r1-orchestrator-hp5r4: 101.121542ms since last change, 101.121458ms since last push, forced=false
+2026-09-23T18:32:19.473282Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:32:19Z/61
+2026-09-23T18:32:19.473379Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:32:19.473379Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:32:49.995882Z	info	ads	Push debounce stable[62] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r2-worker-5vk28: 101.393166ms since last change, 101.393083ms since last push, forced=false
+2026-09-23T18:32:49.995950Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:32:49Z/62
+2026-09-23T18:32:49.996010Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:245B
+2026-09-23T18:32:49.996034Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:245B
+2026-09-23T18:32:50.516291Z	info	ads	Push debounce stable[63] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r2-worker-5vk28: 101.082292ms since last change, 101.082167ms since last push, forced=false
+2026-09-23T18:32:50.516418Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:32:50Z/63
+2026-09-23T18:32:50.516519Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:248B
+2026-09-23T18:32:50.516558Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:248B
+2026-09-23T18:32:51.485023Z	info	status	object is removed, no action needed	key=Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r2-worker-5vk28
+2026-09-23T18:32:51.585886Z	info	ads	Push debounce stable[64] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r2-worker-5vk28: 100.784834ms since last change, 100.784625ms since last push, forced=false
+2026-09-23T18:32:51.585982Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:32:51Z/64
+2026-09-23T18:32:51.586066Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:32:51.586066Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:33:19.404230Z	info	ads	Push debounce stable[65] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r2-orchestrator-bd8zv: 100.695166ms since last change, 100.695125ms since last push, forced=false
+2026-09-23T18:33:19.404305Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:33:19Z/65
+2026-09-23T18:33:19.404369Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:263B
+2026-09-23T18:33:19.404369Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:263B
+2026-09-23T18:33:20.639877Z	info	ads	Push debounce stable[66] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r2-orchestrator-bd8zv: 101.864666ms since last change, 101.864583ms since last push, forced=false
+2026-09-23T18:33:20.640002Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:33:20Z/66
+2026-09-23T18:33:20.640094Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:266B
+2026-09-23T18:33:20.640142Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:266B
+2026-09-23T18:33:21.603609Z	info	status	object is removed, no action needed	key=Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r2-orchestrator-bd8zv
+2026-09-23T18:33:21.705170Z	info	ads	Push debounce stable[67] 1 for config Address//Kubernetes//Pod/lab/loadgen-a3t-fu3ct-r2-orchestrator-bd8zv: 101.466125ms since last change, 101.466042ms since last push, forced=false
+2026-09-23T18:33:21.705237Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:33:21Z/67
+2026-09-23T18:33:21.705299Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:33:21.705321Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:33:31.677146Z	info	ads	Push debounce stable[68] 1 for config Address//Kubernetes//Pod/lab/a3t-curl: 100.201917ms since last change, 100.201833ms since last push, forced=false
+2026-09-23T18:33:31.677234Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:33:31Z/68
+2026-09-23T18:33:31.677296Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:180B
+2026-09-23T18:33:31.677297Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:180B
+2026-09-23T18:33:32.895799Z	info	ads	Push debounce stable[69] 1 for config Address//Kubernetes//Pod/default/mtls-probe: 100.093875ms since last change, 100.093834ms since last push, forced=false
+2026-09-23T18:33:32.895884Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:33:32Z/69
+2026-09-23T18:33:32.895953Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:191B
+2026-09-23T18:33:32.895960Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:191B
+2026-09-23T18:34:01.653925Z	info	status	object is removed, no action needed	key=Kubernetes//Pod/lab/a3t-curl
+2026-09-23T18:34:01.754610Z	info	ads	Push debounce stable[70] 1 for config Address//Kubernetes//Pod/lab/a3t-curl: 100.638917ms since last change, 100.638834ms since last push, forced=false
+2026-09-23T18:34:01.754713Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:34:01Z/70
+2026-09-23T18:34:01.754825Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:34:01.754848Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:34:11.826432Z	info	ads	Push debounce stable[71] 1 for config Address//Kubernetes//Pod/default/mtls-probe: 101.135959ms since last change, 101.135917ms since last push, forced=false
+2026-09-23T18:34:11.826518Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:34:11Z/71
+2026-09-23T18:34:11.826588Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:1 removed:0 size:194B
+2026-09-23T18:34:11.826604Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:1 removed:0 size:194B
+2026-09-23T18:34:41.806750Z	info	status	object is removed, no action needed	key=Kubernetes//Pod/default/mtls-probe
+2026-09-23T18:34:41.907392Z	info	ads	Push debounce stable[72] 1 for config Address//Kubernetes//Pod/default/mtls-probe: 100.5825ms since last change, 100.582292ms since last push, forced=false
+2026-09-23T18:34:41.907482Z	info	ads	XDS: Pushing Services:13 ConnectedEndpoints:2 Version:2026-09-23T18:34:41Z/72
+2026-09-23T18:34:41.907568Z	info	delta	WDS: PUSH for node:ztunnel-gf8ft.istio-system resources:0 removed:1 size:0B
+2026-09-23T18:34:41.907569Z	info	delta	WDS: PUSH for node:ztunnel-6rc7z.istio-system resources:0 removed:1 size:0B
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ kubectl -n agentgateway-system logs deploy/agentgateway --since-time=2026-09-23T18:30:17Z
+{"time":"2026-09-23T18:30:37.923326549Z","level":"info","msg":"push debounce stable","component":"krtxds","id":48,"debounced_events":1,"last_change":"10.234ms","last_push":"10.233958ms","cause":"//Pod/lab/gate2-curl"}
+{"time":"2026-09-23T18:30:37.923374132Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:30:37Z/48"}
+{"time":"2026-09-23T18:30:37.923427424Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"116B"}
+{"time":"2026-09-23T18:30:37.923427466Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"116B"}
+{"time":"2026-09-23T18:30:57.122683294Z","level":"info","msg":"push debounce stable","component":"krtxds","id":49,"debounced_events":1,"last_change":"10.232208ms","last_push":"10.232125ms","cause":"//Pod/lab/loadgen-g2c-fu3cc-worker-xrsjb"}
+{"time":"2026-09-23T18:30:57.122719085Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:30:57Z/49"}
+{"time":"2026-09-23T18:30:57.12277821Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"168B"}
+{"time":"2026-09-23T18:30:57.122779669Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"168B"}
+{"time":"2026-09-23T18:30:57.992877086Z","level":"info","msg":"push debounce stable","component":"krtxds","id":50,"debounced_events":1,"last_change":"11.168416ms","last_push":"11.168375ms","cause":"//Pod/lab/loadgen-g2c-fu3cc-worker-xrsjb"}
+{"time":"2026-09-23T18:30:57.992917669Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:30:57Z/50"}
+{"time":"2026-09-23T18:30:57.992982753Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"171B"}
+{"time":"2026-09-23T18:30:57.993016878Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"171B"}
+{"time":"2026-09-23T18:30:59.060682461Z","level":"info","msg":"push debounce stable","component":"krtxds","id":51,"debounced_events":1,"last_change":"11.757959ms","last_push":"11.757709ms","cause":"//Pod/lab/loadgen-g2c-fu3cc-worker-xrsjb"}
+{"time":"2026-09-23T18:30:59.060727461Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:30:59Z/51"}
+{"time":"2026-09-23T18:30:59.060793878Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:30:59.060793336Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:31:25.60620146Z","level":"info","msg":"push debounce stable","component":"krtxds","id":52,"debounced_events":1,"last_change":"10.441ms","last_push":"10.440833ms","cause":"//Pod/lab/loadgen-g2c-fu3cc-orchestrator-nz5md"}
+{"time":"2026-09-23T18:31:25.60625796Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:31:25Z/52"}
+{"time":"2026-09-23T18:31:25.60632021Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"186B"}
+{"time":"2026-09-23T18:31:25.606340251Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"186B"}
+{"time":"2026-09-23T18:31:26.103994168Z","level":"info","msg":"push debounce stable","component":"krtxds","id":53,"debounced_events":1,"last_change":"10.722084ms","last_push":"10.721959ms","cause":"//Pod/lab/loadgen-g2c-fu3cc-orchestrator-nz5md"}
+{"time":"2026-09-23T18:31:26.104066502Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:31:26Z/53"}
+{"time":"2026-09-23T18:31:26.104131168Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"189B"}
+{"time":"2026-09-23T18:31:26.104144752Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"189B"}
+{"time":"2026-09-23T18:31:27.182749002Z","level":"info","msg":"push debounce stable","component":"krtxds","id":54,"debounced_events":1,"last_change":"10.567375ms","last_push":"10.567333ms","cause":"//Pod/lab/loadgen-g2c-fu3cc-orchestrator-nz5md"}
+{"time":"2026-09-23T18:31:27.182782169Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:31:27Z/54"}
+{"time":"2026-09-23T18:31:27.182829169Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:31:27.182828877Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:31:29.778718545Z","level":"info","msg":"push debounce stable","component":"krtxds","id":55,"debounced_events":1,"last_change":"10.760458ms","last_push":"10.760416ms","cause":"//Pod/lab/gate2-curl"}
+{"time":"2026-09-23T18:31:29.778749587Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:31:29Z/55"}
+{"time":"2026-09-23T18:31:29.77880667Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"119B"}
+{"time":"2026-09-23T18:31:29.778826837Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"119B"}
+{"time":"2026-09-23T18:31:30.762407962Z","level":"info","msg":"push debounce stable","component":"krtxds","id":56,"debounced_events":1,"last_change":"11.079916ms","last_push":"11.079833ms","cause":"//Pod/lab/a3t-curl"}
+{"time":"2026-09-23T18:31:30.762453379Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:31:30Z/56"}
+{"time":"2026-09-23T18:31:30.762500962Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"108B"}
+{"time":"2026-09-23T18:31:30.762502712Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"108B"}
+{"time":"2026-09-23T18:31:48.002262387Z","level":"info","msg":"push debounce stable","component":"krtxds","id":57,"debounced_events":1,"last_change":"10.116ms","last_push":"10.115958ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r1-worker-hrzks"}
+{"time":"2026-09-23T18:31:48.002291054Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:31:48Z/57"}
+{"time":"2026-09-23T18:31:48.002338095Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"177B"}
+{"time":"2026-09-23T18:31:48.002338804Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"177B"}
+{"time":"2026-09-23T18:31:49.206413054Z","level":"info","msg":"push debounce stable","component":"krtxds","id":58,"debounced_events":1,"last_change":"10.944333ms","last_push":"10.944125ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r1-worker-hrzks"}
+{"time":"2026-09-23T18:31:49.206484304Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:31:49Z/58"}
+{"time":"2026-09-23T18:31:49.206583721Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"180B"}
+{"time":"2026-09-23T18:31:49.206584304Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"180B"}
+{"time":"2026-09-23T18:31:50.262844305Z","level":"info","msg":"push debounce stable","component":"krtxds","id":59,"debounced_events":1,"last_change":"10.256584ms","last_push":"10.256459ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r1-worker-hrzks"}
+{"time":"2026-09-23T18:31:50.262908138Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:31:50Z/59"}
+{"time":"2026-09-23T18:31:50.262961721Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:31:50.262962555Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:31:59.877034962Z","level":"info","msg":"push debounce stable","component":"krtxds","id":60,"debounced_events":1,"last_change":"10.803458ms","last_push":"10.803375ms","cause":"//Pod/lab/gate2-curl"}
+{"time":"2026-09-23T18:31:59.877077753Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:31:59Z/60"}
+{"time":"2026-09-23T18:31:59.877130628Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:31:59.877130087Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:32:17.69102922Z","level":"info","msg":"push debounce stable","component":"krtxds","id":61,"debounced_events":1,"last_change":"10.271833ms","last_push":"10.271791ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r1-orchestrator-hp5r4"}
+{"time":"2026-09-23T18:32:17.691068429Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:32:17Z/61"}
+{"time":"2026-09-23T18:32:17.691116179Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"195B"}
+{"time":"2026-09-23T18:32:17.691116637Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"195B"}
+{"time":"2026-09-23T18:32:18.316925137Z","level":"info","msg":"push debounce stable","component":"krtxds","id":62,"debounced_events":1,"last_change":"13.022209ms","last_push":"13.022125ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r1-orchestrator-hp5r4"}
+{"time":"2026-09-23T18:32:18.316978304Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:32:18Z/62"}
+{"time":"2026-09-23T18:32:18.317045387Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-23T18:32:18.317050679Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-23T18:32:19.382537888Z","level":"info","msg":"push debounce stable","component":"krtxds","id":63,"debounced_events":1,"last_change":"10.447709ms","last_push":"10.447625ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r1-orchestrator-hp5r4"}
+{"time":"2026-09-23T18:32:19.382573804Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:32:19Z/63"}
+{"time":"2026-09-23T18:32:19.382626929Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:32:19.382625263Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:32:49.90493918Z","level":"info","msg":"push debounce stable","component":"krtxds","id":64,"debounced_events":1,"last_change":"10.4155ms","last_push":"10.415416ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r2-worker-5vk28"}
+{"time":"2026-09-23T18:32:49.904965846Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:32:49Z/64"}
+{"time":"2026-09-23T18:32:49.905009096Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"177B"}
+{"time":"2026-09-23T18:32:49.905009763Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"177B"}
+{"time":"2026-09-23T18:32:50.426407055Z","level":"info","msg":"push debounce stable","component":"krtxds","id":65,"debounced_events":1,"last_change":"11.314125ms","last_push":"11.314ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r2-worker-5vk28"}
+{"time":"2026-09-23T18:32:50.426450555Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:32:50Z/65"}
+{"time":"2026-09-23T18:32:50.426517638Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"180B"}
+{"time":"2026-09-23T18:32:50.426530805Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"180B"}
+{"time":"2026-09-23T18:32:51.495220722Z","level":"info","msg":"push debounce stable","component":"krtxds","id":66,"debounced_events":1,"last_change":"10.259333ms","last_push":"10.259292ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r2-worker-5vk28"}
+{"time":"2026-09-23T18:32:51.49525268Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:32:51Z/66"}
+{"time":"2026-09-23T18:32:51.495306555Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:32:51.495312889Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:33:19.313849263Z","level":"info","msg":"push debounce stable","component":"krtxds","id":67,"debounced_events":1,"last_change":"10.272916ms","last_push":"10.272875ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r2-orchestrator-bd8zv"}
+{"time":"2026-09-23T18:33:19.313884513Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:33:19Z/67"}
+{"time":"2026-09-23T18:33:19.313935388Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"195B"}
+{"time":"2026-09-23T18:33:19.313936013Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"195B"}
+{"time":"2026-09-23T18:33:20.550987347Z","level":"info","msg":"push debounce stable","component":"krtxds","id":68,"debounced_events":1,"last_change":"13.093792ms","last_push":"13.093709ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r2-orchestrator-bd8zv"}
+{"time":"2026-09-23T18:33:20.55106618Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:33:20Z/68"}
+{"time":"2026-09-23T18:33:20.55113393Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-23T18:33:20.551169722Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-23T18:33:21.614330055Z","level":"info","msg":"push debounce stable","component":"krtxds","id":69,"debounced_events":1,"last_change":"10.534458ms","last_push":"10.534375ms","cause":"//Pod/lab/loadgen-a3t-fu3ct-r2-orchestrator-bd8zv"}
+{"time":"2026-09-23T18:33:21.614361222Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:33:21Z/69"}
+{"time":"2026-09-23T18:33:21.614415764Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:33:21.614433555Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:33:31.587351504Z","level":"info","msg":"push debounce stable","component":"krtxds","id":70,"debounced_events":1,"last_change":"10.44225ms","last_push":"10.442209ms","cause":"//Pod/lab/a3t-curl"}
+{"time":"2026-09-23T18:33:31.587383421Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:33:31Z/70"}
+{"time":"2026-09-23T18:33:31.587436046Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"111B"}
+{"time":"2026-09-23T18:33:31.587436796Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"111B"}
+{"time":"2026-09-23T18:33:32.806275963Z","level":"info","msg":"push debounce stable","component":"krtxds","id":71,"debounced_events":1,"last_change":"10.468959ms","last_push":"10.468875ms","cause":"//Pod/default/mtls-probe"}
+{"time":"2026-09-23T18:33:32.806303588Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:33:32Z/71"}
+{"time":"2026-09-23T18:33:32.806345088Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"122B"}
+{"time":"2026-09-23T18:33:32.806344588Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"122B"}
+{"time":"2026-09-23T18:34:01.664078546Z","level":"info","msg":"push debounce stable","component":"krtxds","id":72,"debounced_events":1,"last_change":"10.0925ms","last_push":"10.092333ms","cause":"//Pod/lab/a3t-curl"}
+{"time":"2026-09-23T18:34:01.664113963Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:01Z/72"}
+{"time":"2026-09-23T18:34:01.664163004Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:34:01.664179463Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:34:11.735491426Z","level":"info","msg":"push debounce stable","component":"krtxds","id":73,"debounced_events":1,"last_change":"10.258833ms","last_push":"10.258791ms","cause":"//Pod/default/mtls-probe"}
+{"time":"2026-09-23T18:34:11.735530759Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:11Z/73"}
+{"time":"2026-09-23T18:34:11.735579467Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"125B"}
+{"time":"2026-09-23T18:34:11.735578509Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"125B"}
+{"time":"2026-09-23T18:34:14.271751635Z","level":"info","msg":"push debounce stable","component":"krtxds","id":74,"debounced_events":1,"last_change":"10.943583ms","last_push":"10.943542ms","cause":"route/lab/worker.00.inner-http"}
+{"time":"2026-09-23T18:34:14.271783302Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:14Z/74"}
+{"time":"2026-09-23T18:34:14.271834927Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:34:14.271835594Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"201B"}
+{"time":"2026-09-23T18:34:14.547193344Z","level":"info","msg":"push debounce stable","component":"krtxds","id":75,"debounced_events":1,"last_change":"10.172084ms","last_push":"10.172042ms","cause":"route/lab/worker.00.inner-http"}
+{"time":"2026-09-23T18:34:14.547221802Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:14Z/75"}
+{"time":"2026-09-23T18:34:14.547267885Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"184B"}
+{"time":"2026-09-23T18:34:14.547269635Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:34:14.829075802Z","level":"info","msg":"push debounce stable","component":"krtxds","id":76,"debounced_events":1,"last_change":"10.192541ms","last_push":"10.192458ms","cause":"route/lab/orchestrator-ingress.00.http"}
+{"time":"2026-09-23T18:34:14.829116011Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:14Z/76"}
+{"time":"2026-09-23T18:34:14.829190594Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:34:14.829230136Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"201B"}
+{"time":"2026-09-23T18:34:14.840181344Z","level":"info","msg":"push debounce stable","component":"krtxds","id":77,"debounced_events":1,"last_change":"10.833875ms","last_push":"10.833833ms","cause":"route/lab/worker-ingress.00.http"}
+{"time":"2026-09-23T18:34:14.840210136Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:14Z/77"}
+{"time":"2026-09-23T18:34:14.840252886Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:34:14.840253886Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"204B"}
+{"time":"2026-09-23T18:34:15.138946927Z","level":"info","msg":"push debounce stable","component":"krtxds","id":78,"debounced_events":2,"last_change":"10.740542ms","last_push":"20.570125ms","cause":"route/lab/orchestrator-ingress.00.http and 1 more configs"}
+{"time":"2026-09-23T18:34:15.138978094Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:15Z/78"}
+{"time":"2026-09-23T18:34:15.139028719Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":2,"removed":0,"size":"371B"}
+{"time":"2026-09-23T18:34:15.139044136Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":2,"size":"0B"}
+{"time":"2026-09-23T18:34:15.417426302Z","level":"info","msg":"push debounce stable","component":"krtxds","id":79,"debounced_events":1,"last_change":"10.612875ms","last_push":"10.61275ms","cause":"route/agentgateway-waypoint/model-via-agw.00.inner-http"}
+{"time":"2026-09-23T18:34:15.417458136Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:15Z/79"}
+{"time":"2026-09-23T18:34:15.417504177Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:34:15.417504386Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"234B"}
+{"time":"2026-09-23T18:34:15.711212678Z","level":"info","msg":"push debounce stable","component":"krtxds","id":80,"debounced_events":1,"last_change":"10.181625ms","last_push":"10.181583ms","cause":"route/agentgateway-waypoint/model-via-agw.00.inner-http"}
+{"time":"2026-09-23T18:34:15.711241011Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:15Z/80"}
+{"time":"2026-09-23T18:34:15.711285011Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:34:15.711285261Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"215B"}
+{"time":"2026-09-23T18:34:41.817540926Z","level":"info","msg":"push debounce stable","component":"krtxds","id":81,"debounced_events":1,"last_change":"10.765209ms","last_push":"10.765167ms","cause":"//Pod/default/mtls-probe"}
+{"time":"2026-09-23T18:34:41.817574551Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:34:41Z/81"}
+{"time":"2026-09-23T18:34:41.817622342Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:34:41.817623051Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ kubectl -n agentgateway-waypoint logs deploy/agw-central --since-time=2026-09-23T18:30:17Z | grep -v 'request gateway='
+2026-09-23T18:31:55.706952Z	warn	proxy::gateway	hbone error: drain timeout	connection.id=4 src.addr=10.244.1.28:40336
+2026-09-23T18:32:18.097158Z	warn	proxy::gateway	hbone error: drain timeout	connection.id=7 src.addr=10.244.1.30:52656
+2026-09-23T18:32:47.790115Z	warn	proxy::gateway	hbone error: drain timeout	connection.id=8 src.addr=10.244.1.31:58082
+2026-09-23T18:33:49.412191Z	warn	proxy::gateway	hbone error: drain timeout	connection.id=10 src.addr=10.244.1.33:53568
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ kubectl get agentgatewaypolicy -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,TARGET:.spec.targetRefs[*].name,KEYS:.spec
+NS                      NAME          TARGET                 KEYS
+agentgateway-ingress    access-logs   agentgateway-ingress   map[frontend:map[accessLog:map[otlp:map[backendRef:map[group: kind:Service name:otel-collector namespace:telemetry port:4317] protocol:GRPC]]] targetRefs:[map[group:gateway.networking.k8s.io kind:Gateway name:agentgateway-ingress]]]
+agentgateway-ingress    tracing       agentgateway-ingress   map[frontend:map[tracing:map[backendRef:map[group: kind:Service name:otel-collector namespace:telemetry port:4317] clientSampling:true protocol:GRPC randomSampling:true]] targetRefs:[map[group:gateway.networking.k8s.io kind:Gateway name:agentgateway-ingress]]]
+agentgateway-waypoint   access-logs   agw-central            map[frontend:map[accessLog:map[otlp:map[backendRef:map[group: kind:Service name:otel-collector namespace:telemetry port:4317] protocol:GRPC]]] targetRefs:[map[group:gateway.networking.k8s.io kind:Gateway name:agw-central]]]
+agentgateway-waypoint   tracing       agw-central            map[frontend:map[tracing:map[backendRef:map[group: kind:Service name:otel-collector namespace:telemetry port:4317] clientSampling:true protocol:GRPC randomSampling:true]] targetRefs:[map[group:gateway.networking.k8s.io kind:Gateway name:agw-central]]]
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ jq -r '(.policies // []) | length as $n | "policies: \($n)", (.[] | "  key=\(.key) name=\(.name|tostring) target=\(.target|tostring|.[0:160]) kinds=\(.policy|keys|join(","))")' experiments/runs/2026-09-23-c5-istio-policy-agw-central/config-dump-agw-central-before.json
+policies: 2
+  key=frontend/agentgateway-waypoint/access-logs:frontend-logging:agentgateway-waypoint/agw-central name={"kind":"AgentgatewayPolicy","name":"access-logs","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} kinds=frontend
+  key=frontend/agentgateway-waypoint/tracing:frontend-tracing:agentgateway-waypoint/agw-central name={"kind":"AgentgatewayPolicy","name":"tracing","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} kinds=frontend
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ grep -o -i 'x-c5-probe\|c5-deny-probe-header\|AuthorizationPolicy\|authorization' experiments/runs/2026-09-23-c5-istio-policy-agw-central/config-dump-agw-central-before.json | sort | uniq -c
+# exit 0
+
+# read 2026-09-23T18:35:54Z
+$ wc -c < experiments/runs/2026-09-23-c5-istio-policy-agw-central/config-dump-agw-central-before.json; shasum -a 256 experiments/runs/2026-09-23-c5-istio-policy-agw-central/config-dump-agw-central-before.json
+   45763
+d34b8c9b843137c9349752e1911e75ededa57f23e072776093095d8cd9389f7a  experiments/runs/2026-09-23-c5-istio-policy-agw-central/config-dump-agw-central-before.json
+# exit 0
