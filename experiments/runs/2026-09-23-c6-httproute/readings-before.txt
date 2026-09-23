@@ -1,0 +1,92 @@
+
+# read 2026-09-23T18:44:05Z
+$ kubectl get httproute -A -o json | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name) hostnames=\(.spec.hostnames // [] | join(",")) rules=\([.spec.rules[] | {matches: (.matches // []), backends: ([.backendRefs[]?.name])}] | tostring) status=\([.status.parents[]? | .conditions[]? | "\(.type)=\(.status)/\(.reason)"] | join(","))"'
+agentgateway-waypoint/model-via-agw hostnames=model.lab.internal rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["mockllm"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/orchestrator hostnames=orchestrator.lab.svc.cluster.local rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["orchestrator"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/orchestrator-ingress hostnames= rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["orchestrator"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/worker hostnames=worker.lab.svc.cluster.local rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["worker"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/worker-ingress hostnames=worker.lab.internal rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["worker"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+# exit 0
+
+# read 2026-09-23T18:44:05Z
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+# exit 0
+
+# read 2026-09-23T18:44:05Z
+$ kubectl get authorizationpolicy -A --no-headers | wc -l
+No resources found
+       0
+# exit 0
+
+# read 2026-09-23T18:44:05Z
+$ kubectl get agentgatewaypolicy -A -o json | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name) authorization=\(.spec.traffic.authorization != null)"'
+agentgateway-ingress/access-logs authorization=false
+agentgateway-ingress/tracing authorization=false
+agentgateway-waypoint/access-logs authorization=false
+agentgateway-waypoint/tracing authorization=false
+# exit 0
+
+# read 2026-09-23T18:44:05Z
+$ kubectl -n agentgateway-system logs deploy/agentgateway --since-time=2026-09-23T18:37:14Z
+{"time":"2026-09-23T18:37:34.682696381Z","level":"info","msg":"push debounce stable","component":"krtxds","id":83,"debounced_events":1,"last_change":"10.55625ms","last_push":"10.556166ms","cause":"//Pod/lab/gate2-curl"}
+{"time":"2026-09-23T18:37:34.682739922Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:37:34Z/83"}
+{"time":"2026-09-23T18:37:34.682787714Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"116B"}
+{"time":"2026-09-23T18:37:34.682805422Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"116B"}
+{"time":"2026-09-23T18:37:51.906446416Z","level":"info","msg":"push debounce stable","component":"krtxds","id":84,"debounced_events":1,"last_change":"10.259333ms","last_push":"10.259208ms","cause":"//Pod/lab/loadgen-g2c-c5after-worker-p4th6"}
+{"time":"2026-09-23T18:37:51.906487125Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:37:51Z/84"}
+{"time":"2026-09-23T18:37:51.906536583Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"174B"}
+{"time":"2026-09-23T18:37:51.906537208Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"174B"}
+{"time":"2026-09-23T18:37:52.629304917Z","level":"info","msg":"push debounce stable","component":"krtxds","id":85,"debounced_events":1,"last_change":"11.571333ms","last_push":"11.57125ms","cause":"//Pod/lab/loadgen-g2c-c5after-worker-p4th6"}
+{"time":"2026-09-23T18:37:52.629355792Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:37:52Z/85"}
+{"time":"2026-09-23T18:37:52.6294225Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"177B"}
+{"time":"2026-09-23T18:37:52.629423417Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"177B"}
+{"time":"2026-09-23T18:37:53.689443917Z","level":"info","msg":"push debounce stable","component":"krtxds","id":86,"debounced_events":1,"last_change":"10.166792ms","last_push":"10.166625ms","cause":"//Pod/lab/loadgen-g2c-c5after-worker-p4th6"}
+{"time":"2026-09-23T18:37:53.689491542Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:37:53Z/86"}
+{"time":"2026-09-23T18:37:53.689539167Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:37:53.689537667Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:38:12.670705176Z","level":"info","msg":"push debounce stable","component":"krtxds","id":87,"debounced_events":1,"last_change":"10.454ms","last_push":"10.453916ms","cause":"//Pod/lab/loadgen-g2c-c5after-orchestrator-jtgnx"}
+{"time":"2026-09-23T18:38:12.67074776Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:38:12Z/87"}
+{"time":"2026-09-23T18:38:12.670800051Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"192B"}
+{"time":"2026-09-23T18:38:12.670799635Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"192B"}
+{"time":"2026-09-23T18:38:13.708463718Z","level":"info","msg":"push debounce stable","component":"krtxds","id":88,"debounced_events":1,"last_change":"13.416ms","last_push":"13.415917ms","cause":"//Pod/lab/loadgen-g2c-c5after-orchestrator-jtgnx"}
+{"time":"2026-09-23T18:38:13.708566927Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:38:13Z/88"}
+{"time":"2026-09-23T18:38:13.708660885Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"195B"}
+{"time":"2026-09-23T18:38:13.708675135Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"195B"}
+{"time":"2026-09-23T18:38:14.772109094Z","level":"info","msg":"push debounce stable","component":"krtxds","id":89,"debounced_events":1,"last_change":"10.54ms","last_push":"10.539917ms","cause":"//Pod/lab/loadgen-g2c-c5after-orchestrator-jtgnx"}
+{"time":"2026-09-23T18:38:14.772139427Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:38:14Z/89"}
+{"time":"2026-09-23T18:38:14.772186677Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:38:14.772193344Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:38:17.190665012Z","level":"info","msg":"push debounce stable","component":"krtxds","id":90,"debounced_events":1,"last_change":"12.0565ms","last_push":"12.056375ms","cause":"//Pod/lab/gate2-curl"}
+{"time":"2026-09-23T18:38:17.190697512Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:38:17Z/90"}
+{"time":"2026-09-23T18:38:17.190763012Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"119B"}
+{"time":"2026-09-23T18:38:17.190801595Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"119B"}
+{"time":"2026-09-23T18:38:33.190438338Z","level":"info","msg":"push debounce stable","component":"krtxds","id":91,"debounced_events":1,"last_change":"10.902917ms","last_push":"10.902834ms","cause":"//Pod/lab/c5-curl"}
+{"time":"2026-09-23T18:38:33.190500797Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:38:33Z/91"}
+{"time":"2026-09-23T18:38:33.190582338Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"107B"}
+{"time":"2026-09-23T18:38:33.190682588Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"107B"}
+{"time":"2026-09-23T18:38:47.273264303Z","level":"info","msg":"push debounce stable","component":"krtxds","id":92,"debounced_events":1,"last_change":"10.254459ms","last_push":"10.25425ms","cause":"//Pod/lab/gate2-curl"}
+{"time":"2026-09-23T18:38:47.27331122Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:38:47Z/92"}
+{"time":"2026-09-23T18:38:47.273375928Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:38:47.273376178Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:39:03.27435638Z","level":"info","msg":"push debounce stable","component":"krtxds","id":93,"debounced_events":1,"last_change":"10.408291ms","last_push":"10.40825ms","cause":"//Pod/lab/c5-curl"}
+{"time":"2026-09-23T18:39:03.274384213Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-23T18:39:03Z/93"}
+{"time":"2026-09-23T18:39:03.274432088Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.19~agentgateway-ingress-74977768d6-4qz2b.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-23T18:39:03.27443213Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-6f44555b5b-fwkgb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+# exit 0
+
+# read 2026-09-23T18:44:05Z
+$ kubectl -n agentgateway-ingress logs deploy/agentgateway-ingress --since-time=2026-09-23T18:37:14Z | grep -v 'request gateway='
+# exit 1
+
+# read 2026-09-23T18:44:05Z
+$ jq -r '[.. | objects | select(has("matches") and has("backends"))] | .[] | "route key=\(.key // .name | tostring) hostnames=\(.hostnames|tostring) matches=\(.matches|tostring|.[0:300]) backends=\(.backends|tostring|.[0:200])"' experiments/runs/2026-09-23-c6-httproute/config-dump-ingress-before.json
+route key=lab/orchestrator-ingress.00.http hostnames=null matches=[{"path":{"pathPrefix":"/"}}] backends=[{"weight":1,"service":{"name":"lab/orchestrator.lab.svc.cluster.local","port":8080}}]
+route key=lab/worker-ingress.00.http hostnames=["worker.lab.internal"] matches=[{"path":{"pathPrefix":"/"}}] backends=[{"weight":1,"service":{"name":"lab/worker.lab.svc.cluster.local","port":8080}}]
+# exit 0
+
+# read 2026-09-23T18:44:05Z
+$ wc -c < experiments/runs/2026-09-23-c6-httproute/config-dump-ingress-before.json; shasum -a 256 experiments/runs/2026-09-23-c6-httproute/config-dump-ingress-before.json
+   43797
+5c8c9299e6ab102d7bf040f1a537503e04416626e6c9102cf21aa8399efda50c  experiments/runs/2026-09-23-c6-httproute/config-dump-ingress-before.json
+# exit 0

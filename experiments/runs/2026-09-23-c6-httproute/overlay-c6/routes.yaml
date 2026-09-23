@@ -1,0 +1,48 @@
+# Experiment C, step C-6: the route layer's own way to refuse what it matched. HTTPRouteMatch has four fields --
+# path, headers, query parameters, method -- and no body (apis/v1/httproute_types.go at gateway-api v1.6.2,
+# l.761-798). SendMessage and SubscribeToTask are both POST / with no query, so path, method and query cannot
+# separate them. The one field that can differ is a header, and on the wire the load client's SubscribeToTask
+# (and its SendStreamingMessage) carries Accept: text/event-stream where its SendMessage carries no Accept at all
+# (this run's wire capture). So each route below matches that header, Exact, and names NO backendRefs and no
+# filter: the Gateway API reference page (site/content/en/reference/api-types/httproute.md at v1.6.2, l.211-214)
+# says of backendRefs "If unspecified, the rule performs no forwarding. If unspecified and no filters are specified
+# that would result in a response being sent, a 500 error code is returned."
+# Why these win over the deployed routes for a request that carries the header, and only for it: across all rules
+# of the routes attached to a parent, precedence goes to the "Largest number of header matches" after path and
+# method (httproute_types.go l.185-192); the deployed rules have none, these have one, and their paths and methods
+# are the same (the default PathPrefix /, no method). A request without the header matches only the deployed rule.
+# One route per receiver path, each with the same hostnames as the deployed route it sits beside: the worker's
+# (worker.lab.internal) and the orchestrator's (none, as lab/orchestrator-ingress has none).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: c6-refuse-event-stream-worker
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-ingress
+  hostnames:
+    - worker.lab.internal
+  rules:
+    - matches:
+        - headers:
+            - type: Exact
+              name: Accept
+              value: text/event-stream
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: c6-refuse-event-stream-orchestrator
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-ingress
+  rules:
+    - matches:
+        - headers:
+            - type: Exact
+              name: Accept
+              value: text/event-stream

@@ -1,0 +1,57 @@
+Experiment C, step C-6 -- reading notes. What each file in this directory is, what produced it, and what differs from
+what was planned. Stamps UTC from date -u. The findings entry that cites this directory is "Experiment C / both
+receivers / C-6, what a Gateway API HTTPRoute can separate". The cluster is the one C-5 rebuilt and proved
+(experiments/runs/2026-09-23-c5-istio-policy-agw-central/), with C-5's policy removed and its clean check after.
+
+THE WIRE (wire/)
+  The load client's own requests, read on a raw TCP server on this host as B-3 read them (capture.py and run.sh are
+  B-3's, run.sh's scratch path changed from b3 to c5): the binary built from git archive of 511fb145 (the same fixtures
+  subtree d143d670 the cluster runs), three runs per mode, 18:05:03Z-18:05:04Z -- unary (MODE unset), subscribe
+  (MODE=subscribe, TASK_ID naming no task) and stream (MODE=stream), each with CLIENT_RETRIES=0,
+  CLIENT_SDK_RESEND=off, CLIENT_RETRY_ON=transport as the Job template renders them. runs/<mode>-<n>/ holds each run's
+  two requests (the card GET and the POST) with every carriage return written <CR>, and its exit, stdout and stderr;
+  the subscribe and stream runs exit 3 because the capture answers a JSON body, not an event stream -- the requests
+  are what is read. runs/originals.txt gives each raw file's size and sha256 and the binary's hash; the raw bytes stay
+  in a scratch directory. summarize.sh -> summary.csv: every POST is "POST / HTTP/1.1" with no query; SubscribeToTask
+  and SendStreamingMessage carry "Accept: text/event-stream", SendMessage carries no Accept header; all three carry
+  A2a-Version 1.0 and Content-Type application/json. The card GET carries no Accept and no A2A-Version.
+
+THE ROUTES (overlay-c6/, c6.sh)
+  overlay-c6/routes.yaml  two HTTPRoutes ADDED beside the deployed ingress routes, and in its header why: a header match
+               on Accept: text/event-stream, Exact, and no backendRefs and no filter.
+  readings-before.txt, readings-applied.txt, readings-removed.txt   every HTTPRoute with its status, retry stanzas,
+               AuthorizationPolicies, agentgateway's controller log, the ingress's non-request log lines, and the
+               ingress's /config_dump (config-dump-ingress-<label>.json) and its routes.
+    Differs from the plan: the first read of "before" used a dump selector that skipped the orchestrator's route
+    (it has no hostnames key); c6.sh was corrected and "before" read again 8 s later. phases.txt names the same path
+    for both reads because the first file was moved, by hand with mv, out of the run directory into a scratch
+    directory before the second read wrote there; that first file (13872 bytes, sha256 744648f2f989a7cc5633ab1d9d490638b92ea9a0852b2778fb8c45426b600170) is not committed and adds
+    no count. readings-applied.txt then showed that selector also skips a route with no backends key,
+    so a second dump reading, by kind, was added to c6.sh and appended to readings-applied.txt with a line saying so;
+    readings-removed.txt was taken with both.
+  apply.txt, remove.txt   the apply and delete.
+
+THE SENDS (sends.sh; C-7 runs it from here)
+  image.txt    the load client image, resolved once by ko build, as B-4's rows did.
+  c6pa/        the deployed routes, nothing added: per receiver 3 SendMessage and 3 SubscribeToTask (load client).
+  c6pb/        overlay-c6 in force: per receiver 3 each of SendMessage, SubscribeToTask, SendStreamingMessage (load
+               client) and 3 SubscribeToTask by curl (cst) with curl's own headers.
+  Each send's directory: the rendered Job (job.yaml) or the curl's request, headers as sent and response; steps.txt;
+  job.txt; the client lines; the three ledgers by make ledgers; both proxies' access lines in the send's own window.
+  counts.py -> counts.csv, counts.txt   reads only this directory.
+  after/       the committed gate2-single-clean.sh after the removal (RUN_ID=c6after): 1/1/1/1/1 on both receivers.
+
+OTHER
+  sources.txt  the documents this step cites, rows of the task's fetch log (all rows are in C-5's sources.txt).
+  sleep-events.csv  0 Sleep, Wake, DarkWake or Maintenance events 18:03:00Z-18:50:43Z (the wire capture to the close).
+  own-keepawake-lines.txt  only the counter's own header.
+
+LINE ENDINGS
+  The curl sends' response.txt, curl-stderr.txt and request-headers-as-sent.txt hold HTTP header lines, CRLF on the wire;
+  this checkout's core.autocrlf is input, so the committed files end them in LF. No count reads a carriage return.
+
+REVIEW ROUND (2026-09-23)
+  counts.py wrote counts.csv with the csv module's default CRLF line ends, while the committed file is LF (this
+  checkout's core.autocrlf is input), so a re-run was equal in content but not in bytes. It now writes LF; re-run from
+  the committed files, counts.csv and counts.txt are byte-identical to the committed ones. runs/originals.txt gained the
+  line naming the client's a2a-go version, and the paragraph above says how the first "before" reading was set aside.
