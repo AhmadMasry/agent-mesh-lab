@@ -198,6 +198,33 @@ def test_refused_together_with_the_sdk_resend(monkeypatch):
     assert Forwarder(url="http://downstream/").sdk_resend is True
 
 
+# D-1's review, M5: the other two re-sending knobs are refused beside it as the
+# SDK-layer resend is, and at start: app_from_env builds the Forwarder before the
+# app exists, so the process never listens.
+@pytest.mark.parametrize("knob,value", [("CLIENT_RETRIES", "1"), ("CLIENT_TRANSPORT_RESEND", "on"),
+                                        ("CLIENT_SDK_RESEND", "on")])
+def test_refused_together_with_any_resending_knob_at_start(monkeypatch, knob, value):
+    monkeypatch.setenv(knob, value)
+    with pytest.raises(ValueError, match=knob):
+        Forwarder(url="http://downstream/", resubscribe=True)
+    monkeypatch.setenv("DOWNSTREAM_A2A_URL", "http://downstream/")
+    monkeypatch.setenv(FORWARD_RESUBSCRIBE_ENV, "on")
+    with pytest.raises(ValueError, match=knob):
+        app_from_env()
+    # Off, each knob is read as it always was.
+    monkeypatch.delenv(FORWARD_RESUBSCRIBE_ENV)
+    app_from_env()
+
+
+@pytest.mark.parametrize("knob,value", [("CLIENT_RETRIES", "0"), ("CLIENT_RETRIES", "x"),
+                                        ("CLIENT_TRANSPORT_RESEND", "off"), ("CLIENT_RETRY_ON", "transport+503")])
+def test_a_knob_that_reads_as_off_is_not_refused(monkeypatch, knob, value):
+    """A value each knob reads as off adds no send, and is not refused; the
+    retry mode alone widens nothing."""
+    monkeypatch.setenv(knob, value)
+    assert Forwarder(url="http://downstream/", resubscribe=True).resubscribe is True
+
+
 # --- off is today's forward ------------------------------------------------
 
 class FakeUnaryClient:
@@ -257,6 +284,93 @@ async def test_on_a_stream_with_a_terminal_event_is_not_resubscribed():
     assert end["operation"] == "SendStreamingMessage" and end["resubscribe"] == RESUBSCRIBE_NOT_NEEDED
     assert end["terminal_seen"] is True and end["stream_end"] == "eof" and end["events"] == 4
     assert end["last_state"] == "TASK_STATE_COMPLETED"
+
+
+@pytest.mark.parametrize("state", [TaskState.TASK_STATE_COMPLETED, TaskState.TASK_STATE_FAILED,
+                                   TaskState.TASK_STATE_CANCELED, TaskState.TASK_STATE_REJECTED],
+                         ids=["completed", "failed", "canceled", "rejected"])
+async def test_on_each_terminal_state_ends_the_forward_without_a_resubscription(state):
+    """D-1's review, M3 (RV7, RV8): all four terminal states of A2A v1.0 end the
+    forward, CANCELED and REJECTED included, though the lab's executors never
+    enter those two."""
+    out = io.StringIO()
+    client = FakeStreamingClient(Script(WORKING + [ev_status(state, text="x")]),
+                                 [Script([ev_task(TaskState.TASK_STATE_WORKING)] + COMPLETES)])
+    f = a_forwarder(client, out)
+    try:
+        await f.forward("hello", "w-1")
+    except RuntimeError:
+        pass
+    assert client.subscribed == [] and f.resubscriptions == 0
+    (end,) = ends(out)
+    assert end["resubscribe"] == RESUBSCRIBE_NOT_NEEDED and end["terminal_seen"] is True
+    assert end["last_state"] == TaskState.Name(state)
+
+
+class RecordingClient(FakeStreamingClient):
+    """Records, at the moment subscribe() is called, how many forward end lines
+    were already written and when the first stream ran out."""
+
+    def __init__(self, out: io.StringIO, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.out = out
+        self.stream_ended_at: float | None = None
+        self.ends_at_subscribe: list[dict] | None = None
+        self.subscribed_at: float | None = None
+
+    def send_message(self, request):
+        self.sends += 1
+        inner = self.stream.run()
+
+        async def run():
+            try:
+                async for e in inner:
+                    yield e
+            finally:
+                self.stream_ended_at = time.monotonic()
+        return run()
+
+    def subscribe(self, request):
+        self.subscribed_at = time.monotonic()
+        self.ends_at_subscribe = ends(self.out)
+        return super().subscribe(request)
+
+
+@pytest.mark.parametrize("raises", [None, CUT], ids=["quiet-end", "cut"])
+async def test_on_the_stream_end_line_is_written_before_the_resubscription_is_sent(raises):
+    """D-1's review, M3 (RV5): the stream's end line, saying "sent", is on the
+    ledger before subscribe() is called, so the line's ts precedes ts_sent of
+    the resubscription it announces."""
+    out = io.StringIO()
+    client = RecordingClient(out, Script(WORKING, raises=raises),
+                             [Script([ev_task(TaskState.TASK_STATE_WORKING)] + COMPLETES)])
+    f = a_forwarder(client, out)
+    assert await f.forward("hello", "w-1") == "the answer"
+    assert client.ends_at_subscribe is not None
+    (first,) = client.ends_at_subscribe
+    assert first["operation"] == "SendStreamingMessage" and first["resubscribe"] == RESUBSCRIBE_SENT
+
+
+@pytest.mark.parametrize("raises", [None, CUT], ids=["quiet-end", "cut"])
+async def test_on_the_resubscription_is_sent_without_a_wait(raises, monkeypatch):
+    """D-1's review, M3 (RV9): nothing stands between the stream's end and the
+    resubscription -- no sleep, no timer. asyncio.sleep is made to fail for
+    any positive delay, and the gap is bounded by the clock as well."""
+    real_sleep = asyncio.sleep
+
+    async def no_wait(delay, *args, **kwargs):
+        if delay and delay > 0:
+            raise AssertionError(f"a wait of {delay} s before the resubscription")
+        return await real_sleep(delay, *args, **kwargs)
+
+    monkeypatch.setattr(asyncio, "sleep", no_wait)
+    out = io.StringIO()
+    client = RecordingClient(out, Script(WORKING, raises=raises),
+                             [Script([ev_task(TaskState.TASK_STATE_WORKING)] + COMPLETES)])
+    f = a_forwarder(client, out)
+    assert await f.forward("hello", "w-1") == "the answer"
+    assert client.stream_ended_at is not None and client.subscribed_at is not None
+    assert 0 <= client.subscribed_at - client.stream_ended_at < 0.2
 
 
 async def test_on_a_failed_terminal_event_is_reported_and_not_resubscribed():
