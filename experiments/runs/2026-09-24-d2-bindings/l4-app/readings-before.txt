@@ -1,0 +1,359 @@
+# 2026-09-24T22:19:07Z readings l4-app before
+## kubectl -n lab get httproute,grpcroute,agentgatewaypolicy -o yaml
+apiVersion: v1
+items:
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"HTTPRoute","metadata":{"annotations":{},"name":"orchestrator","namespace":"lab"},"spec":{"hostnames":["orchestrator.lab.svc.cluster.local"],"parentRefs":[{"name":"agw-central","namespace":"agentgateway-waypoint","sectionName":"inner-http"}],"rules":[{"backendRefs":[{"name":"orchestrator","port":8080}]}]}}
+    creationTimestamp: "2026-09-24T21:51:03Z"
+    generation: 1
+    name: orchestrator
+    namespace: lab
+    resourceVersion: "1960"
+    uid: e3f1a90e-e123-45b7-99b1-8455ac24dc31
+  spec:
+    hostnames:
+    - orchestrator.lab.svc.cluster.local
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agw-central
+      namespace: agentgateway-waypoint
+      sectionName: inner-http
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: orchestrator
+        port: 8080
+        weight: 1
+      matches:
+      - path:
+          type: PathPrefix
+          value: /
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-24T21:51:03Z"
+        message: ""
+        observedGeneration: 1
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-24T21:51:03Z"
+        message: ""
+        observedGeneration: 1
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: agentgateway.dev/agentgateway
+      parentRef:
+        group: gateway.networking.k8s.io
+        kind: Gateway
+        name: agw-central
+        namespace: agentgateway-waypoint
+        sectionName: inner-http
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"HTTPRoute","metadata":{"annotations":{},"name":"orchestrator-ingress","namespace":"lab"},"spec":{"parentRefs":[{"name":"agentgateway-ingress","namespace":"agentgateway-ingress"}],"rules":[{"backendRefs":[{"name":"orchestrator","port":8080}]}]}}
+    creationTimestamp: "2026-09-24T21:50:42Z"
+    generation: 3
+    name: orchestrator-ingress
+    namespace: lab
+    resourceVersion: "3267"
+    uid: bb6e8d88-11b1-4360-a7aa-c57c76199e79
+  spec:
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-ingress
+      namespace: agentgateway-ingress
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: orchestrator
+        port: 8080
+        weight: 1
+      matches:
+      - path:
+          type: PathPrefix
+          value: /
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-24T21:50:42Z"
+        message: ""
+        observedGeneration: 3
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-24T21:50:42Z"
+        message: ""
+        observedGeneration: 3
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: agentgateway.dev/agentgateway
+      parentRef:
+        group: gateway.networking.k8s.io
+        kind: Gateway
+        name: agentgateway-ingress
+        namespace: agentgateway-ingress
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"HTTPRoute","metadata":{"annotations":{},"name":"worker","namespace":"lab"},"spec":{"hostnames":["worker.lab.svc.cluster.local"],"parentRefs":[{"name":"agw-central","namespace":"agentgateway-waypoint","sectionName":"inner-http"}],"rules":[{"backendRefs":[{"name":"worker","port":8080}]}]}}
+    creationTimestamp: "2026-09-24T21:49:45Z"
+    generation: 3
+    name: worker
+    namespace: lab
+    resourceVersion: "3259"
+    uid: 7ecf4d5c-5496-4e91-b98f-4522ca18c291
+  spec:
+    hostnames:
+    - worker.lab.svc.cluster.local
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agw-central
+      namespace: agentgateway-waypoint
+      sectionName: inner-http
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: worker
+        port: 8080
+        weight: 1
+      matches:
+      - path:
+          type: PathPrefix
+          value: /
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-24T21:49:45Z"
+        message: ""
+        observedGeneration: 3
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-24T21:49:45Z"
+        message: ""
+        observedGeneration: 3
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: agentgateway.dev/agentgateway
+      parentRef:
+        group: gateway.networking.k8s.io
+        kind: Gateway
+        name: agw-central
+        namespace: agentgateway-waypoint
+        sectionName: inner-http
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"HTTPRoute","metadata":{"annotations":{},"name":"worker-ingress","namespace":"lab"},"spec":{"hostnames":["worker.lab.internal"],"parentRefs":[{"name":"agentgateway-ingress","namespace":"agentgateway-ingress"}],"rules":[{"backendRefs":[{"name":"worker","port":8080}]}]}}
+    creationTimestamp: "2026-09-24T21:51:03Z"
+    generation: 3
+    name: worker-ingress
+    namespace: lab
+    resourceVersion: "3269"
+    uid: 033e5eba-2d16-4eff-be74-6e29874bbe7a
+  spec:
+    hostnames:
+    - worker.lab.internal
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-ingress
+      namespace: agentgateway-ingress
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: worker
+        port: 8080
+        weight: 1
+      matches:
+      - path:
+          type: PathPrefix
+          value: /
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-24T21:51:03Z"
+        message: ""
+        observedGeneration: 3
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-24T21:51:03Z"
+        message: ""
+        observedGeneration: 3
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: agentgateway.dev/agentgateway
+      parentRef:
+        group: gateway.networking.k8s.io
+        kind: Gateway
+        name: agentgateway-ingress
+        namespace: agentgateway-ingress
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: GRPCRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"GRPCRoute","metadata":{"annotations":{},"name":"orchestrator-grpc-ingress","namespace":"lab"},"spec":{"hostnames":["orchestrator-grpc.lab.internal"],"parentRefs":[{"name":"agentgateway-ingress","namespace":"agentgateway-ingress"}],"rules":[{"backendRefs":[{"name":"orchestrator","port":8081}]}]}}
+    creationTimestamp: "2026-09-24T21:51:03Z"
+    generation: 1
+    name: orchestrator-grpc-ingress
+    namespace: lab
+    resourceVersion: "1953"
+    uid: b8178f2f-ab7c-4fb0-8f56-4f1ee3fc17ba
+  spec:
+    hostnames:
+    - orchestrator-grpc.lab.internal
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-ingress
+      namespace: agentgateway-ingress
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: orchestrator
+        port: 8081
+        weight: 1
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-24T21:51:03Z"
+        message: ""
+        observedGeneration: 1
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-24T21:51:03Z"
+        message: ""
+        observedGeneration: 1
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: agentgateway.dev/agentgateway
+      parentRef:
+        group: gateway.networking.k8s.io
+        kind: Gateway
+        name: agentgateway-ingress
+        namespace: agentgateway-ingress
+- apiVersion: gateway.networking.k8s.io/v1
+  kind: GRPCRoute
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"gateway.networking.k8s.io/v1","kind":"GRPCRoute","metadata":{"annotations":{},"name":"worker-grpc-ingress","namespace":"lab"},"spec":{"hostnames":["worker-grpc.lab.internal"],"parentRefs":[{"name":"agentgateway-ingress","namespace":"agentgateway-ingress"}],"rules":[{"backendRefs":[{"name":"worker","port":8081}]}]}}
+    creationTimestamp: "2026-09-24T21:51:03Z"
+    generation: 1
+    name: worker-grpc-ingress
+    namespace: lab
+    resourceVersion: "1956"
+    uid: 098e6c34-bbbc-436b-a71e-84d2ec71575f
+  spec:
+    hostnames:
+    - worker-grpc.lab.internal
+    parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agentgateway-ingress
+      namespace: agentgateway-ingress
+    rules:
+    - backendRefs:
+      - group: ""
+        kind: Service
+        name: worker
+        port: 8081
+        weight: 1
+  status:
+    parents:
+    - conditions:
+      - lastTransitionTime: "2026-09-24T21:51:03Z"
+        message: ""
+        observedGeneration: 1
+        reason: Accepted
+        status: "True"
+        type: Accepted
+      - lastTransitionTime: "2026-09-24T21:51:03Z"
+        message: ""
+        observedGeneration: 1
+        reason: ResolvedRefs
+        status: "True"
+        type: ResolvedRefs
+      controllerName: agentgateway.dev/agentgateway
+      parentRef:
+        group: gateway.networking.k8s.io
+        kind: Gateway
+        name: agentgateway-ingress
+        namespace: agentgateway-ingress
+kind: List
+metadata:
+  resourceVersion: ""
+## worker and orchestrator REFUSE_OPERATION and pods
+worker: REFUSE_OPERATION=
+orchestrator: REFUSE_OPERATION=
+orchestrator-79c654446f-nj846   1/1   Running   0     27m   10.244.1.18   agent-mesh-lab-worker   <none>   <none>
+worker-7467cd4c94-jwrl2         1/1   Running   0     27m   10.244.1.19   agent-mesh-lab-worker   <none>   <none>
+## agentgateway controller log, last 2 minutes
+{"time":"2026-09-24T22:18:37.412406593Z","level":"info","msg":"push debounce stable","component":"krtxds","id":590,"debounced_events":1,"last_change":"10.2105ms","last_push":"10.210459ms","cause":"//Pod/lab/loadgen-l3-require-grpc-py-st-d2-4-4mzpq"}
+{"time":"2026-09-24T22:18:37.412435968Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:37Z/590"}
+{"time":"2026-09-24T22:18:37.412484302Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-24T22:18:37.412487343Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-24T22:18:38.190461135Z","level":"info","msg":"push debounce stable","component":"krtxds","id":591,"debounced_events":1,"last_change":"10.748458ms","last_push":"10.748291ms","cause":"//Pod/lab/loadgen-l3-require-grpc-py-st-d2-4-4mzpq"}
+{"time":"2026-09-24T22:18:38.190542844Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:38Z/591"}
+{"time":"2026-09-24T22:18:38.190616344Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"201B"}
+{"time":"2026-09-24T22:18:38.190625802Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"201B"}
+{"time":"2026-09-24T22:18:39.269325219Z","level":"info","msg":"push debounce stable","component":"krtxds","id":592,"debounced_events":1,"last_change":"10.726625ms","last_push":"10.726542ms","cause":"//Pod/lab/loadgen-l3-require-grpc-py-st-d2-4-4mzpq"}
+{"time":"2026-09-24T22:18:39.269358344Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:39Z/592"}
+{"time":"2026-09-24T22:18:39.269404136Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-24T22:18:39.269405053Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-24T22:18:43.421952555Z","level":"info","msg":"push debounce stable","component":"krtxds","id":593,"debounced_events":1,"last_change":"11.591584ms","last_push":"11.591542ms","cause":"//Pod/lab/loadgen-l3-require-grpc-py-sm-d2-5-srnmk"}
+{"time":"2026-09-24T22:18:43.422006263Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:43Z/593"}
+{"time":"2026-09-24T22:18:43.422065471Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-24T22:18:43.422066638Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-24T22:18:44.257030763Z","level":"info","msg":"push debounce stable","component":"krtxds","id":594,"debounced_events":1,"last_change":"10.520416ms","last_push":"10.520208ms","cause":"//Pod/lab/loadgen-l3-require-grpc-py-sm-d2-5-srnmk"}
+{"time":"2026-09-24T22:18:44.257085638Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:44Z/594"}
+{"time":"2026-09-24T22:18:44.257166513Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"201B"}
+{"time":"2026-09-24T22:18:44.257173972Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"201B"}
+{"time":"2026-09-24T22:18:45.324967583Z","level":"info","msg":"push debounce stable","component":"krtxds","id":595,"debounced_events":1,"last_change":"11.467125ms","last_push":"11.467041ms","cause":"//Pod/lab/loadgen-l3-require-grpc-py-sm-d2-5-srnmk"}
+{"time":"2026-09-24T22:18:45.325002583Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:45Z/595"}
+{"time":"2026-09-24T22:18:45.325053125Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-24T22:18:45.325053583Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-24T22:18:49.420402835Z","level":"info","msg":"push debounce stable","component":"krtxds","id":596,"debounced_events":1,"last_change":"10.703833ms","last_push":"10.70375ms","cause":"//Pod/lab/loadgen-l3-require-grpc-py-st-d2-5-5lmqq"}
+{"time":"2026-09-24T22:18:49.420440251Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:49Z/596"}
+{"time":"2026-09-24T22:18:49.420484293Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-24T22:18:49.420486501Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"198B"}
+{"time":"2026-09-24T22:18:50.314781669Z","level":"info","msg":"push debounce stable","component":"krtxds","id":597,"debounced_events":1,"last_change":"10.635792ms","last_push":"10.635667ms","cause":"//Pod/lab/loadgen-l3-require-grpc-py-st-d2-5-5lmqq"}
+{"time":"2026-09-24T22:18:50.314825085Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:50Z/597"}
+{"time":"2026-09-24T22:18:50.314886877Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":1,"removed":0,"size":"201B"}
+{"time":"2026-09-24T22:18:50.314899002Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":1,"removed":0,"size":"201B"}
+{"time":"2026-09-24T22:18:51.385283044Z","level":"info","msg":"push debounce stable","component":"krtxds","id":598,"debounced_events":1,"last_change":"10.941708ms","last_push":"10.941625ms","cause":"//Pod/lab/loadgen-l3-require-grpc-py-st-d2-5-5lmqq"}
+{"time":"2026-09-24T22:18:51.385331669Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:51Z/598"}
+{"time":"2026-09-24T22:18:51.385379919Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-24T22:18:51.385384461Z","level":"info","msg":"push response","component":"krtxds","type":"WDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":1,"size":"0B"}
+{"time":"2026-09-24T22:18:57.383689672Z","level":"info","msg":"push debounce stable","component":"krtxds","id":599,"debounced_events":4,"last_change":"10.272875ms","last_push":"16.397209ms","cause":"policy/traffic/lab/d2-require-body-grpc-orchestrator:rbac:lab/orchestrator-grpc-ingress and 3 more configs"}
+{"time":"2026-09-24T22:18:57.383729339Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-24T22:18:57Z/599"}
+{"time":"2026-09-24T22:18:57.383784922Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.16~agentgateway-ingress-648b97bbdb-t75cb.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":0,"removed":4,"size":"0B"}
+{"time":"2026-09-24T22:18:57.38378788Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.13~agw-central-85d6dbf4f4-9qvl2.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":4,"size":"0B"}

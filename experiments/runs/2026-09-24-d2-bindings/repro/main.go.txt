@@ -1,0 +1,26 @@
+// Minimal reproduction: a2a-go v2.5.0's REST binding answers a SubscribeToTask for a task
+// that does not exist with HTTP 200 and the TaskNotFoundError inside the event stream.
+package main
+
+import (
+	"context"
+	"iter"
+	"log"
+	"net/http"
+
+	"github.com/a2aproject/a2a-go/v2/a2a"
+	"github.com/a2aproject/a2a-go/v2/a2asrv"
+)
+
+type noop struct{}
+
+func (noop) Execute(context.Context, *a2asrv.ExecutorContext) iter.Seq2[a2a.Event, error] {
+	return func(func(a2a.Event, error) bool) {}
+}
+func (noop) Cancel(context.Context, *a2asrv.ExecutorContext) iter.Seq2[a2a.Event, error] {
+	return func(func(a2a.Event, error) bool) {}
+}
+
+func main() {
+	log.Fatal(http.ListenAndServe("127.0.0.1:18090", a2asrv.NewRESTHandler(a2asrv.NewHandler(noop{}))))
+}

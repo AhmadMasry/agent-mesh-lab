@@ -1,0 +1,101 @@
+Follow-on D-2: reading notes for this run directory.
+
+THE TWO ATTEMPTS, AND WHY THERE ARE TWO.
+  attempt-1/  The first rebuild from a deleted cluster, at the tree of the commit whose subject is "feat(deploy): port 8081
+              marked h2c on both agents, a GRPCRoute per receiver on the ingress on new hostnames, and the load client's two
+              settings rendered empty". All seven make targets exited 0 (attempt-1/timings.csv). Its standard proof against
+              D-1's read same=62 DIFFERS=5 (attempt-1/standard-counts-vs-last-proof.txt). Two of the five were a REGRESSION: on
+              both orchestrator work items the GenAI row read "missing expected 1" against D-1's 0. The span was
+              orchestrator.forward's "invoke_agent worker", which had lost server.address and server.port
+              (attempt-1/trace/genai/invoke-agent.csv). Cause: the forward's _agent_url took the card's URL only when the card
+              advertised exactly one interface, and the worker's card now advertises three. It is the same one-interface
+              rule the load client's agentFromCard had, fixed in the load client's own commit and missed on the Python side.
+              The task stopped there. No row was run on that tree. The other three DIFFERS were the timing readings named
+              below.
+  the fix     The commit whose subject is "fix(orchestrator): the forward's invoke_agent span reads the card's one JSON-RPC
+              interface, so a card listing three bindings no longer blanks its server address" (d94136f2 on branch
+              experiment-d2). Its tests, and three mutants killed, are in its message. A search of agents, fixtures,
+              internal, experiments/lib, the experiment scripts and the Makefile found no other reader of a card's
+              interfaces that assumes one.
+  this dir    The second rebuild, at d94136f2, from a deleted cluster (build.txt, timings.csv; all seven targets exit 0),
+              and its standard proof against D-1's: same=67 DIFFERS=0 (standard-counts-vs-last-proof.txt). The GenAI rows
+              read the same, and the forward's span names worker.lab.svc.cluster.local:8080 (trace/genai/invoke-agent.csv).
+              Every row below was run on this cluster.
+
+The timing DIFFERS of attempt 1 (none on the second proof):
+  - The Prometheus scrape leg to the ingress's metrics port counted 15 connections against D-1's 16: one connection per 15 s
+    scrape since Prometheus started, read at a different elapsed time.
+  - Other ztunnel error lines 11 against 13, and of them "no healthy upstream" 8 against 10. All 8 went to dst.addr
+    10.96.152.32:4318, the collector's Service, stamped 21:36:45.87Z to 21:36:50.87Z inside step-3, while the collector was
+    starting. It is the explanation every earlier proof gave.
+
+THE CARD-LISTING KEYS. Since the worker's and the orchestrator's cards list JSONRPC, HTTP+JSON and GRPC, every load-client line
+records three entries in advertised_urls and card_protocol_versions where D-1's recorded one. Examples: clean-check/*/client.jsonl,
+and trace/*/client.jsonl, against D-1's. dialled_url is the same as D-1's, and so is the load client's invoke_agent
+server.address and server.port. The standard comparison program does not compare these two keys, so no row reads DIFFERS for
+them. They are what the card now says, and nothing else in the line moved (TestBinding_OffTheJSONRPCLineDiffersOnlyInTheCardsOwnKeys,
+in the load client's commit).
+
+THE DRIVERS, each copied here after it ran:
+  rebuild.sh        D-1's, adapted in header, scratch and tool paths, the tip's subject and the compared tree (D-1's, the commit
+                    whose subject is "feat(deploy): the agent Deployments carry LEDGER_HEADERS and the orchestrator
+                    FORWARD_RESUBSCRIBE, rendered empty on every step")
+  proof.sh          D-1's, adapted in header, scratch and tool paths, and LASTPROOF (D-1's directory)
+  sends.sh          C-6's sends.sh, adapted: a binding argument (jsonrpc, rest, grpc), the two load-client settings set by
+                    yq on the rendered Job, the gRPC authority per receiver, the curl REST subscribe (cst), and the gRPC
+                    facts on each phases line
+  rows.sh           written for D-2: the window driver (readings, overlay apply, sends, removal, readings)
+  counts.py         written for D-2; reads this directory only, and writes counts.csv. counts.txt is its standard output.
+  sleep-events.sh   D-1's, unedited
+The overlays, never under deploy/: overlay-l1-route/, overlay-l2-path/, overlay-l3-deny/, overlay-l3-require/.
+The tools: a lab-scoped istioctl 1.31.0, whose tarball's sha256 a0c4d353... equals the release's published checksum file
+(re-fetched 2026-09-24T21:30:35Z), and an empty Helm scope. Nothing on the host changed.
+
+THE PATHS. They are the JSON-RPC rows' paths, on the new bindings:
+  - go, rest: the load client to the ingress Service, CLIENT_DIAL=target, CLIENT_HOST=worker.lab.internal, route
+    lab/worker-ingress to worker:8080.
+  - go, grpc: the same Host for the card GET, and CLIENT_GRPC_AUTHORITY=worker-grpc.lab.internal, so the RPC goes over HTTP/2
+    on route lab/worker-grpc-ingress to worker:8081.
+  - py, rest: the card GET to the orchestrator Service (agw-central's lab/orchestrator), then the REST POST where the card
+    points (the ingress), route lab/orchestrator-ingress to orchestrator:8080.
+  - py, grpc: the card's gRPC interface (the ingress, port 80) with CLIENT_GRPC_AUTHORITY=orchestrator-grpc.lab.internal,
+    route lab/orchestrator-grpc-ingress to orchestrator:8081.
+  - The orchestrator forwards to the worker on JSON-RPC in every py row. The worker's ingress lines for a forward carry no
+    binding key (clean/clean-*-py-*/ingress.jsonl).
+The Host setting on the gRPC rows is the author's extension of the note of 2026-09-22, recorded on main on 2026-09-24.
+
+THE SENDS: 264, one per Job or curl, nothing re-sent. 4 clean; 10 p0 (nothing applied); then 50 per window (l1-route,
+l2-path, l3-deny, l3-require, l4-app): per binding and receiver 5 SendMessage and 5 SubscribeToTask naming no task, plus 5
+curl REST SubscribeToTask per receiver. The curl SubscribeToTask carries curl's own headers; the operation is the load
+client's, the client is not. A send refused before any receiver has no ledger line, so make ledgers writes no file for it
+("no ledger lines of any kind", ledgers-stderr.txt), and rows-stderr.txt holds the phases line's reads of those absent files.
+counts.py reads an absent file as 0 lines.
+
+gRPC ATTEMPTS: every gRPC load-client send recorded grpc_attempts 1 and grpc_transparent_attempts 0. 0 repetitions had a
+transparent attempt (counts.txt, last line).
+
+NOT READ AS FIGURES: no figure is computed from an agentgateway access-line stamp. The access lines are read for route, status,
+reason and grpc.status only.
+
+THE READINGS per window: readings-<before|applied|end|removed>.txt hold every HTTPRoute, GRPCRoute and AgentgatewayPolicy with
+its status, the agents' REFUSE_OPERATION and the controller log; config-dump-ingress-<same>.json hold the ingress's dump.
+  - Every route and policy read Accepted, and every policy Attached.
+  - Each rule reached the dump: 4 rule expressions in the applied and end dumps of l2, l3-deny and l3-require, and 0 before
+    and after.
+  - The four refusing routes are in l1's applied dump, and in neither the before nor the removed dump.
+
+NOT COMMITTED: checks.sh's byte copies of itself. checks-as-run/ holds checks.sh.as-run-20260924T215235Z-part1 and
+checks.sh.as-run-20260924T215607Z-knobs; attempt 1's held checks.sh.as-run-20260924T213809Z-part1 and
+checks.sh.as-run-20260924T214136Z-knobs. All four have sha256
+4056b5596883187fe1a7b0528a833f533437aaf93760ee6a8130215ddd16224b, the committed file's hash since the rewrite of 2026-09-24
+(experiments/runs/2026-09-20-experiment-a-agentgateway-only/checks.sh). They stay in a scratch directory, as every earlier
+proof's did.
+
+FILE NAMES: the drivers' .log files (212, one apply.log per load-client send) are committed as .txt.
+
+THE A2A-GO REST READING, and its reproduction: repro/main.go.txt (a program outside this module, named .txt so that go test ./...
+does not build it) and repro/repro-output.txt. The searches of a2a-go and the specification repository are in
+upstream-search/. The specification repository's first search stopped at GitHub's rate limit after one query pair
+(a2a-spec-1262.txt). It was completed 2026-09-24T22:49Z, 8 query strings, is:issue and is:pr each, with the rate limit read
+before each call and none FAILED (a2a-spec-search-completed.txt), after the review of D-2. The same review corrected the
+label of a2ago-318-319.txt's first lines: the stamp printed there after "closed" was created_at.

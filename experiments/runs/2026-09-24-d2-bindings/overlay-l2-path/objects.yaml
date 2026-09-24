@@ -1,0 +1,70 @@
+# D-2, agentgateway's authorization on request.path (C-7's layer, now on the path): a Deny per route the REST and
+# gRPC rows cross -- the two deployed HTTPRoutes the REST requests take and the two GRPCRoutes D-2 added.
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d2-deny-path-rest-worker
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'request.path.endsWith(":subscribe")'
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d2-deny-path-rest-orchestrator
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'request.path.endsWith(":subscribe")'
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d2-deny-path-grpc-worker
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: GRPCRoute
+      name: worker-grpc-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'request.path == "/lf.a2a.v1.A2AService/SubscribeToTask"'
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d2-deny-path-grpc-orchestrator
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: GRPCRoute
+      name: orchestrator-grpc-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'request.path == "/lf.a2a.v1.A2AService/SubscribeToTask"'
