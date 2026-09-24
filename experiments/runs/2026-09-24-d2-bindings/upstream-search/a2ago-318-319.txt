@@ -1,0 +1,66 @@
+# Read 2026-09-24T22:25Z by gh api; the label of each first line was corrected 2026-09-24T22:49Z: the stamp printed after "closed" was created_at. The closed and merged stamps were read 2026-09-24T22:49:48Z.
+#318 closed, created 2026-04-12T13:09:29Z (closed 2026-04-21T09:06:23Z) [Bug]: deserialize REST streaming error events into typed A2A errors
+### What happened?
+
+The REST client's `doStreamingRequest` does not deserialize SSE error events into typed A2A errors.
+
+When the REST server encounters an error during streaming, it sends a google.rpc.Status JSON object in the SSE data field:
+
+    data: {"error":{"code":400,"status":"INVALID_ARGUMENT","message":"...","details":[...]}}
+
+The client passes this directly to `StreamResponse.UnmarshalJSON`, which only recognizes `message`, `task`, `statusUpdate`, and `artifactUpdate` keys. The `error` key is unhandled, producing a generic `"unknown event type"` error. The original sentinel (e.g. `ErrInvalidRequest`, `ErrTaskNotFound`) is lost.
+
+JSON-RPC does not have this issue because `parseSSEStream` checks `resp.Error != nil` and calls `resp.Error.ToA2AError()` before attempting event deserialization.
+
+Expected: `errors.Is(err, a2a.ErrInvalidRequest)` returns true for REST streaming errors, matching JSON-RPC behavior.
+Actual: `errors.Is(err, a2a.ErrInvalidRequest)` returns false. The caller gets `fmt.Errorf("unknown event type: ...")`.
+
+The same issue exists in the compat layer (`a2acompat/a2av0/rest_client.go`).
+
+gRPC is not affected because errors are communicated via gRPC status codes (out-of-band), not as stream messages.
+
+I have a fix ready — opening a PR alongside this issue.
+
+### Relevant log output
+
+```shell
+
+```
+
+### Code of Conduct
+
+- [x] I agree to follow this project's Code of Conduct
+#319 closed, created 2026-04-12T13:21:37Z (merged and closed 2026-04-21T09:06:22Z; the maintainer comment below 2026-04-16T07:03:51Z) fix: deserialize REST streaming error events into typed A2A errors (#318)
+## Description
+
+Fixes #318 🦕
+
+### Motivation
+
+The REST client's `doStreamingRequest` does not deserialize SSE error events into typed A2A errors. When the server sends a google.rpc.Status error in the SSE data field (`{"error": {...}}`), `StreamResponse.UnmarshalJSON` rejects it with `"unknown event type"` because it only recognizes `message`, `task`, `statusUpdate`, and `artifactUpdate` keys. The original sentinel (`ErrInvalidRequest`, `ErrTaskNotFound`, etc.) is lost.
+
+JSON-RPC does not have this issue — `parseSSEStream` checks `resp.Error` before event deserialization. gRPC is also unaffected because errors are communicated via gRPC status codes (out-of-band).
+
+### Changes
+
+| File | Change |
+|---|---|
+| `internal/rest/rest.go` | Extract shared conversion logic into `errorBodyJSON` + `convertErrorBody`. Refactor `ToA2AError` to use it. Add `ParseErrorBytes` that detects `{"error": ...}` in raw JSON and converts it to a typed A2A error. Malformed error values (e.g. `"error": "string"`) return `ErrInternalError` instead of being silently ignored. |
+| `a2aclient/rest.go` | Call `rest.ParseErrorBytes(data)` in `doStreamingRequest` before `StreamResponse` unmarshal. If it returns non-nil, yield the error and terminate the stream. |
+| `a2acompat/a2av0/rest_client.go` | Same fix applied to the compat layer's `doStreamingRequest`, before the snake-to-camel key transform. |
+
+### Tests
+
+| File | Coverage |
+|---|---|
+| `internal/rest/rest_test.go` | `TestParseErrorBytes` — 9 subtests: valid error, non-error event, invalid JSON, null error, empty bytes, empty error body, error without details, unknown domain, malformed error value, round-trip with `ToRESTError`. |
+| `a2aclient/rest_test.go` | `TestRESTTransport_SendStreamingMessage_Error` — server sends one valid event followed by an error SSE event; asserts 1 event received + `errors.Is(err, a2a.ErrInvalidRequest)`. |
+
+Existing tests (`TestError_ToA2AError`, `TestToRESTError_RoundTrip`, all `TestRESTTransport_*`) pass unchanged, confirming the `convertErrorBody` refactor preserves behavior.
+
+---
+
+Happy to adjust the approach!
+Thanks for bringing this up. When we were working on REST I create a spec issue asking for clarification here, but haven't got a reply and forgot about it https://github.com/a2aproject/A2A/issues/1262
+
+Returning error is better than nothing. 

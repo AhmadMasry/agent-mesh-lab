@@ -2806,3 +2806,215 @@ place, and its `summary.csv` and `counts.txt` still reproduce byte-identically f
     - header values beyond the fixed list;
     - one request per kind per receiver.
 - Follow-up: none.
+
+## Experiment C / both receivers / D-2, the REST and gRPC bindings rebuilt — does the lab rebuild from a deleted cluster with both agents serving REST and gRPC beside JSON-RPC, the standard counts holding, and does one SendMessage on each new binding read 1/1/1/1/1 at each receiver?
+
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.4 openai-python=3.16.2 grpcio=1.84.0 grpc-go=v1.83.2 (read back from the rebuilt cluster, versions-readback.txt and versions-readback-grpc.txt; a2a-go, grpc-go and a2a-spec are read at the built tree)
+- Environment: kind
+- Method: follow-on D-2, the author's notes of 2026-09-24 (C gains the REST and the gRPC bindings) and the controller's rulings of that day.
+  - The code, six commits on branch experiment-d2, named by subject:
+    - "fix(orchestrator): FORWARD_RESUBSCRIBE refused beside every re-sending knob, and tests that pin D-1's five surviving mutants"
+    - "feat(worker): the REST and gRPC bindings beside JSON-RPC, each arrival on the ingress ledger before dispatch, JSON-RPC first on the card"
+    - "feat(orchestrator): the REST and gRPC bindings beside JSON-RPC, each arrival on the ingress ledger before the SDK sees it, with grpcio 1.84.0 pinned"
+    - "feat(loadgen): CLIENT_BINDING and CLIENT_GRPC_AUTHORITY, off by default, and every gRPC attempt recorded with grpc-go's own transparent-retry flag"
+    - "feat(deploy): port 8081 marked h2c on both agents, a GRPCRoute per receiver on the ingress on new hostnames, and the load client's two settings rendered empty"
+    - "fix(orchestrator): the forward's invoke_agent span reads the card's one JSON-RPC interface, so a card listing three bindings no longer blanks its server address"
+  - What each agent serves: JSON-RPC and REST on 8080, and gRPC on 8081, over one request handler.
+    - The Go worker serves gRPC with grpc.Server.ServeHTTP inside its handler chain; that API is marked EXPERIMENTAL at grpc-go v1.83.2.
+    - The Python orchestrator serves gRPC on grpc.aio, with the ledger as a server interceptor that wraps the deserializer.
+    - The Python orchestrator serves the SDK's REST routes at the root only. The SDK's /{tenant} copy of them is not served, so the control endpoints keep their 405s, and both receivers serve the same REST paths.
+  - The cards list JSONRPC, then HTTP+JSON, then GRPC.
+  - Service port 8081 is marked appProtocol kubernetes.io/h2c. The render proof in the deploy commit shows port 8080 and every existing route unchanged, and nothing marked A2A.
+  - Two GRPCRoutes on the ingress, on the new hostnames worker-grpc.lab.internal and orchestrator-grpc.lab.internal.
+  - Nothing gRPC is on agw-central. Its waypoint listener is on 8080, so gRPC sent from inside the mesh to a Service's 8081 is not routed, and no row sends it.
+  - The load client:
+    - CLIENT_BINDING (rest or grpc) and CLIENT_GRPC_AUTHORITY, both empty and off on every existing row.
+    - For the gRPC rows the card is still fetched over the existing HTTP routes, and the RPC names the gRPC hostname as its :authority. That is the author's extension of the Host setting of 2026-09-22 to the gRPC rows, recorded on main on 2026-09-24.
+    - grpc-go's configured retries are off. Its transparent retries cannot be turned off (dialoptions.go l.678-681), so every attempt is recorded with IsTransparentRetryAttempt, by the author's ruling of 2026-09-24.
+  - THE REBUILDS, both from a deleted cluster, make targets only, with a lab-scoped istioctl 1.31.0 (tarball sha256 equal to the release's checksum file, re-fetched this task) and an empty Helm scope.
+    - Attempt 1 (attempt-1/) was built at the deploy commit. Its standard proof found a regression, and the task stopped before any row.
+    - The last commit fixed it, and the lab was rebuilt at that commit.
+    - The standard proof on each: the last record's checks.sh unedited (sha256 4056b559...), its versions-readback.sh, and the follow-ups-21 comparison program against D-1's directory.
+  - THE CLEAN CHECK per binding per receiver, one SendMessage each, sent by sends.sh on the JSON-RPC rows' paths:
+    - Go: the ingress Service with CLIENT_HOST=worker.lab.internal.
+    - Python: the orchestrator Service, the request going where the card points, the ingress.
+    - gRPC adds CLIENT_GRPC_AUTHORITY.
+    - The three ledgers are read by make ledgers, and each proxy's access lines per send.
+  - After the rows, the committed gate2-single-clean.sh (after/).
+  - Counts by counts.py from the run directory alone. No retry logic.
+  - This task started no keep-awake and changed no power setting, and keep-awake is not claimed absent: the host recorded 0 Sleep, 0 Wake, 0 DarkWake and 0 Maintenance events between 2026-09-24T20:21:52Z and 22:27:52Z (sleep-events.csv).
+- Result: run outputs under experiments/runs/2026-09-24-d2-bindings/ (reading-notes.txt, counts.csv, counts.txt, clean/, attempt-1/).
+  - **Attempt 1**, built at the deploy commit:
+    - Every target exited 0: teardown 1.480 s, cluster-kind 19.569 s, step-1 57.305 s, step-2 108.317 s, step-2b 55.656 s, step-2c 18.045 s, step-3 95.837 s.
+    - The standard proof read same=62, DIFFERS=5.
+    - Two of the five were a regression. On both orchestrator work items the GenAI row read "missing expected 1" against D-1's 0: orchestrator.forward's "invoke_agent worker" span had lost server.address and server.port (attempt-1/trace/genai/invoke-agent.csv). The forward read the card's URL only when the card advertised exactly one interface, and the worker's card now advertises three.
+    - The other three were timing:
+      - the Prometheus scrape leg to the ingress's metrics port, 15 connections against 16, one per 15 s scrape;
+      - other ztunnel error lines 11 against 13, and "no healthy upstream" 8 against 10. All 8 lines went to the collector's Service port 4318, while the collector started inside step-3.
+  - **The rebuild at the fix**:
+    - teardown 1.526 s, cluster-kind 18.816 s, step-1 58.389 s, step-2 114.335 s, step-2b 52.883 s, step-2c 17.980 s, step-3 83.714 s, every exit 0.
+    - The standard proof read **same=67, DIFFERS=0**. The GenAI rows read the same, and the forward's span names worker.lab.svc.cluster.local:8080.
+    - The clean check read 1/1/1/1/1 TASK_STATE_COMPLETED at both receivers.
+    - 24 legs, 14 of them mutual_tls. The plaintext probe was refused at both receivers.
+    - Prometheus read 7 of 7 targets up. The retry knobs ended at 0.
+  - **The card-listing keys**: every load-client line now records three entries in advertised_urls and card_protocol_versions, where D-1's recorded one. dialled_url and the load client's span address are D-1's. The comparison program does not read those two keys, and they are what the card now says.
+  - **The clean check on the new bindings**, 4 sends, each **1 arrival / 1 received / 1 execute / 1 task / 1 invocation**, TASK_STATE_COMPLETED:
+    - The arrival line names the binding (rest or grpc) and the operation, SendMessage.
+    - Go REST: POST /message:send on lab/worker-ingress, HTTP/1.1, 200.
+    - Python REST: POST /message:send on lab/orchestrator-ingress, 200.
+    - Go gRPC: POST /lf.a2a.v1.A2AService/SendMessage on lab/worker-grpc-ingress, HTTP/2.0, http.status 200, grpc.status 0.
+    - Python gRPC: the same on lab/orchestrator-grpc-ingress.
+    - Each gRPC send: grpc_attempts 1, grpc_transparent_attempts 0, the authority as set.
+    - The orchestrator forwarded on JSON-RPC in both Python rows: the worker's lines carry no binding key.
+  - **Every route read Accepted, ResolvedRefs**: the four HTTPRoutes and the two GRPCRoutes (p0/readings-before.txt).
+  - **After the rows**: the deployed routes only, no policy, REFUSE_OPERATION empty on both agents. The clean check read 1/1/1/1/1 TASK_STATE_COMPLETED at both receivers (after/summary.csv).
+- Interpretation: as built, and the standard proof caught what the invariant tests had missed.
+  - Both agents serve REST and gRPC from their SDKs' own servers, over the handler JSON-RPC uses, and the pre-dispatch ledger counts each arrival with its binding and operation. The routes that carried JSON-RPC carry REST unchanged, and gRPC needed only the new port and two GRPCRoutes.
+  - Every existing JSON-RPC row still uses JSON-RPC: the load client registers one transport, and the forward's client uses JSON-RPC only.
+  - The one silent change a three-binding card made was in code that read the card's interfaces for a span attribute, on both clients. The load client's copy was fixed before the build. The orchestrator's was found by attempt 1's proof and fixed by the commit named last above. After it, nothing in the standard proof moved.
+  - Not covered:
+    - gRPC through agw-central, which is not routed;
+    - gRPC from a client that does not name the gRPC hostname;
+    - a Python gRPC server span (no gRPC instrumentation is installed, a recorded limit);
+    - the SDK's tenant-prefixed REST routes;
+    - streaming (SendStreamingMessage) on the new bindings;
+    - one clean send per binding per receiver.
+  - A test gap at this tree, found by the review of D-2: the load client's grpc.WithDisableServiceConfig is not pinned by a test. The reviewer's mutant removing it SURVIVED; the mutant removing grpc.WithDisableRetry is killed (TestGRPC_ConfiguredRetriesAreOffEvenWhenAServiceConfigAsks). No row is affected. WithDisableRetry alone already keeps any service config from enabling a configured retry, and every gRPC send of these rows made 1 attempt and 0 transparent attempts. The test goes into the next task's first code commit.
+- Follow-up: none for the build.
+
+## Experiment C / both receivers / D-2, the route layer on REST and gRPC — can an HTTPRoute path match and a GRPCRoute method match refuse SubscribeToTask and allow SendMessage, where on JSON-RPC no route match could?
+
+- Versions: as the rebuild entry above (versions-readback.txt, the same cluster).
+- Environment: kind
+- Method: C-6's layer, on the paths of the rebuild entry.
+  - overlay-l1-route/ was applied 21:59:52Z by kubectl apply -k and removed 22:04:29Z by kubectl delete -k, never under deploy/. It holds four routes ADDED beside the deployed ones, each with no backendRefs:
+    - per receiver, an HTTPRoute on the REST requests' hostname (worker.lab.internal; the ingress Service's host) with a RegularExpression path match ^/tasks/[^/]+:subscribe$;
+    - per receiver, a GRPCRoute on the gRPC hostname with an Exact method match lf.a2a.v1.A2AService / SubscribeToTask.
+  - Per binding and receiver, 5 SendMessage and 5 SubscribeToTask naming no task by the load client.
+  - On REST, also 5 SubscribeToTask by curl with curl's own headers (POST /tasks/<id>:subscribe, no Accept), per receiver.
+  - 50 sends, one per Job or curl, nothing re-sent.
+  - Readings of every route's status and the ingress's config dump before, with the overlay in force, and after it (l1-route/).
+  - Counts by counts.py. No retry logic.
+- Result: l1-route/, counts.csv (rows l1-route).
+  - The four added routes read Accepted and ResolvedRefs, and were in the ingress's dump while in force and gone after.
+  - **REST**, per receiver:
+    - SubscribeToTask: 5 of 5 load-client and 5 of 5 curl refused by the proxy, its line on the added route reading http.status=500 error="no valid backends" reason=NoHealthyBackend. The client saw 500. **0 arrivals, 0 executes, 0 invocations.**
+    - SendMessage: 5 of 5 on the deployed route, 200, 1 arrival and 1 invocation each, COMPLETED.
+  - **gRPC**, per receiver:
+    - SubscribeToTask: 5 of 5 refused on the added GRPCRoute, the proxy's line reading http.status=200 reason=NoHealthyBackend, and the client receiving gRPC status 14 (UNAVAILABLE), "no valid backends". 0 arrivals, 0 executes, 0 invocations.
+    - SendMessage: 5 of 5 delivered, grpc.status 0, COMPLETED.
+    - grpc_attempts 1 and grpc_transparent_attempts 0 on all 20 gRPC sends.
+  - In all: 30 refused, 0 of them with an arrival, and 20 delivered.
+- Interpretation: yes, on both new bindings, as the specification's paths predict. On REST the operation is in the path, so a path match separates SubscribeToTask from SendMessage. It does so whatever client sends it: curl's SubscribeToTask, which C-6's header match let through on JSON-RPC, was refused 10 of 10 here. On gRPC the operation is the method, and the GRPCRoute method match separates them.
+  - The route layer's refusal reads as a backend health failure on both bindings, as C-6 found: a 500 on REST, and on gRPC an HTTP 200 whose trailer carries UNAVAILABLE. A client or dashboard reading HTTP status sees a gRPC refusal as a success.
+  - The regular expression names one path shape. It does not match the tenant-prefixed paths the specification's proto also defines (/{tenant}/tasks/{id}:subscribe), which neither receiver serves here.
+  - Not covered:
+    - GetTask, CancelTask and the other operations;
+    - the GET form of the REST subscription (both SDKs route it, and the expression would match it; not sent);
+    - a GRPCRoute match on the service alone. The reading of the deploy commit, that agentgateway v1.5.0 turns it into the Exact path "/<service>/", was not exercised, since no row used it;
+    - the Gateway API rule on an HTTPRoute and a GRPCRoute with intersecting hostnames (the hostnames here intersect nothing);
+    - 5 sends per operation per receiver.
+- Follow-up: none.
+
+## Experiment C / both receivers / D-2, agentgateway's authorization on request.path — does a CEL rule on the path refuse SubscribeToTask and allow SendMessage on REST and gRPC, where on JSON-RPC C-7's header rule could not tell the operation?
+
+- Versions: as the rebuild entry above.
+- Environment: kind
+- Method: C-7's layer, now on the path.
+  - overlay-l2-path/ was applied 22:04:41Z and removed 22:09:17Z. It holds one AgentgatewayPolicy per route the rows cross, each spec.traffic.authorization action Deny:
+    - on the HTTPRoutes worker-ingress and orchestrator-ingress: request.path.endsWith(":subscribe");
+    - on the GRPCRoutes worker-grpc-ingress and orchestrator-grpc-ingress: request.path == "/lf.a2a.v1.A2AService/SubscribeToTask".
+  - A traffic policy may target a GRPCRoute (agentgateway_policy_types.go at v1.5.0, l.67).
+  - The same 50 sends as the route entry, with the same readings.
+- Result: l2-path/, counts.csv.
+  - The four policies read Accepted=True/Valid and Attached=True/Attached. The ingress's dump held the 4 expressions while they were in force, and 0 before and after.
+  - **REST**, per receiver:
+    - SubscribeToTask: 5 of 5 load-client and 5 of 5 curl refused, the proxy's line reading http.status=403 reason=Authorization, and the client seeing 403. 0 arrivals.
+    - SendMessage: 5 of 5 delivered and COMPLETED.
+  - **gRPC**, per receiver:
+    - SubscribeToTask: 5 of 5 refused, the proxy's line http.status=200 reason=Authorization, and the client receiving gRPC status 7 (PERMISSION_DENIED), "authorization failed". 0 arrivals.
+    - SendMessage: 5 of 5 delivered, grpc_attempts 1 and grpc_transparent_attempts 0 on all 20.
+  - In all: 30 refused, 0 with an arrival, and 20 delivered.
+- Interpretation: yes, on both bindings. agentgateway's authorization reads the operation from request.path, which is where REST and gRPC carry it, and refuses it before forwarding, with its own authorization record on the line. It held the rule for every client, curl included, where C-7's rule on the Accept header held only for clients that send that header. On gRPC the refusal is a gRPC status (PERMISSION_DENIED) inside an HTTP 200, the translation agentgateway documents in source for gRPC requests (proxy/mod.rs l.496-536).
+  - Not covered: Allow and Require forms of the path rule; the REST GET subscription; tenant-prefixed paths; identity rules; 5 sends per operation per receiver.
+- Follow-up: none.
+
+## Experiment C / both receivers / D-2, C-8's body rule on REST and gRPC — what does json(request.body).method, unchanged, do with a REST request, whose operation is not in its body, and a gRPC request, whose body is protobuf?
+
+- Versions: as the rebuild entry above.
+- Environment: kind
+- Method: C-8's two forms, unchanged, on the four routes the rows cross, one window each:
+  - overlay-l3-deny/, applied 22:09:30Z and removed 22:14:07Z: Deny json(request.body).method == "SubscribeToTask".
+  - overlay-l3-require/, applied 22:14:19Z and removed 22:18:57Z: the scoped Require that held the rule on JSON-RPC, request.method == "GET" || json(request.body).method != "SubscribeToTask".
+  - The same 50 sends in each window, with the same readings.
+- Result: l3-deny/ and l3-require/, counts.csv. Every policy read Accepted/Valid and Attached, and the dump held the 4 expressions in force and 0 outside.
+  - **Deny: it fired on 0 of 50 sends.**
+    - SendMessage: 20 of 20 delivered and COMPLETED.
+    - SubscribeToTask: 30 of 30 (load client and curl) passed the proxy and were answered by the receiver, with 1 arrival each, 0 executes and 0 invocations:
+      - Go REST: the proxy's line 200, and the client 200 with the not-found error inside the event stream (the reading of the application entry below);
+      - Python REST: 404, TASK_NOT_FOUND;
+      - both gRPC receivers: grpc.status 5, NOT_FOUND.
+  - **Scoped Require: it refused 50 of 50**, SendMessage and SubscribeToTask alike, with 0 arrivals:
+    - REST: the proxy's line 403 reason=Authorization, and on the Go path the card GET passing 200 before it;
+    - gRPC: http.status 200 reason=Authorization, and the client seeing gRPC status 7.
+  - grpc_attempts 1 and grpc_transparent_attempts 0 on all 40 gRPC sends.
+- Interpretation: the rule that held on JSON-RPC holds on neither binding, and each form fails the way its CEL evaluation does.
+  - A REST SendMessage body carries no method field, and a REST SubscribeToTask carries no body at all. A gRPC body is a length-prefixed protobuf frame, which json() cannot parse. So on every POST, json(request.body).method fails to evaluate. The counts show it: the Deny (== "SubscribeToTask") was never true and the Require (!= "SubscribeToTask") was never true on any POST, and for two complementary comparisons that is an evaluation failure, not a value.
+  - The source shows how, in agentgateway v1.5.0 (the tarball in sources.txt, sha256 caae805d...):
+    - crates/celx/src/optimize.rs l.24-27 rewrites json(x).field to jsonField(x, "field").
+    - crates/celx/src/general.rs l.478-501, json_parse_field, returns ExecutionError::NoSuchKey when the key is absent, as on a REST SendMessage body. It returns a serde deserialization error for a body that is not a JSON object: the empty REST subscribe body, and a protobuf frame.
+    - crates/agentgateway/src/cel/types.rs l.769-783, eval_bool, turns an evaluation error into false (unwrap_or_default).
+    - crates/agentgateway/src/http/authorization.rs l.340-368: a Deny fires when any rule is true, and a Require passes only when all rules are true.
+  - The Deny, which "fails to deny" on an expression failure (the installed CRD's description, as C-8 read it), passed everything.
+  - The Require, which denies when its expression is not true, refused everything, the allowed operation included.
+  - What C-8 counted as the body rule's success on JSON-RPC is a property of that binding, whose operation is in the JSON body. On REST and gRPC the same rule either separates nothing or refuses everything, and the operation is to be read from the path (the previous entry).
+  - Not covered:
+    - the REST GET subscription, which both SDKs route: the scoped Require's first clause, request.method == "GET", allows it by construction;
+    - request.bodyPrefix;
+    - a CEL rule on the REST body's message fields;
+    - other forms;
+    - 5 sends per operation per receiver.
+- Follow-up: none. It is the documented CEL failure behaviour applied to bodies that are not JSON-RPC.
+
+## Experiment C / both receivers / D-2, the application refuses the operation on REST and gRPC — with REFUSE_OPERATION=SubscribeToTask on both agents, is the refusal binding-agnostic, and what does each client and proxy see?
+
+- Versions: as the rebuild entry above.
+- Environment: kind
+- Method: C-10's setting.
+  - REFUSE_OPERATION=SubscribeToTask was set on the worker and the orchestrator by kubectl set env, each waited on by rollout status (22:19:12Z), and restored empty the same way (22:23:43Z).
+  - The same 50 sends, with readings before, in force and after (l4-app/).
+- Result: l4-app/, counts.csv.
+  - SendMessage: 20 of 20 delivered and COMPLETED, 1 invocation each.
+  - SubscribeToTask: 30 of 30 reached their receiver, 1 arrival each (the refusal happens in the application), and each was refused there: 1 received line, 0 executes, 0 invocations each.
+  - What each client and the proxy saw of the refusal:
+    - Python REST: 400, UNSUPPORTED_OPERATION, on the proxy's line and at the client (load client and curl alike).
+    - Go REST: HTTP 200 text/event-stream, with the google.rpc.Status error (code 400, FAILED_PRECONDITION, reason UNSUPPORTED_OPERATION) as the stream's one event. The proxy's line read 200 on all 10.
+    - Both gRPC receivers: gRPC status 9 (FAILED_PRECONDITION), grpc.status 9 on the proxy's line.
+  - grpc_attempts 1 and grpc_transparent_attempts 0 on all 20 gRPC sends.
+  - After the restore: REFUSE_OPERATION empty on both, and the closing clean check 1/1/1/1/1 (after/).
+- Interpretation: the refusal is binding-agnostic in where it happens and in what it counts. The same interceptor or handler refused SubscribeToTask on REST and on gRPC as C-10 counted on JSON-RPC: after the arrival and the SDK's received line, before any execution. What differs by binding and SDK is how the refusal is signalled:
+  - a2a-python's REST server and both gRPC servers map UnsupportedOperationError to the status the specification's §5.4 names (400; FAILED_PRECONDITION).
+  - a2a-go v2.5.0's REST server writes the event-stream headers before the handler's first step, so an error raised before the first event goes out as HTTP 200, with the error as an event (a2asrv/rest.go, handleStreamingRequest). The same holds for its answer to a missing task, 12 of 12 across p0 and the Deny window.
+  - A layer that reads HTTP status, such as the proxy's line, a metric or a retry policy, sees those as successes.
+  - A minimal reproduction outside the lab, a2asrv.NewRESTHandler with no task, reads the same: 200 with error.code 404 in the stream, where GetTask on the same server answers 404 (repro/).
+  - Not covered: SendStreamingMessage refused; the orchestrator refusing a forwarded operation; 5 sends per operation per receiver.
+- Follow-up: docs/upstream/a2a-go-rest-streaming-error-before-first-event-http-200.md, a draft for the author, who chooses between a new a2a-go issue and a comment on the open specification issue a2aproject/A2A#1262 ("Clarify streaming errors in REST transport binding"). The searches of a2a-go's issues and pull requests (related and not this case: #318 and #319, the client decoding stream error events) and of the specification repository are in upstream-search/.
+
+## 2026-09-24 — note beside the D-2 application entry (the specification repository's search)
+
+The application entry's Follow-up says the searches of a2a-go and of the specification repository are in upstream-search/.
+The specification repository's search was NOT complete when that was written:
+- The first attempt (upstream-search/a2a-spec-1262.txt) answered one query pair, repo:a2aproject/A2A "rest streaming error
+  http status", is:issue total=4 and is:pr total=6.
+- Its next calls FAILED at GitHub's rate limit.
+It was completed on 2026-09-24T22:49Z (upstream-search/a2a-spec-search-completed.txt):
+- 8 query strings, is:issue and is:pr each, the search rate limit read before each call; every call was answered and none
+  FAILED.
+- It found no duplicate of the draft.
+- Read by number:
+  - a2aproject/A2A#1262 (open), "Clarify streaming errors in REST transport binding", stays the closest.
+  - a2aproject/A2A#2227 (an open pull request, the ACTS conformance corpus, which rebuilds its error tables from §5.4) is
+    related.
+  - a2aproject/A2A#1105 and #1503 (both closed) are related and not this case.
+The draft's Status line now says so. a2aproject/a2a-go#318 and #319 were closed and merged on 2026-04-21, not 2026-04-12,
+which is when they were opened; the draft and upstream-search/a2ago-318-319.txt carry the corrected dates.

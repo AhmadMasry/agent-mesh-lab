@@ -1,0 +1,93 @@
+# render proof: parent 5fe154aa96124732959a8a587986b00388a64587 vs 2ed9cdeeaa5b5793cdf27cb1e9357f35fff9bb68, deploy trees c50f196371b69bed6387a19544deaef328d6b4c6 vs 52a6dae74bb12b4ed0053469c012194ee044847c
+DIFFERS  deploy_base.out, non-comment lines:  2 > - appProtocol: kubernetes.io/h2c; 2 > - containerPort: 8081; 1 > - name: GRPC_LISTEN_ADDR; 1 > - name: GRPC_PORT; 2 > - name: PUBLIC_GRPC_URL; 4 > name: grpc; 2 > port: 8081; 2 > targetPort: grpc; 1 > value: :8081; 1 > value: "8081"; 1 > value: orchestrator.lab.svc.cluster.local:8081; 1 > value: worker.lab.svc.cluster.local:8081;
+DIFFERS  deploy_step-1-nomesh.out, non-comment lines:  2 > - appProtocol: kubernetes.io/h2c; 2 > - containerPort: 8081; 1 > - name: GRPC_LISTEN_ADDR; 1 > - name: GRPC_PORT; 2 > - name: PUBLIC_GRPC_URL; 4 > name: grpc; 2 > port: 8081; 2 > targetPort: grpc; 1 > value: :8081; 1 > value: "8081"; 1 > value: orchestrator.lab.svc.cluster.local:8081; 1 > value: worker.lab.svc.cluster.local:8081;
+DIFFERS  deploy_step-2-ambient-agw.out, non-comment lines:  2 > - appProtocol: kubernetes.io/h2c; 2 > - containerPort: 8081; 1 > - name: GRPC_LISTEN_ADDR; 1 > - name: GRPC_PORT; 2 > - name: PUBLIC_GRPC_URL; 4 > name: grpc; 2 > port: 8081; 2 > targetPort: grpc; 1 > value: :8081; 1 > value: "8081"; 1 > value: orchestrator.lab.svc.cluster.local:8081; 1 > value: worker.lab.svc.cluster.local:8081;
+DIFFERS  deploy_step-2b-agw-ingress-egress.out, non-comment lines:  2 > - appProtocol: kubernetes.io/h2c; 2 > - containerPort: 8081; 1 > - name: GRPC_LISTEN_ADDR; 1 > - name: GRPC_PORT; 2 > - name: PUBLIC_GRPC_URL; 4 > name: grpc; 2 > port: 8081; 2 > targetPort: grpc; 1 > value: :8081; 1 > value: "8081"; 1 > value: agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80; 1 > value: worker.lab.svc.cluster.local:8081;
+DIFFERS  deploy_step-2c-gate2.out, non-comment lines:  2 > - appProtocol: kubernetes.io/h2c; 2 > - backendRefs:; 2 > - containerPort: 8081; 2 > - name: agentgateway-ingress; 1 > - name: GRPC_LISTEN_ADDR; 1 > - name: GRPC_PORT; 1 > - name: orchestrator; 2 > - name: PUBLIC_GRPC_URL; 1 > - name: worker; 1 > - orchestrator-grpc.lab.internal; 1 > - worker-grpc.lab.internal; 2 > ---; 2 > apiVersion: gateway.networking.k8s.io/v1; 2 > hostnames:; 2 > kind: GRPCRoute; 2 > metadata:; 4 > name: grpc; 1 > name: orchestrator-grpc-ingress; 1 > name: worker-grpc-ingress; 2 > namespace: agentgateway-ingress; 2 > namespace: lab; 2 > parentRefs:; 4 > port: 8081; 2 > rules:; 2 > spec:; 2 > targetPort: grpc; 1 > value: :8081; 1 > value: "8081"; 1 > value: agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80; 1 > value: worker.lab.svc.cluster.local:8081;
+same     deploy_step-3-stress_retry_egress_off.out
+same     deploy_step-3-stress_retry_egress_on.out
+same     deploy_step-3-stress_retry_ingress_off.out
+same     deploy_step-3-stress_retry_ingress_on.out
+same     deploy_step-3-stress_retry_waypoint_off.out
+same     deploy_step-3-stress_retry_waypoint_on.out
+same     deploy_step-3-stress_retry_waypoint-orchestrator_off.out
+same     deploy_step-3-stress_retry_waypoint-orchestrator_on.out
+DIFFERS  deploy_step-3-stress.out, non-comment lines:  2 > - appProtocol: kubernetes.io/h2c; 2 > - backendRefs:; 2 > - containerPort: 8081; 2 > - name: agentgateway-ingress; 1 > - name: GRPC_LISTEN_ADDR; 1 > - name: GRPC_PORT; 1 > - name: orchestrator; 2 > - name: PUBLIC_GRPC_URL; 1 > - name: worker; 1 > - orchestrator-grpc.lab.internal; 1 > - worker-grpc.lab.internal; 2 > ---; 2 > apiVersion: gateway.networking.k8s.io/v1; 2 > hostnames:; 2 > kind: GRPCRoute; 2 > metadata:; 4 > name: grpc; 1 > name: orchestrator-grpc-ingress; 1 > name: worker-grpc-ingress; 2 > namespace: agentgateway-ingress; 2 > namespace: lab; 2 > parentRefs:; 4 > port: 8081; 2 > rules:; 2 > spec:; 2 > targetPort: grpc; 1 > value: :8081; 1 > value: "8081"; 1 > value: agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80; 1 > value: worker.lab.svc.cluster.local:8081;
+DIFFERS  job_loadgen-a2-job.out, non-comment lines:  1 > - name: CLIENT_BINDING; 1 > - name: CLIENT_GRPC_AUTHORITY; 2 > value: "";
+DIFFERS  job_loadgen-job.out, non-comment lines:  1 > - name: CLIENT_BINDING; 1 > - name: CLIENT_GRPC_AUTHORITY; 2 > value: "";
+same     job_replay-job.out
+# renders: 17; renders only in the tree: 
+# placeholders left outside a comment in the tree's renders: 0
+# HTTPRoute objects, parent vs tree, per render (compared as parsed objects):
+  deploy_step-2-ambient-agw: 1 and 1 HTTPRoutes, identical
+  deploy_step-2b-agw-ingress-egress: 3 and 3 HTTPRoutes, identical
+  deploy_step-2c-gate2: 5 and 5 HTTPRoutes, identical
+  deploy_step-3-stress: 5 and 5 HTTPRoutes, identical
+  deploy_step-3-stress_retry_egress_off: 1 and 1 HTTPRoutes, identical
+  deploy_step-3-stress_retry_egress_on: 1 and 1 HTTPRoutes, identical
+  deploy_step-3-stress_retry_ingress_off: 2 and 2 HTTPRoutes, identical
+  deploy_step-3-stress_retry_ingress_on: 2 and 2 HTTPRoutes, identical
+  deploy_step-3-stress_retry_waypoint-orchestrator_off: 1 and 1 HTTPRoutes, identical
+  deploy_step-3-stress_retry_waypoint-orchestrator_on: 1 and 1 HTTPRoutes, identical
+  deploy_step-3-stress_retry_waypoint_off: 1 and 1 HTTPRoutes, identical
+  deploy_step-3-stress_retry_waypoint_on: 1 and 1 HTTPRoutes, identical
+# every object that is in both renders and differs, per render (kind namespace/name):
+  deploy_base: changed ['Deployment lab orchestrator', 'Deployment lab worker', 'Service lab orchestrator', 'Service lab worker'] added [] removed []
+  deploy_step-1-nomesh: changed ['Deployment lab orchestrator', 'Deployment lab worker', 'Service lab orchestrator', 'Service lab worker'] added [] removed []
+  deploy_step-2-ambient-agw: changed ['Deployment lab orchestrator', 'Deployment lab worker', 'Service lab orchestrator', 'Service lab worker'] added [] removed []
+  deploy_step-2b-agw-ingress-egress: changed ['Deployment lab orchestrator', 'Deployment lab worker', 'Service lab orchestrator', 'Service lab worker'] added [] removed []
+  deploy_step-2c-gate2: changed ['Deployment lab orchestrator', 'Deployment lab worker', 'Service lab orchestrator', 'Service lab worker'] added ['GRPCRoute lab orchestrator-grpc-ingress', 'GRPCRoute lab worker-grpc-ingress'] removed []
+  deploy_step-3-stress: changed ['Deployment lab orchestrator', 'Deployment lab worker', 'Service lab orchestrator', 'Service lab worker'] added ['GRPCRoute lab orchestrator-grpc-ingress', 'GRPCRoute lab worker-grpc-ingress'] removed []
+  job_loadgen-a2-job: changed ['Job lab loadgen-w'] added [] removed []
+  job_loadgen-job: changed ['Job lab loadgen-w'] added [] removed []
+# Service ports in the tree renders that hold the agents' Services (render: service port name appProtocol):
+  deploy_base: orchestrator 8080 http appProtocol=(none)
+  deploy_base: orchestrator 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_base: worker 8080 http appProtocol=(none)
+  deploy_base: worker 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-1-nomesh: orchestrator 8080 http appProtocol=(none)
+  deploy_step-1-nomesh: orchestrator 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-1-nomesh: worker 8080 http appProtocol=(none)
+  deploy_step-1-nomesh: worker 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-2-ambient-agw: orchestrator 8080 http appProtocol=(none)
+  deploy_step-2-ambient-agw: orchestrator 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-2-ambient-agw: worker 8080 http appProtocol=(none)
+  deploy_step-2-ambient-agw: worker 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-2b-agw-ingress-egress: orchestrator 8080 http appProtocol=(none)
+  deploy_step-2b-agw-ingress-egress: orchestrator 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-2b-agw-ingress-egress: worker 8080 http appProtocol=(none)
+  deploy_step-2b-agw-ingress-egress: worker 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-2c-gate2: orchestrator 8080 http appProtocol=(none)
+  deploy_step-2c-gate2: orchestrator 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-2c-gate2: worker 8080 http appProtocol=(none)
+  deploy_step-2c-gate2: worker 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-3-stress: orchestrator 8080 http appProtocol=(none)
+  deploy_step-3-stress: orchestrator 8081 grpc appProtocol=kubernetes.io/h2c
+  deploy_step-3-stress: worker 8080 http appProtocol=(none)
+  deploy_step-3-stress: worker 8081 grpc appProtocol=kubernetes.io/h2c
+# every appProtocol value in any tree render, with its count:
+   {'kubernetes.io/h2c': 12} ; values naming a2a: []
+# GRPCRoutes in the tree's renders:
+  deploy_step-2c-gate2: lab/orchestrator-grpc-ingress hosts=['orchestrator-grpc.lab.internal'] parent=agentgateway-ingress/agentgateway-ingress backend=orchestrator:8081 matches=0
+  deploy_step-2c-gate2: lab/worker-grpc-ingress hosts=['worker-grpc.lab.internal'] parent=agentgateway-ingress/agentgateway-ingress backend=worker:8081 matches=0
+  deploy_step-3-stress: lab/orchestrator-grpc-ingress hosts=['orchestrator-grpc.lab.internal'] parent=agentgateway-ingress/agentgateway-ingress backend=orchestrator:8081 matches=0
+  deploy_step-3-stress: lab/worker-grpc-ingress hosts=['worker-grpc.lab.internal'] parent=agentgateway-ingress/agentgateway-ingress backend=worker:8081 matches=0
+# hostnames in step-3's render: HTTPRoute ['model.lab.internal', 'orchestrator.lab.svc.cluster.local', 'worker.lab.internal', 'worker.lab.svc.cluster.local']; GRPCRoute ['orchestrator-grpc.lab.internal', 'worker-grpc.lab.internal']; intersection []
+# the agents' settings per Deployment, in each tree render that holds them:
+  deploy_base: orchestrator: PUBLIC_URL='http://orchestrator.lab.svc.cluster.local:8080' GRPC_PORT='8081' PUBLIC_GRPC_URL='orchestrator.lab.svc.cluster.local:8081' REFUSE_OPERATION='' LEDGER_HEADERS='' FORWARD_RESUBSCRIBE='' ports=http:8080,grpc:8081
+  deploy_base: worker: PUBLIC_URL='http://worker.lab.svc.cluster.local:8080' GRPC_LISTEN_ADDR=':8081' PUBLIC_GRPC_URL='worker.lab.svc.cluster.local:8081' REFUSE_OPERATION='' LEDGER_HEADERS='' ports=http:8080,grpc:8081
+  deploy_step-1-nomesh: orchestrator: PUBLIC_URL='http://orchestrator.lab.svc.cluster.local:8080' GRPC_PORT='8081' PUBLIC_GRPC_URL='orchestrator.lab.svc.cluster.local:8081' REFUSE_OPERATION='' LEDGER_HEADERS='' FORWARD_RESUBSCRIBE='' ports=http:8080,grpc:8081
+  deploy_step-1-nomesh: worker: PUBLIC_URL='http://worker.lab.svc.cluster.local:8080' GRPC_LISTEN_ADDR=':8081' PUBLIC_GRPC_URL='worker.lab.svc.cluster.local:8081' REFUSE_OPERATION='' LEDGER_HEADERS='' ports=http:8080,grpc:8081
+  deploy_step-2-ambient-agw: orchestrator: PUBLIC_URL='http://orchestrator.lab.svc.cluster.local:8080' GRPC_PORT='8081' PUBLIC_GRPC_URL='orchestrator.lab.svc.cluster.local:8081' REFUSE_OPERATION='' LEDGER_HEADERS='' FORWARD_RESUBSCRIBE='' ports=http:8080,grpc:8081
+  deploy_step-2-ambient-agw: worker: PUBLIC_URL='http://worker.lab.svc.cluster.local:8080' GRPC_LISTEN_ADDR=':8081' PUBLIC_GRPC_URL='worker.lab.svc.cluster.local:8081' REFUSE_OPERATION='' LEDGER_HEADERS='' ports=http:8080,grpc:8081
+  deploy_step-2b-agw-ingress-egress: orchestrator: PUBLIC_URL='http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local' PUBLIC_GRPC_URL='agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80' GRPC_PORT='8081' REFUSE_OPERATION='' LEDGER_HEADERS='' FORWARD_RESUBSCRIBE='' ports=http:8080,grpc:8081
+  deploy_step-2b-agw-ingress-egress: worker: PUBLIC_URL='http://worker.lab.svc.cluster.local:8080' GRPC_LISTEN_ADDR=':8081' PUBLIC_GRPC_URL='worker.lab.svc.cluster.local:8081' REFUSE_OPERATION='' LEDGER_HEADERS='' ports=http:8080,grpc:8081
+  deploy_step-2c-gate2: orchestrator: PUBLIC_URL='http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local' PUBLIC_GRPC_URL='agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80' GRPC_PORT='8081' REFUSE_OPERATION='' LEDGER_HEADERS='' FORWARD_RESUBSCRIBE='' ports=http:8080,grpc:8081
+  deploy_step-2c-gate2: worker: PUBLIC_URL='http://worker.lab.svc.cluster.local:8080' GRPC_LISTEN_ADDR=':8081' PUBLIC_GRPC_URL='worker.lab.svc.cluster.local:8081' REFUSE_OPERATION='' LEDGER_HEADERS='' ports=http:8080,grpc:8081
+  deploy_step-3-stress: orchestrator: PUBLIC_URL='http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local' PUBLIC_GRPC_URL='agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80' GRPC_PORT='8081' REFUSE_OPERATION='' LEDGER_HEADERS='' FORWARD_RESUBSCRIBE='' ports=http:8080,grpc:8081
+  deploy_step-3-stress: worker: PUBLIC_URL='http://worker.lab.svc.cluster.local:8080' GRPC_LISTEN_ADDR=':8081' PUBLIC_GRPC_URL='worker.lab.svc.cluster.local:8081' REFUSE_OPERATION='' LEDGER_HEADERS='' ports=http:8080,grpc:8081
+# the Job templates' new settings, as rendered:
+  job_loadgen-job: [{'name': 'CLIENT_BINDING', 'value': ''}, {'name': 'CLIENT_GRPC_AUTHORITY', 'value': ''}]
+  job_loadgen-a2-job: [{'name': 'CLIENT_BINDING', 'value': ''}, {'name': 'CLIENT_GRPC_AUTHORITY', 'value': ''}]
+# files under deploy/ that differ: deploy/base/loadgen-a2-job.yaml deploy/base/loadgen-job.yaml deploy/base/orchestrator.yaml deploy/base/worker.yaml deploy/step-2b-agw-ingress-egress/orchestrator-model-url.yaml deploy/step-2c-gate2/grpc-ingress-routes.yaml deploy/step-2c-gate2/kustomization.yaml 
+# scripts under experiments/ (not runs/) that differ: 0

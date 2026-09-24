@@ -1,0 +1,72 @@
+# D-2, the route layer (C-6's layer) on the REST and gRPC bindings. Added BESIDE the deployed routes, never under
+# deploy/: per receiver, one HTTPRoute on the REST binding's hostname with a RegularExpression path match on the REST
+# SubscribeToTask path and no backendRefs, and one GRPCRoute on the gRPC binding's hostname with an Exact method match
+# on A2AService/SubscribeToTask and no backendRefs. A matched rule with no backendRefs "performs no forwarding" and, with
+# no filter that answers, a 500 (httproute.md at v1.6.2, l.211-214, as C-6 read it). SendMessage matches neither rule.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: d2-refuse-subscribe-rest-worker
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-ingress
+  hostnames:
+    - worker.lab.internal
+  rules:
+    - matches:
+        - path:
+            type: RegularExpression
+            value: "^/tasks/[^/]+:subscribe$"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: d2-refuse-subscribe-rest-orchestrator
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-ingress
+  hostnames:
+    - agentgateway-ingress.agentgateway-ingress.svc.cluster.local
+  rules:
+    - matches:
+        - path:
+            type: RegularExpression
+            value: "^/tasks/[^/]+:subscribe$"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: d2-refuse-subscribe-grpc-worker
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-ingress
+  hostnames:
+    - worker-grpc.lab.internal
+  rules:
+    - matches:
+        - method:
+            service: lf.a2a.v1.A2AService
+            method: SubscribeToTask
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: d2-refuse-subscribe-grpc-orchestrator
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-ingress
+  hostnames:
+    - orchestrator-grpc.lab.internal
+  rules:
+    - matches:
+        - method:
+            service: lf.a2a.v1.A2AService
+            method: SubscribeToTask

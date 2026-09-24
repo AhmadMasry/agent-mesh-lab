@@ -1,0 +1,64 @@
+2026-09-24T22:25:13Z
+#1262 open 2025-12-01T15:23:17Z updated 2025-12-03T09:09:49Z [Bug]: Clarify streaming errors in REST transport binding
+### What happened?
+
+Currently there's no information on how to return errors for streaming requests in REST transport binding.
+For JSONRPC which also uses SSE for streaming we return a data line with jsonrpc error struct in it.
+```
+data: {"jsonrpc": "2.0", "id": 1, "result": { /* Task | Message | TaskArtifactUpdateEvent | TaskStatusUpdateEvent */ }}
+
+data: {"jsonrpc": "2.0", "id": 1, "error": { /*  details */ }}
+```
+
+### Code of Conduct
+
+- [x] I agree to follow this project's Code of Conduct
+--- comments
+2025-12-03T01:57:11Z darrelmiller: What kind of error would you expect to get during a stream?  What would a client do with that error?  The Task can go into failed state if a error has prevented the task from completing and then the error information would be included in the TaskState.Message.
+
+I
+2025-12-03T09:09:49Z yarolegovich: > What kind of error would you expect to get during a stream? 
+
+Mostly dependency failures like:
+* Required agent dependency (eg. ADK session store) temporarily unhealthy. 
+* Task store connection issue.
+
+> What would a client do with that error?
+
+Good question. Clients might use the error to understand that their request is retryable after a jittered delay during which the unhealthy component mig
+q=[repo:a2aproject/A2A rest streaming error http status is:issue] total=4
+  #2185 [open] Binding Proposal - fmsg - federated durable threads transport
+  #1942 [open] [TSC] Proposal: backlog consolidation & v1.1 scope alignment
+  #1667 [open] [Protocol Question] Heartbeat-based agents: availability metadata and offline-first task handling
+  #652 [closed] [Feat]: Add Ability for Server to Specify Supported Protocol Versions
+q=[repo:a2aproject/A2A rest streaming error http status is:pr] total=6
+  #1882 [open] feat: Add new spec for A2A protocol conformance tests
+  #2227 [open] refactor: update ACTS test suite specifications to standardize error formats, include header inspection, and refine transport requirements
+  #1549 [open] feat!: Proposal for bidirectional streaming over gRPC
+  #1810 [closed] feat: add generation field to Task for ordering, long-polling, and optimistic concurrency
+  #1160 [closed] docs(spec): Large refactor of specification to separate application protocol definition from mapping to transports.
+  #847 [closed] fix: Update json names of gRPC objects for proper transcoding 
+gh: API rate limit exceeded for user ID 33571825. If you reach out to GitHub Support for help, please include the request ID E441:2CFC01:10F1627:109D657:6AB5A34C and timestamp 2026-09-24 22:25:16 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https://docs.github.com/en/site-policy/github-terms/github-terms-of-service) (HTTP 403)
+q=[repo:a2aproject/A2A SSE error status code rest is:issue] {
+	"message": "API rate limit exceeded for user ID 33571825. If you reach out to GitHub Support for help, please include the request ID E441:2CFC01:10F1627:109D657:6AB5A34C and timestamp 2026-09-24 22:25:16 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https:\/\/docs.github.com\/en\/site-policy\/github-terms\/github-terms-of-service)",
+	"documentation_url": "https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api#rate-limiting",
+	"status": "403"
+}
+gh: API rate limit exceeded for user ID 33571825. If you reach out to GitHub Support for help, please include the request ID E443:3A54B6:1143D39:10F1E96:6AB5A34C and timestamp 2026-09-24 22:25:16 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https://docs.github.com/en/site-policy/github-terms/github-terms-of-service) (HTTP 403)
+q=[repo:a2aproject/A2A SSE error status code rest is:pr] {
+	"message": "API rate limit exceeded for user ID 33571825. If you reach out to GitHub Support for help, please include the request ID E443:3A54B6:1143D39:10F1E96:6AB5A34C and timestamp 2026-09-24 22:25:16 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https:\/\/docs.github.com\/en\/site-policy\/github-terms\/github-terms-of-service)",
+	"documentation_url": "https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api#rate-limiting",
+	"status": "403"
+}
+gh: API rate limit exceeded for user ID 33571825. If you reach out to GitHub Support for help, please include the request ID E444:2043E:1111083:10BD9D9:6AB5A34D and timestamp 2026-09-24 22:25:17 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https://docs.github.com/en/site-policy/github-terms/github-terms-of-service) (HTTP 403)
+q=[repo:a2aproject/A2A streaming error before first event is:issue] {
+	"message": "API rate limit exceeded for user ID 33571825. If you reach out to GitHub Support for help, please include the request ID E444:2043E:1111083:10BD9D9:6AB5A34D and timestamp 2026-09-24 22:25:17 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https:\/\/docs.github.com\/en\/site-policy\/github-terms\/github-terms-of-service)",
+	"documentation_url": "https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api#rate-limiting",
+	"status": "403"
+}
+gh: API rate limit exceeded for user ID 33571825. If you reach out to GitHub Support for help, please include the request ID E445:237853:10F0DAC:109D92B:6AB5A34D and timestamp 2026-09-24 22:25:17 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https://docs.github.com/en/site-policy/github-terms/github-terms-of-service) (HTTP 403)
+q=[repo:a2aproject/A2A streaming error before first event is:pr] {
+	"message": "API rate limit exceeded for user ID 33571825. If you reach out to GitHub Support for help, please include the request ID E445:237853:10F0DAC:109D92B:6AB5A34D and timestamp 2026-09-24 22:25:17 UTC. For more on scraping GitHub and how it may affect your rights, please review our Terms of Service (https:\/\/docs.github.com\/en\/site-policy\/github-terms\/github-terms-of-service)",
+	"documentation_url": "https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api#rate-limiting",
+	"status": "403"
+}
