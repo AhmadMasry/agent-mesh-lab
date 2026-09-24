@@ -13,13 +13,15 @@ from starlette.routing import Route
 from orchestrator.agent import build_handler
 from orchestrator.control import Injector
 from orchestrator.forward import Forwarder
+from orchestrator.headers import LEDGER_HEADERS_ENV, ledger_headers_from
 from orchestrator.ledger import IngressMiddleware
 from orchestrator.model import ModelClient
 from orchestrator.refuse import REFUSE_OPERATION_ENV, refuse_operation_from
 
 
 def build_app(*, name: str, model: ModelClient | None, forwarder: Forwarder | None, out: TextIO | None,
-              public_url: str, plan_model_call: bool = False, refuse: str = "") -> Starlette:
+              public_url: str, plan_model_call: bool = False, refuse: str = "",
+              ledger_headers: bool = False) -> Starlette:
     handler = build_handler(name=name, model=model, forwarder=forwarder, out=out, public_url=public_url,
                             plan_model_call=plan_model_call, refuse=refuse)
     card = handler.card
@@ -36,7 +38,8 @@ def build_app(*, name: str, model: ModelClient | None, forwarder: Forwarder | No
               Route("/control/reset", injector.handle_reset, methods=["POST"])]
     app = Starlette(routes=routes)
     app.add_middleware(IngressMiddleware, out=out, injector=injector,
-                       skip_paths=("/healthz", "/control/inject", "/control/reset"))
+                       skip_paths=("/healthz", "/control/inject", "/control/reset"),
+                       read_headers=ledger_headers)
     return app
 
 
@@ -45,6 +48,8 @@ def app_from_env() -> Starlette:
     # agent can refuse raises here, and the process stops rather than serving
     # everything.
     refuse = refuse_operation_from(os.environ.get(REFUSE_OPERATION_ENV, ""))
+    # The same for the ledger's header reading: a value that is not "on" raises.
+    ledger_headers = ledger_headers_from(os.environ.get(LEDGER_HEADERS_ENV, ""))
     name = os.environ.get("AGENT_NAME", "orchestrator")
     downstream = os.environ.get("DOWNSTREAM_A2A_URL", "")
     plan = os.environ.get("PLAN_MODEL_CALL", "off") == "on"
@@ -62,7 +67,7 @@ def app_from_env() -> Starlette:
     forwarder = Forwarder(url=downstream, caller=name) if downstream else None
     return build_app(name=name, model=model, forwarder=forwarder, out=None,
                      public_url=os.environ.get("PUBLIC_URL", f"http://{name}.lab.svc.cluster.local:8080"),
-                     plan_model_call=plan, refuse=refuse)
+                     plan_model_call=plan, refuse=refuse, ledger_headers=ledger_headers)
 
 
 # The uvicorn arguments this agent is served with, in one place so that a test

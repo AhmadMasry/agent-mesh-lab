@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, TextIO
 
 from orchestrator.control import MODE_HTTP503_BEFORE_DISPATCH, Injector
+from orchestrator.headers import read_headers
 
 # How a streamed response ended, as this boundary can observe it. complete and
 # client-gone are the two the Go receiver also writes; send-failed is this
@@ -159,14 +160,19 @@ class IngressMiddleware:
     line, serves the request, then writes the response line with the status.
     It rejects a request only when the injector has an armed work item matching
     it, and then only after the delivery has been counted. Paths in skip_paths
-    (the readiness probe and the control endpoints) are not ledgered."""
+    (the readiness probe and the control endpoints) are not ledgered.
+
+    read_headers is LEDGER_HEADERS (orchestrator.headers): when true the arrival
+    line, and only the arrival line, gains the header reading as its last key.
+    False, the default, writes every line as it was before the setting existed."""
 
     def __init__(self, app, out: TextIO | None = None, skip_paths: tuple[str, ...] = ("/healthz",),
-                 injector: Injector | None = None) -> None:
+                 injector: Injector | None = None, read_headers: bool = False) -> None:
         self.app = app
         self.writer = LineWriter(out)
         self.skip_paths = skip_paths
         self.injector = injector
+        self.read_headers = read_headers
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope.get("path", "") in self.skip_paths:
@@ -195,7 +201,12 @@ class IngressMiddleware:
         client = scope.get("client") or ("", 0)
         line = parse_ingress(method=scope.get("method", ""), path=scope.get("path", ""), headers=headers,
                              remote=f"{client[0]}:{client[1]}", body=body, truncated=disconnect is not None)
-        self.writer.write(line)
+        # The reading goes on the line written, never into line itself, so the
+        # response line built from line below is what it is with the setting off.
+        if self.read_headers:
+            self.writer.write({**line, "headers": read_headers(scope.get("headers", []))})
+        else:
+            self.writer.write(line)
 
         # The arrival is on the ledger before this point, so an injected failure
         # is still a counted delivery. take disarms the work item, so one arming
