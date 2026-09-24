@@ -30,6 +30,20 @@ off, and `test_knobs_default_off` asserts that:
 
 The A.2 run script sets one of them for one measured repetition. Nothing else in
 the lab sets any of them, so every other run sends exactly once.
+
+One setting exists for follow-on D-1, which runs Experiment B with this SDK as
+the reconnecting client (the author's note of 2026-09-24). It is read by
+server.app_from_env, stops the process at start on a value it does not read, and
+is off by default:
+
+  * ``FORWARD_RESUBSCRIBE=on``  the forward is one ``SendStreamingMessage``, and
+    if that stream ends without a terminal event -- it runs out, or it raises --
+    and a task id was seen on it, EXACTLY ONE ``SubscribeToTask`` is sent for
+    that task and read to its end. Whatever that one does, nothing is sent
+    after it: it is the behaviour under test, and rule 4 forbids anything more.
+    Both requests are recorded as ``forward`` ledger lines (ForwardLedger). Off,
+    the forward is the unary ``SendMessage`` it has always been and no forward
+    line is written.
 """
 from __future__ import annotations
 
@@ -38,13 +52,43 @@ import os
 import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass
+from typing import Any, TextIO
 from urllib.parse import urlsplit
 
 import httpx
 from a2a.client import A2ACardResolver, ClientConfig, create_client
-from a2a.types import Message, Part, Role, SendMessageRequest, Task, TaskState
+from a2a.types import Message, Part, Role, SendMessageRequest, SubscribeToTaskRequest, Task, TaskState
 from opentelemetry import trace
 from opentelemetry.trace import SpanKind
+
+from orchestrator.ledger import LineWriter, now
+
+FORWARD_RESUBSCRIBE_ENV = "FORWARD_RESUBSCRIBE"
+
+
+def forward_resubscribe_from(value: str) -> bool:
+    """The setting's value: False when empty, True for exactly "on", ValueError
+    otherwise. Matched exactly, as REFUSE_OPERATION and LEDGER_HEADERS are."""
+    if value == "":
+        return False
+    if value == "on":
+        return True
+    raise ValueError(f"{FORWARD_RESUBSCRIBE_ENV}={value!r} is not a value this agent reads; want on, or empty for off")
+
+
+# The states after which a task changes no more (A2A v1.0: completed, failed,
+# canceled, rejected). input-required and auth-required are interrupted, not
+# terminal; this lab's executors never enter them.
+TERMINAL_STATES = frozenset({TaskState.TASK_STATE_COMPLETED, TaskState.TASK_STATE_FAILED,
+                             TaskState.TASK_STATE_CANCELED, TaskState.TASK_STATE_REJECTED})
+
+OP_STREAM = "SendStreamingMessage"
+OP_SUBSCRIBE = "SubscribeToTask"
+
+# What the first stream's end line says was done about it.
+RESUBSCRIBE_SENT = "sent"
+RESUBSCRIBE_NOT_NEEDED = "not-needed"  # a terminal event arrived on the stream
+RESUBSCRIBE_NO_TASK_ID = "no-task-id"  # the stream ended before any event named a task
 
 
 def text_of(obj: Task | Message) -> str:
@@ -276,14 +320,145 @@ class ResendOnceTransport(httpx.AsyncBaseTransport):
         await self._inner.aclose()
 
 
+class StreamRead:
+    """What one streamed request carried, as this client read it: every event,
+    in order, and how the request ended. Reads; never sends."""
+
+    def __init__(self, operation: str, work_item: str, message_id: str, requested_task_id: str = "") -> None:
+        self.operation = operation
+        self.work_item = work_item
+        self.message_id = message_id
+        self.requested_task_id = requested_task_id
+        self.ts_sent = now()
+        self.events = 0
+        self.first: tuple[str, str, str] = ("", "", "")
+        self.last: tuple[str, str] = ("", "")
+        self.task_id = ""
+        self.context_id = ""
+        self.terminal_state: int | None = None
+        self.message: Message | None = None
+        self.answer = ""
+        self.status_text = ""
+        self.stream_end = ""
+        self.error = ""
+        self.error_type = ""
+
+    @property
+    def terminal_seen(self) -> bool:
+        return self.terminal_state is not None or self.message is not None
+
+    def read(self, response) -> tuple[str, str, str, str]:
+        """Take one StreamResponse in; return its kind, task id, context id and
+        state for the event line."""
+        kind, task_id, context_id, state = "", "", "", ""
+        if response.HasField("task"):
+            task = response.task
+            kind, task_id, context_id, state = "task", task.id, task.context_id, TaskState.Name(task.status.state)
+            if text_of(task):
+                self.answer = text_of(task)
+            if task.status.state in TERMINAL_STATES:
+                self.terminal_state = task.status.state
+                if task.status.HasField("message"):
+                    self.status_text = text_of(task.status.message)
+        elif response.HasField("message"):
+            message = response.message
+            kind, task_id, context_id = "message", message.task_id, message.context_id
+            self.message = message
+        elif response.HasField("status_update"):
+            update = response.status_update
+            kind, task_id, context_id = "status-update", update.task_id, update.context_id
+            state = TaskState.Name(update.status.state)
+            if update.status.state in TERMINAL_STATES:
+                self.terminal_state = update.status.state
+                if update.status.HasField("message"):
+                    self.status_text = text_of(update.status.message)
+        elif response.HasField("artifact_update"):
+            update = response.artifact_update
+            kind, task_id, context_id = "artifact-update", update.task_id, update.context_id
+            text = "".join(part.text for part in update.artifact.parts if part.HasField("text"))
+            self.answer = self.answer + text if update.append else text
+        self.events += 1
+        if self.events == 1:
+            self.first = (kind, state, task_id)
+        self.last = (kind, state)
+        if task_id:
+            self.task_id = task_id
+        if context_id:
+            self.context_id = context_id
+        return kind, task_id, context_id, state
+
+    def ended(self, exc: BaseException | None) -> None:
+        if exc is None:
+            self.stream_end = "eof"
+        else:
+            self.stream_end = "error"
+            self.error = str(exc)
+            self.error_type = type(exc).__qualname__
+
+    def result(self) -> str:
+        """The answer, or the error a caller should see: a terminal state other
+        than completed is a response that arrived, and it is reported as such."""
+        if self.message is not None:
+            return text_of(self.message)
+        if self.terminal_state == TaskState.TASK_STATE_COMPLETED:
+            return self.answer
+        if self.terminal_state is not None:
+            raise RuntimeError(f"downstream task {self.task_id} ended in {TaskState.Name(self.terminal_state)}: "
+                               f"{self.status_text}")
+        raise RuntimeError(f"downstream {self.operation} ended without a terminal event "
+                           f"({self.stream_end}{': ' + self.error if self.error else ''})")
+
+
+class ForwardLedger:
+    """The forward's own lines, written only with FORWARD_RESUBSCRIBE on: one
+    "event" line per event this client read and one "end" line per request,
+    saying how it ended. The end line of the SendStreamingMessage says what was
+    done about it in "resubscribe"."""
+
+    def __init__(self, out: TextIO | None) -> None:
+        self.writer = LineWriter(out)
+
+    def event(self, read: StreamRead, kind: str, task_id: str, context_id: str, state: str) -> None:
+        self.writer.write({
+            "ledger": "forward", "ts": now(), "operation": read.operation, "line": "event", "seq": read.events,
+            "logical_work_item_id": read.work_item, "messageId": read.message_id, "taskId": task_id,
+            "contextId": context_id, "kind": kind, "state": state,
+        })
+
+    def end(self, read: StreamRead, resubscribe: str = "") -> None:
+        line: dict[str, Any] = {
+            "ledger": "forward", "ts": now(), "operation": read.operation, "line": "end",
+            "logical_work_item_id": read.work_item, "messageId": read.message_id, "taskId": read.task_id,
+            "requested_task_id": read.requested_task_id, "ts_sent": read.ts_sent, "events": read.events,
+            "first_kind": read.first[0], "first_state": read.first[1], "first_task_id": read.first[2],
+            "last_kind": read.last[0], "last_state": read.last[1], "terminal_seen": read.terminal_seen,
+            "stream_end": read.stream_end, "error": read.error, "error_type": read.error_type,
+        }
+        if read.operation == OP_STREAM:
+            line["resubscribe"] = resubscribe
+        self.writer.write(line)
+
+
 class Forwarder:
     def __init__(self, *, url: str, http_client: httpx.AsyncClient | None = None, caller: str = "orchestrator",
-                 timeout: float = 90.0) -> None:
+                 timeout: float = 90.0, resubscribe: bool = False, out: TextIO | None = None) -> None:
         self.url = url
         self.transport_retries = _positive_int("CLIENT_RETRIES")
         self.transport_resend = _switched_on("CLIENT_TRANSPORT_RESEND")
         self.retry_on = _retry_on()
         self.sdk_resend = _switched_on("CLIENT_SDK_RESEND")
+        # FORWARD_RESUBSCRIBE, read by app_from_env. The SDK-layer resend is a
+        # second SendMessage after a failed one; with the resubscription on the
+        # forward is a stream and its one follow-up is the resubscription, so the
+        # two together would be two follow-ups nobody measured. Refused here.
+        self.resubscribe = resubscribe
+        if resubscribe and self.sdk_resend:
+            raise ValueError(f"{FORWARD_RESUBSCRIBE_ENV}=on and CLIENT_SDK_RESEND=on together are not a forward "
+                             "this agent sends")
+        self.ledger = ForwardLedger(out) if resubscribe else None
+        # Counts the resubscriptions this forwarder sent, so a run and a test read
+        # a number: it can only ever be 0 or 1 per forward.
+        self.resubscriptions = 0
         # Counts what the SDK-layer knob actually did, so a run reads a number
         # rather than inferring one from the knob having been set.
         self.sdk_resends = 0
@@ -315,8 +490,52 @@ class Forwarder:
         async with self._client_lock:
             if self._client is None:
                 self._card = await A2ACardResolver(self._http, self.url).get_agent_card()
-                self._client = await create_client(self._card, client_config=ClientConfig(httpx_client=self._http, streaming=False))
+                # streaming=False unless the resubscription is on: off, the
+                # forward is the unary SendMessage it has always been.
+                self._client = await create_client(self._card, client_config=ClientConfig(
+                    httpx_client=self._http, streaming=self.resubscribe))
         return self._client
+
+    async def _read_stream(self, stream, read: StreamRead) -> None:
+        """Read one streamed request to its end, one event line per event, then
+        the end line's facts. An exception ends the read and is kept on it; it
+        is not raised, because what happens next is the caller's decision."""
+        assert self.ledger is not None
+        try:
+            async for response in stream:
+                kind, task_id, context_id, state = read.read(response)
+                self.ledger.event(read, kind, task_id, context_id, state)
+        except Exception as exc:
+            read.ended(exc)
+            return
+        read.ended(None)
+
+    async def _forward_streaming(self, client, request: SendMessageRequest, work_item: str,
+                                 message_id: str) -> StreamRead:
+        """One SendStreamingMessage; if it ends without a terminal event and a
+        task id was seen on it, exactly one SubscribeToTask for that task.
+        Returns the read whose outcome the forward reports: the resubscription's
+        when one was sent, the stream's otherwise."""
+        assert self.ledger is not None
+        if not self._card.capabilities.streaming:
+            # The SDK would send a unary SendMessage instead, silently; a run that
+            # asked for a stream is told it did not get one.
+            raise RuntimeError(f"{FORWARD_RESUBSCRIBE_ENV}=on, but the downstream card does not declare streaming")
+        first = StreamRead(OP_STREAM, work_item, message_id)
+        await self._read_stream(client.send_message(request), first)
+        if first.terminal_seen:
+            self.ledger.end(first, RESUBSCRIBE_NOT_NEEDED)
+            return first
+        if not first.task_id:
+            self.ledger.end(first, RESUBSCRIBE_NO_TASK_ID)
+            return first
+        self.ledger.end(first, RESUBSCRIBE_SENT)
+        # The one resubscription. Nothing below sends again, whatever it gets.
+        self.resubscriptions += 1
+        second = StreamRead(OP_SUBSCRIBE, work_item, message_id, requested_task_id=first.task_id)
+        await self._read_stream(client.subscribe(SubscribeToTaskRequest(id=first.task_id)), second)
+        self.ledger.end(second)
+        return second
 
     async def _invoke(self, client, request: SendMessageRequest):
         """One SendMessage through the SDK, returning the last response it yielded."""
@@ -345,6 +564,20 @@ class Forwarder:
         # Scoped to the send, so the identity on the wire is this forward's. A
         # resend is the same forward and carries the same two values.
         token = FORWARD_IDENTITY.set(ForwardIdentity(work_item=work_item, message_id=msg.message_id))
+        if self.resubscribe:
+            # The span covers the stream and the one resubscription, as it covers
+            # a resend: the conventions' "duration of the logical operation with
+            # all retries".
+            try:
+                with _invoke_agent_span(self._card, work_item, msg.message_id) as span:
+                    outcome = await self._forward_streaming(client, request, work_item, msg.message_id)
+                    if outcome.context_id:
+                        span.set_attribute(_GEN_AI_CONVERSATION_ID, outcome.context_id)
+                    if not outcome.terminal_seen and outcome.error_type:
+                        span.set_attribute(_ERROR_TYPE, outcome.error_type)
+            finally:
+                FORWARD_IDENTITY.reset(token)
+            return outcome.result()
         try:
             with _invoke_agent_span(self._card, work_item, msg.message_id) as span:
                 try:
