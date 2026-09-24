@@ -2630,3 +2630,179 @@ place, and its `summary.csv` and `counts.txt` still reproduce byte-identically f
   - Cited by C and not touched: docs/upstream/a2a-go-client-reads-a-json-answer-to-a-streaming-method-as-an-empty-stream.md (B-6's), which C-10 reproduces on a second path. Status: draft, not posted.
   - Not cited by C by path, and not touched: docs/upstream/agentgateway-policy-attached-to-istiod-driven-waypoint.md, the draft for the earlier reading that C-5 mirrors (the author's note of 2026-09-20 cites that reading's findings entry). Status: draft, not filed.
   - C-5 drafted nothing: its status gap is listed as out of scope in istio/istio#60024.
+
+## Experiment B / both receivers / D-1, B-5b's rollout variant — with the agentgateway ingress replaced by a rollout under an open stream, does ONE SubscribeToTask reattach to the still-running Task, and does the Task still complete with one model call?
+
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.4 openai-python=3.16.2 (read back from the rebuilt cluster by the committed versions-readback.sh unedited, versions-readback.txt; a2a-go and a2a-spec are read at the built tree, from go.mod and versions.yaml)
+- Environment: kind
+- Method: the author's note of 2026-09-24 ("B gains the rollout variant the note of 2026-09-20 allowed if it fits"), on the lab's current topology: one default ServiceAccount, no A2A marking.
+  - **The code.** Four commits on 1537d8f9, none of which touches this row's path, each with its tests, mutants and proof in its message and in code-proof/:
+    - "feat(worker): LEDGER_HEADERS, the ingress ledger's arrival line reads the request's header names and a fixed list's values, off by default"
+    - "feat(orchestrator): LEDGER_HEADERS, the ingress ledger's arrival line reads the request's header names and a fixed list's values, off by default"
+    - "feat(orchestrator): FORWARD_RESUBSCRIBE, the forward streams and, if its stream ends without a terminal event, sends exactly one SubscribeToTask, off by default"
+    - "feat(deploy): the agent Deployments carry LEDGER_HEADERS and the orchestrator FORWARD_RESUBSCRIBE, rendered empty on every step"
+    - Re-run at the built tree from the committed scripts: mutants 18 of 18 (worker), 16 of 16 and 23 of 23 (orchestrator) killed, each unmutated copy passing. With each setting unset or empty, both agents' ledger lines and the forward's request are identical to the parent's, stamps, ports and minted ids masked. The 17 renders differ only by the three settings, all empty.
+  - **The rebuild.** From make teardown of the revert's cluster through make step-3, make targets only, no manual step. The driver was the revert's rebuild.sh, adapted in its header, paths and subjects. The tools were a lab-scoped istioctl 1.31.0, its tarball re-verified this session against the release's published SHA-256, and an empty Helm scope; nothing on the host changed (tools.txt).
+    - build.txt lists the deployed subtrees beside the revert's built tree. agents and deploy changed, and inside deploy only base/worker.yaml and base/orchestrator.yaml. Every other deployed path is the same.
+  - **The standard proof.** The last record's checks.sh (part one, then the retry knobs last), versions-readback.sh and the comparison program, all unedited, against the revert's directory.
+  - **The row.** It is B-5b's main row with the removal replaced, per receiver, 20 repetitions, one at a time. The driver is B-5b's rows.sh, and its header lists every change.
+    - The mock was armed with a 45 000 ms delay. Job 1 sent ONE SendStreamingMessage with nothing to cancel it.
+    - 2 000 ms after Job 1's own WORKING event, the driver ran kubectl rollout restart of deployment/agentgateway-ingress, ONCE, stamped on the host clock.
+    - The successor was watched through the API alone. When it was first seen Ready, Job 2, a second Job and a second process, sent ONE SubscribeToTask for Job 1's task id. Nothing was retried or re-sent.
+    - The paths are B-4's: go to the ingress's Service with CLIENT_HOST=worker.lab.internal; py to the orchestrator's Service, which ran in model mode for its half and was restored after.
+  - **The counts.** B-5b's counts.py, unedited, counted the row (rows/rollout-counts.txt, rows/rollout-summary.csv).
+    - Every stamp was parsed and every line joined on identity. Each interval names its clock pair.
+    - No figure is taken from an agentgateway access-line stamp (reading-notes.txt names the two columns left out).
+  - **Dry run.** One dry repetition (go) was sent first and is kept under dry/, not counted.
+  - **Keep-awake.** This task started no keep-awake and changed no power setting, and keep-awake is not claimed absent. The host recorded 0 Sleep, 0 Wake, 0 DarkWake and 0 Maintenance events from 16:26:22Z, the task's first commit, to 17:54:23Z, after the closing cluster reading (sleep-events.csv).
+- Result: run outputs under experiments/runs/2026-09-24-d1-current-topology/ (reading-notes.txt).
+  - **The rebuild** (timings.csv), every exit 0, no wait timed out, 365.762 s in all: teardown 1.244 s, cluster-kind 19.193 s, step-1 57.332 s, step-2 118.376 s, step-2b 53.683 s, step-2c 19.296 s, step-3 96.638 s.
+  - **The standard proof** beside the revert's: 65 rows same, 2 DIFFERS (standard-counts-vs-last-proof.txt).
+    - The clean check is 1/1/1/1/1 TASK_STATE_COMPLETED at both receivers. The trace, Prometheus targets, STRICT legs, plaintext probe and retry knobs read as in the revert's proof.
+    - The 2 DIFFERS are one cause, the collector's start, as in the revert's own entry. "no healthy upstream" reads 10 here against 21 there, and "other ztunnel error lines, all" 13 against 24.
+    - All 10 lines are to the collector's Service port 4318, between 16:57:35.8Z and 16:57:43.3Z. The collector pod was created at 16:57:33Z and turned Ready at 16:57:44Z (collector-start.txt, read on this cluster).
+  - **The rollout**, 40 of 40 (rows/*/*/removal.txt):
+    - the Deployment's generation moved up by one and kubectl.kubernetes.io/restartedAt was written on the pod template, as B-5a found;
+    - the old pod had no deletionTimestamp when the command returned;
+    - the driver saw the successor Ready 1 439.7–2 615.7 ms after the command;
+    - the old pod received SIGTERM 1 384.6–2 368.7 ms after the command. Its drain started 0.3–0.6 ms later, the minimum drain completed 10 000.5–10 010.8 ms after that, and its last line came 20 002.3–20 016.1 ms after SIGTERM. That line was "binds drained" in 39 and a request line in 1, and no drain-timeout line appeared in any of the 40.
+  - **Job 1's stream**, 40 of 40:
+    - It was cut 21 389.2–22 376.0 ms after the command: stream_end error, "SSE stream error: unexpected EOF". It carried 2 events, task SUBMITTED then status-update WORKING, and no terminal event. HTTP 200, 1 POST, Job Failed exit 3.
+    - Both ledgers read client-gone and consumer-gone, within 1.4 ms before and 5.4 ms after the client's own end stamp.
+    - B-4's asymmetry holds on the result line: go carries "queue read failed: context canceled" in 20 of 20; py carries no error key in 20 of 20.
+  - **The Task**, 40 of 40:
+    - 1 arrival (SendStreamingMessage) joined on messageId, 1 execute, 1 task, A2A-Version 1.0.
+    - TASK_STATE_COMPLETED through SUBMITTED, WORKING, COMPLETED.
+    - Exactly 1 invocation, outcome ok, latency 45 000.2–45 009.6 ms, naming the executor's task. No stale-closed line.
+  - **Job 2, the one SubscribeToTask**, 40 of 40:
+    - When it was applied, Job 1's stream was STILL OPEN in 40 of 40. B-5b's forced delete had already ended it in 40 of 40.
+    - It arrived 1 844.9–3 022.6 ms after the command and 19.3–19.6 s before Job 1's stream ended. For about 19.5 s two client processes, Job 1's and Job 2's (two Jobs, a pod each), each held one open stream onto the same Task, one through each ingress pod.
+    - It was answered by the SUCCESSOR in 40 of 40. Job 1's POST had come through the old pod, which was still draining.
+    - It added 1 arrival joined on the task id and 0 executes, 0 tasks and 0 invocations.
+    - Its first event was a task at TASK_STATE_WORKING with Job 1's task id, then artifact-update and status-update COMPLETED: terminal seen, stream_end eof, HTTP 200, Job Complete exit 0.
+    - The Task was running at every arrival: its terminal state came 39 775.0–40 934.2 ms later.
+  - **What the replaced pod recorded of the POST it cut:**
+    - go: no access line in 19 of 20, one line reading 200 in 1; its only other line was Job 1's card GET.
+    - py: no access line at all in 20 of 20; the py card GETs cross agw-central, as in B-4.
+    - B-5b's forced delete wrote a 200 line for the cut POST in 40 of 40.
+- Interpretation:
+  - **Mostly as documented, at both SDKs.** A rollout of the ingress does to the Task what B-5b's forced delete did: nothing. The stream through the old pod is lost, the Task completes with one model call, and one resubscription reattaches with the Task as it stands.
+  - **What differs is the timing, and it is the rollout's.**
+    - The successor is Ready before the old pod is signalled, and the old pod then serves its open stream for 20 s more before its drain ends it. That is the drain behaviour B-5a measured at v1.5.0 and agentgateway #3334 changed after the pin.
+    - A resubscription sent at the first Ready therefore arrives while the original stream is still open, and reaches the successor. Neither SDK refused or counted the second stream as anything but a second subscriber.
+    - In this case the resubscription is not a reconnect after a loss but a second, concurrent reader.
+  - **The removed pod's record is less complete than under a forced delete.** 39 of the 40 cut POSTs have no access line, where the forced delete's lines read 200 for a failed stream.
+  - Not covered:
+    - agw-central under a rollout;
+    - any N other than 45 000 ms and any offset other than 2 000 ms after WORKING;
+    - a resubscription sent only after the first stream ended;
+    - more than one resubscription;
+    - the deletion and recreation of a Gateway.
+- Follow-up: none. The drain timing is agentgateway #3334, as B-5a recorded, and the access-line stamp is agentgateway#3369, both handled upstream after the pin.
+
+## Experiment B / go receiver / D-1, the Python client as the reconnecting client — with agw-central removed gracefully under the orchestrator's forward, does its ONE SubscribeToTask reach the worker's Task, and what does it get?
+
+- Versions: as the rollout entry above (versions-readback.txt, the same cluster).
+- Environment: kind
+- Method: the author's note of 2026-09-24, one row with the Python SDK as the reconnecting client. It reverses for this row only the choice that the load client is the streaming client in every B row (the preparation's D2 and section 4(c)). It uses the rebuild and standard proof of the rollout entry above.
+  - **The client under test** is the orchestrator's forwarder with FORWARD_RESUBSCRIBE=on (agents/orchestrator/orchestrator/forward.py, at the commit named above).
+    - The forward is one SendStreamingMessage to the worker's Service.
+    - If that stream ends without a terminal event and a task id was seen on it, EXACTLY ONE SubscribeToTask follows for that task, sent by the a2a-python client inside the orchestrator, never more.
+    - Each request writes forward lines on the orchestrator's stdout.
+    - The setting was set once for the row with kubectl set env and restored empty after, both rollouts waited for. The driver's between-variant proof read FORWARD_RESUBSCRIBE empty before the row; its EXIT trap restored it empty and read it back (rows/pyclient-central-graceful/control.txt); cluster-after.txt reads it empty on the Deployment and the pod.
+  - **The proxy on that path.** The forward crosses agw-central, which also carries the worker's model call, so removing it cuts both legs.
+    - It is removed by the author's ruling for agw-central, the GRACEFUL delete, for the reason the B-5b companion entry gives: the forced delete fails the Task before a successor is Ready, so it leaves no window at all.
+    - Under the graceful delete the old pod keeps its open connections until its drain ends them.
+  - **The row**, 20 repetitions, one at a time (pyclient.sh):
+    - The mock was armed with a 45 000 ms delay. One load-client Job sent ONE unary SendMessage to the orchestrator's Service on B-4's Python path; its POST crosses the ingress, which this row does not touch.
+    - When the orchestrator's own forward line showed status-update WORKING, the driver waited 2 000 ms and deleted the agw-central pod gracefully, once, stamped on the host clock.
+    - The successor was watched through the API alone. The driver sent nothing else.
+    - No caller ceiling moved: the worker's model client 60 s, the forward's httpx read timeout 90 s.
+  - **The counter.** pyclient-counts.py parses every stamp and joins on identity: the forward's stream by its messageId, the resubscription by its taskId. It reads each Task's final state from its executor's last state line, and counts every invocation line.
+  - **What the tests do not pin at this tree**, found by the review's mutants and stated as B-3 stated its unpinned paths. Five mutants survive the suite:
+    - the stream's end line written after the resubscription instead of before it;
+    - CANCELED not treated as terminal, and REJECTED not treated as terminal; either would let a resubscription follow a terminal event in a state the lab's executors never enter;
+    - a 1 s wait before the resubscription;
+    - via dropped from the Go worker's header value list (the Python side's test catches the same change).
+    - And FORWARD_RESUBSCRIBE is refused alongside CLIENT_SDK_RESEND but not alongside CLIENT_RETRIES or CLIENT_TRANSPORT_RESEND.
+    - The rows were checked unaffected: in 20 of 20 the resubscription was sent 0.1–0.6 ms after the stream's end line, which also shows the stream's end line written before the resubscription was sent and no wait standing before it; neither retry setting was set on the orchestrator before or after the row (control.txt); no row enters CANCELED or REJECTED; and the header reading recorded no via on any arrival.
+    - The tests that pin all five, and the refusal alongside the two retry settings, land in D-2's first code commit, before any D-2 row, and D-2's rebuild proves them.
+  - **Dry run.** One dry repetition is kept under dry/, not counted.
+  - **Keep-awake.** As the rollout entry; no host power event fell in this row's window.
+- Result: rows/pyclient-central-graceful/ (summary.csv, counts.txt). The driver exited 0 and every between-variant proof passed. All 20 are clean.
+  - **The removal**, 20 of 20:
+    - SIGTERM came 44.2–54.9 ms after the command.
+    - In 20 of 20 the span processor's shutdown timeout, "BatchSpanProcessor.Shutdown.Timeout", stood between SIGTERM and the drain, and the drain started 5 000.4–5 010.5 ms after SIGTERM. B-5b saw that in 2 of 40 and B-5a in 2 of 32. This row does not isolate why it happened in every repetition here.
+    - The minimum drain completed 10 000.7–10 006.1 ms after the drain's start. "hbone error: drain timeout" appears 3 times per repetition, and the last line is "binds drained".
+    - The successor was seen Ready 1 678.5–2 288.6 ms after the command. The forward had written no end line at that moment, in 20 of 20.
+  - **The stream at the orchestrator's client**, 20 of 20:
+    - It ended 15 048.8–15 068.3 ms after the command: stream_end error, A2AClientError "Network communication error: peer closed connection without sending complete message body (incomplete chunked read)".
+    - It carried 2 events, task SUBMITTED then status-update WORKING, and no terminal event. The end line reads resubscribe=sent.
+    - At the worker the stream had arrived from the removed pod in 20 of 20.
+  - **The Task and the model call**, 20 of 20:
+    - The worker's Task: 1 execute, 1 task, TASK_STATE_FAILED with "model call: Post "http://model.lab.internal:8080/v1/chat/completions": EOF".
+    - Exactly 1 invocation, outcome client-gone, latency 17 167.5–17 227.9 ms. No stale-closed line.
+    - The Task's terminal state came between 2.5 ms before and 0.3 ms after the client's stream end, across the two pods' clocks: before it in 19 of 20, after it by 0.3 ms in 1. Both legs cross the same draining proxy and ended in the same drain.
+  - **The one resubscription**, 20 of 20, and never a second:
+    - It named the stream's task and came from the SUCCESSOR, 5.0–11.2 ms after the stream ended.
+    - It arrived 5.2–13.2 ms AFTER the worker's Task had reached TASK_STATE_FAILED, so the Task was running at 0 of 20 arrivals.
+    - a2a-go answered "task not found: no active execution", with 0 events; the client raised TaskNotFoundError. The worker's ledgers read HTTP 200, complete, and an execution result carrying that error. Nothing followed.
+    - The orchestrator's Task went TASK_STATE_FAILED with "downstream SubscribeToTask ended without a terminal event (error: task not found: no active execution)", and the load client read task FAILED.
+  - **The worker's stream record and the client's disagree.**
+    - In 9 of 20 the worker's execution ledger has a delivered line for status-update FAILED on the forward's stream. In 7 of 20 its ingress ledger ends that stream complete rather than client-gone.
+    - The client read 2 events in 20 of 20.
+    - What the worker handed to the stream in the drain did not reach the client, which is what a delivered line is documented not to promise.
+- Interpretation:
+  - **What the count supports.** When one proxy carries both the A2A stream and the model call and is removed gracefully, the Python SDK's one resubscription is sent at once, reaches the successor within about 10 ms, and arrives after the Task has already failed. It is then told only that the task is not found, which is a2a-go's answer for a task with no active execution, as B-3's D3 row found for a terminal task.
+  - **The resubscription tells the client nothing.** The client does not learn the outcome, and it cannot tell a failed task from a missing one. The failure it reports is the lab's own text around the SDK's error.
+  - **The order, as counted.** Both connections end in the same drain. Across clocks, the model call's error reached the executor before the client read its stream's end in 19 of 20, and 0.3 ms after it in 1 of 20. On the worker's own clock alone, the resubscription arrived after the executor's FAILED line in 20 of 20, 5.2–13.2 ms after it, having been sent 0.1–0.6 ms after the stream's end line.
+  - **Not an SDK defect.** A client that resubscribes at once did not win this ordering in 20 of 20 under this configuration. Whether it would lose it on a topology where the model leg crosses a different proxy is not measured here.
+  - Not covered:
+    - the ingress, which this row does not touch;
+    - the forced delete and the rollout of agw-central;
+    - a delay before the resubscription;
+    - the Python client against the Python receiver;
+    - any N other than 45 000 ms and any offset other than 2 000 ms after WORKING;
+    - why the span processor timed out in every repetition here.
+- Follow-up: none. a2a-go's answer to a SubscribeToTask for a terminal task is B-3's D3 reading, already recorded; the drain timing is agentgateway #3334.
+
+## Experiment C / both receivers / D-1, the header reading — which request headers reach each application on B-4's paths and on the orchestrator's forward, and does any caller identity arrive in one?
+
+- Versions: as the rollout entry above (versions-readback.txt, the same cluster).
+- Environment: kind
+- Method: the thread C-10 left open: whether a caller identity reaches the application in a header. Which headers the proxies forward had not been captured.
+  - **The setting.** LEDGER_HEADERS=on was set on both agent Deployments for one window (headers.sh, 17:52:33Z to 17:53:21Z) and restored empty after, both rollouts waited for. cluster-after.txt reads it empty on both Deployments and pods.
+    - With it on, each arrival line records every header name that arrived, the values of a fixed list, and whether an Authorization header was present, never its value (the commits named in the rollout entry).
+    - The list: host, user-agent, x-caller, forwarded, x-forwarded-for, x-forwarded-proto, x-forwarded-host, x-real-ip, via, x-forwarded-client-cert.
+    - At this tree no Go test pins via on the list (the Python entry above lists it with the other unpinned paths); via arrived on 0 of 15 at both agents, so the reading is unaffected.
+  - **What was sent.** Once each, one Job and one process per request, through B-4's paths:
+    - per receiver, one SendMessage, one SendStreamingMessage, and one SubscribeToTask naming the task the stream created, by then terminal;
+    - go: to the ingress's Service with CLIENT_HOST=worker.lab.internal;
+    - py: to the orchestrator's Service, its card GET crossing agw-central and its POSTs the ingress;
+    - the orchestrator was in its deployed forward mode, so its two sends were forwarded to the worker's Service through agw-central. That is the orchestrator's forward to the worker.
+  - Every card GET is an arrival too.
+- Result: headers/ (readings.txt, the arrival lines per agent; control.txt with the pod IPs).
+  - **Arrivals.** 15 carried the reading, 9 at the worker and 6 at the orchestrator:
+    - worker: 3 card GETs and 3 POSTs from the ingress pod, then the orchestrator's card fetch and 2 forwarded SendMessages from agw-central;
+    - orchestrator: 3 card GETs from agw-central and 3 POSTs from the ingress pod.
+  - **Names that arrived**, counted over the 15: host 15, user-agent 15, accept-encoding 15, traceparent 15, x-caller 15, x-logical-work-item-id 14, a2a-version 8, content-type 8, content-length 8, accept 7, x-a2a-message-id 2. No other name arrived.
+    - Every name but traceparent is one the sending client or its HTTP library puts on its own requests: the load client sets X-Caller and X-Logical-Work-Item-Id, the orchestrator's forwarder those two and X-A2A-Message-Id.
+    - traceparent is recorded by name only; this reading does not say which hop set it or last wrote it.
+  - **Values.**
+    - host is the name the client addressed: worker.lab.internal on the go path, agentgateway-ingress.agentgateway-ingress.svc.cluster.local on the POSTs to the orchestrator, orchestrator.lab.svc.cluster.local:8080 on the orchestrator's card GETs, worker.lab.svc.cluster.local:8080 on the forward.
+    - user-agent is Go-http-client/1.1 from the load client and python-httpx/0.28.1 from the orchestrator.
+    - x-caller is loadgen or orchestrator.
+    - forwarded, x-forwarded-for, x-forwarded-proto, x-forwarded-host, x-real-ip, via and x-forwarded-client-cert: 0 of 15.
+    - authorization_present: false in 15 of 15.
+  - **The sender's address.** The ledger's remote was the forwarding proxy pod's own IP in 15 of 15: the ingress pod's for the POSTs through the ingress, agw-central's for everything through it.
+- Interpretation:
+  - **This closes C-10's open thread for this topology.** No caller identity reaches either application in a header. Neither agentgateway proxy, the ingress nor agw-central, delivered a forwarding header, a client-certificate header or any header outside the clients' own names and traceparent on any of the 15 requests at v1.5.0 under this configuration, and no Authorization header was sent.
+  - **What the application can read about its caller**: the caller's own declaration (x-caller, and the user-agent of its HTTP library), and a sender address that is always the proxy's. The first is whatever the client chooses to send. The second names the proxy, not the caller, as C-3 and C-7 found at ztunnel and at agentgateway.
+  - With one default ServiceAccount for every workload (C-7), no header could have told the lab's callers apart in any case; the reading shows none tries.
+  - Not covered:
+    - agentgateway policies that add headers, none of which this lab configures;
+    - the REST binding;
+    - the standing changes of the author's note of 2026-09-24 (distinct ServiceAccounts, the A2A backend type), which later tasks add;
+    - header values beyond the fixed list;
+    - one request per kind per receiver.
+- Follow-up: none.
