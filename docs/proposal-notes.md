@@ -380,3 +380,15 @@ checkout), and that line is the only one the rewrite changed in it. Its sha256 b
 Every record that cites the first value — as the committed file's hash, or as the hash of an as-run copy equal to it — refers to
 the bytes before this rewrite, and those records are left exactly as they were written. One local branch that was never published
 (`spike-central-waypoint`) was not rewritten. The proposal text is unchanged.
+
+## 2026-09-24 — the gRPC rows: the client's transparent retry, and the Host setting beyond Experiment B
+
+Decision by the author, on two points the gRPC binding raised. **Rule 4.** grpc-go's client disables retries only in part: its
+`WithDisableRetry` "does not impact transparent retries", which re-send a request the server never began processing. The load
+client's gRPC path disables every retry the library allows and records every attempt with the library's own transparent-retry flag;
+any repetition in which a transparent attempt occurred is flagged in its entry, and the pre-dispatch ingress ledger counts any
+duplicate arrival independently. This is recorded under rule 4 as the Go HTTP client's replay on a stale connection already is, not
+treated as a retry the lab added. **The Host setting.** gRPC is routed only on the agentgateway ingress, on hostnames of its own, so
+the in-cluster load client reaches the gRPC ports with the Host setting the note of 2026-09-22 allowed for Experiment B only; that
+allowance now extends to the gRPC rows. The central proxy's waypoint listener serves only the HTTP port, so gRPC through it is not
+routed, and the entries say so. The proposal text is unchanged.
