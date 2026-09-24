@@ -212,15 +212,25 @@ def _server_attributes(raw_url: str) -> dict[str, object]:
 
 
 def _agent_url(card) -> str:
-    """The interface URL this client will dial, when the card leaves no choice.
+    """The interface URL this client will dial: the card's one JSON-RPC interface.
 
-    Taken only when the card advertises exactly one interface -- a lab card does --
-    because with several the client's own choice of interface, not this function's,
-    is the one being dialled.
+    The forward's client uses JSON-RPC only (a ClientConfig with no
+    supported_protocol_bindings, which a2a-sdk reads as JSON-RPC alone), so of
+    a card's interfaces the JSON-RPC one is the one it dials. With several
+    JSON-RPC interfaces the SDK's own choice, not this function's, is the one
+    dialled, and the URL is left empty.
+
+    Until follow-on D-2 it read "exactly one interface of any binding": every
+    card then listed JSON-RPC alone, so for such a card the two readings agree,
+    and a card that lists REST and gRPC beside JSON-RPC still yields the
+    JSON-RPC URL (test_the_span_names_the_json_rpc_interface_of_a_three_binding_card).
+    The rebuild of D-2 found the old rule blanking server.address and
+    server.port on this span once the worker's card listed three bindings.
     """
-    if card is None or len(card.supported_interfaces) != 1:
+    if card is None:
         return ""
-    return card.supported_interfaces[0].url
+    urls = [i.url for i in card.supported_interfaces if i.protocol_binding == "JSONRPC"]
+    return urls[0] if len(urls) == 1 else ""
 
 
 def _invoke_agent_span(card, work_item: str, message_id: str):

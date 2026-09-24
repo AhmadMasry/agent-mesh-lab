@@ -302,3 +302,31 @@ async def test_the_sdk_resend_knob_still_sends_twice_under_one_span(monkeypatch,
     assert len(client.requests) == 2
     assert client.requests[0] is client.requests[1]
     assert len(by_name(spans, "invoke_agent worker")) == 1
+
+
+async def test_the_span_names_the_json_rpc_interface_of_a_three_binding_card(spans):
+    """Follow-on D-2: the worker's card lists JSONRPC, HTTP+JSON and GRPC, in
+    any order a card may give them; the span's address is the JSON-RPC one,
+    the interface the forward dials, as it was when the card listed one."""
+    card = a_card()
+    three = AgentCard(name=card.name, version=card.version, description=card.description,
+                      supported_interfaces=[
+                          AgentInterface(url="http://rest.example:9000", protocol_binding="HTTP+JSON", protocol_version="1.0"),
+                          AgentInterface(url="grpc.example:8081", protocol_binding="GRPC", protocol_version="1.0"),
+                          *card.supported_interfaces])
+    await a_forwarder(TaskClient(), three).forward("hello", "w1")
+    (span,) = by_name(spans, "invoke_agent worker")
+    attributes = dict(span.attributes)
+    assert attributes["server.address"] == "worker.lab.svc.cluster.local"
+    assert attributes["server.port"] == 8080
+
+
+def test_two_json_rpc_interfaces_leave_the_choice_to_the_sdk():
+    from orchestrator.forward import _agent_url
+    two = AgentCard(name="w", supported_interfaces=[
+        AgentInterface(url="http://a", protocol_binding="JSONRPC", protocol_version="1.0"),
+        AgentInterface(url="http://b", protocol_binding="JSONRPC", protocol_version="1.0")])
+    assert _agent_url(two) == ""
+    none = AgentCard(name="w", supported_interfaces=[
+        AgentInterface(url="http://a", protocol_binding="HTTP+JSON", protocol_version="1.0")])
+    assert _agent_url(none) == ""
