@@ -20,6 +20,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/resolver"
+	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -367,5 +369,40 @@ func TestGRPC_ConfiguredRetriesAreOffEvenWhenAServiceConfigAsks(t *testing.T) {
 	defer mu.Unlock()
 	if f := g.facts(); calls != 1 || f.GRPCAttempts != 1 || f.GRPCTransparentAttempts != 0 {
 		t.Errorf("server calls %d, attempts %d, transparent %d; want 1, 1, 0", calls, f.GRPCAttempts, f.GRPCTransparentAttempts)
+	}
+}
+
+// D-2's review M2: grpc.WithDisableServiceConfig pinned by behaviour. A resolver
+// that hands the channel a service config with a 20 ms method timeout, and a
+// server that answers after 300 ms: with the option the resolver's config is
+// ignored and the call succeeds; without it the call ends DeadlineExceeded.
+func TestGRPC_AResolversServiceConfigIsIgnored(t *testing.T) {
+	gs := grpc.NewServer(grpc.UnknownServiceHandler(func(_ any, ss grpc.ServerStream) error {
+		time.Sleep(300 * time.Millisecond)
+		return ss.SendMsg(&emptypb.Empty{})
+	}))
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() { _ = gs.Serve(ln) }()
+	t.Cleanup(gs.Stop)
+	r := manual.NewBuilderWithScheme("m2")
+	g := &grpcCall{workItem: "w"}
+	conn, err := grpc.NewClient(r.Scheme()+":///m2", append(g.dialOptions(), grpc.WithResolvers(r))...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	conn.Connect()
+	sc := r.CC().ParseServiceConfig(`{"methodConfig":[{"name":[{}],"timeout":"0.020s"}]}`)
+	if sc.Err != nil {
+		t.Fatal(sc.Err)
+	}
+	r.UpdateState(resolver.State{Addresses: []resolver.Address{{Addr: ln.Addr().String()}}, ServiceConfig: sc})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := conn.Invoke(ctx, "/x.Y/Z", &emptypb.Empty{}, &emptypb.Empty{}); err != nil {
+		t.Fatalf("err = %v (code %v); want nil: the resolver's service config must be ignored", err, status.Code(err))
 	}
 }
