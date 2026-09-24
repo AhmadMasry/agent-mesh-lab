@@ -76,7 +76,7 @@ func newModelHTTPClient(timeout time.Duration) *http.Client {
 // neither probe traffic nor arming a work item ever appears as a delivery. None
 // of these patterns carries a method: a wrong method reaches the handler's own
 // 405 instead of falling through to the A2A handler and being counted.
-func newRootMux(a2a http.Handler, lw *lineWriter, inj *injector) *http.ServeMux {
+func newRootMux(a2a http.Handler, lw *lineWriter, inj *injector, opts ...ingressOption) *http.ServeMux {
 	root := http.NewServeMux()
 	root.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -87,7 +87,7 @@ func newRootMux(a2a http.Handler, lw *lineWriter, inj *injector) *http.ServeMux 
 	})
 	root.HandleFunc("/control/inject", inj.handleInject)
 	root.HandleFunc("/control/reset", inj.handleReset)
-	root.Handle("/", newIngressMiddleware(a2a, lw, inj))
+	root.Handle("/", newIngressMiddleware(a2a, lw, inj, opts...))
 	return root
 }
 
@@ -131,8 +131,8 @@ func buildCard(name, publicURL string) *a2a.AgentCard {
 // where the ResponseWriter is still net/http's own. Both halves of that
 // sentence are tested against this function: a stream past the deadline
 // completes, and a unary response past the deadline does not.
-func newServerHandler(name string, a2aHandler http.Handler, lw *lineWriter, inj *injector) http.Handler {
-	return newWriteDeadlineLift(labotel.Handler(name, newRootMux(a2aHandler, lw, inj)))
+func newServerHandler(name string, a2aHandler http.Handler, lw *lineWriter, inj *injector, opts ...ingressOption) http.Handler {
+	return newWriteDeadlineLift(labotel.Handler(name, newRootMux(a2aHandler, lw, inj, opts...)))
 }
 
 func main() {
@@ -148,6 +148,12 @@ func main() {
 	// Read before anything else starts: a value that is not an operation this
 	// agent can refuse stops the process here, rather than serving everything.
 	refuse, err := refuseOperationFrom(os.Getenv(refuseOperationEnv))
+	if err != nil {
+		log.Fatalf("worker: %v", err)
+	}
+	// The same for the ledger's header reading: a value that is not "on" stops
+	// the process here, rather than serving with the reading off.
+	headersOn, err := ledgerHeadersFrom(os.Getenv(ledgerHeadersEnv))
 	if err != nil {
 		log.Fatalf("worker: %v", err)
 	}
@@ -189,7 +195,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              listen,
-		Handler:           newServerHandler(name, a2aMux, ledger, inj),
+		Handler:           newServerHandler(name, a2aMux, ledger, inj, withHeaderReading(headersOn)),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      120 * time.Second,
@@ -204,7 +210,7 @@ func main() {
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
 	}()
-	log.Printf("worker %q listening on %s; card at %s; model %s (timeout %s, MODEL_RETRIES=%d, %s=%q)", name, listen, a2asrv.WellKnownAgentCardPath, modelBase, modelTimeout(), modelRetries(), refuseOperationEnv, refuse)
+	log.Printf("worker %q listening on %s; card at %s; model %s (timeout %s, MODEL_RETRIES=%d, %s=%q, %s=%q)", name, listen, a2asrv.WellKnownAgentCardPath, modelBase, modelTimeout(), modelRetries(), refuseOperationEnv, refuse, ledgerHeadersEnv, os.Getenv(ledgerHeadersEnv))
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
