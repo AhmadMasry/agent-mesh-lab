@@ -332,3 +332,19 @@ configuration — one value for every caller — rather than exercised with new 
 the marking agentgateway's A2A handling keys on, so that the "A2A-aware gateway" of §4.4 C is switched on in this lab at least
 once; it is a step of its own, rebuilt from a deleted cluster, and it counts what the gateway then records and whether anything
 else moved. The proposal text is unchanged.
+
+## 2026-09-24 — Experiments B and C: the remaining rows, the REST binding, one lab-written authorization fixture, and two standing changes
+
+Decision by the author, after Experiments B and C were measured: run what was proposed and not done, and close the open threads
+the entries name. **B** gains the rollout variant the note of 2026-09-20 allowed "if it fits", and one row with the Python SDK as
+the reconnecting client — the orchestrator's forwarder resubscribes once after losing its stream — which reverses, for that row
+only, the choice that the load client is the streaming client in every row. **C** measures which request headers reach each
+application (a ledger setting, off by default), and gains the REST binding, deciding §12.2 of the proposal: both agents serve REST,
+the load client can send it, and the route, header and body rules are run on it as they were on JSON-RPC. **Rule 6 is widened for
+one fixture only**: a minimal external-authorization server written in this repository under `fixtures/`, speaking the protocol
+agentgateway calls, measured against the same rule as C-8; no third-party project is added. Two changes become **standing**: the
+load client, the worker and the orchestrator each get their own ServiceAccount, and from the step that adds them every rebuild
+uses them, earlier entries remaining the records of the single-identity setup; and agentgateway's A2A backend type is measured
+and kept as standing if it does not break clients that follow the agent card, with C-9's unexplained connection count
+investigated by a temporary Service marking applied and removed from a run directory. Rows on the current topology run first; the
+two standing changes run last. The proposal text is unchanged.
