@@ -86,6 +86,22 @@ spec:
             # restores it empty. The code: agents/orchestrator/orchestrator/refuse.py.
             - name: REFUSE_OPERATION
               value: ""
+            # LEDGER_HEADERS (added on 2026-09-24, follow-on D-1): "on" makes the
+            # pre-dispatch ingress ledger's arrival line record the request's
+            # header names, a fixed list's values and whether Authorization was
+            # present, never its value. Empty is off and is what every step
+            # renders; any other value stops the process at start. A run sets it
+            # with kubectl set env and restores it empty. The code: agents/orchestrator/orchestrator/headers.py.
+            - name: LEDGER_HEADERS
+              value: ""
+            # FORWARD_RESUBSCRIBE (added on 2026-09-24, follow-on D-1): "on" makes
+            # the forward one SendStreamingMessage and, if that stream ends
+            # without a terminal event, exactly one SubscribeToTask for its task,
+            # never more. Empty is off and is what every step renders; any other
+            # value stops the process at start. A run sets it with kubectl set env
+            # and restores it empty. The code: agents/orchestrator/orchestrator/forward.py.
+            - name: FORWARD_RESUBSCRIBE
+              value: ""
           readinessProbe:
             httpGet:
               path: /healthz
