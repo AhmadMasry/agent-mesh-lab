@@ -77,6 +77,11 @@ type ingressLine struct {
 	// what the Task did is its state lines.
 	TSEnd     string `json:"ts_end,omitempty"`
 	StreamEnd string `json:"stream_end,omitempty"`
+	// Headers is the header reading (headers.go), written on the arrival line
+	// only and only with LEDGER_HEADERS=on. Last, and absent when off, so a line
+	// written with the setting off is byte for byte the line written before the
+	// setting existed.
+	Headers *headerRecord `json:"headers,omitempty"`
 }
 
 const (
@@ -91,6 +96,7 @@ const (
 func responseLine(arrival ingressLine, status int, injection string) ingressLine {
 	line := arrival
 	line.Phase = "response"
+	line.Headers = nil
 	line.Status = &status
 	line.Injection = injection
 	return line
@@ -335,7 +341,14 @@ func hijackAndClose(w http.ResponseWriter) (hijacked bool, err error) {
 // serves the request, then writes the response line with the status. It rejects
 // a request only when the injector has an armed work item matching it, and then
 // only after the delivery has already been counted on the arrival line.
-func newIngressMiddleware(next http.Handler, lw *lineWriter, inj *injector) http.Handler {
+//
+// opts are the ledger's settings; with none the ledger is what it was before any
+// existed.
+func newIngressMiddleware(next http.Handler, lw *lineWriter, inj *injector, opts ...ingressOption) http.Handler {
+	var cfg ingressConfig
+	for _, o := range opts {
+		o(&cfg)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body []byte
 		if r.Body != nil {
@@ -344,6 +357,9 @@ func newIngressMiddleware(next http.Handler, lw *lineWriter, inj *injector) http
 			r.Body = io.NopCloser(bytes.NewReader(body))
 		}
 		line := parseIngress(r, body)
+		if cfg.headers {
+			line.Headers = readHeaders(r)
+		}
 		lw.write(line)
 		// The arrival is on the ledger before this point, so an injected
 		// failure is still a counted delivery. take disarms the work item, so
