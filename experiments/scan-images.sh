@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Kubescape image scan over the five images this lab builds. Called by
-# `make scan-images`, which builds the four Go images into ko.local first and
+# Kubescape image scan over the six images this lab builds (five until follow-on
+# D-3 added fixtures/extauthz). Called by
+# `make scan-images`, which builds the five Go images into ko.local first and
 # passes the output directory as $1.
 #
 # Everything in the output directory is written here, and nothing the findings
@@ -31,7 +32,7 @@ JQ_PROG="experiments/lib/kubescape-findings.jq"
 # name:image pairs. The Go images are the ko.local tags `make scan-images` just
 # built; the Python one is the tag the cluster runs.
 IMAGES=""
-for repo in worker mockllm loadgen replay; do
+for repo in worker mockllm loadgen replay extauthz; do
 	tag=$(docker image ls --format '{{.Repository}}:{{.Tag}}' | grep -E "^ko\.local/${repo}-[0-9a-f]+:latest$" | head -1)
 	[ -n "$tag" ] || { echo "no ko.local image for $repo; run make scan-images" >&2; exit 1; }
 	IMAGES="${IMAGES}${repo}=${tag}"$'\n'
@@ -108,8 +109,8 @@ echo "== scan-context.txt =="
 	echo "What was scanned"
 	echo "----------------"
 	echo "Kubescape reads the local Docker daemon, not the kind node's containerd store, so"
-	echo "the four Go images are rebuilt for the scan by the make target with"
-	echo "  KO_DOCKER_REPO=ko.local ko build ./agents/worker ./fixtures/mockllm ./fixtures/loadgen ./fixtures/replay --platform=linux/\$(go env GOARCH)"
+	echo "the five Go images are rebuilt for the scan by the make target with"
+	echo "  KO_DOCKER_REPO=ko.local ko build ./agents/worker ./fixtures/mockllm ./fixtures/loadgen ./fixtures/replay ./fixtures/extauthz --platform=linux/\$(go env GOARCH)"
 	echo "from the same sources and the same .ko.yaml base that make step-3 uses. The base"
 	echo "ko resolved for this build, from ko-build.txt:"
 	grep -hoE "Using base [^ ]+" "$OUT/ko-build.txt" 2>/dev/null | sort -u | sed 's/^/  /' || echo "  (ko-build.txt not present)"
@@ -122,7 +123,7 @@ echo "== scan-context.txt =="
 	done <<< "$IMAGES"
 	echo
 	echo "Image IDs the lab pods are running (cluster):"
-	kubectl -n lab get pod -l 'app in (worker,mockllm,orchestrator)' \
+	kubectl -n lab get pod -l 'app in (worker,mockllm,orchestrator,extauthz)' \
 		-o jsonpath='{range .items[*]}{"  "}{.metadata.name}{"\n                "}{.status.containerStatuses[0].image}{"\n                "}{.status.containerStatuses[0].imageID}{"\n"}{end}' 2>/dev/null \
 		|| echo "  (no cluster reachable)"
 	echo

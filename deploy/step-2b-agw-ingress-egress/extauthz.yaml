@@ -1,0 +1,84 @@
+# The lab's external-authorization fixture (fixtures/extauthz), added by the author's note of
+# 2026-09-24, which widens rule 6 for this one fixture. It is standing, like the mock model
+# endpoint; the AgentgatewayPolicy that points an ingress route at it is NOT standing and is
+# applied from a run directory, as C-8's authorization policies were.
+#
+# Why here: the ingress this overlay creates is the proxy that calls it. Why namespace lab,
+# enrolled, with no opt-out: the ingress pod is captured (ingress.yaml), so its dial to this
+# pod leaves through ztunnel as HBONE and arrives mutual TLS under the mesh-wide STRICT
+# policy, with no PERMISSIVE port and no posture change. The Service carries no
+# istio.io/use-waypoint label, so nothing sends its traffic through agw-central.
+#
+# The port: agentgateway's bring-your-own ext-auth page at v1.5.0 gives the Service port
+# appProtocol kubernetes.io/h2c (assets/agw-docs/pages/security/byo-extauth.md l.77-97), the
+# gRPC Check call being HTTP/2 in plaintext; the policy sets no TLS to it.
+#
+# EXTAUTHZ_UNDECIDABLE is rendered as deny, the fixture's own default, so the setting a run
+# changes is visible in the object.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: extauthz
+  namespace: lab
+  labels:
+    app: extauthz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: extauthz
+  template:
+    metadata:
+      labels:
+        app: extauthz
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: extauthz
+          image: ko://github.com/AhmadMasry/agent-mesh-lab/fixtures/extauthz
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: grpc
+              containerPort: 9000
+          env:
+            - name: EXTAUTHZ_UNDECIDABLE
+              value: "deny"
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: extauthz
+  namespace: lab
+  labels:
+    app: extauthz
+spec:
+  selector:
+    app: extauthz
+  ports:
+    - name: grpc
+      port: 9000
+      targetPort: grpc
+      appProtocol: kubernetes.io/h2c

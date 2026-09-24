@@ -32,11 +32,13 @@ ORCHESTRATOR_IMAGE := orchestrator:dev
 # a metadata annotation (no rollout of its own) so a later check can tell "this
 # image was built from this source" without rebuilding anything itself; see
 # experiments/gate3-matrix.sh's image_fresh_or_die().
-GO_SOURCES_HASH := $(shell git ls-files -s -- agents/worker fixtures/mockllm internal go.mod go.sum ':!**/*_test.go' | git hash-object --stdin)
+# Since follow-on D-3 the hash also covers fixtures/extauthz, whose Deployment steps 2b to 3
+# stamp too; the value moved with that change and with D-3's go.mod.
+GO_SOURCES_HASH := $(shell git ls-files -s -- agents/worker fixtures/mockllm fixtures/extauthz internal go.mod go.sum ':!**/*_test.go' | git hash-object --stdin)
 # The stamp hashes the index while ko builds the working tree, so a step target
 # refuses to run while the hashed Go paths carry uncommitted changes; the
 # harness applies the same refusal before a row (experiments/gate3-matrix.sh).
-GO_SOURCES_DIRTY := $(shell git status --porcelain -- agents/worker fixtures/mockllm internal go.mod go.sum ':!**/*_test.go')
+GO_SOURCES_DIRTY := $(shell git status --porcelain -- agents/worker fixtures/mockllm fixtures/extauthz internal go.mod go.sum ':!**/*_test.go')
 
 .PHONY: check-go-sources-clean
 check-go-sources-clean:
@@ -173,14 +175,15 @@ orchestrator-image:
 	docker build --pull --no-cache --platform linux/$(shell go env GOARCH) -t $(ORCHESTRATOR_IMAGE) -f agents/orchestrator/Dockerfile agents/orchestrator
 	kind load docker-image $(ORCHESTRATOR_IMAGE) --name $(CLUSTER_NAME)
 
-# scan-images: run the Kubescape CLI over the five images this lab builds and write
+# scan-images: run the Kubescape CLI over the six images this lab builds (five until
+# follow-on D-3 added fixtures/extauthz) and write
 # the counts into a run directory. Host-side only: nothing is installed in the
 # cluster, no Kubescape Operator, no node agent. Added on 2026-09-10 by the author's
 # decision, recorded in docs/proposal-notes.md; the CLI version and the URL it came
 # from are in versions.yaml under `kubescape`.
 #
 # Kubescape reads images straight out of the local Docker daemon, so the kind node's
-# containerd store is not consulted: the four Go images are rebuilt here with
+# containerd store is not consulted: the five Go images are rebuilt here with
 # `ko build` into ko.local, from the same sources and the same .ko.yaml base that
 # `make step-3` uses, and the Python image is the orchestrator:dev the same
 # `make orchestrator-image` produced. The scan record names the digest of every
@@ -206,7 +209,7 @@ scan-images:
 	@command -v kubescape >/dev/null || { echo "kubescape is not on PATH; see versions.yaml key kubescape for the documented install" >&2; exit 1; }
 	@command -v jq >/dev/null || { echo "jq is not on PATH; the per-finding CSVs are derived with experiments/lib/kubescape-findings.jq" >&2; exit 1; }
 	@mkdir -p "$(SCAN_OUT)"
-	KO_DOCKER_REPO=ko.local ko build ./agents/worker ./fixtures/mockllm ./fixtures/loadgen ./fixtures/replay --platform=linux/$(shell go env GOARCH) > "$(SCAN_OUT)/ko-build.txt" 2>&1
+	KO_DOCKER_REPO=ko.local ko build ./agents/worker ./fixtures/mockllm ./fixtures/loadgen ./fixtures/replay ./fixtures/extauthz --platform=linux/$(shell go env GOARCH) > "$(SCAN_OUT)/ko-build.txt" 2>&1
 	@experiments/scan-images.sh "$(SCAN_OUT)"
 
 step-1: check-go-sources-clean orchestrator-image
@@ -359,7 +362,9 @@ step-2b: check-go-sources-clean orchestrator-image
 	kubectl -n $(NAMESPACE) rollout status deployment/mockllm --timeout=120s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
-	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
+	# The external-authorization fixture, standing from this step (follow-on D-3).
+	kubectl -n $(NAMESPACE) rollout status deployment/extauthz --timeout=120s
+	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm deployment/extauthz lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
 # step-2c: the Gate 2 stimulus paths. Binds the orchestrator Service to `agw-central`
 # and gives it a hostname route there, so an in-cluster stimulus to either receiver
@@ -384,7 +389,8 @@ step-2c: check-go-sources-clean
 	kubectl -n $(NAMESPACE) wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/orchestrator --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/worker --timeout=180s
 	kubectl -n $(NAMESPACE) rollout status deployment/orchestrator --timeout=180s
-	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
+	kubectl -n $(NAMESPACE) rollout status deployment/extauthz --timeout=120s
+	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm deployment/extauthz lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
 # step-3: the telemetry pipeline.
 #
@@ -467,7 +473,8 @@ step-3: helm-required check-go-sources-clean
 	kubectl -n $(TELEMETRY_NS) rollout status deployment/otel-collector --timeout=180s
 	kubectl -n $(TELEMETRY_NS) rollout status deployment/jaeger --timeout=180s
 	kubectl -n $(TELEMETRY_NS) rollout status deployment/prometheus --timeout=180s
-	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
+	kubectl -n $(NAMESPACE) rollout status deployment/extauthz --timeout=120s
+	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm deployment/extauthz lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 	@echo
 	@echo "trace backend query Service: jaeger.$(TELEMETRY_NS).svc.cluster.local:16686 (its own UI and API; nothing else is installed)"
 	@echo "read it from this host with: kubectl -n $(TELEMETRY_NS) port-forward svc/jaeger 16686:16686  then open http://127.0.0.1:16686"
@@ -834,6 +841,13 @@ teardown:
 # OUT=<dir>` runs the harness on this host, where no Job and so no pod log
 # exists, and writes its two client lines there; the collection that follows
 # would otherwise truncate them.
+# Since follow-on D-3 the collection also reads the external-authorization fixture's
+# decision ledger (ledger "extauthz", one line per check, written before the fixture
+# answers), beside the three, with the same selection, and writes it as
+# <OUT>/extauthz.jsonl. The fixture exists from step 2b; where its Deployment does not
+# exist the section is empty and nothing is reported, and where it exists and its logs
+# cannot be read the warning is the one every other ledger gets. A request the fixture
+# refused now has a line of its own, where a refusal by the proxy's own policy has none.
 ledgers:
 	@if [ -z "$(LWI)" ]; then \
 		echo "usage: make ledgers LWI=<id> [OUT=<dir>]" >&2; \
@@ -844,6 +858,7 @@ ledgers:
 	WORKER=$$(fetch deploy/worker); \
 	ORCH=$$(fetch deploy/orchestrator); \
 	MOCK=$$(fetch deploy/mockllm); \
+	EXTAUTHZ=""; if kubectl get deploy/extauthz -n $(NAMESPACE) >/dev/null 2>&1; then EXTAUTHZ=$$(fetch deploy/extauthz); fi; \
 	quiet() { kubectl logs "$$@" -n $(NAMESPACE) 2>/dev/null || true; }; \
 	LOADGEN=$$(quiet -l job-name=loadgen-$(LWI) --tail=-1); \
 	REPLAY=$$(quiet -l job-name=replay-$(LWI) --tail=-1); \
@@ -856,13 +871,14 @@ ledgers:
 	INGRESS=$$( { printf '%s\n' "$$WORKER" | sel ingress worker; printf '%s\n' "$$ORCH" | sel ingress orchestrator; } ); \
 	EXECUTION=$$( { printf '%s\n' "$$WORKER" | sel execution worker; printf '%s\n' "$$ORCH" | sel execution orchestrator; } ); \
 	INVOCATION=$$(printf '%s\n' "$$MOCK" | sel invocation mockllm); \
+	DECISION=$$(printf '%s\n' "$$EXTAUTHZ" | sel extauthz extauthz); \
 	CLIENTL=$$( { printf '%s\n' "$$LOADGEN" | sel client loadgen; printf '%s\n' "$$REPLAY" | sel client replay; } ); \
-	if [ -z "$$INGRESS$$EXECUTION$$INVOCATION$$CLIENTL" ]; then \
+	if [ -z "$$INGRESS$$EXECUTION$$INVOCATION$$CLIENTL$$DECISION" ]; then \
 		echo "ledgers: no ledger lines of any kind for logical_work_item_id=$(LWI)" >&2; exit 1; \
 	fi; \
 	if [ -n "$(OUT)" ]; then \
 		mkdir -p "$(OUT)"; \
-		for pair in "ingress=$$INGRESS" "execution=$$EXECUTION" "invocation=$$INVOCATION" "client=$$CLIENTL"; do \
+		for pair in "ingress=$$INGRESS" "execution=$$EXECUTION" "invocation=$$INVOCATION" "client=$$CLIENTL" "extauthz=$$DECISION"; do \
 			name=$${pair%%=*}; body=$${pair#*=}; \
 			if [ "$$name" = "client" ] && [ -s "$(OUT)/client.jsonl" ]; then \
 				echo "ledgers: $(OUT)/client.jsonl exists and was kept; the client lines collected here were not written" >&2; \
@@ -871,7 +887,7 @@ ledgers:
 			if [ -n "$$body" ]; then printf '%s\n' "$$body" > "$(OUT)/$$name.jsonl"; else : > "$(OUT)/$$name.jsonl"; fi; \
 		done; \
 	fi; \
-	for pair in "ingress=$$INGRESS" "execution=$$EXECUTION" "invocation=$$INVOCATION" "client=$$CLIENTL"; do \
+	for pair in "ingress=$$INGRESS" "execution=$$EXECUTION" "invocation=$$INVOCATION" "client=$$CLIENTL" "extauthz=$$DECISION"; do \
 		name=$${pair%%=*}; body=$${pair#*=}; \
 		echo "## $$name" >&2; \
 		if [ -n "$$body" ]; then printf '%s\n' "$$body"; fi; \

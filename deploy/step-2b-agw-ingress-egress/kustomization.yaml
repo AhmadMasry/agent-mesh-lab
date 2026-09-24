@@ -7,6 +7,9 @@
 #   egress.yaml    the egress ROLE on the proxy step 2 already created: the model host as a
 #                  ServiceEntry bound to `agw-central`, with its backend and its route there.
 #                  Until 2026-09-19 this file created a third proxy, `agw-egress`, for it.
+#   extauthz.yaml  the lab's external-authorization fixture in lab (follow-on D-3, the author's
+#                  note of 2026-09-24): standing, called by no route until a run applies a
+#                  policy from its run directory.
 #
 # Applies on top of step 2; nothing is edited in place: step 2's Gateway, its route and the
 # worker Service's labels are as step 2 left them, and this overlay only adds objects and the
@@ -26,6 +29,7 @@ resources:
   - ingress.yaml
   - egress.yaml
   - peer-authentication-ingress-metrics.yaml
+  - extauthz.yaml
 patches:
   - path: worker-model-url.yaml
     target:
