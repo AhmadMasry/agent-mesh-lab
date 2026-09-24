@@ -2559,3 +2559,74 @@ place, and its `summary.csv` and `counts.txt` still reproduce byte-identically f
     - the a2a backend type the website recommends is not tried.
   - The cluster stands at step 3, unmarked, nothing applied.
 - Follow-up: none new. The draft of C-9, docs/upstream/agentgateway-a2a-card-rewrite-https-scheme-for-plain-http-agent.md, stands for the author to file.
+
+## Experiment C / both receivers / C-11, the map — what can each layer on this topology see and enforce of a JSON-RPC-bound A2A operation?
+
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.4 openai-python=3.16.2 (the pins every cited entry carries; this step read no cluster)
+- Environment: kind, as every cited entry; this step ran nothing
+- Method: the last step of Experiment C, answering §4.4 C (frozen) as the author's notes of 2026-09-20 and 2026-09-23 put it: an observation map and an enforcement table, built only from counted entries.
+  - **Nothing was run.** No cluster action, no stimulus, no code, no pin read or changed.
+  - **The sources**, each cited in the map by a short key with its heading and run directory: the C observation entry of 2026-09-20 (C-1) with its observation-map.md; C-3, C-4, C-3R and C-3R2 (2026-09-21); B-6's trace readings (2026-09-23); C-5, C-6, C-7 and C-8 (2026-09-23); C-10, C-9 and the entry after C-9 (2026-09-24). Each entry's review in the step's working notes was read for the qualifiers its fixes added.
+  - **The rules for a cell.** Each cell is a measured reading or a documented limit and cites its entry; it carries the entry's own qualifier (measured, documented, read from source, inferred, configuration-specific); a cell no entry supports is empty and says so; nothing is filled from a neighbouring cell or from a document no entry cites.
+  - **The configuration.** Every cell holds for the topology of 2026-09-19 at the pins above, the JSON-RPC binding only, and every lab workload on the one default ServiceAccount. The agent Services are unmarked in every row but one. **That one row, C-9's, holds only with the A2A marking on, which the author reverted on 2026-09-24**; the map says so in its configuration section, in the row's heading, in its grid label and beside its method cell.
+  - **Keep-awake.** This task started no keep-awake and changed no power setting, and keep-awake is not claimed absent.
+- Result: the map is experiments/runs/2026-09-24-c11-map/map.md: the source list, the configuration, the observation grid with every cell in full, the enforcement table, and the contradiction check.
+  - **The observation map**: 7 rows by 6 columns, 42 cells. **34 measured, 5 documented, 1 empty, 2 not applicable.**
+    - Rows: ztunnel (istiod); HTTPRoute on the agentgateway proxies; agentgateway's authorization (CEL); agentgateway's telemetry with the marking off, the deployed configuration; agentgateway's A2A handling with the marking on (C-9 only, reverted); the application in the Go worker; the application in the Python orchestrator.
+    - Columns: caller identity, target Service, path and headers, the JSON-RPC method, messageId, taskId.
+    - The 5 documented cells: the route layer's caller identity, messageId and taskId (no match field names a source; both ids are in the body); agentgateway authorization's messageId and taskId (a documented mechanism, the same body parse, not exercised: C-1 marked them to measure and C-8 wrote no rule on either; a taskId is in the body only for the operations that name one).
+    - The 1 empty cell: caller identity under the marking (C-9 reported no src.identity, and the unmarked reading is not carried across the configuration change).
+    - The 2 not-applicable cells: the target Service at each application, where C-1's map writes "it is the target".
+  - **Cells a later step changed**, each named in its cell:
+    - the route's path-and-headers cell, from "to measure" in C-1 to C-6's reading: only the Accept header differed, and the a2a-go client set it;
+    - identity at the ingress, from C-1's telemetry reading (0 of 1 span, 0 of 1 line) to C-7's rule reading (0 of 9 fired, 9 of 9 lines without src.identity);
+    - the method at agentgateway, from none (C-1, B-6) to a2a.method on 20 of 20 A2A POST lines with the marking on (C-9), and back to none on the deployed configuration after the revert (after C-9).
+  - **The enforcement table**: 10 rows, one per mechanism tried. Could each express "refuse SubscribeToTask, allow SendMessage" on one endpoint:
+    - **No, 6 rows.** ztunnel L4 (C-3); ztunnel given an HTTP rule (C-4); Istio's AuthorizationPolicy aimed at agw-central (C-5); an HTTPRoute header match (C-6); agentgateway's rule on a header (C-7); agentgateway's rule on identity (C-7).
+    - agentgateway's rule on json(request.body).method, three ways of writing it (C-8):
+      - the Deny: **yes within the buffer limit, 1 row** — SubscribeToTask refused 40 of 40, SendMessage passed 20 of 20 — and it fails open past the limit, silently;
+      - the naive Require: **not as written, 1 row** — it refused the Go path's card GET 15 of 15, so no SendMessage was sent there;
+      - the scoped Require: **yes, 1 row**.
+    - **Yes, 1 row**: the application in each SDK (C-10).
+    - agentgateway's A2A handling is not a row: C-9 read from source that it adds no rule surface and did not re-run authorization.
+  - **Contradictions between entries: none found.** Five places were checked and each is consistent once its configuration is named; the map lists them.
+- Interpretation: under this configuration two layers read the JSON-RPC method and held "refuse SubscribeToTask, allow SendMessage" on one endpoint: agentgateway's authorization, through the generic body variable, and the application. At agentgateway the scoped Require held the rule on every case counted, the Deny held it only under the buffer limit, and the naive Require broke discovery on the Go path (C-8); the application held it on every case counted (C-10). Every other layer tried could not express the rule.
+  - **The layers that could not.**
+    - ztunnel sees identity and Service, not the request: 0 of 165 lines carry http.method, http.path, SendMessage, messageId or taskId (C-1). Behind a proxy it sees the proxy's identity, not the caller's (C-1).
+    - ztunnel's L4 allow-only-the-proxy policy separated paths, not callers (C-3). Given an HTTP method rule, istiod reduced it to an ALLOW policy with no rules, which refused 6 of 6 requests on every path (C-4).
+    - The HTTPRoute and agentgateway's header rule each split the a2a-go client's streaming operations from its unary one by a header the client chose. Each refused SendStreamingMessage along with SubscribeToTask, and each passed a curl SubscribeToTask 6 of 6 (C-6, C-7).
+    - Istio's own policy reads no body. Aimed at agw-central, it was not delivered to the proxy (C-5).
+  - **Identity.** Behind a proxy, ztunnel records the delivering proxy's identity, not the caller's (C-1, C-3). Where a caller's identity is recorded, it is one value for every lab caller, by the author's decision to keep one ServiceAccount: agw-central holds that value. The ingress gave its rules and its log none on 9 of 9 probes (C-7), from two causes C-7 keeps apart: on the 6 in-cluster probes the ingress is ztunnel-captured and the connection it accepts records no identity; the 3 port-forward probes never crossed ztunnel. The application records none, and its remote is the proxy (C-1, C-10).
+  - **At the boundaries** the lab found:
+    - **C-8's Deny fails open past maxBufferSize.** A body of 2,200,000 bytes passed with 200 and nothing logged, and the SDKs dispatched it in the shapes counted: a2a-go with a top-level x_pad member, and a2a-python with the pad in params.tenant. a2a-python refused its x_pad form on its own validation (C-8). The Require refused its 2 of 2 pads, and the scoped Require refused its 2 of 2 while passing the card GET 15 of 15 (C-8).
+    - **C-9's marking.** It made the gateway name the operation, 20 of 20 against the ledgers, but never the task id: 0 keys on every line and span. It also rewrote each card fetched through agw-central to https, so every client that followed a card to a Service address failed at agw-central before sending. That is 15 of 15 Python load-client sends, the clean check's two work items and the orchestrator's forward (C-9). The author reverted the marking, and the lab is back on the deployed tree with the clean check at 1/1/1/1/1 (after C-9). So the only layer that recorded the operation in the network holds that cell only in a configuration the lab does not run.
+    - **C-10's refusal is invisible to the proxy**, which wrote 200 on 42 of 42 refusals. It is also invisible to the a2a-go client when the Python receiver answers in application/json: an empty stream, 10 of 10 (C-10).
+    - **C-5's policy reports itself bound while enforcing nothing.** The status read WaypointAccepted=True, "bound to agentgateway-waypoint/agw-central", while 12 of 12 probes it named were delivered (C-5).
+    - Beside these, ztunnel did not close a connection opened before a selector-scoped ALLOW policy, 3 of 3 twice (C-3R, C-3R2).
+  - **So, in the proposal's terms and within these cells:**
+    - ztunnel sees identity but not the operation.
+    - The route layer and the header and identity rules see the request but not the operation.
+    - agentgateway's authorization can see the operation only through a generic body parse bounded by the buffer size, and has no A2A object.
+    - agentgateway's A2A handling names the operation only with a marking that broke card-following clients here.
+    - The application sees the operation and the ids, and nothing that tells one caller from another.
+  - **What C does not cover**, from the entries' own lists:
+    - the REST and gRPC bindings (§12.2), and GRPCRoute;
+    - an external authorization service, the HTTPRoute ExternalAuth filter and a rate-limit service (the author's note of 2026-09-20, rule 6);
+    - JWT, RequestAuthentication, the agent card's security schemes and any authentication middleware;
+    - distinct ServiceAccounts (the author's decision of 2026-09-23);
+    - the A2A backend type, AgentgatewayBackend spec.a2a, which the website recommends over the Service marking (C-9, after C-9);
+    - under the marking: the Python receiver, the out-of-cluster path, and a2a.response.error_code on a JSON error answer (C-9);
+    - Allow actions at agentgateway, and Allow or Require keyed on identity (C-7, C-8);
+    - at ztunnel: DENY and multi-rule ALLOW policies, paths, hosts and request conditions (C-4), and a root-namespace policy, more than one node, or a waypoint on the path (C-3R, C-3R2);
+    - for Istio's policy at agw-central: ALLOW, AUDIT and selector policies, and a targetRefs to the Service or the GatewayClass (C-5);
+    - for the body rule: request.bodyPrefix, a set maxBufferSize, whitespace or params.id padding, a control just under the limit, and the batch and duplicate key under Require (C-8);
+    - any rule on messageId or taskId;
+    - a2a-python as a client (C-6, C-10), and the headers as they arrive at the receivers (C-10);
+    - the entries' sample sizes, 1 to 10 sends per kind per receiver or per path, and one pad per case.
+- Follow-up: none new. The upstream posture of C, each Status as its file reads today:
+  - docs/upstream/ztunnel-policy-watcher-selector-scoped-policy.md: written by C-3R, with a dated line added by C-3R2. Status: not to be filed, by the author's decision of 2026-09-21.
+  - docs/upstream/agentgateway-deny-on-request-body-over-buffer-limit.md: written by C-8. Status: draft for the author, not filed, not sent; the author chooses between a private vulnerability report and a public issue.
+  - docs/upstream/agentgateway-a2a-card-rewrite-https-scheme-for-plain-http-agent.md: written by C-9. Status: draft, not posted, for a new issue; after C-9 left it standing for the author to file.
+  - Cited by C and not touched: docs/upstream/a2a-go-client-reads-a-json-answer-to-a-streaming-method-as-an-empty-stream.md (B-6's), which C-10 reproduces on a second path. Status: draft, not posted.
+  - Not cited by C by path, and not touched: docs/upstream/agentgateway-policy-attached-to-istiod-driven-waypoint.md, the draft for the earlier reading that C-5 mirrors (the author's note of 2026-09-20 cites that reading's findings entry). Status: draft, not filed.
+  - C-5 drafted nothing: its status gap is listed as out of scope in istio/istio#60024.
