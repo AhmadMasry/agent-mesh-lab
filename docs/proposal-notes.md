@@ -348,3 +348,13 @@ uses them, earlier entries remaining the records of the single-identity setup; a
 and kept as standing if it does not break clients that follow the agent card, with C-9's unexplained connection count
 investigated by a temporary Service marking applied and removed from a run directory. Rows on the current topology run first; the
 two standing changes run last. The proposal text is unchanged.
+
+## 2026-09-24 — Experiment C adds the gRPC binding beside REST
+
+Decision by the author, later the same day, changing one part of the note above: C gains the **gRPC** binding as well as REST.
+Both agents serve it, the load client can send it, and the route, header and body rules are run on it as on JSON-RPC and REST.
+At the pinned versions a2a-go carries its gRPC server and client; a2a-python carries a gRPC request handler that needs the
+`grpcio` package, which is added to the orchestrator's lockfile as a pin recorded from a fetched source. gRPC runs over HTTP/2
+through a `GRPCRoute` on the agentgateway proxies; whether that holds at the pinned agentgateway and Gateway API versions is
+verified from documents before any code, and a step that finds it does not is stopped for the author. The proposal text is
+unchanged.
