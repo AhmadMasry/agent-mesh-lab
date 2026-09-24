@@ -75,3 +75,14 @@ spec:
               value: "http://otel-collector.telemetry.svc.cluster.local:4318"
             - name: OTEL_SERVICE_NAME
               value: "loadgen"
+            # CLIENT_BINDING and CLIENT_GRPC_AUTHORITY (added by follow-on D-2):
+            # the binding the one request is sent on, and the gRPC call's
+            # :authority (fixtures/loadgen/binding.go). Empty is off -- JSON-RPC,
+            # and the dialled host -- and is what every row renders; they are
+            # literal values, not placeholders, so no script that substitutes
+            # this template changes. A D-2 row sets them in its own rendered
+            # copy. Any other value stops the client before anything is sent.
+            - name: CLIENT_BINDING
+              value: ""
+            - name: CLIENT_GRPC_AUTHORITY
+              value: ""

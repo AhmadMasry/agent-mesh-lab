@@ -1,0 +1,55 @@
+# The gRPC binding's routes (follow-on D-2, the author's notes of 2026-09-24):
+# one GRPCRoute per receiver on the agentgateway ingress, each to the
+# receiver's port 8081 (appProtocol kubernetes.io/h2c, deploy/base).
+#
+# Their hostnames are NEW and intersect no HTTPRoute's. Gateway API v1.6.2 says
+# that when an HTTPRoute and a GRPCRoute attached to one listener have
+# intersecting hostnames, exactly one of the two is accepted, the older
+# (apis/v1/grpcroute_types.go l.126-137); a GRPCRoute on worker.lab.internal
+# could therefore reject worker-ingress, and on a rebuild, where both are
+# created in the same second, the tie-break is alphabetical. No such code was
+# found in agentgateway's v1.5.0 controller; distinct hostnames make the
+# question moot for every existing route, which is unchanged. A client names
+# the hostname as the call's :authority (the load client's
+# CLIENT_GRPC_AUTHORITY), and fetches the card through the existing HTTP
+# routes, as the JSON-RPC rows do.
+#
+# No matches: "If no matches are specified, the implementation MUST match every
+# gRPC request" (grpcroute_types.go l.186). A match on the service alone is not
+# used: agentgateway v1.5.0 converts it to the Exact path "/<service>/"
+# (controller/pkg/agentgateway/translator/conversion.go l.200-202), which no
+# method's path equals.
+#
+# Nothing gRPC is on agw-central: its waypoint listener, inner-http, is on 8080,
+# and no row sends gRPC to a Service's 8081 from inside the mesh.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: worker-grpc-ingress
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-ingress
+  hostnames:
+    - worker-grpc.lab.internal
+  rules:
+    - backendRefs:
+        - name: worker
+          port: 8081
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: orchestrator-grpc-ingress
+  namespace: lab
+spec:
+  parentRefs:
+    - name: agentgateway-ingress
+      namespace: agentgateway-ingress
+  hostnames:
+    - orchestrator-grpc.lab.internal
+  rules:
+    - backendRefs:
+        - name: orchestrator
+          port: 8081

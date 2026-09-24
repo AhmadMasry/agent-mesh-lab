@@ -56,6 +56,10 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+            # The gRPC binding (follow-on D-2): HTTP/2 over cleartext, beside
+            # JSON-RPC and REST on 8080. agents/worker/bindings.go says why a port of its own.
+            - name: grpc
+              containerPort: 8081
           env:
             - name: AGENT_NAME
               value: "worker"
@@ -67,6 +71,14 @@ spec:
               value: "unused"
             - name: PUBLIC_URL
               value: "http://worker.lab.svc.cluster.local:8080"
+            # The gRPC interface the card advertises, a gRPC target (host:port).
+            # Through agw-central nothing routes it: the waypoint listener is on
+            # 8080 only, and no GRPCRoute is on agw-central (follow-on D-2); the
+            # gRPC rows reach this port through the ingress's GRPCRoute.
+            - name: GRPC_LISTEN_ADDR
+              value: ":8081"
+            - name: PUBLIC_GRPC_URL
+              value: "worker.lab.svc.cluster.local:8081"
             # REFUSE_OPERATION (added on 2026-09-24, Experiment C, step C-10): the
             # one A2A operation this agent refuses in the application, by its
             # canonical name, SendMessage, SendStreamingMessage or SubscribeToTask.
@@ -104,3 +116,13 @@ spec:
     - name: http
       port: 8080
       targetPort: http
+    # The gRPC binding (follow-on D-2). appProtocol kubernetes.io/h2c is what
+    # makes an agentgateway proxy speak HTTP/2 to this port (agentgateway v1.5.0
+    # httpproxy.rs l.3114, port_is_http2; the controller reads it through istio's
+    # ConvertProtocol, where kubernetes.io/h2c is HTTP2). It marks nothing A2A:
+    # the A2A handling keys on agentgateway.dev/a2a and kgateway.dev/a2a only
+    # (a2a_plugin.go l.57). Port 8080 above is exactly what it was.
+    - name: grpc
+      port: 8081
+      targetPort: grpc
+      appProtocol: kubernetes.io/h2c
