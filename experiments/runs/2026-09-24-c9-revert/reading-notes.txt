@@ -1,0 +1,37 @@
+# Experiment C, after C-9: the A2A marking reverted. Reading notes. Stamps are from date -u.
+
+## Layout
+  tree-ids.txt       the revert commit's tree against 5aee78d0 (C-10's built tree), every deployed path: 0 differ.
+  before/marked-cluster.txt
+                     the standing cluster read-only before its teardown: the two Services still marked, and one card
+                     GET per agent through agw-central, both advertising https.
+  rebuild.sh, build.txt, timings.csv, rebuild-driver.txt
+                     the rebuild from a deleted cluster (C-9's rebuild.sh adapted; see its header).
+  proof.sh, proof-driver.txt, checks-driver.txt, standard-counts-vs-last-proof.txt and the proof's directories
+                     the standard proof (C-9's proof.sh adapted), compared against C-10's directory, which was taken
+                     on the same deployed tree.
+  collector-start.txt
+                     the telemetry pods' created and Ready stamps beside the ztunnel no-healthy-upstream lines.
+  config-dump-a2a.txt
+                     each proxy's config dump: 2 policies, 0 A2A.
+  cards.sh, cards/   one card GET per agent per path, read-only (C-9's cards.sh without its X-Forwarded-Proto probe);
+                     cards/services.txt, the lab Services read back.
+  tools.txt          the lab-scoped istioctl 1.31.0, its checksum re-verified, and an empty Helm scope.
+  sleep-events.csv   B-6's sleep-events.sh, unedited, over this task's window 2026-09-24T15:15:46Z (the tree-id proof)
+                     to the reading's end: 0 events of each of the four kinds.
+
+## NOT COMMITTED
+  checks.sh's two byte copies of itself (checks-as-run/), sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00,
+  as in C-10 and C-9. proxies/raw/ is ignored by .gitignore. Absolute scratch paths in the copied driver outputs were
+  written as ${TMPDIR}/ and the checkout as <REPO>.
+
+## The standard proof's 2 DIFFERS against C-10's, both the collector's start
+  "no healthy upstream" 21 against 13, and "other ztunnel error lines, all" 24 against 16. The difference of 8 is the
+  same 8 lines in both rows.
+  - All 21 lines are to the collector's Service port 4318 (10.96.101.11:4318), between 15:22:31.07Z and 15:22:51.08Z.
+    The collector pod was created at 15:22:29Z and Ready at 15:22:51Z (collector-start.txt), which is 22 s here
+    against 15 s in C-10 (22:23:36Z to 22:23:51Z).
+  - The other 3 lines of that file are, in both proofs, two lines reading "try_tcp_on_error: false" and the plaintext
+    probe's policy rejection to the worker (istio_converted_static_strict).
+  These are lines from before the collector was Ready. The count moves with how long the collector takes to become
+  Ready, not with the tree.

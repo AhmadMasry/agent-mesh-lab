@@ -2508,3 +2508,54 @@ place, and its `summary.csv` and `counts.txt` still reproduce byte-identically f
   - #3500 (open): the rewrite replaces the authority and doubles the path under a URLRewrite, a different cause;
   - #1829 (open issue) and #3453 (open pull request, not merged): set X-Forwarded-Proto towards the backend. #3453 would overwrite X-Forwarded-Proto on every request from the presence of TLS info. Its order against the A2A block's read of that header was not read.
   None describes an https card for a plain-HTTP agent behind a waypoint. On main 3528a428 (fetched this task, sources/fetch-log.txt), normalize_uri has changed: it is no longer limited to HTTP/1.x and sets the scheme only when none is set. The TLS-to-https branch inside it is the same, and a2a/mod.rs l.34 still calls apply_forwarded_scheme.
+
+## Experiment C / both receivers / after C-9 — with the A2A marking reverted, is the lab back on its measured topology?
+
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.4 openai-python=3.16.2 (read back from the rebuilt cluster, versions-readback.txt, equal to C-9's but for its stamps; a2a-go and a2a-spec are read at the built tree, from go.mod and versions.yaml)
+- Environment: kind
+- Method: the author's decision of 2026-09-24, after C-9 found that the A2A marking breaks every client that follows an agent card to a Service address: revert the marking and rebuild. C-9's commits and entry stay as measured.
+  - **The change.** One code commit: "revert(deploy): the agent Services' A2A marking removed, by the author's decision of 2026-09-24 after C-9". It removes the appProtocol field and its comment from the worker's and the orchestrator's Service port in deploy/base, and nothing else.
+  - **Proof by tree ids** (tree-ids.txt): every deployed path of that tree is byte-equal to the tree C-10 built, the commit "feat(deploy): both agent Deployments carry REFUSE_OPERATION, rendered empty on every step". That is deploy bda72132, agents fe3bafed, fixtures d143d670, internal f63b96cc, Makefile 7244d671, experiments/lib bad5771f, go.mod, go.sum, .ko.yaml, kind-config.yaml and all 11 experiments/*.sh blobs; 0 differ.
+  - **Before**, read-only on C-9's standing cluster (before/marked-cluster.txt): the two Services still carried the marking, and one card GET per agent through agw-central advertised https for both.
+  - **The rebuild.** From a deleted cluster at the revert commit, make targets only, no manual step (C-9's rebuild.sh adapted). The tools were a lab-scoped istioctl 1.31.0, its checksum re-verified against the release, and an empty Helm scope, first on PATH for the driver only; nothing on the host changed (tools.txt).
+  - **The standard proof.** The last record's checks.sh unedited (part one, then the retry knobs last), its versions-readback.sh, and the comparison program against C-10's directory, which was taken on the same deployed tree.
+  - **The cards.** One GET per agent per path, read-only (cards.sh, C-9's without its probe). The paths: the worker through the ingress by its Host and at its Service through agw-central; the orchestrator at its Service through agw-central and through the ingress catch-all. Each body was compared with C-9's baseline, taken on C-10's build before the marking.
+  - **Keep-awake.** This task started no keep-awake and changed no power setting, and keep-awake is not claimed absent: the host recorded 0 Sleep, 0 Wake, 0 DarkWake and 0 Maintenance events from 15:15:46Z, the tree-id proof, to the end of the reading (sleep-events.csv).
+- Result: run outputs under experiments/runs/2026-09-24-c9-revert/ (reading-notes.txt).
+  - **The rebuild** (timings.csv), every exit 0, no wait timed out:
+
+    | target | wall |
+    |---|---|
+    | teardown | 1.573 s |
+    | cluster-kind | 22.189 s |
+    | step-1 | 66.336 s |
+    | step-2 | 142.285 s |
+    | step-2b | 66.752 s |
+    | step-2c | 18.279 s |
+    | step-3 | 110.657 s |
+
+  - **The standard proof** beside C-10's: 65 rows same, 2 DIFFERS (standard-counts-vs-last-proof.txt).
+    - The clean check is 1/1/1/1/1 TASK_STATE_COMPLETED at both receivers again, as in C-10 (C-9: 0/0/0/0/0).
+    - Held as in C-10: the trace per work item with 0 dangling parents; the GenAI summary; Prometheus targets; the STRICT legs, including the ingress, forward and model legs C-9 lost; the plaintext probe refused at both receivers (curl exit 56); the retry knobs 1>0>2>0>1>0>0 ending at 0.
+    - The 2 DIFFERS are one cause, the collector's start. "no healthy upstream" reads 21 against 13, and "other ztunnel error lines, all" 24 against 16, the same 8 lines.
+      - All 21 are to the collector's Service port 4318, between 15:22:31Z and 15:22:51Z.
+      - The collector pod was created at 15:22:29Z and Ready at 15:22:51Z, 22 s here against 15 s in C-10 (collector-start.txt).
+      - The other 3 lines match C-10's other 3 in kind.
+    - Each proxy's config dump holds 2 policies, 0 A2A (C-9: 4, 2 A2A).
+  - **The cards**, one GET each (cards/):
+    - The lab Services read back with no appProtocol, 3 of 3.
+    - All 4 card bodies are byte-equal to C-9's baseline, 4 of 4.
+      - The worker, through the ingress and through agw-central: http://worker.lab.svc.cluster.local:8080.
+      - The orchestrator, through agw-central and through the ingress: http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local.
+    - The access line of each reads protocol=http, 4 of 4, on its baseline route: lab/worker-ingress, lab/worker, lab/orchestrator and lab/orchestrator-ingress.
+- Interpretation: yes, at the level the standard proof measures.
+  - With the marking removed, the deployed tree is byte-for-byte the tree C-10 built. The rebuild of it reads as C-10's proof did, except for the collector's start, and the clean check passes at both receivers again.
+  - The agent cards are again the ones the agents write, byte-equal to C-9's baseline, and the proxies again treat the A2A legs as plain HTTP. So every Experiment A, B and C count measured before C-9 stands on the topology it was measured on.
+  - C-9's readings stay a record of the marked configuration and are not carried forward: the A2A operation named in the gateway's line and span, the task id recorded nowhere at the gateway, and the https card rewrite.
+  - Not covered here:
+    - no A2A row was re-run beyond the clean check and the trace step;
+    - the Experiment B and C rows are not re-counted on this cluster;
+    - the stability of the collector's start time is not measured;
+    - the a2a backend type the website recommends is not tried.
+  - The cluster stands at step 3, unmarked, nothing applied.
+- Follow-up: none new. The draft of C-9, docs/upstream/agentgateway-a2a-card-rewrite-https-scheme-for-plain-http-agent.md, stands for the author to file.
