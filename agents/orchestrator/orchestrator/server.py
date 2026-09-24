@@ -12,7 +12,7 @@ from starlette.routing import Route
 
 from orchestrator.agent import build_handler
 from orchestrator.control import Injector
-from orchestrator.forward import Forwarder
+from orchestrator.forward import FORWARD_RESUBSCRIBE_ENV, Forwarder, forward_resubscribe_from
 from orchestrator.headers import LEDGER_HEADERS_ENV, ledger_headers_from
 from orchestrator.ledger import IngressMiddleware
 from orchestrator.model import ModelClient
@@ -50,6 +50,9 @@ def app_from_env() -> Starlette:
     refuse = refuse_operation_from(os.environ.get(REFUSE_OPERATION_ENV, ""))
     # The same for the ledger's header reading: a value that is not "on" raises.
     ledger_headers = ledger_headers_from(os.environ.get(LEDGER_HEADERS_ENV, ""))
+    # And for the forward's one resubscription: read in either mode, so a bad
+    # value stops the process in model mode too, where it would do nothing.
+    resubscribe = forward_resubscribe_from(os.environ.get(FORWARD_RESUBSCRIBE_ENV, ""))
     name = os.environ.get("AGENT_NAME", "orchestrator")
     downstream = os.environ.get("DOWNSTREAM_A2A_URL", "")
     plan = os.environ.get("PLAN_MODEL_CALL", "off") == "on"
@@ -64,7 +67,7 @@ def app_from_env() -> Starlette:
             api_key=os.environ.get("MODEL_API_KEY", "unused"),
             max_retries=max_retries,
         )
-    forwarder = Forwarder(url=downstream, caller=name) if downstream else None
+    forwarder = Forwarder(url=downstream, caller=name, resubscribe=resubscribe) if downstream else None
     return build_app(name=name, model=model, forwarder=forwarder, out=None,
                      public_url=os.environ.get("PUBLIC_URL", f"http://{name}.lab.svc.cluster.local:8080"),
                      plan_model_call=plan, refuse=refuse, ledger_headers=ledger_headers)
