@@ -1,4 +1,5 @@
-# Two changes to Agent A for step 2b.
+# Two changes to Agent A for step 2b (three since follow-on D-2, PUBLIC_GRPC_URL
+# beside PUBLIC_URL).
 #
 # MODEL_BASE_URL: the same external host as the worker, so the orchestrator's own model
 # calls (PLAN_MODEL_CALL=on, run types 5 and 6) also leave through `agw-central` in its
@@ -28,3 +29,10 @@ spec:
               value: "http://model.lab.internal:8080/v1"
             - name: PUBLIC_URL
               value: "http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local"
+            # The gRPC interface, advertised at the same ingress (follow-on D-2):
+            # its Service's port 80 accepts HTTP/2 with prior knowledge. A client
+            # names orchestrator-grpc.lab.internal as the call's authority to take
+            # the GRPCRoute (step 2c); the host of this target itself is the
+            # orchestrator-ingress HTTPRoute's, which carries no gRPC.
+            - name: PUBLIC_GRPC_URL
+              value: "agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80"
