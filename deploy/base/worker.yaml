@@ -75,6 +75,14 @@ spec:
             # restores it empty. The code: agents/worker/refuse.go.
             - name: REFUSE_OPERATION
               value: ""
+            # LEDGER_HEADERS (added on 2026-09-24, follow-on D-1): "on" makes the
+            # pre-dispatch ingress ledger's arrival line record the request's
+            # header names, a fixed list's values and whether Authorization was
+            # present, never its value. Empty is off and is what every step
+            # renders; any other value stops the process at start. A run sets it
+            # with kubectl set env and restores it empty. The code: agents/worker/headers.go.
+            - name: LEDGER_HEADERS
+              value: ""
           readinessProbe:
             httpGet:
               path: /healthz
