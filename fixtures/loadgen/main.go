@@ -155,19 +155,32 @@ func instrumentFor(hc *http.Client, workItem, host string) *http.Client {
 // agentFromCard reads onto the invoke_agent span what the resolved card says
 // about the agent: its name, version and description, each Conditionally
 // Required "When available." in the conventions, and the URL the client will
-// dial, which server.address and server.port come from. That URL is taken only
-// when the card advertises exactly one interface -- a lab card does -- because
-// with several the client's own choice of interface, not this function's, is the
-// one being dialled.
+// dial, which server.address and server.port come from. That URL is taken from
+// the card's one interface of the binding this process sends on -- the one
+// interface the client can choose, since it registers only that binding's
+// transport. With several interfaces of that binding it is left empty, because
+// the client's own choice among them, not this function's, is the one dialled.
+//
+// Until follow-on D-2 it read "exactly one interface of any binding": every
+// card then listed JSON-RPC alone, so for those cards the two readings agree
+// (TestAgentFromCard_OneInterfacePerBindingKeepsTheJSONRPCURL), and a card
+// that lists all three bindings still yields the JSON-RPC URL for a JSON-RPC
+// send, as the rows before D-2 recorded it.
 //
 // It is given the card the client is BUILT from, which with CLIENT_DIAL=target is
 // the copy whose entries carry TARGET_URL: the span has to say what the wire did,
 // and a span that named the advertised ingress on a request sent to the Service
 // would say the opposite.
-func agentFromCard(card *a2a.AgentCard) labotel.Agent {
+func agentFromCard(card *a2a.AgentCard, protocol a2a.TransportProtocol) labotel.Agent {
 	agent := labotel.Agent{Name: card.Name, Version: card.Version, Description: card.Description}
-	if len(card.SupportedInterfaces) == 1 {
-		agent.URL = card.SupportedInterfaces[0].URL
+	var urls []string
+	for _, iface := range card.SupportedInterfaces {
+		if iface.ProtocolBinding == protocol {
+			urls = append(urls, iface.URL)
+		}
+	}
+	if len(urls) == 1 {
+		agent.URL = urls[0]
 	}
 	return agent
 }
@@ -200,6 +213,13 @@ type clientLine struct {
 	// request of this process named. With the setting off the key is absent and
 	// the line is the one before it, byte for byte.
 	Host string `json:"host,omitempty"`
+	// Appended by follow-on D-2, and only when CLIENT_BINDING is set: the binding
+	// the one request was sent on. With the setting off the key is absent and the
+	// line is the one before it, byte for byte.
+	Binding string `json:"binding,omitempty"`
+	// The gRPC call's facts (grpc.go), only with CLIENT_BINDING=grpc: a nil
+	// embedded pointer adds no key.
+	*grpcFacts
 }
 
 func getenv(k, def string) string {
@@ -315,6 +335,11 @@ func cardToDial(card *a2a.AgentCard, dial dialMode, target string) *a2a.AgentCar
 	for i, iface := range card.SupportedInterfaces {
 		entry := *iface
 		entry.URL = target
+		// A gRPC interface is dialled as a gRPC target, host:port: the target
+		// URL's host and port (follow-on D-2).
+		if iface.ProtocolBinding == a2a.TransportProtocolGRPC {
+			entry.URL = grpcTarget(target)
+		}
 		dialled.SupportedInterfaces[i] = &entry
 	}
 	return &dialled
@@ -329,11 +354,15 @@ type sendConfig struct {
 	dial      dialMode
 	// host is CLIENT_HOST, for the line; the transport puts it on the requests.
 	host string
+	// binding is CLIENT_BINDING, JSON-RPC when off (binding.go).
+	binding bindingMode
+	// grpcAuthority is CLIENT_GRPC_AUTHORITY, "" when off (binding.go).
+	grpcAuthority string
 }
 
 // configFromEnv reads everything main needs from the environment and refuses,
 // before anything is sent, what must never run: a missing TARGET_URL or LWI, an
-// unknown CLIENT_DIAL or MODE, a CLIENT_HOST that is not a bare host name, a TASK_ID the mode cannot use, a retry knob on a
+// unknown CLIENT_DIAL, MODE or CLIENT_BINDING, a CLIENT_HOST that is not a bare host name, a TASK_ID the mode cannot use, a retry knob on a
 // stream or a subscription, and a CANCEL_AFTER_MS that is not a positive whole
 // number below requestBound or that comes with any mode but the stream. It is main's
 // opening, moved here on 2026-09-21 so a test can assert the refusals are wired
@@ -356,6 +385,14 @@ func configFromEnv() (runConfig, knobs, error) {
 	if err != nil {
 		return runConfig{}, knobs{}, err
 	}
+	binding, err := bindingFromEnv()
+	if err != nil {
+		return runConfig{}, knobs{}, err
+	}
+	grpcAuthority, err := grpcAuthorityFromEnv(binding)
+	if err != nil {
+		return runConfig{}, knobs{}, err
+	}
 	k := knobsFromEnv()
 	if err := checkModeKnobs(mode.mode, k); err != nil {
 		return runConfig{}, knobs{}, err
@@ -365,7 +402,7 @@ func configFromEnv() (runConfig, knobs, error) {
 		return runConfig{}, knobs{}, err
 	}
 	return runConfig{target: target, workItem: lwi, text: getenv("TEXT", "hello"), sdkResend: k.sdkResend, dial: dial, mode: mode,
-		cancelAfter: cancelAfter, host: host}, k, nil
+		cancelAfter: cancelAfter, host: host, binding: binding, grpcAuthority: grpcAuthority}, k, nil
 }
 
 // requestBound is the whole process's bound on its one request, the context
@@ -431,8 +468,11 @@ func main() {
 // statements it gained are the ones CLIENT_DIAL needs.
 func send(ctx context.Context, hc *http.Client, c sendConfig, out io.Writer) int {
 	lwi := c.workItem
-	line := clientLine{Ledger: "client", Attempt: 1, LogicalWorkItemID: lwi, A2AVersion: string(a2a.Version), Host: c.host}
+	line := clientLine{Ledger: "client", Attempt: 1, LogicalWorkItemID: lwi, A2AVersion: string(a2a.Version), Host: c.host,
+		Binding: string(c.binding)}
+	var g *grpcCall
 	emit := func() {
+		line.grpcFacts = g.facts()
 		line.TS = time.Now().UTC().Format(time.RFC3339Nano)
 		b, _ := json.Marshal(line)
 		fmt.Fprintln(out, string(b))
@@ -450,12 +490,15 @@ func send(ctx context.Context, hc *http.Client, c sendConfig, out io.Writer) int
 	}
 	// The card the client is built from, and what the span and the line say was
 	// dialled. Same factory options either way: no default transports, the one
-	// JSON-RPC transport over the lab's HTTP client, whose retry settings are
-	// the ones internal/httpclient recorded.
+	// transport of the binding (JSON-RPC unless CLIENT_BINDING says otherwise)
+	// over the lab's HTTP client, whose retry settings are the ones
+	// internal/httpclient recorded.
 	dialled := cardToDial(card, c.dial, c.target)
-	agent := agentFromCard(dialled)
+	agent := agentFromCard(dialled, c.binding.protocol())
 	line.DialledURL = agent.URL
-	client, err := a2aclient.NewFromCard(ctx, dialled, a2aclient.WithDefaultsDisabled(), a2aclient.WithJSONRPCTransport(hc))
+	agent = spanAgent(agent, c.binding.protocol())
+	g = newGRPCCall(c.binding, c.grpcAuthority, lwi)
+	client, err := a2aclient.NewFromCard(ctx, dialled, c.binding.factoryOptions(hc, g)...)
 	if err != nil {
 		line.Error = "create client: " + err.Error()
 		emit()
