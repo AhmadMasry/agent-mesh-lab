@@ -4,6 +4,15 @@ version = "0.0.0"
 requires-python = ">=3.10"
 dependencies = [
     "a2a-sdk[http-server]==1.1.4",
+    # The gRPC binding (follow-on D-2): a2a-sdk's GrpcHandler imports grpc and
+    # grpc.aio and nothing else of the gRPC packages (a2a-sdk 1.1.4,
+    # server/request_handlers/grpc_handler.py l.9-11; types/a2a_pb2_grpc.py
+    # imports grpc alone). Depended on directly rather than through the SDK's
+    # a2a-sdk[grpc] extra, which also names grpcio-tools and grpcio_reflection:
+    # with a2a-sdk's protobuf<7 their 1.84.0 cannot resolve, so the extra would
+    # hold them at 1.81.1 and add setuptools, none of which runs here. Pinned in
+    # versions.yaml under grpcio.
+    "grpcio==1.84.0",
     "openai==3.16.2",
     "uvicorn==0.53.0",
     # Telemetry, installed in the image and started by the `opentelemetry-instrument`

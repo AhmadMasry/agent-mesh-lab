@@ -327,12 +327,29 @@ class LedgerRequestHandler(DefaultRequestHandler):
             self._result(base, last, error=error, stream_end=ended(stream_end))
 
 
-def build_card(name: str, public_url: str) -> AgentCard:
+def build_card(name: str, public_url: str, grpc_url: str = "") -> AgentCard:
+    """This agent's card. It lists the bindings this agent serves (server.py),
+    JSON-RPC FIRST. The order is load-bearing for a client that follows the
+    card's order: a2a-python's ClientFactory without use_client_preference takes
+    the first interface whose binding it supports (a2a-sdk 1.1.4,
+    client/client_factory.py l.335-343), and a2a-go's factory keeps the card's
+    order (a2aclient/factory.go l.175-225). The lab's own clients do not rely on
+    it -- this agent's forward uses JSON-RPC only (ClientConfig with no
+    supported_protocol_bindings, l.91-94 and l.322-324), and the load client
+    registers one transport -- but a card is read by clients the lab did not
+    write (test_card_lists_json_rpc_first).
+
+    grpc_url is the gRPC binding's address, a gRPC target (host:port, no
+    scheme); "" leaves the gRPC interface off the card, for callers that build
+    a card with no gRPC server behind it."""
     return AgentCard(
         name=name,
         description="agent-mesh-lab agent: one model call per message",
         version="0.0.0",
-        supported_interfaces=[AgentInterface(url=public_url, protocol_binding="JSONRPC", protocol_version="1.0")],
+        supported_interfaces=[AgentInterface(url=public_url, protocol_binding="JSONRPC", protocol_version="1.0"),
+                              AgentInterface(url=public_url, protocol_binding="HTTP+JSON", protocol_version="1.0"),
+                              *([AgentInterface(url=grpc_url, protocol_binding="GRPC", protocol_version="1.0")]
+                                if grpc_url else [])],
         # This SDK gates both streaming operations on the card: V2's
         # on_message_send_stream and on_subscribe_to_task carry
         # @validate(lambda self: self._agent_card.capabilities.streaming)
@@ -347,8 +364,9 @@ def build_card(name: str, public_url: str) -> AgentCard:
 
 
 def build_handler(*, name: str, model: ModelClient | None, forwarder: Forwarder | None, out: TextIO | None,
-                  public_url: str, plan_model_call: bool = False, refuse: str = "") -> LedgerRequestHandler:
+                  public_url: str, plan_model_call: bool = False, refuse: str = "",
+                  grpc_url: str = "") -> LedgerRequestHandler:
     writer = LineWriter(out)
     executor = LabExecutor(name=name, model=model, forwarder=forwarder, writer=writer, plan_model_call=plan_model_call)
     return LedgerRequestHandler(agent_executor=executor, task_store=InMemoryTaskStore(),
-                                card=build_card(name, public_url), writer=writer, refuse=refuse)
+                                card=build_card(name, public_url, grpc_url), writer=writer, refuse=refuse)

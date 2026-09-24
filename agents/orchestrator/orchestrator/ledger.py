@@ -150,9 +150,98 @@ def parse_ingress(*, method: str, path: str, headers: dict[str, str], remote: st
                 line["logical_work_item_id"] = from_header
                 line["lwi_source"] = "header"
         return line
+    rest = rest_operation(method, path)
+    if rest is not None:
+        return _fill_rest(line, rest, headers, env)
     if method != "POST" or not body:
         line["method"] = f"{method} {path}"
     return line
+
+
+# The REST binding's routes as this agent serves them: a2a-sdk 1.1.4's
+# create_rest_routes at the root (server/routes/rest_routes.py l.75-114; the
+# /{tenant} mount is not served, server.py says why). SubscribeToTask answers
+# GET and POST, as the SDK routes it, since the specification says POST (§5.3,
+# §11.3) and the proto's http annotation says GET (a2a.proto l.76-80). Matched
+# in the SDK's own order.
+_REST_ROUTES: tuple[tuple[str, str, str], ...] = (
+    ("POST", "message:send", "SendMessage"),
+    ("POST", "message:stream", "SendStreamingMessage"),
+    ("POST", "tasks/{id}:cancel", "CancelTask"),
+    ("GET", "tasks/{id}:subscribe", "SubscribeToTask"),
+    ("POST", "tasks/{id}:subscribe", "SubscribeToTask"),
+    ("GET", "tasks/{id}", "GetTask"),
+    ("GET", "tasks/{id}/pushNotificationConfigs/{push_id}", "GetTaskPushNotificationConfig"),
+    ("DELETE", "tasks/{id}/pushNotificationConfigs/{push_id}", "DeleteTaskPushNotificationConfig"),
+    ("POST", "tasks/{id}/pushNotificationConfigs", "CreateTaskPushNotificationConfig"),
+    ("GET", "tasks/{id}/pushNotificationConfigs", "ListTaskPushNotificationConfigs"),
+    ("GET", "tasks", "ListTasks"),
+    ("GET", "extendedAgentCard", "GetExtendedAgentCard"),
+)
+
+
+def _match_rest(template: str, segments: list[str]) -> str | None:
+    """The task id when the path segments match the template, "" for a template
+    without one, None for no match. {id} matches one non-empty segment, as
+    Starlette's default converter does for the SDK's routes."""
+    parts = template.split("/")
+    if len(parts) != len(segments):
+        return None
+    task_id = ""
+    for want, got in zip(parts, segments):
+        if want.startswith("{id}"):
+            suffix = want[len("{id}"):]
+            if not got.endswith(suffix) or len(got) == len(suffix):
+                return None
+            task_id = got[: len(got) - len(suffix)]
+        elif want == "{push_id}":
+            if not got:
+                return None
+        elif want != got:
+            return None
+    return task_id
+
+
+def rest_operation(method: str, path: str) -> tuple[str, str] | None:
+    """(operation, task id) for a request this agent's REST routes serve, None
+    otherwise."""
+    if not path.startswith("/"):
+        return None
+    segments = path[1:].split("/")
+    for m, template, op in _REST_ROUTES:
+        if m != method:
+            continue
+        task_id = _match_rest(template, segments)
+        if task_id is not None:
+            return op, task_id
+    return None
+
+
+def _fill_rest(line: dict[str, Any], rest: tuple[str, str], headers: dict[str, str], env: Any) -> dict[str, Any]:
+    """A REST arrival (follow-on D-2): the binding, the operation read from the
+    path, and the identity as far as the binding carries it. REST has no
+    JSON-RPC id; a SubscribeToTask, GetTask or CancelTask has no Message and its
+    task id is the path's. "binding" goes right after "method", as on the Go
+    worker's line; a JSON-RPC line carries no such key."""
+    op, task_id = rest
+    message = env.get("message") if isinstance(env, dict) and isinstance(env.get("message"), dict) else {}
+    out: dict[str, Any] = {}
+    for key, value in line.items():
+        out[key] = value
+        if key == "method":
+            out["method"] = op
+            out["binding"] = "rest"
+    out["messageId"] = str(message.get("messageId") or message.get("message_id") or "")
+    out["taskId"] = task_id or str(message.get("taskId") or "")
+    if message.get("contextId"):
+        out["contextId"] = str(message["contextId"])
+    out["logical_work_item_id"] = work_item_of(message.get("metadata"))
+    if not out["logical_work_item_id"]:
+        from_header = headers.get("x-logical-work-item-id", "")
+        if from_header:
+            out["logical_work_item_id"] = from_header
+            out["lwi_source"] = "header"
+    return out
 
 
 class IngressMiddleware:
