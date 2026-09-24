@@ -134,6 +134,10 @@ type runConfig struct {
 	// host is CLIENT_HOST, "" when off. The transport puts it on every request
 	// (clientFor); the lines record it.
 	host string
+	// binding is CLIENT_BINDING, JSON-RPC when off (binding.go).
+	binding bindingMode
+	// grpcAuthority is CLIENT_GRPC_AUTHORITY, "" when off (binding.go).
+	grpcAuthority string
 }
 
 // runMode makes this process's one request in the mode asked for and prints its
@@ -143,7 +147,8 @@ func runMode(ctx context.Context, hc *http.Client, c runConfig, out io.Writer) i
 	case modeStream, modeSubscribe:
 		return streamOnce(ctx, hc, c, out)
 	default:
-		return send(ctx, hc, sendConfig{target: c.target, workItem: c.workItem, text: c.text, sdkResend: c.sdkResend, dial: c.dial, host: c.host}, out)
+		return send(ctx, hc, sendConfig{target: c.target, workItem: c.workItem, text: c.text, sdkResend: c.sdkResend, dial: c.dial, host: c.host,
+			binding: c.binding, grpcAuthority: c.grpcAuthority}, out)
 	}
 }
 
@@ -224,6 +229,13 @@ type streamEnd struct {
 	// The cancel's facts, after every key B-3 recorded, and only when
 	// CANCEL_AFTER_MS is on: a nil embedded pointer adds no key (cancel.go).
 	*cancelFacts
+	// The binding, only when CLIENT_BINDING is set; with it off the key is
+	// absent (binding.go).
+	Binding string `json:"binding,omitempty"`
+	// The gRPC call's facts (grpc.go), only with CLIENT_BINDING=grpc. On that
+	// binding posts, http_status and content_type describe no request, since
+	// the call is not an HTTP round trip through the observer, and read 0.
+	*grpcFacts
 }
 
 const (
@@ -263,8 +275,10 @@ func streamOnce(ctx context.Context, hc *http.Client, c runConfig, out io.Writer
 	}
 	end := streamEnd{Ledger: "client", Mode: string(c.mode.mode), Method: method, Line: "end",
 		LogicalWorkItemID: c.workItem, RequestedTaskID: c.mode.taskID, A2AVersion: string(a2a.Version),
-		StreamEnd: streamEndNotSent, Host: c.host}
+		StreamEnd: streamEndNotSent, Host: c.host, Binding: string(c.binding)}
+	var g *grpcCall
 	finish := func() int {
+		end.grpcFacts = g.facts()
 		end.Posts, end.HTTPStatus, end.ContentType = obs.facts()
 		end.WireErrorCode, end.WireErrorMessage = obs.wireError()
 		end.TS = time.Now().UTC().Format(time.RFC3339Nano)
@@ -291,9 +305,11 @@ func streamOnce(ctx context.Context, hc *http.Client, c runConfig, out io.Writer
 	// records which method arrived.
 	end.CardStreaming = card.Capabilities.Streaming
 	dialled := cardToDial(card, c.dial, c.target)
-	agent := agentFromCard(dialled)
+	agent := agentFromCard(dialled, c.binding.protocol())
 	end.DialledURL = agent.URL
-	client, err := a2aclient.NewFromCard(ctx, dialled, a2aclient.WithDefaultsDisabled(), a2aclient.WithJSONRPCTransport(&observed))
+	agent = spanAgent(agent, c.binding.protocol())
+	g = newGRPCCall(c.binding, c.grpcAuthority, c.workItem)
+	client, err := a2aclient.NewFromCard(ctx, dialled, c.binding.factoryOptions(&observed, g)...)
 	if err != nil {
 		end.Error = "create client: " + err.Error()
 		return finish()
