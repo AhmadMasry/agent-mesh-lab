@@ -133,7 +133,7 @@ func TestSubscribeToTask_IsACountedArrivalAndReattachesToTheRunningTask(t *testi
 	lw := newLineWriter(out)
 	executor := newLabExecutor("worker", newModelClient(modelURL+"/v1", "mock", "unused", httpclient.New(30*time.Second)), lw)
 	a2aMux := http.NewServeMux()
-	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker")))
+	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker", "worker:8081")))
 	a2aMux.Handle("/", a2asrv.NewJSONRPCHandler(newExecutionLedger(a2asrv.NewHandler(executor), lw)))
 	srv := httptest.NewServer(labotel.Handler("worker", newRootMux(a2aMux, lw, newInjector())))
 	defer srv.Close()

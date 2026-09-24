@@ -266,7 +266,7 @@ func servedWorker(t *testing.T, refuse string) (*httptest.Server, *syncBuffer, *
 	lw := newLineWriter(out)
 	executor := newLabExecutor("worker", newModelClient(model.URL+"/v1", "mock", "unused", httpclient.New(10*time.Second)), lw)
 	a2aMux := http.NewServeMux()
-	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker")))
+	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker", "worker:8081")))
 	a2aMux.Handle("/", a2asrv.NewJSONRPCHandler(newRequestHandler(executor, lw, refuse)))
 	srv := httptest.NewServer(labotel.Handler("worker", newRootMux(a2aMux, lw, newInjector())))
 	t.Cleanup(srv.Close)
