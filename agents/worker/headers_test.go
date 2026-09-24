@@ -476,7 +476,7 @@ func workerA2AMux(t *testing.T, modelURL string, lw *lineWriter) http.Handler {
 	t.Helper()
 	executor := newLabExecutor("worker", newModelClient(modelURL+"/v1", "mock", "unused", httpclient.New(10*time.Second)), lw)
 	mux := http.NewServeMux()
-	mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker")))
+	mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker", "worker:8081")))
 	mux.Handle("/", a2asrv.NewJSONRPCHandler(newRequestHandler(executor, lw, "")))
 	return mux
 }

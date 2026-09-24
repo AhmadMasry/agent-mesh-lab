@@ -98,7 +98,18 @@ func newRootMux(a2a http.Handler, lw *lineWriter, inj *injector, opts ...ingress
 // built from a card that does not declare it sends a unary SendMessage instead
 // (a2aclient/client.go l.109-118). Undeclared-but-served is the pairing A2A
 // v1.0 forbids (specification v1.0.1 l.574), and it is what this receiver had.
-func buildCard(name, publicURL string) *a2a.AgentCard {
+//
+// It lists the three bindings this agent serves (bindings.go), JSON-RPC FIRST.
+// The order is load-bearing: a2a-go's client factory, with no
+// PreferredTransports, keeps the card's order among the interfaces it can use
+// (a2aclient/factory.go l.175-225, a stable sort on version then client
+// preference), and its defaults can use JSON-RPC and REST (l.62-64), so a card
+// that listed REST first would move a default client off JSON-RPC.
+// TestCard_DefaultClientStaysOnJSONRPC holds it. The lab's own clients do not
+// rely on it (the load client registers JSON-RPC only unless CLIENT_BINDING
+// says otherwise, and the orchestrator's a2a-python client uses JSON-RPC only),
+// but a card is read by clients the lab did not write.
+func buildCard(name, publicURL, grpcURL string) *a2a.AgentCard {
 	return &a2a.AgentCard{
 		Name:         name,
 		Description:  "agent-mesh-lab agent: one model call per message",
@@ -106,6 +117,8 @@ func buildCard(name, publicURL string) *a2a.AgentCard {
 		Capabilities: a2a.AgentCapabilities{Streaming: true},
 		SupportedInterfaces: []*a2a.AgentInterface{
 			a2a.NewAgentInterface(publicURL, a2a.TransportProtocolJSONRPC),
+			a2a.NewAgentInterface(publicURL, a2a.TransportProtocolHTTPJSON),
+			a2a.NewAgentInterface(grpcURL, a2a.TransportProtocolGRPC),
 		},
 		DefaultInputModes:  []string{"text/plain"},
 		DefaultOutputModes: []string{"text/plain"},
@@ -142,6 +155,11 @@ func main() {
 	modelKey := getenv("MODEL_API_KEY", "unused")
 	publicURL := getenv("PUBLIC_URL", "http://worker.lab.svc.cluster.local:8080")
 	listen := getenv("LISTEN_ADDR", ":8080")
+	// The gRPC binding's port and the address the card gives for it: a gRPC
+	// target, host:port with no scheme, which is what a2a-go's gRPC client
+	// dials (a2agrpc/v1/client.go l.37, grpc.NewClient(iface.URL)).
+	grpcListen := getenv("GRPC_LISTEN_ADDR", ":8081")
+	grpcPublic := getenv("PUBLIC_GRPC_URL", "worker.lab.svc.cluster.local:8081")
 	if os.Getenv("DOWNSTREAM_A2A_URL") != "" {
 		log.Fatal("worker: DOWNSTREAM_A2A_URL is set but forward mode is not implemented in this gate")
 	}
@@ -186,11 +204,9 @@ func main() {
 	executor := newLabExecutor(name, newModelClient(modelBase, modelName, modelKey, modelHTTP), ledger)
 	handler := newRequestHandler(executor, ledger, refuse)
 
-	card := buildCard(name, publicURL)
+	card := buildCard(name, publicURL, grpcPublic)
 
-	a2aMux := http.NewServeMux()
-	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(card))
-	a2aMux.Handle("/", a2asrv.NewJSONRPCHandler(handler))
+	a2aMux := newA2AMux(card, handler)
 	inj := newInjector()
 
 	srv := &http.Server{
@@ -202,6 +218,11 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 
+	// The gRPC binding's server: the same chain as port 8080 (write-deadline
+	// lift, tracing, root mux, ingress ledger), with the SDK's gRPC server in
+	// place of the card, REST and JSON-RPC handlers.
+	grpcSrv := newGRPCServer(grpcListen, newServerHandler(name, newGRPCHandler(handler), ledger, inj, withHeaderReading(headersOn)))
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	go func() {
@@ -209,9 +230,18 @@ func main() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(shutdownCtx)
+		_ = grpcSrv.Shutdown(shutdownCtx)
 	}()
-	log.Printf("worker %q listening on %s; card at %s; model %s (timeout %s, MODEL_RETRIES=%d, %s=%q, %s=%q)", name, listen, a2asrv.WellKnownAgentCardPath, modelBase, modelTimeout(), modelRetries(), refuseOperationEnv, refuse, ledgerHeadersEnv, os.Getenv(ledgerHeadersEnv))
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
+	log.Printf("worker %q listening on %s (JSON-RPC, REST) and %s (gRPC, h2c); card at %s; model %s (timeout %s, MODEL_RETRIES=%d, %s=%q, %s=%q)", name, listen, grpcListen, a2asrv.WellKnownAgentCardPath, modelBase, modelTimeout(), modelRetries(), refuseOperationEnv, refuse, ledgerHeadersEnv, os.Getenv(ledgerHeadersEnv))
+	// Either listener failing stops the process: an agent that serves one
+	// binding and not the other would make every comparison between them
+	// silently one-sided.
+	errs := make(chan error, 2)
+	go func() { errs <- srv.ListenAndServe() }()
+	go func() { errs <- grpcSrv.ListenAndServe() }()
+	for range 2 {
+		if err := <-errs; err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal(err)
+		}
 	}
 }

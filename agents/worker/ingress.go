@@ -25,11 +25,21 @@ import (
 // the status. Identity fields are filled from the JSON-RPC body when it parses;
 // a body that does not parse still produces lines with its hash and length.
 type ingressLine struct {
-	Ledger            string `json:"ledger"`
-	Phase             string `json:"phase"`
-	TSArrival         string `json:"ts_arrival"`
-	Remote            string `json:"remote"`
-	Method            string `json:"method"`
+	Ledger    string `json:"ledger"`
+	Phase     string `json:"phase"`
+	TSArrival string `json:"ts_arrival"`
+	Remote    string `json:"remote"`
+	Method    string `json:"method"`
+	// Binding is written only for a request on the REST or the gRPC binding
+	// (follow-on D-2), "rest" or "grpc", and Method is then the operation read
+	// from the path before the SDK sees the request. A JSON-RPC line carries no
+	// binding key, so it is byte for byte the line written before either
+	// binding was served. What each binding does not carry: neither has a
+	// JSON-RPC id, so ID is empty on both; a REST SubscribeToTask, GetTask or
+	// CancelTask has no Message, and its task id is the one in the path; a gRPC
+	// body is protobuf in gRPC's length-prefixed frame, and body_sha256 and
+	// body_len are over those framed bytes as they arrived.
+	Binding           string `json:"binding,omitempty"`
 	ID                string `json:"id"`
 	MessageID         string `json:"messageId"`
 	TaskID            string `json:"taskId"`
@@ -77,6 +87,11 @@ type ingressLine struct {
 	// what the Task did is its state lines.
 	TSEnd     string `json:"ts_end,omitempty"`
 	StreamEnd string `json:"stream_end,omitempty"`
+	// GRPCStatus is the gRPC status code this receiver's gRPC server sent, on
+	// the response line of a gRPC request only: a gRPC answer is HTTP 200
+	// whatever it says, and its outcome is the grpc-status trailer. -1 when the
+	// handler returned without one.
+	GRPCStatus *int `json:"grpc_status,omitempty"`
 	// Headers is the header reading (headers.go), written on the arrival line
 	// only and only with LEDGER_HEADERS=on. Last, and absent when off, so a line
 	// written with the setting off is byte for byte the line written before the
@@ -165,10 +180,34 @@ func parseIngress(r *http.Request, body []byte) ingressLine {
 		}
 		return line
 	}
+	// Not JSON-RPC: a gRPC request (its content type) or a REST one (its path),
+	// each read before the SDK sees it. Everything else keeps the line it has
+	// always had.
+	if isGRPC(r) {
+		fillGRPC(&line, r, body)
+		return line
+	}
+	if op, taskID, ok := restOperation(r.Method, r.URL.Path); ok {
+		fillREST(&line, r, op, taskID, body)
+		return line
+	}
 	if r.Method != http.MethodPost || len(body) == 0 {
 		line.Method = r.Method + " " + r.URL.Path
 	}
 	return line
+}
+
+// workItemFromHeader is the fallback every binding shares: a request whose body
+// carried no work item takes the load client's X-Logical-Work-Item-Id header,
+// and the line says so.
+func workItemFromHeader(line *ingressLine, r *http.Request) {
+	if line.LogicalWorkItemID != "" {
+		return
+	}
+	if v := r.Header.Get("X-Logical-Work-Item-Id"); v != "" {
+		line.LogicalWorkItemID = v
+		line.LWISource = "header"
+	}
 }
 
 // rawIDString renders a JSON-RPC id (string, number, or null) as text so the
@@ -238,6 +277,11 @@ type statusRecorder struct {
 	// writer reports it and stops; keeping it here is how the response line can
 	// say the stream ended because its bytes did not leave.
 	writeErr error
+	// grpcStream marks a request on one of the gRPC binding's server-streaming
+	// methods. Its response is application/grpc, not text/event-stream, and it
+	// is a stream all the same: the write deadline is lifted for it and its
+	// response line carries ts_end and stream_end, as an SSE response's does.
+	grpcStream bool
 }
 
 func (s *statusRecorder) WriteHeader(code int) {
@@ -277,7 +321,7 @@ func (s *statusRecorder) Write(b []byte) (int, error) {
 // streamed says this response left as Server-Sent Events, which is the
 // transport A2A v1.0's JSON-RPC binding streams over.
 func (s *statusRecorder) streamed() bool {
-	return strings.HasPrefix(s.contentType, "text/event-stream")
+	return strings.HasPrefix(s.contentType, "text/event-stream") || s.grpcStream
 }
 
 // streamEnd reads how a streamed response ended from the two things this
@@ -408,7 +452,8 @@ func newIngressMiddleware(next http.Handler, lw *lineWriter, inj *injector, opts
 				log.Printf("ingress: armed mode %q is not served here; serving the request normally", mode)
 			}
 		}
-		rec := &statusRecorder{ResponseWriter: w, liftWriteDeadline: liftFrom(r.Context())}
+		rec := &statusRecorder{ResponseWriter: w, liftWriteDeadline: liftFrom(r.Context()),
+			grpcStream: line.Binding == bindingGRPC && grpcStreamingOperations[line.Method]}
 		next.ServeHTTP(rec, r)
 		if rec.status == 0 {
 			rec.status = http.StatusOK
@@ -417,6 +462,10 @@ func newIngressMiddleware(next http.Handler, lw *lineWriter, inj *injector, opts
 		if rec.streamed() {
 			response.TSEnd = time.Now().UTC().Format(time.RFC3339Nano)
 			response.StreamEnd = rec.streamEnd(r)
+		}
+		if line.Binding == bindingGRPC {
+			code := grpcStatusOf(rec.Header())
+			response.GRPCStatus = &code
 		}
 		lw.write(response)
 	})

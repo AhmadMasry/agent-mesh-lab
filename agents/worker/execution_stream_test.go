@@ -180,7 +180,7 @@ func TestExecutionLedger_UnarySendIsUnchanged(t *testing.T) {
 // The card is read back the way a client reads it: over HTTP, from the SDK's
 // own card handler.
 func TestCard_DeclaresStreaming(t *testing.T) {
-	srv := httptest.NewServer(a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker.lab.svc.cluster.local:8080")))
+	srv := httptest.NewServer(a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker.lab.svc.cluster.local:8080", "worker.lab.svc.cluster.local:8081")))
 	defer srv.Close()
 	resp, err := srv.Client().Get(srv.URL + a2asrv.WellKnownAgentCardPath)
 	if err != nil {
@@ -292,7 +292,7 @@ func TestStreamedRequest_TaskContinuesAfterTheClientIsGone(t *testing.T) {
 	lw := newLineWriter(out)
 	executor := newLabExecutor("worker", newModelClient(modelURL+"/v1", "mock", "unused", httpclient.New(30*time.Second)), lw)
 	a2aMux := http.NewServeMux()
-	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker")))
+	a2aMux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(buildCard("worker", "http://worker", "worker:8081")))
 	a2aMux.Handle("/", a2asrv.NewJSONRPCHandler(newExecutionLedger(a2asrv.NewHandler(executor), lw)))
 	srv := httptest.NewServer(labotel.Handler("worker", newRootMux(a2aMux, lw, newInjector())))
 	defer srv.Close()
