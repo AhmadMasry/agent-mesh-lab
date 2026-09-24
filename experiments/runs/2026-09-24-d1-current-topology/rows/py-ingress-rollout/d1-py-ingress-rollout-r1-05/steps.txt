@@ -1,0 +1,23 @@
+2026-09-24T17:26:49.780009Z repetition d1-py-ingress-rollout-r1-05 variant=py-ingress-rollout receiver=py proxy=agentgateway-ingress/agentgateway-ingress method=rollout target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-24T17:26:49.818455Z agent pods before: mockllm-7b564fb4bf-sc86t=0c76894a-8445-4af6-ab5b-df814044770c/ip=10.244.1.17/restarts=0 orchestrator-57676c78cb-z47hf=21431445-3525-49ff-8e5e-ab67fa456f9a/ip=10.244.1.98/restarts=0 worker-7dd8758b5f-2b42h=f7a46517-8396-4ecf-a6ff-7fd7c41aeeb8/ip=10.244.1.19/restarts=0 
+2026-09-24T17:26:49.857326Z proxy pods before: agentgateway-ingress-9dc765d65-hwvhp uid=72a43bcc-b4ab-40da-bc8b-e2251c388c65 ip=10.244.1.109 created=2026-09-24T17:26:00Z restarts=0; 
+2026-09-24T17:26:49.895328Z other proxy pods: agentgateway-ingress-9dc765d65-hwvhp uid=72a43bcc-b4ab-40da-bc8b-e2251c388c65 ip=10.244.1.109; agw-central-859d46c5c6-t9z4r uid=246a5d46-6136-4f30-bf7d-3923700ca228 ip=10.244.1.13; 
+2026-09-24T17:26:49.933595Z old pod: agentgateway-ingress-9dc765d65-hwvhp grace=60 rs=agentgateway-ingress-9dc765d65
+2026-09-24T17:26:50.028109Z started kubectl logs -f agentgateway-ingress-9dc765d65-hwvhp (pid 8871)
+2026-09-24T17:26:50.085499Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-24T17:26:50.145512Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"delay","lwi":"d1-py-ingress-rollout-r1-05","delay_ms":45000} -> 204
+2026-09-24T17:26:50.154947Z apply Job 1 loadgen-d1-py-ingress-rollout-r1-05 MODE=stream TASK_ID=<empty> CANCEL_AFTER_MS=<empty>
+2026-09-24T17:26:50.237140Z Job 1 applied
+2026-09-24T17:26:50.530267Z Job 1's client saw TASK_STATE_WORKING at 2026-09-24T17:26:50.447712336Z (client pod clock) naming task fb73dbaa-0714-49a8-8ab7-68ef8a982d7a
+2026-09-24T17:26:52.787724Z removal issued: rollout on agentgateway-ingress-9dc765d65-hwvhp
+2026-09-24T17:26:54.513004Z apply Job 2 loadgen-d1-py-ingress-rollout-r1-05-s MODE=subscribe TASK_ID=fb73dbaa-0714-49a8-8ab7-68ef8a982d7a CANCEL_AFTER_MS=<empty>
+2026-09-24T17:26:54.593370Z Job 2 applied
+2026-09-24T17:27:17.039984Z Job 1 Failed
+2026-09-24T17:27:38.259814Z Job 2 Complete
+2026-09-24T17:27:38.348406Z settled after 0.0s: terminal state=TASK_STATE_COMPLETED invocation outcome=ok (the invocation wait ran to the arm stamp plus N plus 30s at the latest, the whole wait to 180s; reads two pod logs, sends nothing)
+2026-09-24T17:27:38.417376Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-24T17:27:40.451028Z old-pod log capture stopped (10 lines)
+2026-09-24T17:27:40.914602Z make ledgers LWI=d1-py-ingress-rollout-r1-05 exit=0
+2026-09-24T17:27:41.330902Z agent pods after: mockllm-7b564fb4bf-sc86t=0c76894a-8445-4af6-ab5b-df814044770c/ip=10.244.1.17/restarts=0 orchestrator-57676c78cb-z47hf=21431445-3525-49ff-8e5e-ab67fa456f9a/ip=10.244.1.98/restarts=0 worker-7dd8758b5f-2b42h=f7a46517-8396-4ecf-a6ff-7fd7c41aeeb8/ip=10.244.1.19/restarts=0 
+2026-09-24T17:27:41.369240Z proxy pods after: agentgateway-ingress-5589c7f9dd-nzmtf uid=a1f9f64e-bbff-443e-823b-869cfb38d972 ip=10.244.1.112 created=2026-09-24T17:26:52Z ready=True; 
+2026-09-24T17:27:41.407510Z collected

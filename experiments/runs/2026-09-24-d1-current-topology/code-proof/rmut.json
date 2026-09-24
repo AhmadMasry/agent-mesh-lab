@@ -1,0 +1,146 @@
+[
+ [
+  "R00",
+  "orchestrator/forward.py",
+  "from __future__ import annotations",
+  "from __future__ import annotations"
+ ],
+ [
+  "R01",
+  "orchestrator/forward.py",
+  "        second = StreamRead(OP_SUBSCRIBE, work_item, message_id, requested_task_id=first.task_id)\n        await self._read_stream(client.subscribe(SubscribeToTaskRequest(id=first.task_id)), second)\n        self.ledger.end(second)\n        return second",
+  "        second = StreamRead(OP_SUBSCRIBE, work_item, message_id, requested_task_id=first.task_id)\n        await self._read_stream(client.subscribe(SubscribeToTaskRequest(id=first.task_id)), second)\n        self.ledger.end(second)\n        if not second.terminal_seen:\n            self.resubscriptions += 1\n            second = StreamRead(OP_SUBSCRIBE, work_item, message_id, requested_task_id=first.task_id)\n            await self._read_stream(client.subscribe(SubscribeToTaskRequest(id=first.task_id)), second)\n            self.ledger.end(second)\n        return second"
+ ],
+ [
+  "R02",
+  "orchestrator/forward.py",
+  "        if first.terminal_seen:\n            self.ledger.end(first, RESUBSCRIBE_NOT_NEEDED)\n            return first\n",
+  ""
+ ],
+ [
+  "R03",
+  "orchestrator/forward.py",
+  "        if first.terminal_seen:\n            self.ledger.end(first, RESUBSCRIBE_NOT_NEEDED)",
+  "        if first.terminal_seen and first.stream_end == \"eof\":\n            self.ledger.end(first, RESUBSCRIBE_NOT_NEEDED)"
+ ],
+ [
+  "R04",
+  "orchestrator/forward.py",
+  "        self.ledger.end(first, RESUBSCRIBE_SENT)\n",
+  "        self.ledger.end(first, RESUBSCRIBE_SENT)\n        return first\n"
+ ],
+ [
+  "R05",
+  "orchestrator/forward.py",
+  "        if not first.task_id:\n            self.ledger.end(first, RESUBSCRIBE_NO_TASK_ID)",
+  "        if not first.task_id or first.stream_end == \"error\":\n            self.ledger.end(first, RESUBSCRIBE_NO_TASK_ID)"
+ ],
+ [
+  "R06",
+  "orchestrator/forward.py",
+  "        if not first.task_id:\n            self.ledger.end(first, RESUBSCRIBE_NO_TASK_ID)",
+  "        if not first.task_id or first.stream_end == \"eof\":\n            self.ledger.end(first, RESUBSCRIBE_NO_TASK_ID)"
+ ],
+ [
+  "R07",
+  "orchestrator/forward.py",
+  "client.subscribe(SubscribeToTaskRequest(id=first.task_id))",
+  "client.subscribe(SubscribeToTaskRequest(id=message_id))"
+ ],
+ [
+  "R08",
+  "orchestrator/forward.py",
+  "httpx_client=self._http, streaming=self.resubscribe))",
+  "httpx_client=self._http, streaming=False))"
+ ],
+ [
+  "R09",
+  "orchestrator/forward.py",
+  "httpx_client=self._http, streaming=self.resubscribe))",
+  "httpx_client=self._http, streaming=True))"
+ ],
+ [
+  "R10",
+  "orchestrator/forward.py",
+  "    if value == \"on\":\n        return True\n    raise ValueError(f\"{FORWARD_RESUBSCRIBE_ENV}",
+  "    if value.lower() == \"on\":\n        return True\n    raise ValueError(f\"{FORWARD_RESUBSCRIBE_ENV}"
+ ],
+ [
+  "R11",
+  "orchestrator/server.py",
+  "Forwarder(url=downstream, caller=name, resubscribe=resubscribe)",
+  "Forwarder(url=downstream, caller=name)"
+ ],
+ [
+  "R12",
+  "orchestrator/server.py",
+  "    resubscribe = forward_resubscribe_from(os.environ.get(FORWARD_RESUBSCRIBE_ENV, \"\"))",
+  "    try:\n        resubscribe = forward_resubscribe_from(os.environ.get(FORWARD_RESUBSCRIBE_ENV, \"\"))\n    except ValueError:\n        resubscribe = False"
+ ],
+ [
+  "R13",
+  "orchestrator/forward.py",
+  "        if self.terminal_state == TaskState.TASK_STATE_COMPLETED:\n            return self.answer",
+  "        if self.terminal_state is not None:\n            return self.answer"
+ ],
+ [
+  "R14",
+  "orchestrator/forward.py",
+  "        return self.terminal_state is not None or self.message is not None",
+  "        return self.terminal_state is not None"
+ ],
+ [
+  "R15",
+  "orchestrator/forward.py",
+  "        await self._read_stream(client.subscribe(SubscribeToTaskRequest(id=first.task_id)), second)\n        self.ledger.end(second)",
+  "        await self._read_stream(client.subscribe(SubscribeToTaskRequest(id=first.task_id)), second)"
+ ],
+ [
+  "R16",
+  "orchestrator/forward.py",
+  "                self.ledger.event(read, kind, task_id, context_id, state)",
+  "                pass"
+ ],
+ [
+  "R17",
+  "orchestrator/forward.py",
+  "        except Exception as exc:\n            read.ended(exc)\n            return\n        read.ended(None)",
+  "        except Exception as exc:\n            read.ended(exc)\n            raise\n        read.ended(None)"
+ ],
+ [
+  "R18",
+  "orchestrator/forward.py",
+  "        if not self._card.capabilities.streaming:",
+  "        if False:"
+ ],
+ [
+  "R19",
+  "orchestrator/forward.py",
+  "        if resubscribe and self.sdk_resend:",
+  "        if False:"
+ ],
+ [
+  "R20",
+  "orchestrator/forward.py",
+  "        if not first.task_id:\n            self.ledger.end(first, RESUBSCRIBE_NO_TASK_ID)\n            return first\n",
+  ""
+ ],
+ [
+  "R21",
+  "orchestrator/forward.py",
+  "        self.ledger = ForwardLedger(out) if resubscribe else None",
+  "        self.ledger = ForwardLedger(out)"
+ ],
+ [
+  "R22",
+  "orchestrator/forward.py",
+  "        if self.resubscribe:\n            # The span covers",
+  "        if True:\n            # The span covers"
+ ],
+ [
+  "R23",
+  "orchestrator/forward.py",
+  "TERMINAL_STATES = frozenset({TaskState.TASK_STATE_COMPLETED, TaskState.TASK_STATE_FAILED,",
+  "TERMINAL_STATES = frozenset({TaskState.TASK_STATE_COMPLETED,"
+ ]
+]

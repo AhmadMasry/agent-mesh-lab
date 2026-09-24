@@ -1,0 +1,30 @@
+# D-1 header reading: every arrival line that carried the reading, per agent, as the ledger wrote it (jq over worker-ingress.jsonl and orchestrator-ingress.jsonl). remote is the sender's address as the agent saw it; the pod IPs are in control.txt.
+== worker
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.157 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SendMessage | lwi=d1-hdr-go-unary-r1 | remote=10.244.1.157 | names=a2a-version,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.157 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SendStreamingMessage | lwi=d1-hdr-go-stream-r1 | remote=10.244.1.157 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.157 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SubscribeToTask | lwi=d1-hdr-go-subscribe-r1 | remote=10.244.1.157 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.206 | names=accept,accept-encoding,host,traceparent,user-agent,x-caller | values=host=worker.lab.svc.cluster.local:8080 ; user-agent=python-httpx/0.28.1 ; x-caller=orchestrator | authorization_present=false
+SendMessage | lwi=d1-hdr-py-unary-r1 | remote=10.244.1.206 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-a2a-message-id,x-caller,x-logical-work-item-id | values=host=worker.lab.svc.cluster.local:8080 ; user-agent=python-httpx/0.28.1 ; x-caller=orchestrator | authorization_present=false
+SendMessage | lwi=d1-hdr-py-stream-r1 | remote=10.244.1.206 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-a2a-message-id,x-caller,x-logical-work-item-id | values=host=worker.lab.svc.cluster.local:8080 ; user-agent=python-httpx/0.28.1 ; x-caller=orchestrator | authorization_present=false
+== orchestrator
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.206 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=orchestrator.lab.svc.cluster.local:8080 ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SendMessage | lwi=d1-hdr-py-unary-r1 | remote=10.244.1.157 | names=a2a-version,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.206 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=orchestrator.lab.svc.cluster.local:8080 ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SendStreamingMessage | lwi=d1-hdr-py-stream-r1 | remote=10.244.1.157 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.206 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=orchestrator.lab.svc.cluster.local:8080 ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SubscribeToTask | lwi=d1-hdr-py-subscribe-r1 | remote=10.244.1.157 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+== header names, counted over all 15 arrivals
+   8 a2a-version
+   7 accept
+  15 accept-encoding
+   8 content-length
+   8 content-type
+  15 host
+  15 traceparent
+  15 user-agent
+   2 x-a2a-message-id
+  15 x-caller
+  14 x-logical-work-item-id

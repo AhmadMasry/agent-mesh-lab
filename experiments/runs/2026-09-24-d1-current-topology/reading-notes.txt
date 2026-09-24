@@ -1,0 +1,50 @@
+Follow-on D-1: reading notes for this run directory.
+
+The tree. Built at bc47860d, the fourth of D-1's code commits on top of 1537d8f9. build.txt lists every deployed subtree and
+blob beside the tree the revert's rebuild proved (2f1a3894): agents and deploy changed (inside deploy only base/worker.yaml and
+base/orchestrator.yaml), every other deployed path the same.
+
+The drivers, each copied here after it ran, with the sha256 its own control file records:
+  rebuild.sh   the revert's, adapted in header, scratch and tool paths, subjects and the compared tree
+  proof.sh     the revert's, adapted in header, scratch and tool paths and LASTPROOF (the revert's directory)
+  rows.sh      B-5b's rows.sh; the changes are listed in its header (the one pairing ingress-rollout, the rollout command, the
+               restartedAt and generation readings, the d1- prefixes, the scratch paths)
+  pyclient.sh  the Python-client row, written for D-1 from B-5b's rows.sh helpers
+  headers.sh   the header reading, written for D-1
+The counters: the rollout rows by experiments/runs/2026-09-22-b5b-removal-resubscribe/counts.py, unedited, run on a scratch copy
+holding only the two rollout variants (it names variants receiver-proxy-method and would not read the Python-client variant's
+directory); its outputs are rows/rollout-summary.csv and rows/rollout-counts.txt. The Python-client row by pyclient-counts.py
+(this directory), outputs rows/pyclient-central-graceful/summary.csv and counts.txt. Both read sleep-events.csv.
+
+File names. .gitignore ignores experiments/runs/**/*.log, and by the standing rule committed logs are named .txt: every
+per-repetition file the drivers wrote as oldpod.log, newpod.log, apply-1.log and apply-2.log is committed as oldpod.txt,
+newpod.txt, apply-1.txt and apply-2.txt (227 files, renamed after counting and nothing else changed). The counters read the .log
+names; to re-count, rename them back on a copy. B-5b force-added its .log files; this record does not.
+
+Figures not used. The rollout counter's rm_to_new_pod_first_served_ms_h2c and dropped_zero_stamps columns are computed from
+agentgateway access-line stamps, which at v1.5.0 are not read for any figure (agentgateway#3369, fixed by #3370 after the pin); no
+entry cites them. On the rollout rows the new pod's first access line is written when the request it logs ends, so on the py row
+that column reads about 42.8 s, the end of the one subscription, not when the successor first served.
+
+Dry repetitions: dry/go-ingress-rollout (one, before the rollout rows) and dry/pyclient-central-graceful (one, before the
+Python-client row). Named and not counted.
+
+The code proof (code-proof/): the mutant sets re-run at bc47860d from these scripts (gomut-results.txt 18 of 18 killed,
+pymut-headers-results.txt 16 of 16, pymut-resubscribe-results.txt 23 of 23, each set's unmutated copy passing), the two off-proofs
+against the parent 1537d8f9 (offproof-ledgers-results.txt, offproof-forward-results.txt) and the render proof
+(render-proof-results.txt, 17 renders).
+
+NOT COMMITTED: checks.sh's two byte copies of itself (checks-as-run/, checks.sh.as-run-20260924T165854Z-part1 and
+checks.sh.as-run-20260924T170222Z-knobs), sha256 8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00 both, the
+committed file's own hash (experiments/runs/2026-09-20-experiment-a-agentgateway-only/checks.sh): they are that file byte for
+byte, copied by it as it ran. They carry the checkout's absolute path and stay in a scratch directory, as B-3, B-4, C-5 and
+C-10 did.
+
+Reproduction (the review's M4). pyclient-counts.py writes summary.csv with lineterminator "\n", as B-5b's counts.py does; its
+first version wrote the csv module's default CRLF, which git stored as LF. Every committed counter output was re-derived from a
+clean git archive of this directory, with the four .txt names renamed back to .log on the copy and the committed arguments:
+  python3 experiments/runs/2026-09-24-d1-current-topology/pyclient-counts.py experiments/runs/2026-09-24-d1-current-topology/rows/pyclient-central-graceful experiments/runs/2026-09-24-d1-current-topology/sleep-events.csv
+  python3 experiments/runs/2026-09-22-b5b-removal-resubscribe/counts.py cnt/rows 45000 experiments/runs/2026-09-24-d1-current-topology/sleep-events.csv
+    (cnt/rows a copy holding only go-ingress-rollout and py-ingress-rollout)
+and each output is byte-equal to its committed blob: rows/pyclient-central-graceful/summary.csv f866cb03,
+rows/pyclient-central-graceful/counts.txt 8156c959, rows/rollout-summary.csv a36c473f, rows/rollout-counts.txt 0524543b.

@@ -1,0 +1,108 @@
+== 2026-09-24T17:02:20Z kubectl get gateway -A, with class ==
+NS                      NAME                   CLASS          PROGRAMMED   ADDRESS
+agentgateway-ingress    agentgateway-ingress   agentgateway   True         10.96.229.158
+agentgateway-waypoint   agw-central            agentgateway   True         10.96.165.176
+Gateways of a class whose name starts with istio: 0
+== 2026-09-24T17:02:20Z kubectl get gatewayclass ==
+NAME             CONTROLLER                      ACCEPTED
+agentgateway     agentgateway.dev/agentgateway   True
+istio            istio.io/gateway-controller     True
+istio-remote     istio.io/unmanaged-gateway      True
+istio-waypoint   istio.io/mesh-controller        True
+== 2026-09-24T17:02:20Z kubectl get httproute -A, with parent and status ==
+NS                      NAME                   HOSTNAMES                              PARENT                 SECTION      ACCEPTED   RESOLVED   CONTROLLER
+agentgateway-waypoint   model-via-agw          [model.lab.internal]                   agw-central            inner-http   True       True       agentgateway.dev/agentgateway
+lab                     orchestrator           [orchestrator.lab.svc.cluster.local]   agw-central            inner-http   True       True       agentgateway.dev/agentgateway
+lab                     orchestrator-ingress   <none>                                 agentgateway-ingress   <none>       True       True       agentgateway.dev/agentgateway
+lab                     worker                 [worker.lab.svc.cluster.local]         agw-central            inner-http   True       True       agentgateway.dev/agentgateway
+lab                     worker-ingress         [worker.lab.internal]                  agentgateway-ingress   <none>       True       True       agentgateway.dev/agentgateway
+== 2026-09-24T17:02:20Z kubectl get telemetry -A ==
+No resources found
+== 2026-09-24T17:02:20Z kubectl get agentgatewaypolicy -A, with status ==
+NS                      NAME          TARGET                 ACCEPTED   ATTACHED
+agentgateway-ingress    access-logs   agentgateway-ingress   True       True
+agentgateway-ingress    tracing       agentgateway-ingress   True       True
+agentgateway-waypoint   access-logs   agw-central            True       True
+agentgateway-waypoint   tracing       agw-central            True       True
+== 2026-09-24T17:02:20Z the waypoint binding Istio wrote on each bound object (istio.io/WaypointBound) ==
+service/worker: True -- Successfully attached to waypoint agentgateway-waypoint/agw-central
+service/orchestrator: True -- Successfully attached to waypoint agentgateway-waypoint/agw-central
+serviceentry/model-external: True -- Successfully attached to waypoint agentgateway-waypoint/agw-central
+== 2026-09-24T17:02:21Z istiod's container env ==
+REVISION=default
+PILOT_CERT_PROVIDER=istiod
+POD_NAME=
+POD_NAMESPACE=
+SERVICE_ACCOUNT=
+KUBECONFIG=/var/run/secrets/remote/config
+CA_TRUSTED_NODE_ACCOUNTS=istio-system/ztunnel
+DEFAULT_WORKLOAD_CERT_TTL=168h
+PILOT_ENABLE_AMBIENT=true
+PILOT_TRACE_SAMPLING=1
+PILOT_ENABLE_ANALYSIS=false
+CLUSTER_ID=Kubernetes
+GOMAXPROCS=
+PLATFORM=
+lines naming PILOT_ENABLE_AGENTGATEWAY: 0
+== 2026-09-24T17:02:21Z the istio ConfigMap's mesh config ==
+defaultConfig:
+  discoveryAddress: istiod.istio-system.svc:15012
+  image:
+    imageType: distroless
+  proxyMetadata:
+    ISTIO_META_ENABLE_HBONE: "true"
+  tracing:
+    sampling: 100
+defaultProviders:
+  metrics:
+  - prometheus
+  tracing:
+  - otel-tracing
+enablePrometheusMerge: true
+enableTracing: true
+extensionProviders:
+- name: otel-tracing
+  opentelemetry:
+    port: 4317
+    resource_detectors:
+      environment: {}
+    service: otel-collector.telemetry.svc.cluster.local
+rootNamespace: istio-system
+serviceScopeConfigs:
+- scope: GLOBAL
+  servicesSelector:
+    matchExpressions:
+    - key: istio.io/global
+      operator: In
+      values:
+      - "true"
+trustDomain: cluster.local
+== 2026-09-24T17:02:21Z the central proxy: its pod's labels, its image, and its namespace's labels ==
+POD                            DATAPLANE_MODE   GATEWAY       REDIRECTION   IMAGE                                     SA
+agw-central-859d46c5c6-t9z4r   none             agw-central   <none>        cr.agentgateway.dev/agentgateway:v1.5.0   agw-central
+namespace agentgateway-waypoint labels: {"kubernetes.io/metadata.name":"agentgateway-waypoint"}
+== 2026-09-24T17:02:21Z the ingress proxy, the same way ==
+POD                                     DATAPLANE_MODE   GATEWAY                REDIRECTION   IMAGE                                     SA
+agentgateway-ingress-55cd8588b6-qp4f5   <none>           agentgateway-ingress   enabled       cr.agentgateway.dev/agentgateway:v1.5.0   agentgateway-ingress
+namespace agentgateway-ingress labels: {"istio.io/dataplane-mode":"ambient","kubernetes.io/metadata.name":"agentgateway-ingress"}
+== 2026-09-24T17:02:21Z namespaces that exist ==
+namespace/agentgateway-ingress namespace/agentgateway-system namespace/agentgateway-waypoint namespace/default namespace/istio-system namespace/kube-node-lease namespace/kube-public namespace/kube-system namespace/lab namespace/local-path-storage namespace/telemetry 
+== 2026-09-24T17:02:21Z helm list -A ==
+agentgateway         agentgateway-system  deployed   agentgateway-v1.5.0
+agentgateway-crds    agentgateway-system  deployed   agentgateway-crds-v1.5.0
+istio-base           istio-system         deployed   base-1.31.0
+istio-cni            istio-system         deployed   cni-1.31.0
+istiod               istio-system         deployed   istiod-1.31.0
+jaeger               telemetry            deployed   jaeger-4.13.1
+otel-collector       telemetry            deployed   opentelemetry-collector-0.173.1
+prometheus           telemetry            deployed   prometheus-29.31.1
+ztunnel              istio-system         deployed   ztunnel-1.31.0
+== 2026-09-24T17:02:21Z ztunnel's certificates, each node ==
+-- node agent-mesh-lab-worker
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           2de337ecf091956490074d774fd5b0a      2026-10-01T16:56:49Z     2026-09-24T16:54:49Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           7fd8ecc8caaac913e7b1be3798321469     2036-09-21T16:54:50Z     2026-09-24T16:54:50Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           f2151b18d9976b53a1f6a5bb90d29ca8     2026-10-01T16:55:49Z     2026-09-24T16:53:49Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           7fd8ecc8caaac913e7b1be3798321469     2036-09-21T16:54:50Z     2026-09-24T16:54:50Z
+-- node agent-mesh-lab-control-plane
+CERTIFICATE NAME     TYPE     STATUS     VALID CERT     SERIAL NUMBER     NOT AFTER     NOT BEFORE
