@@ -358,3 +358,25 @@ At the pinned versions a2a-go carries its gRPC server and client; a2a-python car
 through a `GRPCRoute` on the agentgateway proxies; whether that holds at the pinned agentgateway and Gateway API versions is
 verified from documents before any code, and a step that finds it does not is stopped for the author. The proposal text is
 unchanged.
+
+## 2026-09-24 — the history rewritten to remove absolute home paths, scratch paths and the host name
+
+Decision by the author. CLAUDE.md forbids host-identifying strings in committed files; 63 files on main carried the absolute
+home path of the checkout (most of them the lab's own driver scripts), 17 lines carried a session scratch path, and 7 lines of the
+2026-09-10 and 2026-09-11 image-scan reports carried the host's name. The whole history of every published branch — 18 branches,
+169 commits — was rewritten with four literal replacements: the checkout path became `$(git rev-parse --show-toplevel)`, so the
+old scripts still run from any clone; any other home path became `$HOME/`; the scratch path became `<scratchpad>`; and the host
+name became `<host>`. The rewrite was verified before it was pushed: none of the four strings remains in any published object;
+every deployed subtree id (`deploy`, `agents`, `fixtures`, `internal`, `Makefile`, `experiments/lib`, `go.mod`, `go.sum`) is
+unchanged at every branch tip; every changed file equals its original with only those replacements applied; authors and dates are
+unchanged; and 14 commit messages changed only where they quoted an old commit id, which the tool updated to the new one. Every
+commit id changed, so a commit cited by id from before this note no longer resolves; commits are cited by subject, as CLAUDE.md
+already asks since the rewrite of 2026-09-19.
+
+**The one consequence for the records.** The standard proof's driver,
+`experiments/runs/2026-09-20-experiment-a-agentgateway-only/checks.sh`, carried the path on its line 40 (the `cd` into the
+checkout), and that line is the only one the rewrite changed in it. Its sha256 before the rewrite was
+`8ee90f7de5d8a64d3a93fbfaa269e747da219025732f45999e0f18b5e847fb00`; after it, `4056b5596883187fe1a7b0528a833f533437aaf93760ee6a8130215ddd16224b`.
+Every record that cites the first value — as the committed file's hash, or as the hash of an as-run copy equal to it — refers to
+the bytes before this rewrite, and those records are left exactly as they were written. One local branch that was never published
+(`spike-central-waypoint`) was not rewritten. The proposal text is unchanged.
