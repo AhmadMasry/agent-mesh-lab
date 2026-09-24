@@ -43,7 +43,9 @@ is off by default:
     after it: it is the behaviour under test, and rule 4 forbids anything more.
     Both requests are recorded as ``forward`` ledger lines (ForwardLedger). Off,
     the forward is the unary ``SendMessage`` it has always been and no forward
-    line is written.
+    line is written. On together with CLIENT_RETRIES, CLIENT_TRANSPORT_RESEND
+    or CLIENT_SDK_RESEND it is refused when the Forwarder is built, which is at
+    start.
 """
 from __future__ import annotations
 
@@ -447,14 +449,22 @@ class Forwarder:
         self.transport_resend = _switched_on("CLIENT_TRANSPORT_RESEND")
         self.retry_on = _retry_on()
         self.sdk_resend = _switched_on("CLIENT_SDK_RESEND")
-        # FORWARD_RESUBSCRIBE, read by app_from_env. The SDK-layer resend is a
-        # second SendMessage after a failed one; with the resubscription on the
-        # forward is a stream and its one follow-up is the resubscription, so the
-        # two together would be two follow-ups nobody measured. Refused here.
+        # FORWARD_RESUBSCRIBE, read by app_from_env. Each of A.2's three
+        # re-sending knobs is a second send after a failed one: the SDK-layer
+        # resend a second SendMessage, the transport resend and the connection
+        # retries a second write of the same request. With the resubscription on
+        # the forward is a stream and its one follow-up is the resubscription, so
+        # any of them beside it would be a follow-up nobody measured. Refused
+        # here, which app_from_env reaches at start, before the app exists (D-1's
+        # review, M5: until D-2 only the SDK-layer resend was refused).
         self.resubscribe = resubscribe
-        if resubscribe and self.sdk_resend:
-            raise ValueError(f"{FORWARD_RESUBSCRIBE_ENV}=on and CLIENT_SDK_RESEND=on together are not a forward "
-                             "this agent sends")
+        if resubscribe:
+            also = [name for name, on in (("CLIENT_RETRIES", self.transport_retries > 0),
+                                          ("CLIENT_TRANSPORT_RESEND", self.transport_resend),
+                                          ("CLIENT_SDK_RESEND", self.sdk_resend)) if on]
+            if also:
+                raise ValueError(f"{FORWARD_RESUBSCRIBE_ENV}=on together with {', '.join(also)} is not a forward "
+                                 "this agent sends")
         self.ledger = ForwardLedger(out) if resubscribe else None
         # Counts the resubscriptions this forwarder sent, so a run and a test read
         # a number: it can only ever be 0 or 1 per forward.

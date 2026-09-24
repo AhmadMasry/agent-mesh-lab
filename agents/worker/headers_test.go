@@ -480,3 +480,53 @@ func workerA2AMux(t *testing.T, modelURL string, lw *lineWriter) http.Handler {
 	mux.Handle("/", a2asrv.NewJSONRPCHandler(newRequestHandler(executor, lw, "")))
 	return mux
 }
+
+// Every name on the fixed list, sent once each, has its value recorded, and
+// the list is exactly the ten names the Python orchestrator reads
+// (agents/orchestrator/tests/test_ledger_headers.py, GO_LIST). Added by D-2
+// for D-1's review item M3: with via dropped from the list the suite still
+// passed, because no test sent a Via header; this one sends every listed
+// header, so dropping any one of them fails it.
+func TestLedgerHeaders_OnRecordsEveryListedValue(t *testing.T) {
+	want := []string{"host", "user-agent", "x-caller", "forwarded", "x-forwarded-for", "x-forwarded-proto",
+		"x-forwarded-host", "x-real-ip", "via", "x-forwarded-client-cert"}
+	if !reflect.DeepEqual(headerValuesRead, want) {
+		t.Fatalf("headerValuesRead = %v\nwant              %v", headerValuesRead, want)
+	}
+	sent := map[string]string{
+		"User-Agent":              "lab-test/2",
+		"X-Caller":                "orchestrator",
+		"Forwarded":               "for=10.0.0.9;proto=http",
+		"X-Forwarded-For":         "10.0.0.9",
+		"X-Forwarded-Proto":       "http",
+		"X-Forwarded-Host":        "worker.lab.internal",
+		"X-Real-Ip":               "10.0.0.9",
+		"Via":                     "1.1 agentgateway",
+		"X-Forwarded-Client-Cert": "URI=spiffe://cluster.local/ns/lab/sa/default",
+	}
+	h := http.Header{}
+	h.Set("Content-Type", "application/json")
+	for k, v := range sent {
+		h.Set(k, v)
+	}
+	lines := serveOnce(t, h, a2aGoSendMessageBody, withHeaderReading(true))
+	if len(lines) != 2 {
+		t.Fatalf("lines = %d, want 2", len(lines))
+	}
+	var arrival readingOnLine
+	if err := json.Unmarshal([]byte(lines[0]), &arrival); err != nil || arrival.Headers == nil {
+		t.Fatalf("arrival = %s, want a headers object (%v)", lines[0], err)
+	}
+	for k, v := range sent {
+		name := strings.ToLower(k)
+		if got, ok := arrival.Headers.Values[name]; !ok || got != v {
+			t.Errorf("values[%q] = %q (present %v), want %q", name, got, ok, v)
+		}
+	}
+	if !strings.HasPrefix(arrival.Headers.Values["host"], "127.0.0.1:") {
+		t.Errorf("values[host] = %q, want the address the request named", arrival.Headers.Values["host"])
+	}
+	if len(arrival.Headers.Values) != len(want) {
+		t.Errorf("values has %d names, want %d: %v", len(arrival.Headers.Values), len(want), arrival.Headers.Values)
+	}
+}
