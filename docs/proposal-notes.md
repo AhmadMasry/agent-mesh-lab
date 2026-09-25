@@ -419,3 +419,28 @@ run. **Re-run scope, the author's choice:** every experiment row whose outcome a
 its committed driver, the rows chosen from each moved release's changelog and code diff and listed before any is run; the rows no
 diff touches are listed with the reason they were not re-run. Earlier entries stay the records of their versions. Nothing is added
 to the lab's scope; a moved dependency that needs a code change gets the smallest change, test first. The proposal text is unchanged.
+
+## 2026-09-25 — the two contradictions D-6 recorded are cleared; the follow-up fix; the walkthrough; submission 3 is pursued
+
+Decisions by the author, after the currency pass.
+
+**The two contradictions D-6 recorded are cleared, by the wording the records support.** Both dated entries stay as written;
+a new entry records the clearing beside them. (1) C-11 wrote that the application sees "nothing that tells one caller from
+another", while D-1 counted a lab-set x-caller header at both applications (15 of 15) and B-6 records a lab.caller span
+attribute. The cleared statement: **the application receives no verified caller identity; it receives only what the caller
+declares about itself** (x-caller, set by the lab's own clients, which any client could set to anything; D-1 and D-4 found no
+verified identity reaching the applications). (2) B-6 wrote that removing agw-central under an open A2A stream "is a question
+this topology cannot put", while D-1's Python-client row removed agw-central under the orchestrator's forward stream (20 of 20).
+The cleared statement: **B's own rows could not put that question, because the load client was the streaming client in every
+B row (the note of 2026-09-20) and none of its streams crosses agw-central; D-1's row, added by the note of 2026-09-24, put it.**
+
+**The follow-up fix the currency pass recorded** is done as one task with a rebuild from a deleted cluster: experiments/gate3-matrix.sh's
+Go-sources path list gains fixtures/extauthz, as the Makefile's has since D-3's deploy commit, so the matrix passes its own
+image-freshness check on the current tree; the two stale comments in agents/orchestrator/pyproject.toml are brought to the pins
+they describe; versions.yaml's grpc-go hold wording says the hold rests on GO-2026-6443 alone.
+
+**The walkthrough** (docs/walkthrough.md, taken on 2026-09-20) is then refreshed to the lab as it stands, walked again from a
+deleted cluster, every printed output taken from that run.
+
+**Submission 3, observability (proposal §9), is pursued**, the decision §9 left for after 24 September: it is worked on together
+with submissions 1 and 2, after the fix and the walkthrough, from the findings already counted. The proposal text is unchanged.
