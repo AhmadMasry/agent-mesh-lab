@@ -951,7 +951,8 @@ test:
 	@# The matrix harness's Go-sources pathspec against GO_SOURCES_HASH and
 	@# GO_SOURCES_DIRTY above, word for word (follow-ups 22: the harness's list
 	@# lacked fixtures/extauthz from D-3's deploy commit to 2026-09-25). Then each
-	@# mutant in experiments/fixtures/go-sources-lists/ must be refused.
+	@# mutant in experiments/fixtures/go-sources-lists/ must be refused (follow-ups
+	@# 23 added the appended-list and command-in-comment shapes).
 	@experiments/lib/go-sources-lists.sh Makefile experiments/gate3-matrix.sh
 	@fail=0; \
 	for m in experiments/fixtures/go-sources-lists/*.sh; do \

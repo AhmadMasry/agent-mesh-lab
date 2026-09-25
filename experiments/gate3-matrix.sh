@@ -659,9 +659,10 @@ fi
 # Replaced with a stamped source hash instead of anything computed from
 # ReplicaSet history or from a freshly built image's own tag (which this
 # repository has separately measured is not stable across time either, above).
-# Every step target that runs `ko apply` (see the Makefile) annotates both the
-# worker and the mock Deployment with `lab.agent-mesh/go-sources=<hash>`, a
-# content hash of the tracked Go sources those two binaries are built from
+# Every step target that runs `ko apply` (see the Makefile) annotates the
+# worker, the mock and, from step-2b on, the extauthz Deployment with
+# `lab.agent-mesh/go-sources=<hash>`, a content hash of the tracked Go sources
+# those three binaries are built from
 # (`GO_SOURCES_HASH` in the Makefile; test files excluded, since ko does not
 # compile them and a test-only commit must not force a rebuild). This check
 # recomputes that same hash from the checkout with the same command and

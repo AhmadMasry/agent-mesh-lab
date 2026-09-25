@@ -10,7 +10,12 @@
 # the pathspec after "git ls-files -s --" in GO_SOURCES_HASH, the one after
 # "git status --porcelain --" in GO_SOURCES_DIRTY, and the words of the
 # harness's GO_SOURCES_PATHS array; and it requires the harness's two git
-# commands to pass that array and nothing else. It reads the files only.
+# commands to pass that array and nothing else. Follow-ups 23 closed the two
+# shapes follow-ups 22's review found accepted: a later line that changes the
+# array after its definition (GO_SOURCES_PATHS+=(...), an indexed assignment,
+# unset, declare, read and the like) is refused, and each git command must be
+# a whole line of its own outside a comment, so the command text kept in a
+# comment while the real line differs is refused. It reads the files only.
 #
 # Output: "ok ..." and exit 0, or "FAIL ..." lines on stderr and exit 1.
 set -u
@@ -42,11 +47,26 @@ if [ "$fail" = "0" ]; then
 		fail=1
 	fi
 fi
-# The array is the whole pathspec of both commands: nothing added after it.
+# The harness's lines outside comments; a comment is a line whose first
+# non-blank character is #.
+code="$(grep -v '^[[:space:]]*#' "$sh")"
+# The array is set once and never changed after: its definition is the only
+# line that assigns it, whole, indexed or appended, and no builtin writes it.
+assigns="$(printf '%s\n' "$code" | grep -cE '(^|[^A-Za-z0-9_{])GO_SOURCES_PATHS(\[[^]]*\])?\+?=')"
+if [ "$assigns" != "1" ]; then
+	echo "FAIL go-sources-lists: $sh assigns GO_SOURCES_PATHS on $assigns lines, not once" >&2
+	fail=1
+fi
+if printf '%s\n' "$code" | grep -qE '(^|[^A-Za-z0-9_])(unset|declare|typeset|local|readonly|read|mapfile|readarray)[[:space:]][^#]*GO_SOURCES_PATHS'; then
+	echo "FAIL go-sources-lists: $sh writes GO_SOURCES_PATHS by a builtin" >&2
+	fail=1
+fi
+# The array is the whole pathspec of both commands: nothing added after it,
+# each command a whole line outside a comment, exactly once.
 # shellcheck disable=SC2016
-for cmd in 'git status --porcelain -- "${GO_SOURCES_PATHS[@]}" 2>/dev/null' 'git ls-files -s -- "${GO_SOURCES_PATHS[@]}" 2>/dev/null'; do
-	if [ "$(grep -cF -- "$cmd" "$sh")" != "1" ]; then
-		echo "FAIL go-sources-lists: $sh does not run exactly once: $cmd" >&2
+for cmd in 'GO_SOURCES_DIRTY="$(git status --porcelain -- "${GO_SOURCES_PATHS[@]}" 2>/dev/null || true)"' 'CHECKOUT_GO_SOURCES_HASH="$(git ls-files -s -- "${GO_SOURCES_PATHS[@]}" 2>/dev/null | git hash-object --stdin 2>/dev/null || true)"'; do
+	if [ "$(printf '%s\n' "$code" | grep -cxF -- "$cmd")" != "1" ]; then
+		echo "FAIL go-sources-lists: $sh does not run exactly once, as a whole line outside a comment: $cmd" >&2
 		fail=1
 	fi
 done
