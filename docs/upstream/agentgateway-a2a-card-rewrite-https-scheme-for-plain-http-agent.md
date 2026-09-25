@@ -161,3 +161,21 @@ one set of sends and then removed it (experiments/runs/2026-09-25-d5-a2a-backend
 - The D-5 draft on the a2a backend type (agentgateway-a2a-backend-type-dials-plaintext-outside-ambient-mesh.md)
   is a separate issue. With the backend type, no card reached a client (every card GET was 503), so its card
   scheme was not observed.
+
+## 2026-09-25, a dated note from D-5c (the text above is unchanged): STANDS
+
+For the author, not yet part of the issue text.
+
+- **The first search was phrase-only.** C-9's search (tracker-search.sh) sent each query to gh search as one argument.
+  gh 2.101.0 sends that as a quoted phrase, so the pages of its eleven multi-word queries matched the exact phrase
+  only (experiments/runs/2026-09-25-d5c-search-correction/gh-phrase-check.txt). The total_count beside each page was a word search.
+- **The word pass.** On 2026-09-25, D-5c re-ran the eleven as words, through the search API with an explicit q=,
+  issues and pull requests apart, the rate limit read before each call, 0 failed. It made 22 calls and returned 146
+  items, 105 of them on no page of C-9 (experiments/runs/2026-09-25-d5c-search-correction/search-words-c9.txt and new-items.txt).
+- **Read by number (items-read.txt there):** the only new titles near HBONE or the marking.
+  - #993 (closed completed 2026-07-09): the HBONE tunnel protocol on Binds;
+  - #1793 (closed, not merged): AppProtocol on Backend.
+  - Neither is about the scheme the card rewrite writes. #2983 and #999, raised in D-5's review, were already on C-9's
+    pages.
+- **Standing: stands.** It is not a duplicate, no fix was found, and there is no documented behaviour for it.
+- **Not re-read here:** the state now of the items the text above names (#3500, #3453, #1829).

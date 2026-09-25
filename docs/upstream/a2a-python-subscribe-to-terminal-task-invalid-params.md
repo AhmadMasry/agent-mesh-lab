@@ -103,3 +103,43 @@ Re-read from the API by number at 2026-09-22T23:25:15Z–23:27Z:
   the specification says how a streaming method's successful answer is framed and not how its error answer is.
   If both are posted, the a2a-go issue may be worth linking from this comment; that is the poster's call.
 - Nothing in this refresh moves a number in the comment text.
+
+## 2026-09-25, a dated note from D-5c (the text above is unchanged): NEEDS THE AUTHOR'S ATTENTION
+
+For the author, not part of the comment.
+
+- **The first searches were phrase-only.** B-3's search and B-6's refresh sent every multi-word query to gh search as
+  one argument, which gh 2.101.0 sends as a quoted phrase (experiments/runs/2026-09-25-d5c-search-correction/gh-phrase-check.txt).
+- **The word pass.** On 2026-09-25, D-5c re-ran every multi-word query of both records as words, through the search API
+  with an explicit q=, issues and pull requests apart, the rate limit read before each call, 0 failed:
+  - B-3: 17 queries, 34 calls, 90 items, 85 on no earlier page;
+  - B-6: 16 queries, 32 calls, 194 items, 110 new.
+  - The records: experiments/runs/2026-09-25-d5c-search-correction/search-words-b3.txt, search-words-b6.txt and new-items.txt.
+- **Read by number (items-read.txt, followups-read.txt there):**
+  - #1205 is unchanged: open, 3 comments, updated 2026-09-13.
+  - #1207 is unchanged: open, not merged, head 46a3d524.
+  - **New: #1268**, "fix(server): reject terminal-task operations with UnsupportedOperationError", opened 2026-09-23.
+    It is **open and not merged**, with no review, and its only comment is a coverage bot.
+    - It changes all three terminal-state raises in active_task.py (start, both branches, and subscribe) from
+      InvalidParamsError to UnsupportedOperationError.
+    - Its description says this covers subscribe_to_task, and it adds test_on_subscribe_to_task_in_terminal_state.
+    - Merged, it would turn the -32602 counted here into -32004.
+  - a2a-python v1.1.5 (published 2026-09-21) does not contain it.
+  - #215 (merged 2025-06-18, in v1.1.4), the origin of the terminal-state error, changes nothing here.
+- **What #1268 changes beyond SubscribeToTask.**
+  - It changes default_request_handler.py's _setup_message_execution, the legacy handler's send path, the same way.
+  - It re-keys the V2 on_cancel_task remap, so a terminal task still answers TaskNotCancelableError.
+  - Its description says it covers send_message as well. It is therefore a second fix for #1205's own subject, and
+    it overlaps the open #1207.
+  - Its description also states this draft's mechanism: on_subscribe_to_task has no terminal check of its own,
+    get_or_create calls ActiveTask.start(), and the error surfaces on the first __anext__.
+- **What it leaves standing.** Of the comment's four details (the code, the message, the other text, the framing),
+  #1268 changes only the code's number. Three stand:
+  - the message: the state is still formatted as a number ({task.status.state});
+  - the other text: both texts remain, "is already completed." from subscribe() and "is in terminal state" from
+    start(), now both -32004. The timing dependence stands, with the code changed;
+  - the framing: no dispatcher file is touched, so the error is still raised before the first event.
+- **What needs the author.** The introduction says that #1207 changes only the send paths and that no one has written
+  the SubscribeToTask fix. The second half no longer holds. The comment may belong on #1268, which now covers both
+  operations and states the mechanism, rather than on #1205. Or it may be cut to the three details that stand. Neither
+  a duplicate nor a shipped fix: the draft is kept, for the author to reword or retarget.

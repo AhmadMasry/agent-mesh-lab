@@ -122,3 +122,24 @@ point is what the client does with one.
 - The client in the cluster count is the lab's load client, `fixtures/loadgen`, in `MODE=subscribe`. The path from
   it to the Python receiver crossed the agentgateway v1.5.0 ingress (route `lab/orchestrator-ingress`) under
   Istio 1.31.0 ambient; the proxy logged the answer as a 200, so the framing is the server's and not the proxy's.
+
+## 2026-09-25, a dated note from D-5c (the text above is unchanged): STANDS
+
+For the author, not part of the issue.
+
+- **The first search was phrase-only.** B-6's search (and B-3's, cited in the lab notes) sent every multi-word query to
+  gh search as one argument, which gh 2.101.0 sends as a quoted phrase (experiments/runs/2026-09-25-d5c-search-correction/gh-phrase-check.txt). Its "fourteen
+  queries" were phrase matches for the ten multi-word ones.
+- **The word pass.** On 2026-09-25, D-5c re-ran them as words, through the search API with an explicit q=, issues and
+  pull requests apart, the rate limit read before each call, 0 failed:
+  - B-6: 16 queries, 32 calls, 194 items, 110 on no earlier page;
+  - B-3: 17 queries, 34 calls, 90 items, 85 new.
+  - The records: experiments/runs/2026-09-25-d5c-search-correction/search-words-b6.txt, search-words-b3.txt and new-items.txt.
+- **Read by number (items-read.txt there), the nearest new titles:**
+  - #76 (closed completed): a client falling back when a server does not stream;
+  - #265 (merged, in v2.5.0): the server's JSON-RPC Content-Type;
+  - #92 (merged, in v2.5.0): an early streaming fix.
+  - None describes the client reading an application/json answer to a streaming method as an empty stream.
+- **The release.** a2a-go v2.6.0 was published 2026-09-25T06:22:49Z, and it changes neither a2aclient/jsonrpc.go nor
+  internal/sse/sse.go (compare v2.5.0...v2.6.0, followups-read.txt). The line citations above hold at v2.6.0 as well.
+- **Standing: stands.** It is not a duplicate, no fix was found, and there is no documented behaviour for it.

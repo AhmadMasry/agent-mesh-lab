@@ -1,0 +1,444 @@
+# D-5c: items read by number, 2026-09-25T10:53:27Z; core quota 5000/5000
+## B-3 and B-6: the a2a-go drafts
+
+-- a2aproject/a2a-go#438 [issue] [Bug]: SendMessage and SubscribeToTask on a terminal task return InvalidParams/TaskNotFound instead of UnsupportedOperationError
+   why read: the issue the a2a-go terminal-task draft comments on; the word pass lists it closed
+   state=closed state_reason=completed created=2026-09-15T15:46:08Z updated=2026-09-25T06:11:17Z closed=2026-09-25T06:11:17Z comments=0
+   (read 2026-09-25T10:53:29Z)
+   | ### What happened
+   | 
+   | For a task that has reached a terminal state, two operations return error codes that differ from the A2A 1.0 specification.
+   | 
+   | | Operation on a `TASK_STATE_COMPLETED` task | a2a-go v2.5.0 / main (e54a070) | Specification 1.0.0 |
+   | |---|---|---|
+   | | `SendMessage` with `message.taskId` of that task | `-32602` `INVALID_PARAMS` ("task in a terminal state") | `UnsupportedOperationError` (`-32004`), §3.1.1 |
+   | | `SubscribeToTask` on that task | `-32001` `TASK_NOT_FOUND` ("no active execution"), although the task exists | `UnsupportedOperationError` (`-32004`), §3.1.6 |
+   | 
+   | Spec §3.1.1 Send Message, Errors: "UnsupportedOperationError: Messages sent to Tasks that are in a terminal state (e.g., completed, canceled, rejected) cannot accept further messages."
+   | Spec §3.1.6 Subscribe to Task, Errors: "UnsupportedOperationError: The operation is attempted on a task that is in a terminal state (completed, failed, canceled, or rejected)."
+   | 
+   | The official TCK checks the first case as a MUST requirement, CORE-SEND-002 ("SendMessage rejects messages to terminal tasks", expected_error=UNSUPPORTED_OPERATION_ERROR).
+   | 
+   | ### Where
+   | 
+   | - `a2asrv/agentexec.go:228` wraps `a2a.ErrInvalidParams` for a stored terminal task; `a2asrv/handler_test.go:268` asserts that behaviour.
+   | - `a2asrv/handler.go:371-373` wraps any `Resubscribe` error in `a2a.ErrTaskNotFound`, so an existing terminal task is reported as not found.
+   | 
+   | ### Reproduction
+   | 
+   | An executor that completes immediately, then a follow-up message and a subscription for the completed task:
+   | 
+   |     h := a2asrv.NewHandler(completingExecutor{}, a2asrv.WithCapabilityChecks(&a2a.AgentCapabilities{Streaming: true}))
+   |     res, _ := h.SendMessage(ctx, &a2a.SendMessageRequest{Message: a2a.NewMessage(a2a.MessageRoleUser, a2a.NewTextPart("first"))})
+   |     task := res.(*a2a.Task) // TASK_STATE_COMPLETED
+   | 
+   |     follow := a2a.NewMessage(a2a.MessageRoleUser, a2a.NewTextPart("follow-up"))
+   |     follow.TaskID = task.ID
+   |     _, err := h.SendMessage(ctx, &a2a.SendMessageRequest{Message: follow})
+
+-- a2aproject/a2a-go#442 [PR] fix(a2asrv): return spec error codes for terminal and parked tasks (#438)
+   why read: new: fix(a2asrv) spec error codes for terminal and parked tasks (#438)
+   state=closed state_reason=null created=2026-09-23T16:22:31Z updated=2026-09-25T06:11:16Z closed=2026-09-25T06:11:16Z comments=0
+   (read 2026-09-25T10:53:30Z)
+   merged=true merged_at=2026-09-25T06:11:16Z merge_commit=a2f11cbe7bcf05e15d6443bc92c9775becc629c9 head=cd88736cba93 changed_files=3
+   vs v2.5.0: ahead ahead_by=12 behind_by=0 (not contained)
+   vs v2.6.0: behind ahead_by=0 behind_by=1 (contained)
+   file a2asrv/agentexec.go +1 -1
+   file a2asrv/handler.go +10 -1
+   file a2asrv/handler_test.go +31 -1
+   | ## Summary
+   | 
+   | Fixes #438, and resolves the false `TaskNotFoundError` from #439. For a task with no in-flight execution, two operations returned error codes that diverge from A2A 1.0.
+   | 
+   | ## Fix
+   | 
+   | - **SendMessage to a terminal task** wrapped `ErrInvalidParams`; spec 3.1.1 (and the TCK's CORE-SEND-002, a MUST) require `UnsupportedOperationError`. `agentexec.go` now wraps `a2a.ErrUnsupportedOperation` on the terminal-stored-task branch.
+   | - **SubscribeToTask** wrapped every `Resubscribe` failure as `ErrTaskNotFound`, so an existing terminal task read as not found, and a non-terminal task parked in `INPUT_REQUIRED` (#439) was also reported as not found. `SubscribeToTask` now consults the task store when there is no active execution: a missing task stays `ErrTaskNotFound`, a terminal task returns `ErrUnsupportedOperation` (spec 3.1.6), and a non-terminal task yields its current `Task` snapshot (the required first event) and closes cleanly.
+   | 
+   | ## Tests
+   | 
+   | Updated the terminal-task `SendMessage` expectation, and added `SubscribeToTask` coverage for a terminal task (`UnsupportedOperation`) and an `INPUT_REQUIRED` task (snapshot, no error). `go build ./...`, `go test ./a2asrv/...`, `gofmt -l` and `go vet ./a2asrv/...` are all clean.
+   | 
+   | ## Note on #439
+   | 
+   | This delivers #439's spec-correct classification and the current-task snapshot (matching a2a-js's "return the snapshot and close cleanly"). The deeper option of keeping the event bus alive so a subscriber streams subsequent events after `INPUT_REQUIRED` resumes (the `keepBusAliveStates` / cleanup-behaviour change) is a larger design choice in `internal/taskexec`; happy to take that on separately if that is the direction you prefer.
+   | 
+
+-- a2aproject/a2a-go#76 [issue] [Feature] Graceful client fallback to non-streaming
+   why read: new: graceful client fallback to non-streaming (the streaming-client draft)
+   state=closed state_reason=completed created=2025-10-21T13:02:17Z updated=2025-11-17T10:39:32Z closed=2025-11-17T10:39:32Z comments=1
+   (read 2026-09-25T10:53:35Z)
+   | ### Details
+   | 
+   | In the current implementation it's fully on the SDK user to call `SendStreamingMessage` only when agent supports streaming `AgentCard.Capabilities.Streaming = true`. 
+   | 
+   | This is not convenient and might lead to unexpected errors. The suggestion is to have `a2aclient.Client` check the capabilities in `AgentCard` and fallback to blocking `SendMessage` returning the single-result `iter.Seq2` to callers to satisfy the API contract. 
+
+-- a2aproject/a2a-go#265 [PR] fix: a2asrv jsonrpc Content-Type
+   why read: new: a2asrv jsonrpc Content-Type (the streaming-client draft)
+   state=closed state_reason=null created=2026-03-09T07:43:50Z updated=2026-03-09T08:12:04Z closed=2026-03-09T08:12:04Z comments=1
+   (read 2026-09-25T10:53:35Z)
+   merged=true merged_at=2026-03-09T08:12:04Z merge_commit=2568a4609b59dedbece4f324d5829ba9160d3e24 head=1eeb09c4ca0b changed_files=1
+   vs v2.5.0: behind ahead_by=0 behind_by=91 (contained)
+   vs v2.6.0: behind ahead_by=0 behind_by=104 (contained)
+   file a2asrv/jsonrpc.go +2 -1
+   | Fixes #264 
+
+-- a2aproject/a2a-go#92 [PR] fix: streaming
+   why read: new: fix: streaming (the streaming-client draft)
+   state=closed state_reason=null created=2025-10-30T08:36:10Z updated=2025-10-30T12:33:47Z closed=2025-10-30T12:33:45Z comments=1
+   (read 2026-09-25T10:53:40Z)
+   merged=true merged_at=2025-10-30T12:33:45Z merge_commit=ca7a64bd7b6d056b40b56b6ba14b38ef2eea8f8a head=5e2e5d238a0c changed_files=4
+   vs v2.5.0: behind ahead_by=0 behind_by=221 (contained)
+   vs v2.6.0: behind ahead_by=0 behind_by=234 (contained)
+   file a2agrpc/handler.go +5 -1
+   file a2asrv/agentexec.go +2 -2
+   file a2asrv/handler.go +5 -5
+   file a2asrv/handler_test.go +48 -26
+   | * `if params == nil` -> `if err != nil` fix in send message streaming method.
+   | * Don't use `t.Fatalf` in subtests to let all the tests run.
+   | * Return `ErrInvalidParams` instead of `ErrInvalidRequest`, because the latter is supposed to be a transport-level error.
+
+-- a2aproject/a2a-go#435 [issue] REST streaming stops at an unknown StreamResponse payload (v2.5.0)
+   why read: review round (M-4): REST streaming stops at an unknown payload, a client streaming issue at v2.5.0
+   state=open state_reason=null created=2026-09-07T08:17:06Z updated=2026-09-11T12:13:06Z closed=null comments=1
+   (read 2026-09-25T10:53:44Z)
+   | Following [the request for SDK investigations in A2A #2129](https://github.com/a2aproject/A2A/pull/2129#discussion_r3805450070), here is a reproducible Go case for the already-reported unknown-event compatibility problem.
+   | 
+   | With **a2a-go v2.5.0**, a REST/SSE stream containing:
+   | 
+   | `Task → working status → unfamiliar payload → working status → completed status`
+   | 
+   | stops at the unfamiliar payload with `unknown stream response type`. The caller receives the first two events but neither later known update. The request explicitly sends `A2A-Version: 1.0`.
+   | 
+   | The synthetic `futureEvent` is valid JSON but is **not a defined A2A 1.0 event**. This demonstrates a constraint on future event additions; it does not assume the current specification already mandates accepting that variant.
+   | 
+   | ### Reproduction
+   | 
+   | With Go 1.25+, save this as `main.go` in a fresh directory:
+   | 
+   | <details>
+   | <summary>Self-contained loopback reproduction</summary>
+   | 
+   | ```go
+   | package main
+   | 
+   | import (
+   | 	"context"
+   | 	"fmt"
+   | 	"net/http"
+   | 	"net/http/httptest"
+   | 	"net/url"
+   | 	"time"
+   | 
+   | 	"github.com/a2aproject/a2a-go/v2/a2a"
+   | 	"github.com/a2aproject/a2a-go/v2/a2aclient"
+
+## B-3 and B-6: the a2a-python draft
+
+-- a2aproject/a2a-python#1205 [issue] [Bug]: Wrong error when sending a message for a terminal task
+   why read: the issue the a2a-python draft comments on, state now
+   state=open state_reason=null created=2026-08-25T14:33:04Z updated=2026-09-13T22:35:31Z closed=null comments=3
+   (read 2026-09-25T10:53:45Z)
+   | ### What happened?
+   | 
+   | What the spec says about the "Send Message" operation errors:
+   | > UnsupportedOperationError: Messages sent to Tasks that are in a terminal state [...]
+   | 
+   | What the code does (`on_message_send(...)->_setup_message_execution(...)`):
+   | ```python
+   | if task.status.state in TERMINAL_TASK_STATES:
+   |     raise InvalidParamsError(
+   |         message=f'Task {task.id} is in terminal state: {task.status.state}'
+   |     )
+   | ```
+   | 
+   | 
+   | ### Relevant log output
+   | 
+   | ```shell
+   | 
+   | ```
+   | 
+   | ### Code of Conduct
+   | 
+   | - [x] I agree to follow this project's Code of Conduct
+
+-- a2aproject/a2a-python#1207 [PR] fix: Use correct errors when rejecting messages to terminal tasks
+   why read: its open fix, state now
+   state=open state_reason=null created=2026-08-25T15:18:21Z updated=2026-08-30T21:34:15Z closed=null comments=2
+   (read 2026-09-25T10:53:46Z)
+   merged=false merged_at=null merge_commit=a7ab9f72ec715fdf1650590b6010977f9d05e8fa head=46a3d524aa3b changed_files=5
+   file src/a2a/server/request_handlers/default_request_handler.py +1 -2
+   file src/a2a/server/request_handlers/default_request_handler_v2.py +5 -0
+   file tests/integration/test_scenarios.py +2 -2
+   file tests/server/request_handlers/test_default_request_handler.py +6 -6
+   file tests/server/request_handlers/test_default_request_handler_v2.py +11 -16
+   | Fixes #1205.
+   | 
+   | ---
+   | - [X] Follow the [`CONTRIBUTING` Guide](https://github.com/a2aproject/a2a-python/blob/main/CONTRIBUTING.md).
+   | - [X] Make your Pull Request title in the <https://www.conventionalcommits.org/> specification.
+   |   - Important Prefixes for [release-please](https://github.com/googleapis/release-please):
+   |     - `fix:` which represents bug fixes, and correlates to a [SemVer](https://semver.org/) patch.
+   |     - `feat:` represents a new feature, and correlates to a SemVer minor.
+   |     - `feat!:`, or `fix!:`, `refactor!:`, etc., which represent a breaking change (indicated by the `!`) and will result in a SemVer major.
+   | - [X] Ensure the tests and linter pass (Run `bash scripts/format.sh` from the repository root to format)
+   | - [X] Appropriate docs were updated (if necessary)
+   | 
+   | 
+
+-- a2aproject/a2a-python#1268 [PR] fix(server): reject terminal-task operations with UnsupportedOperationError
+   why read: new: reject terminal-task operations with UnsupportedOperationError
+   state=open state_reason=null created=2026-09-23T12:46:15Z updated=2026-09-23T13:26:35Z closed=null comments=1
+   (read 2026-09-25T10:53:48Z)
+   merged=false merged_at=null merge_commit=98ee0ca8e5529baf4b92940f953384a5d583fd43 head=1149031d547d changed_files=7
+   file src/a2a/server/agent_execution/active_task.py +4 -4
+   file src/a2a/server/request_handlers/default_request_handler.py +1 -1
+   file src/a2a/server/request_handlers/default_request_handler_v2.py +6 -1
+   file tests/integration/test_scenarios.py +5 -4
+   file tests/server/agent_execution/test_active_task.py +2 -2
+   file tests/server/request_handlers/test_default_request_handler.py +2 -2
+   file tests/server/request_handlers/test_default_request_handler_v2.py +32 -2
+   | ## What
+   | 
+   | Spec [3.1.1](https://a2a-protocol.org/latest/specification/#311-send-message) names `UnsupportedOperationError` for "Messages sent to Tasks that are in a terminal state", and 3.3.2 repeats it for any operation on a terminal task. 5.4 maps that to `-32004` / `FAILED_PRECONDITION` / HTTP 400. `ActiveTask` raised `InvalidParamsError` (`-32602`) instead, at all three of its terminal-state guards.
+   | 
+   | That covers both `send_message` and `subscribe_to_task`, because `DefaultRequestHandlerV2.on_subscribe_to_task` has no terminal check of its own: it calls `get_or_create`, which calls `ActiveTask.start()`, and the error surfaces out of the first `__anext__`.
+   | 
+   | Worth knowing while reading: `DefaultRequestHandler` is an alias for `DefaultRequestHandlerV2` (`request_handlers/__init__.py:46`), so `default_request_handler.py` is the legacy handler and is not on the default path. It already answered subscribe correctly at line 613, which is why only the v2 path drifted. Its send path is corrected here too, so the two handlers and the two operations finally agree.
+   | 
+   | ## Cancel keeps its own error
+   | 
+   | `on_cancel_task` deliberately catches `ActiveTask`'s terminal-state error and re-raises `TaskNotCancelableError`, which 3.3.2 gives its own entry. That remap is retained, now keyed on the new error type. Two ACTS tests (`CORE-CANCEL-002`, `CORE-ERR-002`) cover it and still pass.
+   | 
+   | ## Tests
+   | 
+   | `test_on_subscribe_to_task_in_terminal_state` is new for v2. Its absence is why this survived: the legacy suite had the equivalent test and asserted the correct error all along, so the divergence never showed up. Mutation-checked - reverting `active_task.py:472` alone fails all four parametrized cases.
+   | 
+   | An existing `# TODO: Is it correct error code ?` in `test_scenarios.py` sat next to this exact assertion. It is now answered rather than carried forward.
+   | 
+   | ## Result
+   | 
+   | Clears `CORE-SEND-002`, `CORE-ERR-004` and `STREAM-SUB-003` (all `must`) on jsonrpc, grpc and rest - 9 of the 21 failing MUST test-instances.
+   | 
+   | | binding | must before | must after |
+   | | --- | --- | --- |
+   | | jsonrpc | 52/59 | 55/59 |
+   | | grpc | 40/47 | 43/47 |
+   | | rest | 42/49 | 45/49 |
+   | 
+
+-- a2aproject/a2a-python#215 [PR] feat: raise error for tasks in terminal states
+   why read: new: raise error for tasks in terminal states
+   state=closed state_reason=null created=2025-06-18T22:29:04Z updated=2025-06-18T22:53:25Z closed=2025-06-18T22:53:23Z comments=0
+   (read 2026-09-25T10:53:50Z)
+   merged=true merged_at=2025-06-18T22:53:23Z merge_commit=a0bf13b208c90b439b4be1952c685e702c4917a0 head=6e3451dd0004 changed_files=2
+   vs v1.1.4: behind ahead_by=0 behind_by=588 (contained)
+   vs v1.1.5: behind ahead_by=0 behind_by=602 (contained)
+   file src/a2a/server/request_handlers/default_request_handler.py +29 -1
+   file tests/server/request_handlers/test_default_request_handler.py +134 -0
+   | - make tasks to be not restartable after they reach a terminal state.
+   | - Based on discussion in https://github.com/google-a2a/A2A/discussions/723
+
+-- a2aproject/a2a-python#1172 [PR] fix: owner-scope cancel/subscribe and write terminal state on cancel (#1159, #1170)
+   why read: review round (M-4): owner-scopes cancel and subscribe
+   state=closed state_reason=null created=2026-08-09T09:37:53Z updated=2026-08-22T03:16:34Z closed=2026-08-21T15:49:54Z comments=7
+   (read 2026-09-25T10:53:55Z)
+   merged=true merged_at=2026-08-21T15:49:54Z merge_commit=ddbf853d692ea207dad2be610e675298e0365511 head=d8fadab3de2b changed_files=6
+   vs v1.1.4: behind ahead_by=0 behind_by=13 (contained)
+   vs v1.1.5: behind ahead_by=0 behind_by=27 (contained)
+   file src/a2a/server/agent_execution/active_task.py +48 -1
+   file src/a2a/server/agent_execution/active_task_registry.py +39 -19
+   file tests/integration/test_scenarios.py +105 -0
+   file tests/server/agent_execution/test_active_task.py +103 -0
+   file tests/server/agent_execution/test_active_task_registry.py +65 -0
+   file tests/server/request_handlers/test_default_request_handler_v2.py +196 -0
+   | ## Summary
+   | 
+   | Two related fixes to `DefaultRequestHandlerV2`, shipped together because the first is a prerequisite for the second to be safe.
+   | 
+   | **Fixes #1159 (owner-scoping, the security base).** `on_cancel_task` and `on_subscribe_to_task` resolved a live task via `ActiveTaskRegistry.get_or_create(task_id)` by `task_id` alone, skipping the owner-aware `task_store.get(task_id, context)` that `on_get_task` and the send path already perform. A caller who knows another tenant's `task_id` could subscribe to its live stream and cancel it (CWE-639). Both handlers now consult the owner-aware store first and fail closed with `TaskNotFoundError` (masking existence, matching `on_get_task`).
+   | 
+   | **Fixes #1170 (cancel writes a terminal state).** `ActiveTask.cancel` cancelled the producer before `AgentExecutor.cancel`, so the component that owns the terminal state could not write it; and a task parked non-terminal (e.g. `input-required`) reported cancel-success without transitioning. The executor cancel now runs before the producer cancel (producer still cancelled on the error path), and cancellation that leaves the task non-terminal is closed out as `CANCELED`.
+   | 
+   | ## Why one PR
+   | 
+   | #1170 alone makes #1159 worse: for a parked task, a cross-tenant cancel via the #1159 bypass changes from a harmless no-op into an actual cross-tenant `CANCELED` write. Landing #1159's owner check together (as the base commit) removes that window. Merging them together, or #1159 before #1170, is safe; #1170 must not land first.
+   | 
+   | ## Tests
+   | 
+   | - Owner-scope regressions: non-owner cancel and non-owner subscribe are rejected (`TaskNotFoundError`), including a parked task; the owner still succeeds.
+   | - Cancel-terminal regressions: mid-run cancel reaches a terminal state; cancel of a parked task does not silently succeed (the maintainer repros from #1171, converted from xfail to passing).
+   | 
+   | ## Validation
+   | 
+   | - Owner-scope tests: reverting the #1159 handler change fails all three; restore passes. Full request-handler module: 62 passed.
+   | - Cancel-terminal tests: reverting the #1170 change fails both scenario_19 tests; restore passes. Full integration module: no regression.
+   | - Combined: with both applied, a cross-tenant cancel of a parked task is rejected rather than writing `CANCELED`.
+   | - `ruff` clean at the pinned version.
+   | 
+
+## B-5a: the drain reading
+
+-- agentgateway/agentgateway#3210 [PR] pool: max connection duration
+   why read: new: pool max connection duration
+   state=closed state_reason=null created=2026-08-27T18:58:52Z updated=2026-08-27T19:20:26Z closed=2026-08-27T19:20:26Z comments=0
+   (read 2026-09-25T10:53:59Z)
+   merged=true merged_at=2026-08-27T19:20:25Z merge_commit=e86ddc97f588adf51c8841fd02ff37d6d9ce3e4e head=62ac5d27a584 changed_files=12
+   vs v1.5.0: ahead ahead_by=3 behind_by=0 (not contained)
+   vs v1.6.0-alpha.2: behind ahead_by=0 behind_by=237 (contained)
+   file api/resource.pb.go +123 -113
+   file crates/agentgateway/src/client/mod.rs +49 -1
+   file crates/agentgateway/src/proxy/httpproxy.rs +7 -0
+   file crates/agentgateway/src/proxy/tcpproxy.rs +1 -0
+   file crates/agentgateway/src/transport/stream.rs +7 -0
+   file crates/agentgateway/src/types/agent_xds.rs +1 -0
+   file crates/agentgateway/src/types/backend.rs +10 -0
+   file crates/pool/src/connect/mod.rs +29 -0
+   file crates/pool/src/pool.rs +134 -3
+   file crates/protos/proto/resource.proto +1 -0
+   file schema/config.json +7 -0
+   file schema/config.md +320 -0
+   | Adds a max_connection_duration to the outbound side of HTTP, similar to cluster-level [max_connection_duration](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/core/v3/protocol.proto#:~:text=for%20HTTP_DOWNSTREAM_CONNECTION_IDLE.-,max_connection_duration,-(Duration)%20The) in Envoy.
+   | 
+   | The pool will not hand out connections older than this to new requests. 
+   | 
+   | 
+
+-- agentgateway/agentgateway#3477 [issue] responseIdleTimeout cuts a streaming response when a streaming response guardrail is configured
+   why read: new: responseIdleTimeout cuts a streaming response
+   state=closed state_reason=completed created=2026-09-15T11:27:48Z updated=2026-09-17T02:07:19Z closed=2026-09-16T18:49:06Z comments=3
+   (read 2026-09-25T10:54:04Z)
+   | # responseIdleTimeout cuts a streaming response when a streaming response guardrail is configured
+   | 
+   | ## What happens
+   | 
+   | With `responseIdleTimeout` set on `llm.policies.timeout` and a model that has a streaming response guardrail, a streamed completion can come back as `HTTP 200` with an empty body, cut at the timeout, while the upstream is still streaming normally. The response guardrail does not run.
+   | 
+   | The upstream in the repro below emits a frame about every 0.5s against a 3s `responseIdleTimeout`, so no individual gap is close to the window.
+   | 
+   | ```
+   | http.status=200 gen_ai.request.model=with-guard agw.ai.time_to_first_token=0.001084
+   |   error="response body failed: response idle timeout" duration=5003ms
+   | ```
+   | 
+   | ## Reproduce
+   | 
+   | Needs the agentgateway binary and a public httpbin. One config, three models over the same upstream; the only difference between them is the guardrail.
+   | 
+   | ```yaml
+   | llm:
+   |   port: 3010
+   |   policies:
+   |     timeout:
+   |       responseIdleTimeout: 3s
+   |   models:
+   |   - name: no-guard
+   |     provider: openAI
+   |     params: { baseUrl: https://httpbin.org, pathOverride: "/drip?duration=12&numbytes=24&delay=0" }
+   |   - name: with-guard
+   |     provider: openAI
+   |     params: { baseUrl: https://httpbin.org, pathOverride: "/drip?duration=12&numbytes=24&delay=0" }
+
+-- agentgateway/agentgateway#3603 [issue] Streaming response silently dropped (empty body / ECONNRESET) whenever a response guardrail exists anywhere on the gateway
+   why read: new: streaming response silently dropped
+   state=open state_reason=null created=2026-09-22T03:35:14Z updated=2026-09-24T15:36:02Z closed=null comments=3
+   (read 2026-09-25T10:54:05Z)
+   | - [x] As required by the [Code of Conduct](https://github.com/agentgateway/agentgateway/blob/main/CODE_OF_CONDUCT.md#generative-ai-policy), the description, docs, and comments (words meant for humans) are written by a human, not by an LLM.
+   | 
+   | This issue is highly repeatable in v1.5. I am not sure if it exists in newer versions as well but the fixes I have searched for do not have this issue resolved directly or indirectly.
+   | 
+   | A stream:true LLM request routed through a virtual model (I was using weighted routing) gets a 200 OK with correct content-type: text/event-stream/transfer-encoding: chunked headers, but the response body never arrives — either a fully empty body or a hard connection reset. The identical route with stream:false always returns a complete, correct response.
+   | 
+   | This reproduces as long as *any* response-phase guardrail is configured anywhere on the gateway — even one bound to a completely different virtual key, not the one being called — and even with promptGuard.streaming left at its default Disabled. Per the docs, guardrails "do not run on streamed responses until you set promptGuard.streaming to Enabled," which we read as "the stream should pass through untouched" in the disabled case. That's not what happens: the stream is dropped instead of passed through.
+
+-- agentgateway/agentgateway#1597 [PR] feat: add maxConnectionDuration for HTTP listeners
+   why read: review round (M-1), capped pass: maxConnectionDuration for HTTP listeners
+   state=closed state_reason=null created=2026-04-19T23:30:36Z updated=2026-04-20T22:29:54Z closed=2026-04-20T22:29:54Z comments=0
+   (read 2026-09-25T10:54:05Z)
+   merged=true merged_at=2026-04-20T22:29:54Z merge_commit=474f86402e536cafec8475777c7f4694bf8d6ff7 head=27901af11e23 changed_files=11
+   vs v1.5.0: behind ahead_by=0 behind_by=903 (contained)
+   vs v1.6.0-alpha.2: behind ahead_by=0 behind_by=1143 (contained)
+   file api/resource.pb.go +141 -131
+   file controller/api/v1alpha1/agentgateway/agentgateway_policy_types.go +7 -0
+   file controller/api/v1alpha1/agentgateway/zz_generated.deepcopy.go +5 -0
+   file controller/install/helm/agentgateway-crds/templates/agentgateway.dev_agentgatewaypolicies.yaml +14 -3
+   file controller/pkg/agentgateway/plugins/frontend_policies.go +3 -0
+   file crates/agentgateway/src/proxy/gateway.rs +34 -3
+   file crates/agentgateway/src/types/agent_xds.rs +1 -0
+   file crates/agentgateway/src/types/frontend.rs +10 -0
+   file crates/protos/proto/resource.proto +1 -0
+   file schema/config.json +8 -0
+   file schema/config.md +1 -0
+   | ## Summary
+   | Fixes #1568
+   | 
+   | Adds `maxConnectionDuration` to HTTP frontend policies. After the configured duration, the connection is gracefully closed once the current in-flight request completes. Useful for even traffic distribution behind NLBs during scaling events.
+   | 
+   | 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+-- agentgateway/agentgateway#1407 [PR] Wait for bind before becoming ready
+   why read: review round (M-1), capped pass: wait for bind before becoming ready
+   state=closed state_reason=null created=2026-03-30T20:23:32Z updated=2026-03-30T21:56:51Z closed=2026-03-30T21:56:51Z comments=0
+   (read 2026-09-25T10:54:10Z)
+   merged=true merged_at=2026-03-30T21:56:51Z merge_commit=a1b70fa595b029283e5c436b0cf4baa3862e243b head=19d91b29fe86 changed_files=5
+   vs v1.5.0: behind ahead_by=0 behind_by=1025 (contained)
+   vs v1.6.0-alpha.2: behind ahead_by=0 behind_by=1265 (contained)
+   file crates/agentgateway/src/proxy/gateway.rs +40 -60
+   file crates/agentgateway/src/state_manager.rs +1 -1
+   file crates/agentgateway/src/store/binds.rs +109 -28
+   file crates/agentgateway/src/store/mod.rs +9 -9
+   file crates/agentgateway/src/test_helpers/proxymock.rs +1 -1
+   | 
+
+## C-9: the card-rewrite draft
+
+-- agentgateway/agentgateway#993 [issue] feat(controller): set tunnel_protocol on Binds for HBONE and istio.io/PROXY listeners
+   why read: new to C-9 (read in D-5): tunnel_protocol on Binds for HBONE listeners
+   state=closed state_reason=completed created=2026-02-17T00:43:43Z updated=2026-07-09T23:10:43Z closed=2026-07-09T23:10:43Z comments=1
+   (read 2026-09-25T10:54:16Z)
+   | ## Summary
+   | 
+   | The agentgateway controller does not set `tunnel_protocol` on Bind resources for HBONE or `istio.io/PROXY` listener protocols. This prevents agentgateway from acting as an Istio ambient mesh waypoint proxy, even though the Rust proxy already has full support for both tunnel modes.
+   | 
+   | ## Problem
+   | 
+   | ### 1. `istio.io/PROXY` is not a supported listener protocol
+   | 
+   | In `conversion.go`, `listenerProtocolToAgw()` only accepts HTTP, HTTPS, TLS, TCP, and HBONE. A Gateway listener using `protocol: istio.io/PROXY` (the standard Istio protocol for third-party waypoints on port 15088) is rejected with:
+   | 
+   | ```
+   | protocol "istio.io/PROXY" is unsupported
+   | ```
+   | 
+   | ### 2. `tunnel_protocol` is never set on Binds
+   | 
+   | In `syncer.go`, `getBindProtocol()` maps listener protocols to `api.Bind_Protocol` values but **never sets the `TunnelProtocol` field**. It always defaults to `Bind_DIRECT` (0).
+   | 
+   | For waypoint proxies, ztunnel sends traffic using:
+   | - **HBONE** (port 15008): HTTP/2 CONNECT over mTLS — requires `TunnelProtocol: HBONE_WAYPOINT` so the proxy terminates the HBONE tunnel
+   | - **PROXY protocol v2** (port 15088): binary header with source identity in TLV 0xD0 — requires `TunnelProtocol: PROXY` so the proxy parses the PROXY header
+   | 
+   | Without the correct `tunnel_protocol`, the proxy starts a plain HTTP bind and cannot parse the tunnel framing from ztunnel.
+   | 
+   | ### 3. Rust proxy already supports both modes
+   | 
+   | The proxy's `handle_tunnel()` in `gateway.rs` dispatches based on `TunnelProtocol`:
+   | - `TunnelProtocol::HboneWaypoint` → `terminate_waypoint_hbone()` (mTLS + HTTP/2 CONNECT)
+   | - `TunnelProtocol::Proxy` → `terminate_proxy_protocol()` (PROXY v2 header parsing, TLV 0xD0 identity extraction)
+   | 
+
+-- agentgateway/agentgateway#1793 [PR] Add support for AppProtocol on Backend
+   why read: new to C-9 (read in D-5): AppProtocol on Backend
+   state=closed state_reason=null created=2026-05-11T16:25:12Z updated=2026-05-15T00:30:08Z closed=2026-05-15T00:30:08Z comments=1
+   (read 2026-09-25T10:54:16Z)
+   merged=false merged_at=null merge_commit=null head=5c721fec0509 changed_files=6
+   file controller/api/v1alpha1/agentgateway/agentgateway_backend_types.go +18 -0
+   file controller/api/v1alpha1/agentgateway/zz_generated.deepcopy.go +5 -0
+   file controller/install/helm/agentgateway-crds/templates/agentgateway.dev_agentgatewaybackends.yaml +10 -0
+   file controller/pkg/agentgateway/translator/testdata/backends/static-appprotocol.yaml +155 -0
+   file controller/pkg/syncer/backend/translate.go +35 -0
+   file controller/pkg/syncer/backend/translate_test.go +78 -0
+   | 
+# done 2026-09-25T10:54:18Z; core quota 5000/5000

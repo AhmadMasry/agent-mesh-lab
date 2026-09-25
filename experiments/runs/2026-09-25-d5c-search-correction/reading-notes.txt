@@ -1,0 +1,181 @@
+# D-5c, 2026-09-25: the tracker searches of B-3, B-5a, B-6 and C-9 re-run as word searches. Records only: no code,
+# no cluster, no deployed path. The four original records are not edited.
+
+## How each original search was sent (gh-phrase-check.txt: GH_DEBUG=api, gh 2.101.0)
+
+gh search issues sends a query argument that holds a space as a quoted phrase, ( "graceful shutdown" ), and sends a
+single token unquoted, hyphenated or dotted ones included (event-stream, shutdown.min). gh api search/issues sends
+q= as written, so a query sent that way is a word search. No record quoted a query on purpose: B-3 writes every query
+in double quotes, single words included, and the three scripts pass the query as one argument. So in each record,
+every multi-word query was a phrase search and every single-token query was already a word search. Nothing needed
+keeping as a phrase by intent. Two of B-3's queries are error-text fragments (no active execution, is in terminal
+state); their word searches cover the phrase and return more.
+
+- B-3 (tracker-search.txt, no script): gh search issues and gh search prs, one quoted query each. 20 queries, 17
+  multi-word (9 on a2a-go, 8 on a2a-python). The pages list items. No total_count was recorded.
+- B-5a (tracker-search.txt, no script): gh search issues, --match title,body, take 1 issues only and take 2 with
+  --include-prs. 14 queries, 7 multi-word. Its end table of gh api total_count was a word search, and the file puts
+  the gap between that table and the pages down to comment matching. For the multi-word queries the gap is mostly
+  phrase against words. Example: in-flight connections read 0 on the take-1 page and 3 issues in the table.
+- B-6 (tracker-search.sh and .txt): gh search issues --include-prs -- "<text>", with a gh api total_count beside each
+  page. 26 queries, 16 multi-word.
+- C-9 (tracker-search.sh and .txt): the same shape as B-6. 15 queries, 11 multi-word.
+
+None of the four searched only words, so all four needed a re-run. Only the multi-word queries were re-run; a
+single-token query is sent the same way by both tools. One difference in scope remains: gh search adds
+advanced_search=true, and the plain gh api call does not.
+
+## The word pass (search-words-<r>.sh and .txt; search-words-<r>.jsonl; compare.py writes new-items.txt)
+
+Each query was sent as is:issue and as is:pr, per_page 100, and every total_count fit on one page. The search rate
+limit was read before every call; three waits of 8 to 13 s are logged, and no call failed or was throttled. B-3 ran
+twice: the first run's header said sixteen queries where there are seventeen, so the header was corrected and the pass
+re-run. Both runs sent the same 34 calls, and the file kept is the second run.
+
+  record  queries  calls = pages  distinct items  on the original's pages, all queries  new
+  B-3     17       34             90              19                       85
+  B-5a     7       14             33              51                       21
+  B-6     16       32            194             155                      110
+  C-9     11       22            146              47                      105
+
+The fifth column counts the items on the pages of ALL the original's queries, single-token ones included. That is
+why B-5a's 51 exceeds the 33 items of its multi-word pass.
+
+## The capped single-token pages (review round, M-1): search-words-capped.sh and .txt, compare-capped.py
+
+The single-token queries were word searches already, but B-5a, B-6 and C-9 ran them with gh search --limit 20.
+Seven pages were full against a larger total:
+- B-6 a2a-go: event-stream 20/75, silently 20/31;
+- B-6 a2a-python: SubscribeToTask 20/26, UnsupportedOperationError 20/22, resubscribe 20/31;
+- B-5a take 2: drain 20/33, shutdown 20/38.
+No page of C-9 or B-3 was capped short.
+
+The seven were re-run whole through words-lib.sh: is:issue and is:pr apart, 14 calls, 0 failed, 0 waits, one page
+each (the largest total is 58). new-items-capped.txt counts:
+- B-6: 170 distinct items; 60 on no page of B-6, 29 of them also on no page of B-6's multi-word pass;
+- B-5a: 70 distinct items; 28 on no page of B-5a, 25 of them also on no page of its multi-word pass.
+- Against every earlier page of all four records, 48 items are on none. The reviewer's pass also counted 48. My
+  per-record count is 54; the 6 between are on another record's pages (a2a-go #74 and #173; agentgateway #157,
+  #1093, #1098, #1533).
+
+All 54 titles were screened:
+- agentgateway#1597 (listener maxConnectionDuration, merged 2026-04-20, in v1.5.0) closes a connection after a set
+  time, once its request completes. It is #3210's kind for listeners, not drain. Read, not on point.
+- agentgateway#1407 (wait for bind before becoming ready, merged 2026-03-30, in v1.5.0) is start-up readiness, already
+  in the build B-5a measured. Read, not on point.
+- agentgateway#3631 ("tracing: drain body in proper runtime") drains a tracing exporter's body, not a proxy. #3648
+  (ext_proc clean stream close): the lab runs no ext_proc.
+- a2a-go#443 (send backpressure), #22, #231 and #235 (first streaming event), and a2a-python#475 (the Python client's
+  streaming header) are not about the a2a-go client's reading of a JSON body, or about the terminal-task error.
+- The rest are tests, dependency bumps, early feature work and telemetry.
+- Nothing is on point.
+
+## The screen (every new title in new-items.txt, read against what rests on each record)
+
+B-3 and B-6 (the three a2a drafts, and the D3 and B-6 entries):
+- a2a-go#442 (merged): "return spec error codes for terminal and parked tasks (#438)". It is on point for the a2a-go
+  terminal-task draft. Read, with #438.
+- a2a-python#1268 (open PR): "reject terminal-task operations with UnsupportedOperationError". It is on point for the
+  a2a-python draft. Read, and #1205 and #1207 re-read for their state now.
+- a2a-python#215 (merged 2025): "raise error for tasks in terminal states", read as the origin of the terminal-state
+  raise.
+- a2a-go#76, #265 and #92: the nearest titles to the streaming-client draft (client fallback to non-streaming, the
+  server's JSON-RPC Content-Type, an early streaming fix). Read.
+- Not read, with the reason:
+  - a2a-go execution-cleanup races (#309, #322) and broker or queue work (#120, #414): about the server's execution
+    lifecycle, not the error code;
+  - a2a-python TASK_STATE_UNSPECIFIED as terminal (#1214, #1217), state transitions (#1182), push config (#1178),
+    cancel (#1170, #1171, #1172, #1185) and garbage collection (#774, #775, #1123): about other parts of the task
+    lifecycle;
+  - a2a-python's SSE client dropping the last event (#1213, #1216): the Python client, not a2a-go's;
+  - a2a-go#435 (open): REST streaming stops at an unknown StreamResponse payload at v2.5.0. It stops with an error
+    ("unknown stream response type"): REST, not silent, not JSON-RPC. Read in the review round, not on point;
+  - a2a-python#1172 (merged 2026-08-21, in v1.1.4): owner-scopes on_cancel_task and on_subscribe_to_task, and writes a
+    terminal state on cancel. It adds no terminal check to subscribe; #1268's description says there is none. Read in
+    the review round, not on point;
+  - spec-sync, release, dependency and compat pull requests.
+
+B-5a (the drain reading; no draft):
+- #3210 "pool: max connection duration" (merged): the only new title about connection lifetime. Read.
+- #3477 and #3603 (a streaming response cut, or dropped, when a response guardrail is configured): read, because both
+  are about streams. No guardrail is configured anywhere in deploy/ (grep at 12e6572e), so neither applies to B-5a's
+  path.
+- The others are MCP, telemetry, admission control, dependency bumps and listener port swaps (#3017). None is about a
+  proxy's drain or shutdown.
+
+C-9 (the card-rewrite draft):
+- #993 (HBONE tunnel protocol on Binds) and #1793 (AppProtocol on Backend) are the only new titles near HBONE or the
+  marking. Both were read in D-5 and are read again here.
+- The rest (the a2a MVP, UI policy resolution, examples, the backend type #1841, the selectors #3504 and #3550,
+  telemetry #3073, dependency bumps) are not about the card's scheme.
+- #2983 and #999, which D-5's review raised, were already on C-9's pages.
+
+## The items read (items-read.txt, followups-read.txt), and what each changes
+
+a2a-go terminal-task draft (a comment for a2a-go#438): SUPERSEDED, for the author.
+- #438 is closed, state_reason completed, at 2026-09-25T06:11:17Z, with 0 comments.
+- #442 was merged at 06:11:16Z (merge commit a2f11cbe). It is not in v2.5.0 (ahead 12) and is in v2.6.0, published
+  2026-09-25T06:22:49Z (behind 1). Its handler.go patch makes SubscribeToTask read the task store when Resubscribe
+  fails: a terminal task now yields ErrUnsupportedOperation, which is the draft's proposed fix.
+- A comment on a closed issue whose fix has shipped adds nothing to it. The count stands as a reading of v2.5.0,
+  which the lab still pins. Whether to move the pin is the author's call.
+
+a2a-python terminal-task draft (a comment for a2a-python#1205): NEEDS THE AUTHOR'S ATTENTION.
+- #1205 and #1207 are unchanged: #1205 open with 3 comments and updated 2026-09-13; #1207 open, not merged, head
+  46a3d524.
+- #1268 (opened 2026-09-23, open, not merged, no review, one bot comment) changes all three terminal-state raises in
+  active_task.py from InvalidParamsError to UnsupportedOperationError. It says this covers subscribe_to_task, and it
+  adds test_on_subscribe_to_task_in_terminal_state. That is the SubscribeToTask fix the draft says nobody has
+  written.
+- What #1268 changes beyond subscribe (review round, M-2):
+  - default_request_handler.py's _setup_message_execution, the legacy handler's send path, gets the same change;
+  - the V2 on_cancel_task remap is re-keyed so that a terminal task still answers TaskNotCancelableError;
+  - its description says it covers send_message as well. It is therefore a second fix for #1205's own subject, and
+    it overlaps #1207.
+- Its description states the draft's mechanism: on_subscribe_to_task has no terminal check of its own, get_or_create
+  calls ActiveTask.start(), and the error surfaces on the first __anext__.
+- Of the comment's four details (the code, the message, the other text, the framing), #1268 changes only the code's
+  number. Three stand:
+  - the message: the state is still formatted as a number ({task.status.state});
+  - the other text: both texts remain, "is already completed." from subscribe() and "is in terminal state" from
+    start(), both now -32004. The timing dependence stands, with the code changed;
+  - the framing: no dispatcher file is touched, so the error is still raised before the first event.
+- The draft's claim that no one has written the SubscribeToTask fix, and its target (#1205 rather than #1268), need
+  the author.
+- a2a-python v1.1.5 (2026-09-21) is published and does not contain #1268, which is unmerged.
+- #215 (merged 2025-06-18, in v1.1.4) is the origin of a terminal-state error. It changes nothing in the draft.
+
+a2a-go streaming-client draft (a new issue): STANDS.
+- #76 (closed completed 2025-11-17): a client falling back when the server does not stream. It is not about an
+  error body.
+- #265 (merged, in v2.5.0): sets the server's JSON-RPC Content-Type. Server side.
+- #92 (merged 2025-10-30, in v2.5.0): an early streaming fix.
+- v2.6.0 changes neither a2aclient/jsonrpc.go nor internal/sse/sse.go (compare v2.5.0...v2.6.0, 98 files). The draft's
+  line citations therefore hold at v2.6.0 too. Nothing found describes the client's silent reading.
+
+B-5a entry (no draft): UNCHANGED.
+- #3210 (merged 2026-08-27, not in v1.5.0, in v1.6.0-alpha.2) adds a maximum duration to pooled connections. That is
+  not drain.
+- #3477 (closed completed) and #3603 (open) need a response guardrail, which the lab does not configure.
+- "Read #3334, file nothing" stands.
+
+C-9 draft (a new issue): STANDS.
+- #993: closed completed 2026-07-09.
+- #1793: closed, not merged.
+- Neither is about the scheme the rewrite writes, and nothing new describes it.
+
+## The <email> lines in followups-read.txt (review round, M-3)
+Lines 148-149 read "<email>" and "<email>('terminal_state', ...)". They were the diff lines "+@pytest.mark.asyncio"
+and "+@pytest.mark.parametrize(": the strip regex accepts a "+" before "@". No other line was changed, and the fetched
+patches hold no address. The same file's heading "the two source files" is over four patches, two of them tests. Both
+are explained by a dated header in followups-read.sh.
+
+## Not covered
+- Queries that were single tokens and whose pages were not capped: they were word searches already, and their pages
+  held their totals.
+- Queries not in the original records.
+- Comments were matched by the word pass but not by B-5a's --match title,body. The pass is wider there, not the same
+  search.
+- Items on the original pages were not re-read, except #438, #1205 and #1207.
+- The other items the C-9 draft names (#3500, #3453, #1829) were not re-read for their state now.
+- advanced_search=true, which gh search sends, was not sent by the word pass.

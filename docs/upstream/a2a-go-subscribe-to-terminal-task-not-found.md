@@ -89,3 +89,26 @@ Re-read from the API by number, not from a search page, at 2026-09-22T23:25:14Z:
   `Resubscribe`-has-no-execution root cause on a *non-terminal* task, and it is not this draft's case; it is named
   here so that a human filing this comment can see the pair.
 - Nothing in this refresh moves a number in the comment text.
+
+## 2026-09-25, a dated note from D-5c (the text above is unchanged): SUPERSEDED, for the author
+
+For the author, not part of the comment.
+
+- **The first searches were phrase-only.** B-3's search and B-6's refresh sent every multi-word query to gh search as
+  one argument, which gh 2.101.0 sends as a quoted phrase (experiments/runs/2026-09-25-d5c-search-correction/gh-phrase-check.txt).
+- **The word pass.** On 2026-09-25, D-5c re-ran every multi-word query of both records as words, through the search API
+  with an explicit q=, issues and pull requests apart, the rate limit read before each call, 0 failed:
+  - B-3: 17 queries, 34 calls, 90 items, 85 on no earlier page;
+  - B-6: 16 queries, 32 calls, 194 items, 110 new.
+  - The records: experiments/runs/2026-09-25-d5c-search-correction/search-words-b3.txt, search-words-b6.txt and new-items.txt.
+- **Read by number (items-read.txt, followups-read.txt there):**
+  - a2aproject/a2a-go#438 is **closed, completed**, at 2026-09-25T06:11:17Z, with 0 comments.
+  - **#442** ("fix(a2asrv): return spec error codes for terminal and parked tasks (#438)") was **merged** at
+    2026-09-25T06:11:16Z, merge commit a2f11cbe. It is not in v2.5.0 (ahead 12). It **is in v2.6.0**, published
+    2026-09-25T06:22:49Z (behind 1).
+  - Its patch to a2asrv/handler.go makes SubscribeToTask read the task store when Resubscribe fails. A task that is
+    missing stays ErrTaskNotFound. A terminal task now returns ErrUnsupportedOperation, which is the fix the comment
+    proposes. A task parked in INPUT_REQUIRED (#439) gets its snapshot.
+- **Standing: superseded.** The comment would go on a closed issue whose fix has shipped, so it is not to be posted as
+  written. The lab's count stands as a reading of a2a-go v2.5.0, which the lab still pins. Whether v2.6.0 is adopted
+  and the row re-measured is the author's call. The draft is kept, not deleted.

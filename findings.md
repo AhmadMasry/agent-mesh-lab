@@ -3442,3 +3442,65 @@ which is when they were opened; the draft and upstream-search/a2ago-318-319.txt 
       HBONE tunnel protocol on waypoint listeners.
   - None describes the plaintext dial outside the mesh, the gRPC interface rewritten to the HTTP port, or the card
     handling replacing an upstream error body.
+
+## Records / the tracker searches of B-3, B-5a, B-6 and C-9 — do they hold when re-run as word searches?
+
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.4 openai-python=3.16.2 (the four entries' pins as they stand; no cluster was read). Tool: gh 2.101.0.
+- Environment: none (no cluster; the GitHub REST API only, read-only)
+- Method: D-5's review found that gh search sends a multi-word query argument as a quoted phrase. D-5c follows its correction for four earlier records (experiments/runs/2026-09-25-d5c-search-correction/).
+  - How each was sent, from its script or log and GH_DEBUG=api (gh-phrase-check.txt). An argument that holds a space goes out as ( "words" ); a single token goes out unquoted.
+    - B-3: gh search issues and prs, 20 queries, 17 multi-word; no script.
+    - B-5a: gh search issues --match title,body, in two takes, 14 queries, 7 multi-word.
+    - B-6: gh search issues --include-prs, 26 queries, 16 multi-word.
+    - C-9: the same, 15 queries, 11 multi-word.
+    - No record quoted a query on purpose, so none is kept as a phrase. All four needed a re-run of their multi-word queries; a single-token query is sent the same way by both tools.
+    - In the review round, 7 single-token pages were found full at gh search's --limit 20 against a larger total (B-6: event-stream, silently, SubscribeToTask, UnsupportedOperationError, resubscribe; B-5a: drain, shutdown). They were re-run whole (search-words-capped.sh).
+  - The word pass (search-words-<r>.sh, one script per record over words-lib.sh):
+    - every multi-word query through gh api search/issues with an explicit q= of repo:, is:issue or is:pr, and the words separated;
+    - per_page 100, with total_count and incomplete_results beside each page;
+    - the search rate limit read before every call, and a throttled or failed call recorded as FAILED and re-sent.
+  - compare.py lists the items on no page of the original (new-items.txt), and compare-capped.py those of the capped pass (new-items-capped.txt). Every new title was screened against the drafts and entries resting on that record. Those that bear on them were read by number (items-read.sh; followups-read.sh for the patches, releases and compares they pointed to). The screen and its reasons are in reading-notes.txt.
+- Result:
+  - Counts per record: multi-word queries, calls (every total_count fit one page, so calls = pages), distinct items, items on the pages of all the original's queries (single-token ones included, which is why B-5a's exceeds its distinct items), new items, items read. 0 calls FAILED, 0 throttled; 3 waits for the window, 8 to 13 s.
+    - B-3: 17, 34, 90, 19, 85; read 11 (a2a-go #438 #442 #76 #265 #92 #435, a2a-python #1205 #1207 #1268 #215 #1172; shared with B-6; #435 and #1172 added in the review round).
+    - B-5a: 7, 14, 33, 51, 21; read 3 (#3210 #3477 #3603).
+    - B-6: 16, 32, 194, 155, 110; read the same 11 as B-3.
+    - C-9: 11, 22, 146, 47, 105; read 2 (#993 #1793).
+  - The capped single-token pages, re-run whole: 7 queries, 14 calls, 0 FAILED, 0 waits.
+    - B-6: 170 distinct items, 60 on no page of B-6, 29 of them on no page of its multi-word pass either.
+    - B-5a: 70 distinct items, 28 on no page of B-5a, 25 of them on no page of its multi-word pass either.
+    - Measured against every earlier page of all four records, 48 items are on none, matching the reviewer's 48. The per-record count is 54; the 6 between are on another record's pages.
+    - All 54 titles were screened, and 2 were read (agentgateway #1597, listener maxConnectionDuration; #1407, wait for bind before ready; both in v1.5.0). Neither is drain, and nothing is on point.
+  - The B-3 pass ran twice: its script header first said sixteen, it was corrected to seventeen, and the pass was re-run. The same 34 calls were sent both times.
+  - What changed:
+    - **a2a-go terminal-task draft: superseded.** a2a-go#438 was closed, completed, at 2026-09-25T06:11:17Z by **#442**. #442 was merged at 06:11:16Z (merge commit a2f11cbe) and is not in v2.5.0 (ahead 12). It **is in v2.6.0**, published 2026-09-25T06:22:49Z. Its handler.go patch answers a terminal task's SubscribeToTask with ErrUnsupportedOperation.
+    - **a2a-python terminal-task draft: needs the author's attention.** **#1268** (opened 2026-09-23, open, not merged, no review) changes ActiveTask's three terminal-state raises to UnsupportedOperationError. It names subscribe_to_task and adds a test for it: it is the SubscribeToTask fix the draft says nobody has written.
+      - It also changes the legacy handler's send path and re-keys the V2 cancel remap to TaskNotCancelableError. Its description says it covers send_message, so it is a second fix for #1205's own subject, overlapping #1207. It also states the draft's mechanism: no terminal check, then get_or_create, then start().
+      - Of the comment's four details, three stand: the numeric state in the message; the two texts depending on timing (both kept, both now -32004); and the framing.
+      - #1205 and #1207 are unchanged.
+      - v1.1.5 (2026-09-21) does not contain #1268.
+    - **a2a-go streaming-client draft: stands.** #76, #265 and #92 are not about it. v2.6.0 changes neither of the two files it cites (compare v2.5.0...v2.6.0, 98 files).
+    - **B-5a's reading: unchanged.** #3210 (a maximum pooled-connection duration, not in v1.5.0) is not drain. #3477 and #3603 need a response guardrail, and deploy/ configures none.
+    - **C-9 draft: stands.** #993 (closed completed) and #1793 (closed, not merged) are not about the card's scheme.
+  - B-5a's file puts the gap between its pages and its gh api totals down to comment matching. For its multi-word queries the phrase is the larger part: for example, in-flight connections reads 0 on its take-1 page, 3 + 6 as words.
+  - Each draft carries one appended note dated 2026-09-25. The four original records are unedited.
+- Interpretation: the phrase-only pages were incomplete, and the files give no more than that.
+  - At B-6, 13 of its 16 multi-word pages were neither full nor equal to the total_count printed beside them: for example, 0 of 31 for JSON-RPC error stream and 0 of 30 for content type check. The other three were two full pages of 20 and one 0 of 0 (B-6's tracker-search.txt).
+  - Each record's word pass returned items on no page of the original: B-3 85, B-5a 21, B-6 110, C-9 105.
+  - Of all the items the word passes returned, two bear on a draft: a2a-go#442 and a2a-python#1268. Neither existed when the originals ran. #442 was created 2026-09-23T16:22:31Z and #1268 2026-09-23T12:46:15Z. B-3's search ran 2026-09-21T21:27Z, and B-6's from 2026-09-22T23:14Z to 23:16Z.
+  - So today's word pass found two later pull requests on point. No original page missed anything on point that existed when it ran.
+  - For a2a-go, the issue the draft would comment on was fixed and released on the day of this pass. For a2a-python, the SubscribeToTask case has an open fix.
+  - For the two drafts that stand and for B-5a, the wider search found nothing on point, as documented by the titles screened and the items read.
+  - What the lab measured at v2.5.0 and 1.1.4 is unchanged. What changes is what a human should post, and where.
+- Not covered:
+  - queries not in the original records; the single-token queries whose pages held their totals (word searches already, not capped);
+  - advanced_search=true, which gh search sends and the word pass does not;
+  - B-5a's --match title,body, where the word pass also matches comments, so it is wider there and not the same search;
+  - items that were on the original pages, re-read only for #438, #1205 and #1207;
+  - the C-9 draft's named items (#3500, #3453, #1829), not re-read for their state now;
+  - whether a2a-go v2.6.0 is adopted, which is the author's call on a pin.
+- Follow-up:
+  - docs/upstream/a2a-go-subscribe-to-terminal-task-not-found.md: superseded, marked in its note, not deleted;
+  - docs/upstream/a2a-python-subscribe-to-terminal-task-invalid-params.md: for the author, to retarget or cut;
+  - docs/upstream/a2a-go-client-reads-a-json-answer-to-a-streaming-method-as-an-empty-stream.md and docs/upstream/agentgateway-a2a-card-rewrite-https-scheme-for-plain-http-agent.md: stand.
+  - All four are filed only by the author.
