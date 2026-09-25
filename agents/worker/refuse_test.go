@@ -396,7 +396,7 @@ func TestMain_RefuseOperationIsReadAtStart(t *testing.T) {
 	run := func(value string) (*exec.Cmd, *syncBuffer) {
 		cmd := exec.Command(os.Args[0], "-test.run=^TestMain_RefuseOperationIsReadAtStart$")
 		cmd.Env = append(os.Environ(), "WORKER_MAIN_CHILD=1", refuseOperationEnv+"="+value,
-			"LISTEN_ADDR=127.0.0.1:0", "OTEL_EXPORTER_OTLP_ENDPOINT=", "OTEL_SDK_DISABLED=true")
+			"LISTEN_ADDR=127.0.0.1:0", "GRPC_LISTEN_ADDR=127.0.0.1:0", "OTEL_EXPORTER_OTLP_ENDPOINT=", "OTEL_SDK_DISABLED=true")
 		stderr := &syncBuffer{}
 		cmd.Stderr = stderr
 		cmd.Stdout = io.Discard
@@ -437,7 +437,7 @@ func TestMain_RefuseOperationIsReadAtStart(t *testing.T) {
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
 	deadline := time.Now().Add(10 * time.Second)
 	for !strings.Contains(stderr.String(), "listening") && time.Now().Before(deadline) {
 		time.Sleep(20 * time.Millisecond)

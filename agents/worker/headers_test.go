@@ -401,7 +401,7 @@ func TestMain_LedgerHeadersIsReadAtStart(t *testing.T) {
 	run := func(value string) (*exec.Cmd, *syncBuffer, *syncBuffer) {
 		cmd := exec.Command(os.Args[0], "-test.run=^TestMain_LedgerHeadersIsReadAtStart$")
 		cmd.Env = append(os.Environ(), "WORKER_MAIN_CHILD=1", ledgerHeadersEnv+"="+value,
-			"LISTEN_ADDR=127.0.0.1:0", "OTEL_EXPORTER_OTLP_ENDPOINT=", "OTEL_SDK_DISABLED=true")
+			"LISTEN_ADDR=127.0.0.1:0", "GRPC_LISTEN_ADDR=127.0.0.1:0", "OTEL_EXPORTER_OTLP_ENDPOINT=", "OTEL_SDK_DISABLED=true")
 		stderr, stdout := &syncBuffer{}, &syncBuffer{}
 		cmd.Stderr, cmd.Stdout = stderr, stdout
 		return cmd, stderr, stdout
@@ -439,6 +439,9 @@ func TestMain_LedgerHeadersIsReadAtStart(t *testing.T) {
 		if err := cmd.Start(); err != nil {
 			t.Fatal(err)
 		}
+		// Stopped and waited on however the test ends: a t.Fatalf below would
+		// otherwise leave the child serving, re-parented to init.
+		t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
 		deadline := time.Now().Add(10 * time.Second)
 		for !strings.Contains(stderr.String(), "listening") && time.Now().Before(deadline) {
 			time.Sleep(20 * time.Millisecond)
