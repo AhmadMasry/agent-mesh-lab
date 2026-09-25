@@ -8,6 +8,8 @@ import (
 	a2agrpc "github.com/a2aproject/a2a-go/v2/a2agrpc/v1"
 	"github.com/a2aproject/a2a-go/v2/a2asrv"
 	"google.golang.org/grpc"
+
+	"github.com/AhmadMasry/agent-mesh-lab/internal/workermux"
 )
 
 // The three A2A v1.0 bindings this agent serves (follow-on D-2, the author's
@@ -45,22 +47,12 @@ import (
 // not hidden.
 
 // newA2AMux is the handler set port 8080 serves inside the ingress ledger: the
-// agent card, the REST binding's paths and the JSON-RPC binding at "/".
+// agent card, the REST binding's paths and the JSON-RPC binding at "/". The
+// patterns are internal/workermux's, which the extauthz fixture replays
+// (follow-on D-3b).
 func newA2AMux(card *a2a.AgentCard, handler a2asrv.RequestHandler) *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(card))
-	rest := a2asrv.NewRESTHandler(handler)
-	for _, p := range restPaths {
-		mux.Handle(p, rest)
-	}
-	mux.Handle("/", a2asrv.NewJSONRPCHandler(handler))
-	return mux
+	return workermux.NewA2A(a2asrv.NewStaticAgentCardHandler(card), a2asrv.NewRESTHandler(handler), a2asrv.NewJSONRPCHandler(handler))
 }
-
-// restPaths are the path prefixes a2asrv.NewRESTHandler routes (a2a-go v2.5.0
-// a2asrv/rest.go l.51-60), without the HTTP method: the REST handler's own mux
-// answers a wrong method, and every other path stays with JSON-RPC.
-var restPaths = []string{"/message:send", "/message:stream", "/tasks", "/tasks/", "/extendedAgentCard"}
 
 // newGRPCHandler is the gRPC binding: the SDK's A2AService registered on a
 // grpc.Server that this process serves through ServeHTTP. No server option is

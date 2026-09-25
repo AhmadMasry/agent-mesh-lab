@@ -20,6 +20,7 @@ import (
 
 	"github.com/AhmadMasry/agent-mesh-lab/internal/httpclient"
 	labotel "github.com/AhmadMasry/agent-mesh-lab/internal/otel"
+	"github.com/AhmadMasry/agent-mesh-lab/internal/workermux"
 )
 
 func getenv(k, def string) string {
@@ -77,18 +78,15 @@ func newModelHTTPClient(timeout time.Duration) *http.Client {
 // of these patterns carries a method: a wrong method reaches the handler's own
 // 405 instead of falling through to the A2A handler and being counted.
 func newRootMux(a2a http.Handler, lw *lineWriter, inj *injector, opts ...ingressOption) *http.ServeMux {
-	root := http.NewServeMux()
-	root.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	healthz := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		_, _ = w.Write([]byte("ok\n"))
 	})
-	root.HandleFunc("/control/inject", inj.handleInject)
-	root.HandleFunc("/control/reset", inj.handleReset)
-	root.Handle("/", newIngressMiddleware(a2a, lw, inj, opts...))
-	return root
+	return workermux.NewRoot(healthz, http.HandlerFunc(inj.handleInject), http.HandlerFunc(inj.handleReset),
+		newIngressMiddleware(a2a, lw, inj, opts...))
 }
 
 // buildCard is this agent's card. It declares streaming because this handler
