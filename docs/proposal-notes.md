@@ -392,3 +392,17 @@ treated as a retry the lab added. **The Host setting.** gRPC is routed only on t
 the in-cluster load client reaches the gRPC ports with the Host setting the note of 2026-09-22 allowed for Experiment B only; that
 allowance now extends to the gRPC rows. The central proxy's waypoint listener serves only the HTTP port, so gRPC through it is not
 routed, and the entries say so. The proposal text is unchanged.
+
+## 2026-09-25 — Experiment C: the authorization fixture covers every shape the receivers dispatch (D-3b)
+
+Decision by the author, after D-3 was measured. D-3's fixture decided the operation from the shapes the SDK clients send: the
+JSON-RPC body only on a POST to exactly /, the REST subscribe path as written, the gRPC method path. Counted live, 30 of 30
+requests carrying SubscribeToTask in other shapes the receivers dispatch (a POST to /x or /a2a/v1 at the Go receiver, a POST to /
+with a gRPC content-type, a REST subscribe path with its colon percent-encoded) were allowed by the fixture and dispatched by the
+SDKs. D-3's entries record that as a limit of that fixture. **D-3b changes the fixture** so that its view of the operation covers
+every shape either receiver dispatches, as read from both receivers' routing: the path decoded as the receivers decode it before
+it is matched, and the JSON-RPC body read on every request the receivers would hand to their JSON-RPC handler, whatever its path
+or content-type. The rule is unchanged (refuse SubscribeToTask, allow everything else), and so are the undecidable setting and
+its default. It is rebuilt from a deleted cluster and counted against D-3's rows and the shapes D-3 found, plus any shape the
+routing reading adds. It runs on the current topology, before the two standing changes, as the note of 2026-09-24 orders. No
+third-party project is added. The proposal text is unchanged.
