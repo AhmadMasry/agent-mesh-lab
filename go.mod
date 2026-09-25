@@ -3,7 +3,7 @@ module github.com/AhmadMasry/agent-mesh-lab
 go 1.27.1
 
 require (
-	github.com/a2aproject/a2a-go/v2 v2.5.0
+	github.com/a2aproject/a2a-go/v2 v2.6.0
 	github.com/envoyproxy/go-control-plane/envoy v1.39.0
 	github.com/google/uuid v1.6.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.71.0

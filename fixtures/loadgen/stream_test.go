@@ -841,7 +841,10 @@ func (e *gatedExecutor) Cancel(_ context.Context, execCtx *a2asrv.ExecutorContex
 // whose Task is held running, a subscription sent while it runs (its first
 // event the Task, working, with the same task id, and no second execution),
 // then a subscription after the Task finished. What the server answers for the
-// last one is the terminal-task row's reading at a2a-go v2.5.0 in process.
+// last one is the terminal-task row's reading in process at the pinned a2a-go:
+// -32001 "task not found: no active execution" at v2.5.0, and since v2.6.0
+// (a2a-go#442, a2asrv/handler.go SubscribeToTask) -32004, UnsupportedOperation,
+// "task in a terminal state", which is what this test holds it to.
 func TestModes_AgainstTheA2AGoServer(t *testing.T) {
 	exec := &gatedExecutor{started: make(chan a2a.TaskID, 2), release: make(chan struct{}), entered: make(chan struct{}, 4)}
 	var srvURL string
@@ -919,11 +922,11 @@ func TestModes_AgainstTheA2AGoServer(t *testing.T) {
 
 	code, lines := runModeLines(t, streamClientForTest(), srv.URL, modeConfig{mode: modeSubscribe, taskID: string(taskID)})
 	end := theEnd(t, lines)
-	if code != 3 || end["events"] != float64(0) || end["wire_error_code"] != float64(-32001) {
-		t.Errorf("subscription to the finished task: exit %d, end %v; want no event and the wire code -32001", code, end)
+	if code != 3 || end["events"] != float64(0) || end["wire_error_code"] != float64(-32004) {
+		t.Errorf("subscription to the finished task: exit %d, end %v; want no event and the wire code -32004", code, end)
 	}
-	if msg, _ := end["wire_error_message"].(string); msg == "" {
-		t.Errorf("the wire text of the refusal was not recorded: %v", end)
+	if msg, _ := end["wire_error_message"].(string); !strings.Contains(msg, "terminal state") {
+		t.Errorf("the wire text of the refusal does not name the terminal state: %v", end)
 	}
 }
 
