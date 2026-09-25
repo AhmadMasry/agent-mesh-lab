@@ -1,0 +1,1 @@
+# 2026-09-25T09:56:58Z traces read from Jaeger by the trace.id on every proxy request line of the trial window (port-forward to svc/jaeger, /api/traces/<id>); make export-trace found no span carrying lab.work_item for any of the 25 work items (export-stderr.txt)

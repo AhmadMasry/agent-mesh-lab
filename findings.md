@@ -3219,3 +3219,226 @@ which is when they were opened; the draft and upstream-search/a2ago-318-319.txt 
 - Interpretation: as documented. With three accounts, agentgateway's authorization on agw-central expresses "allow the orchestrator's identity to reach the worker, refuse the load client's" and enforces it before forwarding: the proxy's own 403, recorded as an authorization failure with the refused identity on its line, and 0 arrivals. Under one account C-7 could only record that such a rule separates no caller; the identity it keys on is the verified HBONE peer agw-central holds, so the separation is by the caller's workload identity and not by anything the caller sends. It holds only where agw-central is on the path: the load client dialling the worker pod directly never meets it (Row Z's layer).
   - Not covered: the orchestrator re-fetching the worker's card while the Allow is in force (its card GET of the worker counted 0 in the window, the card having been fetched before it); Require and Deny forms (the ruling chose Allow); the Python receiver (no pair); a rule on lab/orchestrator; an Allow combined with the operation rules of C-8 and D-3; the ingress, which has no verified caller identity to key on (the identity entry above); JWT; 5 sends per identity.
 - Follow-up: none.
+
+## Experiment C / both receivers / D-5, the connection count — do agw-central's upstream connections to an agent change with the A2A marking, and what opened C-9's six per agent?
+
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.4 openai-python=3.16.2 grpcio=1.84.0 grpc-go=v1.83.2 go-control-plane-envoy=v1.39.0 (read back from D-4's cluster, versions-readback.txt, equal to D-4's reading but for its stamps and the istioctl client line; a2a-go, grpc-go, go-control-plane and a2a-spec at the built tree, 25ee3897, unchanged)
+- Environment: kind
+- Method: follow-on D-5, Step 2.1, by the author's note of 2026-09-24 ("C-9's unexplained connection count investigated by a temporary Service marking applied and removed from a run directory") and the controller's ruling (ii) of 2026-09-25, on the cluster D-4 left (three ServiceAccounts, no marking).
+  - **The source hypothesis**, stated before any count (reading-notes.txt, Step 1, agentgateway v1.5.0 fe673247):
+    - Nothing in the A2A block opens a connection (a2a/mod.rs).
+    - The card body is read to its end (json.rs l.58-66, crates/http/src/lib.rs l.33-35).
+    - The pool key is target, address, connection config and HTTP version (client/mod.rs l.231, l.704).
+    - The pool drops an idle connection after 90 s (lib.rs l.335-337).
+    - So the count follows the spacing of the requests, not the marking. Falsified if the marked set raises the counter
+      more than the unmarked set.
+  - **One driver, d5.sh**, run as is (sha256 f43a7345 at the head of every phase), three phases:
+    - unmarked, then marked, then removed;
+    - the marking a JSON patch from the run directory (marking-add.json, marking-remove.json), each waited on in both
+      proxies' dumps (2 A2A policies each, then 0).
+  - **Each phase**:
+    - the control pod's three resets;
+    - 100 s of quiet;
+    - ztunnel's istio_tcp_connections_opened_total read straight from each ztunnel's metrics;
+    - one set of 8 curl requests inside 2 s, from a probe under lab/sa/loadgen: a card GET and a SendMessage per agent,
+      at the Service address through agw-central and through the ingress by its Host;
+    - the counters again at once, and after 100 s of quiet;
+    - the three ledgers per work item, both proxies' lines.
+  - **The join**: after the last set, every ztunnel line from the start of 2.1 (conn-join/). Each inbound connection
+    from a proxy to an agent is placed at its open stamp (close stamp minus duration) against the bursts in the
+    driver's own stamps.
+  - **Rules.** Every curl --retry 0; nothing re-sent; no retry logic. counts.py from the run directory alone. No figure
+    from an agentgateway access-line timestamp.
+  - **Keep-awake.** This task started no keep-awake and changed no power setting, and keep-awake is not claimed absent:
+    0 Sleep, Wake, DarkWake or Maintenance events 2026-09-25T09:27:20Z to the closing reading (sleep-events.csv).
+- Result: experiments/runs/2026-09-25-d5-a2a-backend/ (counts.txt, reading-notes.txt, conn-*/, conn-join/).
+  - **The counter over each set** (sets of 1.82 to 1.87 s), destination reporter:
+
+    | phase | agw-central to worker | agw-central to orchestrator | ingress to worker | ingress to orchestrator |
+    |---|---|---|---|---|
+    | unmarked | 5 to 6 | 5 to 6 | 2 to 3 | 4 to 5 |
+    | marked | 7 to 8 | 7 to 8 | 3 to 4 | 5 to 6 |
+    | removed | 9 to 10 | 9 to 10 | 4 to 5 | 6 to 7 |
+
+    - +1 on every leg in every phase, and +0 over the 100 s after each set.
+    - The +1 between phases on agw-central's legs is each phase's reset burst.
+  - **Every set completed**: 8 of 8 answers 200 in each phase.
+    - Every receiver a work item reached: 1 arrival (2 ingress-ledger lines), 1 received, 1 execute and 1 Task,
+      TASK_STATE_COMPLETED.
+    - 1 invocation per work item.
+    - An orchestrator work item reaches both receivers, through its forward.
+  - **The marked set**:
+    - protocol=a2a on 6 of 6 agent lines at agw-central, a2a.method=SendMessage on its 4 POSTs;
+    - cards: https://worker.lab.svc.cluster.local:8080/ and https://orchestrator.lab.svc.cluster.local:8080/ through
+      agw-central, http with the client's Host through the ingress, as C-9 read;
+    - the agents' third interface, protocolBinding GRPC with url worker.lab.svc.cluster.local:8081, also rewritten:
+      to https://worker.lab.svc.cluster.local:8080 at agw-central and http://worker.lab.internal at the ingress.
+    - Unmarked and removed: the cards the agents write, with no rewrite.
+  - **The joined lines**, 18 connections from a proxy to an agent:
+    - Each of agw-central's opened within 5 s of a burst, a reset or a set: one per agent per burst, never a second.
+    - All of them are inner connections on one outer HBONE connection per agent (the same src.addr throughout).
+    - Each ended in one of two ways:
+      - cleanly, 120.3 to 121.7 s after it opened (120313 to 121707 ms), the ingress's included. The two at
+        121.7 s are agw-central to the worker, whose connection the orchestrator's forward also used later in the set;
+      - "broken pipe", 93.7 to 116.1 s after it opened. Either when the next burst came, or at a moment when both
+        agents' connections closed within 1 ms of each other, with no request near.
+- Interpretation: the source hypothesis holds, and C-9's six is explained in kind but not in full.
+  - The marking changes no connection count. With it on, off or removed, agw-central opens one connection to each
+    agent per burst and reuses it within the burst: a card GET, a SendMessage and the orchestrator's forward.
+  - A new connection follows a burst that comes after the previous connection has gone idle. The measured idle ends
+    are about 94 to 121 s. What closes a connection at 120 s, and what closes both agents' connections in the same
+    millisecond, was not read from source. They are consistent with the pool's 90 s idle timeout and an idle timeout
+    at the other end, and they are not established.
+  - **C-9's six.**
+    - C-9's work items all failed, so its proof ran long: the clean check 405.5 s, the trace step 826.3 s, with the four
+      trace work items' builds 3 min 26 to 27 s apart. From its own driver's stamps, at least 4 bursts at each agent
+      were separated by more than 90 s, each one connection by this mechanism.
+    - C-10, the entry after C-9 and D-4 each read 1, consistent with no gap over 90 s. Their per-step stamps are not in
+      their run directories, so that is not checked.
+    - The other 2 of C-9's six per agent are not accounted for: C-9 kept no ztunnel line for its proof window.
+    - C-9's reading "not explained" was not wrong, and it is not changed. This entry places the cause outside the
+      rewrite.
+  - **One reading the lab's STRICT tables rely on**: istio_tcp_connections_opened_total on a proxy-to-agent leg counts
+    inner connections, one per burst, not requests and not HBONE outer connections. A difference in that count
+    between two proofs can come from their pacing alone.
+  - Not covered:
+    - what closes a connection at 120 s;
+    - the moments when both agents' connections closed together;
+    - the forward under the marking with a card fetched fresh (the orchestrator held the worker's card from before the
+      marking; D-4 counted 0 card GETs of it);
+    - more than one set per phase;
+    - the out-of-cluster path;
+    - C-9's remaining 2 per agent.
+- Follow-up: docs/upstream/agentgateway-a2a-card-rewrite-https-scheme-for-plain-http-agent.md gains a dated note:
+  - the https card reproduced;
+  - the gRPC interface rewritten to the HTTP port, new since C-9, a candidate for the issue text;
+  - the rewrite not the cause of the count.
+  The draft's earlier text is unchanged.
+
+## Experiment C / both receivers / D-5, the A2A backend type as a trial — with AgentgatewayBackend spec.a2a on the four HTTP agent routes, does every client the lab runs still complete on both paths?
+
+- Versions: k8s=v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5 istio=1.31.0 agentgateway=v1.5.0 gateway-api=v1.6.2, experimental a2a-spec=3303592588e388e62e0f69f701af531d2f4e3991 a2a-go=v2.5.0 a2a-python=1.1.4 openai-python=3.16.2 grpcio=1.84.0 grpc-go=v1.83.2 go-control-plane-envoy=v1.39.0 (the same cluster as the entry above, versions-readback.txt; a2a-go, grpc-go, go-control-plane and a2a-spec at the built tree, 25ee3897, unchanged)
+- Environment: kind
+- Method: the author's note of 2026-09-24 ("agentgateway's A2A backend type is measured and kept as standing if it does not break clients that follow the agent card") and the controller's ruling (ii) of 2026-09-25: a trial applied from the run directory and removed, with no deployed path changed. The GRPCRoutes are not touched.
+  - **Step 1's reading** (reading-notes.txt; agentgateway v1.5.0 fe673247 and main 06c20cef; website v1.5.0 agent/a2a.md l.151-153, l.199, l.207-210, l.237-240):
+    - spec.a2a takes a host and a port only (agentgateway_backend_types.go l.135-146).
+    - The controller makes it a Static backend with an inline A2A policy (backend_plugin.go l.165-181), the same policy
+      the marking produces (a2a_plugin.go l.55-78). It therefore runs the same A2A block, card rewrite included.
+    - A Static backend is dialled by DNS at the host in plaintext (httpproxy.rs l.2174, l.4372-4386, l.1855-1886;
+      client/mod.rs l.452-471). Only a Service backend is given HBONE (l.3171, l.3224).
+    - Predicted, not measured:
+      - at agw-central, which is not enrolled, the agent refuses the connection under STRICT;
+      - at the ingress, which is enrolled, its ztunnel sends the plaintext dial to the Service's waypoint agw-central,
+        with auto-hostname setting the authority (l.287-299, l.4315-4333);
+      - the card scheme as the marking's.
+  - **The trial** (trial-overlay/, d5.sh trial, RUN_ID t22):
+    - two AgentgatewayBackends in lab: worker-a2a (worker.lab.svc.cluster.local, 8080) and orchestrator-a2a;
+    - the backendRef of lab/worker, lab/worker-ingress, lab/orchestrator and lab/orchestrator-ingress replaced by a
+      JSON patch that tests the old one first;
+    - both proxies' dumps waited on and recorded.
+  - **The deciding list**, 3 repetitions each, one load-client Job per send (backoffLimit 0, CLIENT_RETRIES 0):
+    - (a) JSON-RPC through the ingress by Host worker.lab.internal, CLIENT_DIAL=target;
+    - (b) JSON-RPC to the worker Service, following the card;
+    - (c) JSON-RPC to the orchestrator Service, card at agw-central, the request to the card's url;
+    - (d) REST through the ingress by Host, and to the worker Service;
+    - (e) gRPC through the ingress by Host, authority worker-grpc.lab.internal;
+    - (f) the orchestrator's forward, JSON-RPC to the ingress catch-all.
+    Then one curl card GET per path, to read the card each proxy serves.
+  - **The criterion, stated before any count**: kept only if every row completes, the clean check reads 1/1/1/1/1 at
+    both receivers, and every advertised url is dialable by the client that reads it.
+  - **What is counted**: the client's result, the three ledgers, both proxies' lines, ztunnel's lines and counters, and
+    the traces by the trace id on every proxy line.
+  - **The removal**: each route's backendRef from its own spec read before the apply; the backends deleted; both dumps
+    waited on; the clean check (experiments/gate2-single-clean.sh, unedited).
+  - Keep-awake as the entry above.
+- Result: experiments/runs/2026-09-25-d5-a2a-backend/trial/, clean-after/, counts.txt.
+  - **Applied**: each proxy's dump held both backends as host targets with inlinePolicies [{a2a:{}}]. No A2A policy.
+  - **Every row failed, 21 of 21**, at the card GET. The client read "resolve card: card request failed, status: 503
+    Service Unavailable" and sent nothing further. 0 arrivals, 0 executes, 0 Tasks, 0 invocations. Per row, 3 of 3:
+    - (a), (d) through the ingress and (e): an ingress line on lab/worker-ingress and an agw-central line on lab/worker;
+    - (b) and (d) to the Service: an agw-central line on lab/worker;
+    - (c): an agw-central line on lab/orchestrator;
+    - (f): an ingress line on lab/orchestrator-ingress and an agw-central line on lab/orchestrator. The request never
+      reached the orchestrator, so its forward was not exercised.
+    - Row (e) reached no GRPCRoute: the load client resolves the card over HTTP first.
+  - **agw-central**, 25 of 25 lines (the 21 Jobs and the 4 curl GETs): 503, protocol=a2a, reason=UpstreamFailure,
+    "upstream call failed: SendRequest: connection error: Connection reset by peer (os error 104)". By source,
+    lab/sa/loadgen 11 and the ingress's account 14.
+  - **ztunnel at the agents**: 25 connections from the agw-central pod to the agent pods' port 8080, not HBONE's 15008.
+    None carries a src.identity. Every one reads "connection closed due to policy rejection: explicitly denied by:
+    istio-system/istio_converted_static_strict", 17 to the worker and 8 to the orchestrator. The counters over the 21
+    Jobs: connection_security_policy unknown +15 to the worker and +6 to the orchestrator; mutual_tls +0 on every agent
+    leg.
+  - **The ingress**:
+    - 14 of 14 lines: 503, protocol=a2a, reason=Internal, "processing failed: agent card invalid JSON" (the A2A card
+      block given agw-central's 503 text).
+    - Each has an agw-central line of the same trace: source the ingress's account, host worker.lab.svc.cluster.local
+      or orchestrator.lab.svc.cluster.local without a port.
+    - The traces: 14 with 2 ingress and 2 agw-central spans; 11 with 2 agw-central spans only; 21 with the load
+      client's span.
+    - make export-trace found no span carrying lab.work_item for any of the 25 (traces/export-stderr.txt), so the
+      traces were read by trace id.
+  - **The cards**: 0 of 25 card GETs returned a card: 4 of 4 curl GETs 503, and every Job's GET 503. So the card scheme
+    under the backend type was not observed at either proxy.
+  - **Removal**:
+    - the four route specs byte-equal to before;
+    - 0 AgentgatewayBackends in lab;
+    - both dumps without them;
+    - the Services unmarked.
+  - **The clean check** after removal: g2c-d5after-worker and g2c-d5after-orchestrator, 1/1/1/1/1
+    TASK_STATE_COMPLETED each.
+- Interpretation: **the backend type is not kept.** Under this configuration it broke every client the lab runs, on every path, 21 of 21, so the criterion fails and no deployed path changes. There is no Step 3. Each prediction from source was counted:
+  - **At agw-central**, the upstream leg leaves the mesh. The proxy dials the agent's ClusterIP in plaintext and the
+    agent's ztunnel refuses it under STRICT, 25 of 25. Clients keep addressing the Service; the failure is the upstream
+    transport, not the route.
+  - **At the ingress**, the dial is captured by the ingress's own ztunnel and sent to the Service's waypoint.
+    - The ingress rows gain agw-central as a second hop, 14 of 14 in the lines and the traces.
+    - They then fail there for the same reason.
+    - The ingress records the failure as its own processing error, "agent card invalid JSON", not the upstream's.
+  - **The card**: no card was served, so the scheme prediction stands as a source reading only, not as a count.
+  - The website's recommendation (agent/a2a.md l.153) is for a setting its example shows, an ingress-style Gateway to a
+    Service, and the page says nothing about a mesh.
+  - On this topology, with mesh-wide STRICT and agentgateway proxies as waypoint and ingress, the only A2A form that
+    keeps mesh transport is the Service marking. That is measured for the backend type as tried here. For the forms
+    not tried it is read from source (v1.5.0):
+    - transport_override, and the ingress_use_waypoint waypoint, are set only on the Service path (httpproxy.rs
+      l.3171, l.3177, l.3224);
+    - backend TLS with certificateSource SPIFFE (agentgateway_parameters_types.go l.198-202) originates TLS, not
+      HBONE, to the pod's 8080, which STRICT denies, and the agent does not speak TLS;
+    - a backend tunnel needs a proxy server to CONNECT through (agentgateway_policy_types.go l.2504-2526), which the
+      lab does not run;
+    - AgentgatewayPolicy has no a2a field.
+  - C-9 found that the marking's https card breaks card-following clients at agw-central.
+  - So neither A2A form runs on this topology at these versions without breaking a client, and the lab stays unmarked,
+    as after C-9.
+  - C-11's map is unchanged: the A2A handling row stays C-9's, recorded in a configuration the lab does not run.
+  - Not covered:
+    - the card scheme under the backend type;
+    - the orchestrator's forward under it;
+    - a GRPCRoute with the backend type;
+    - spec.policies (backend TLS or a tunnel) on the backend;
+    - a Service reference, or the selector of the open pull request #3550;
+    - PERMISSIVE at the agents, or an enrolled agw-central, which are topology changes for the author;
+    - the out-of-cluster path;
+    - 3 repetitions per row.
+- Follow-up: docs/upstream/agentgateway-a2a-backend-type-dials-plaintext-outside-ambient-mesh.md, new in this step, a draft for the author to file.
+  - The tracker search, two passes, issues and pull requests, any state:
+    - The first pass (tracker-search.txt): 20 queries by title words and by code function and type names, total_count
+      beside each, the rate limit read before each call, 0 failed. Its pages were exact-phrase searches, because gh
+      2.101.0 quotes a multi-word argument: 13 of 20 pages read 0, 12 of them against a total_count of 1 to 16. Its
+      script's header carries a dated correction (added after the review).
+    - The second pass (tracker-search-words.txt, added after the review): the same 20 queries as word searches,
+      through the search API with an explicit q=, issues and pull requests apart. 40 calls, total_count beside each
+      page, the rate limit read before each, 0 failed or throttled. 79 distinct items, 58 on no page of the first
+      pass; their titles were screened.
+  - Candidates read by number (items-read.txt):
+    - #1018 (closed, completed), the request for A2A to external backends that the type answers;
+    - #1841 (merged 2026-05-18, merge commit be82e02e...v1.5.0 ahead 751, behind 0), the type itself;
+    - #3504 (open) and #3550 (open pull request, not merged), a label selector on A2A backends. Whether its targets
+      would take the Service path was not read;
+    - from the second pass: #2983 (merged 2026-08-13, contained in v1.5.0), which wrote the card rewrite's
+      interface-url code for a path rewrite and names no protocolBinding, gRPC or scheme; #2981 (closed), the issue
+      it fixed; #999 (closed), an "invalid json" error from an a2a_sdk crate that v1.0.0 removed; #993 (closed), the
+      HBONE tunnel protocol on waypoint listeners.
+  - None describes the plaintext dial outside the mesh, the gRPC interface rewritten to the HTTP port, or the card
+    handling replacing an upstream error body.

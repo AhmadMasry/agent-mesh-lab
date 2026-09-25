@@ -1,0 +1,130 @@
+#3504 [open] issue Support label selectors on A2A backends, as mcp.targets[] already does
+  created 2026-09-16T17:01:51Z updated 2026-09-18T11:28:25Z comments 3 merged -
+  body: - [x] As required by the [Code of Conduct](https://github.com/agentgateway/agentgateway/blob/main/CODE_OF_CONDUCT.md#generative-ai-policy), the description, docs, and comments (words meant for humans) are written by a human, not by an LLM.
+
+`AgentgatewayBackend.spec.mcp.targets[]` supports a `selector` (`namespaces` and `services`, each with `matchLabels`/`matchExpressions`), so MCP targets can be discovered by label. `spec.a2a` has only `host` and `port`, both required — no selector, no discovery.
+
+Both are visible in `controller/install/helm/agentgateway-crds/templates/agentgateway.dev_agentgatewaybackends.yaml` on main.
+
+**Why?**
+
+With a multi-agent setup, every agent needs its own `HTTPRoute` rule: a `PathPrefix` match on `/a2a/<agent>/`, a `URLRewrite` stripping the prefix, and a `backendRef` to that agent's Service. With a dozen agents that's a large hand-maintained route, and adding an agent means editing it again. Where the agents are generated — a kagent `Agent` CR stamps out a Service per agent, with `appProtocol: kgateway.dev/a2a` — the routing is the only part that stays manual.
+
+This can't be solved at the Gateway API layer: `backendRefs` are explicit object references and label selection was deliberately left out of the spec. That seems to be exactly why the MCP backend grew its own selector, and A2A has the same need.
+
+**Sketch**
+
+```yaml
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: agents
+spec:
+  a2a:
+    port: 8080
+    sel
+
+  read 2026-09-25T10:00:37Z
+
+#3550 [open] PR feat(a2a): support label selectors on A2A backends
+  created 2026-09-18T13:17:55Z updated 2026-09-20T08:26:16Z comments 4 merged -
+  body: - [x] As required by the [Code of Conduct](https://github.com/agentgateway/agentgateway/blob/main/CODE_OF_CONDUCT.md#generative-ai-policy), the description, docs, and comments (words meant for humans) are written by a human, not by an LLM.
+
+**What this PR does / why we need it:**
+
+Adds label-selector-based service discovery for A2A backends, matching the existing MCP selector pattern. Fixes #3504.
+
+With a multi-agent setup, every agent currently needs its own HTTPRoute rule. This PR introduces a selector on `spec.a2a` so agents can be discovered by label, removing the manual route maintenance.
+
+**Example:**
+
+```yaml
+spec:
+  a2a:
+    port: 8080
+    targets:
+      - name: agents
+        selector:
+          services:
+            matchLabels:
+              app: a2a-agent
+```
+
+Services with `appProtocol: agentgateway.dev/a2a` are auto-discovered and exposed at `/a2a/{targetName}/...`.
+
+**Changes:**
+
+- **API:** `A2ABackend` gains optional `targets` (selector/static), `Host` becomes optional (deprecated). CEL validation ensures at least one of `host`/`targets` is set.
+- **Controller:** `TranslateA2ASelectorTargets` uses KRT to discover services by label + `appProtocol`. Annotations (`a2a-target-name`, `a2a-path`) override defaults. Legacy `host`+`port` still works via `Backend_Static` + `A2a{}` policy.
+- **Proto:** new `A2ABackend`/`A2ATarget` messages, `Backend.kind.a2a = 11`.
+- **Data plane:** path-based routing — extracts target from `/a2a/{name}/...`, strips prefix, forwards to 
+
+  read 2026-09-25T10:00:37Z
+
+#1841 [closed] PR a2a: add first class a2a backend type in AGBE
+  created 2026-05-15T17:36:50Z updated 2026-05-18T21:32:55Z comments 0 merged 2026-05-18T21:32:55Z
+  body: 
+
+  read 2026-09-25T10:00:38Z
+
+#1793 [closed] PR Add support for AppProtocol on Backend
+  created 2026-05-11T16:25:12Z updated 2026-05-15T00:30:08Z comments 1 merged -
+  body: 
+
+  read 2026-09-25T10:00:38Z
+
+#1018 [closed] issue Support A2A routing to external backends
+  created 2026-02-19T17:55:36Z updated 2026-06-25T16:05:38Z comments 4 merged -
+  body: A2A routing in agentgateway only works with in-cluster Kubernetes Services using `appProtocol: kgateway.dev/a2a`. The `AgentgatewayBackend` CRD supports `ExactlyOneOf: [ai, static, dynamicForwardProxy, mcp]` There is no A2A option for external backends.
+
+Proposal: Add A2A support to `AgentgatewayBackend` so that agentgateway can route A2A traffic to external endpoints with JWT passthrough:
+
+```yaml
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: agentcore-agent
+spec:
+  a2a:
+    host: bedrock-agentcore.us-east-1.amazonaws.com
+    port: 443
+    path: /runtimes/<agent-runtime-arn>/invocations
+  policies:
+    auth:
+      passthrough: {}
+```
+
+This would enable:
+```
+Client --(A2A + JWT)--> Agent Gateway --(A2A + JWT passthrough)--> AgentCore
+```
+
+  read 2026-09-25T10:00:39Z
+
+
+## 2026-09-25, after the review (I-1, M-6): the second pass's items and the containment reads, stamps from date -u
+Read 2026-09-25T10:20:35Z by gh api repos/agentgateway/agentgateway/issues/<n>, pulls/<n> and compare/<merge commit>...v1.5.0.
+The second pass (tracker-search-words.txt) listed 79 distinct items, 58 of them on no page of the first pass. Their
+titles were screened; those that bear on the drafts were read in full, with their comments:
+  #2983 PR, merged 2026-08-13T16:37:57Z, merge commit f69411d2; compare f69411d2...v1.5.0: ahead 107, behind 0, so it
+        is contained in v1.5.0. "fix(a2a): correct interface URL rewriting when path rewrite policy is active", fixes
+        #2981. It adds the backend path to the card classification and computes interface urls relative to the
+        gateway path (public_interface_url, strip_agent_card_suffix). The description and its 3 comments are about
+        the path under a URL rewrite; neither names protocolBinding, gRPC or the scheme. So it is the origin of the
+        code the C-9 note's gRPC reading cites, and it does not describe that behaviour.
+  #2981 issue, closed completed 2026-08-13 (by #2983): the path doubled under a rewrite. Not the scheme or the port.
+  #999  issue, closed completed 2026-03-24. "Agents built using latest a2a-sdk gets inavlid json error": an a2a_sdk
+        0.3.x agent card through agentgateway before v1.0.0. Its one comment: v1.0.0 removed the a2a_sdk crate. It is
+        not the card handling turning an upstream error body into "agent card invalid JSON".
+  #993  issue, closed completed 2026-07-09 (PR #994): the controller setting tunnel_protocol on Binds so that
+        agentgateway can terminate HBONE as a waypoint. It is about the downstream listener, not how a backend is
+        dialled.
+  Of the other 54, #1829 (open, X-Forwarded-Proto on an HTTPS listener) is already named and read in C-9's draft. The
+  remaining 53 titles are about MCP, the UI, tracing, dependencies, e2e tests or policies in general, and none names
+  the A2A backend's transport, a mesh, or the card rewrite's handling of an interface.
+Containment and states (M-6):
+  #1841 PR merged 2026-05-18T21:32:55Z, merge commit be82e02e; compare be82e02e...v1.5.0: ahead 751, behind 0,
+        contained in v1.5.0.
+  #1018 issue, closed, state_reason completed, 2026-06-25T16:05:38Z.
+  #3504 issue, open.
+  #3550 PR, open, merged false.

@@ -136,3 +136,28 @@ on the website presents the appProtocol marking with a plain-HTTP Service and sa
   standard-counts-vs-last-proof.txt, clean-check/).
 - The wording "the client addresses the Service in plaintext" rests on the lab's topology entry (ztunnel captures
   the pod's plaintext and carries it over HBONE to the waypoint), not on this step.
+
+## 2026-09-25, a dated note from D-5 (the text above is unchanged)
+
+For the author, not yet part of the issue text. D-5 applied the same marking again, from a run directory, for
+one set of sends and then removed it (experiments/runs/2026-09-25-d5-a2a-backend/conn-marked/, counts.txt).
+
+- **The https card reproduced.** Through the waypoint at the Service address, each card's interface urls read
+  https://worker.lab.svc.cluster.local:8080/ and https://orchestrator.lab.svc.cluster.local:8080/. Through the
+  ingress they read http with the Host the client sent. This matches C-9, one GET per path.
+- **New, and a candidate for the issue text: the gRPC interface is rewritten too.** The agents now advertise a
+  third interface, protocolBinding GRPC, with the url worker.lab.svc.cluster.local:8081 (no scheme, the gRPC
+  port). C-9's agents did not have it. Under the marking every supportedInterfaces url is replaced by the
+  gateway base, the gRPC one included:
+  - through the waypoint, https://worker.lab.svc.cluster.local:8080 (the HTTP port, and https);
+  - through the ingress, http://worker.lab.internal.
+
+  a2a/mod.rs at v1.5.0 (l.182-209) rewrites each entry without reading protocolBinding, and main 06c20cef has no
+  gRPC handling in the file either. A gRPC client that followed such a card would dial the HTTP listener's port.
+  No gRPC client followed a card here: the lab's gRPC row dials its target.
+- **Whether the rewrite changes the connection count: it does not, in this measurement.** With one set of 8
+  requests inside 2 s, agw-central's upstream connections per agent rose by 1 with the marking, 1 without it, and
+  1 after its removal. C-9's six is discussed in D-5's entry and is not a behaviour of the rewrite.
+- The D-5 draft on the a2a backend type (agentgateway-a2a-backend-type-dials-plaintext-outside-ambient-mesh.md)
+  is a separate issue. With the backend type, no card reached a client (every card GET was 503), so its card
+  scheme was not observed.

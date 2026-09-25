@@ -1,0 +1,96 @@
+2026-09-25T09:52:16.732937Z phase trial  RUN_ID t22; HEAD 25ee3897483b7f4ffbd660644245297059b69f87; this driver sha256 f43a7345d30eca5cea0b6b3effa672436dfe1f7fa4b4541b833e1cc47d9b76f5
+2026-09-25T09:52:16.807707Z worker pod: worker-757cd75f9b-qphxz ip=10.244.1.75; orchestrator pod: orchestrator-5fcccb4474-6kdvp ip=10.244.1.76
+2026-09-25T09:52:16.848052Z proxy pods: agentgateway-ingress/agentgateway-ingress-7b877f7b4d-fdhxt ip=10.244.1.17; agentgateway-waypoint/agw-central-58468769f9-zck6c ip=10.244.1.13; 
+2026-09-25T09:52:16.891423Z Services' http port: worker:http/8080/appProtocol=; orchestrator:http/8080/appProtocol=; 
+2026-09-25T09:52:17.496262Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T09:52:17.557193Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T09:52:17.616403Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T09:52:36.696479Z loadgen image: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:a1d92d3e468f94419d2804676fdd16cc050cabcc29f354a5ddad50ae72a6eb47 (fixtures 3ecdf425e08fed35501002397cd2fe6af37de74e, template 96769f9218cba5396206e7aac50cb13cad840465)
+2026-09-25T09:52:37.637650Z counters before: 12 series; agw-central->worker(dest)=11 agw-central->orchestrator(dest)=11 ingress->worker(dest)=5 ingress->orchestrator(dest)=7
+2026-09-25T09:52:37.656462Z window opens
+2026-09-25T09:52:38.271130Z agw-central dump: [[.backends[]? | tostring | select(test("worker-a2a") or test("orchestrator-a2a"))] | length == 2] after ~0s
+2026-09-25T09:52:38.627446Z agentgateway-ingress dump: [[.backends[]? | tostring | select(test("worker-a2a") or test("orchestrator-a2a"))] | length == 2] after ~0s
+2026-09-25T09:52:39.397701Z job loadgen-d5t-a-t22-1 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-a-t22-1 created
+2026-09-25T09:52:45.222254Z   d5t-a-t22-1 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:52:45.258618Z job loadgen-d5t-b-t22-1 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty> binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-b-t22-1 created
+2026-09-25T09:52:51.081950Z   d5t-b-t22-1 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=0 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:52:51.115802Z job loadgen-d5t-c-t22-1 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty> binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-c-t22-1 created
+2026-09-25T09:52:56.965441Z   d5t-c-t22-1 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=0 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:52:56.998517Z job loadgen-d5t-di-t22-1 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal binding=rest authority=<empty>
+job.batch/loadgen-d5t-di-t22-1 created
+2026-09-25T09:53:02.860716Z   d5t-di-t22-1 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:02.894736Z job loadgen-d5t-dc-t22-1 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty> binding=rest authority=<empty>
+job.batch/loadgen-d5t-dc-t22-1 created
+2026-09-25T09:53:08.738169Z   d5t-dc-t22-1 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=0 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:08.772545Z job loadgen-d5t-e-t22-1 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal binding=grpc authority=worker-grpc.lab.internal
+job.batch/loadgen-d5t-e-t22-1 created
+2026-09-25T09:53:14.650957Z   d5t-e-t22-1 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:14.686404Z job loadgen-d5t-f-t22-1 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=<empty> host=<empty> binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-f-t22-1 created
+2026-09-25T09:53:20.566329Z   d5t-f-t22-1 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:20.601929Z job loadgen-d5t-a-t22-2 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-a-t22-2 created
+2026-09-25T09:53:26.439733Z   d5t-a-t22-2 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:26.474690Z job loadgen-d5t-b-t22-2 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty> binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-b-t22-2 created
+2026-09-25T09:53:32.314841Z   d5t-b-t22-2 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=0 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:32.348012Z job loadgen-d5t-c-t22-2 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty> binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-c-t22-2 created
+2026-09-25T09:53:38.164836Z   d5t-c-t22-2 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=0 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:38.199173Z job loadgen-d5t-di-t22-2 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal binding=rest authority=<empty>
+job.batch/loadgen-d5t-di-t22-2 created
+2026-09-25T09:53:44.054653Z   d5t-di-t22-2 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:44.087888Z job loadgen-d5t-dc-t22-2 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty> binding=rest authority=<empty>
+job.batch/loadgen-d5t-dc-t22-2 created
+2026-09-25T09:53:49.943789Z   d5t-dc-t22-2 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=0 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:49.978153Z job loadgen-d5t-e-t22-2 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal binding=grpc authority=worker-grpc.lab.internal
+job.batch/loadgen-d5t-e-t22-2 created
+2026-09-25T09:53:55.839412Z   d5t-e-t22-2 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:53:55.873656Z job loadgen-d5t-f-t22-2 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=<empty> host=<empty> binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-f-t22-2 created
+2026-09-25T09:54:01.732976Z   d5t-f-t22-2 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:54:01.767744Z job loadgen-d5t-a-t22-3 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-a-t22-3 created
+2026-09-25T09:54:07.597284Z   d5t-a-t22-3 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:54:07.631828Z job loadgen-d5t-b-t22-3 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty> binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-b-t22-3 created
+2026-09-25T09:54:13.498030Z   d5t-b-t22-3 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=0 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:54:13.533299Z job loadgen-d5t-c-t22-3 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty> binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-c-t22-3 created
+2026-09-25T09:54:19.446516Z   d5t-c-t22-3 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=0 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:54:19.482338Z job loadgen-d5t-di-t22-3 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal binding=rest authority=<empty>
+job.batch/loadgen-d5t-di-t22-3 created
+2026-09-25T09:54:25.333477Z   d5t-di-t22-3 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:54:25.368415Z job loadgen-d5t-dc-t22-3 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty> binding=rest authority=<empty>
+job.batch/loadgen-d5t-dc-t22-3 created
+2026-09-25T09:54:31.232114Z   d5t-dc-t22-3 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=0 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:54:31.266661Z job loadgen-d5t-e-t22-3 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal binding=grpc authority=worker-grpc.lab.internal
+job.batch/loadgen-d5t-e-t22-3 created
+2026-09-25T09:54:37.089636Z   d5t-e-t22-3 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:54:37.123975Z job loadgen-d5t-f-t22-3 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=<empty> host=<empty> binding=<empty> authority=<empty>
+job.batch/loadgen-d5t-f-t22-3 created
+2026-09-25T09:54:42.943140Z   d5t-f-t22-3 Failed ingress=0 execution=0 invocation=0 proxy-lines ingress=1 agw-central=1 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 503 Service Unavailable"}]
+2026-09-25T09:54:46.116739Z counters in-force: 14 series; agw-central->worker(dest)=26 agw-central->orchestrator(dest)=17 ingress->worker(dest)=5 ingress->orchestrator(dest)=7
+2026-09-25T09:54:46.300137Z logs since 2026-09-25T09:52:37.647300Z (in-force): agw-central 21 request lines of 25, ingress 12 of 12, ztunnel 320 lines
+2026-09-25T09:54:46.525603Z probe up: d5-as-loadgen sa=loadgen ip=10.244.1.108
+2026-09-25T09:54:46.645412Z   d5t-cards-t22-go-ingress GetAgentCard GET http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json host=worker.lab.internal -> http=503 exit=0 trace=c0aa9d5eac772fe2f16f6f55164807b7
+2026-09-25T09:54:46.750905Z   d5t-cards-t22-go-central GetAgentCard GET http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json host=worker.lab.svc.cluster.local:8080 -> http=503 exit=0 trace=9913908fca956fc6ec2892f352f24696
+2026-09-25T09:54:46.854909Z   d5t-cards-t22-py-central GetAgentCard GET http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json host=orchestrator.lab.svc.cluster.local:8080 -> http=503 exit=0 trace=99174a81869e628eae599b1a275a1d5d
+2026-09-25T09:54:46.960047Z   d5t-cards-t22-py-ingress GetAgentCard GET http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local -> http=503 exit=0 trace=c61ca70c1cd82e0123d5e4cb229c208b
+2026-09-25T09:54:49.190370Z logs since 2026-09-25T09:52:37.647300Z (in-force-with-cards): agw-central 25 request lines of 29, ingress 14 of 14, ztunnel 335 lines
+2026-09-25T09:54:49.209435Z removal opens
+2026-09-25T09:54:49.926341Z agw-central dump: [[.backends[]? | tostring | select(test("worker-a2a") or test("orchestrator-a2a"))] | length == 0] after ~0s
+2026-09-25T09:54:50.272263Z agentgateway-ingress dump: [[.backends[]? | tostring | select(test("worker-a2a") or test("orchestrator-a2a"))] | length == 0] after ~0s
+2026-09-25T09:54:50.319165Z route worker spec restored, byte-equal to before
+2026-09-25T09:54:50.361303Z route worker-ingress spec restored, byte-equal to before
+2026-09-25T09:54:50.401982Z route orchestrator spec restored, byte-equal to before
+2026-09-25T09:54:50.444518Z route orchestrator-ingress spec restored, byte-equal to before
+2026-09-25T09:54:50.487097Z AgentgatewayBackends in lab after removal: 0
+2026-09-25T09:54:51.378276Z logs since 2026-09-25T09:54:49.200340Z (removal): agw-central 0 request lines of 0, ingress 0 of 0, ztunnel 0 lines
+2026-09-25T09:54:51.441778Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T09:54:51.504395Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T09:54:51.567219Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T09:54:51.610428Z phase trial driver exit
