@@ -1,0 +1,776 @@
+# 2026-09-25T17:06:02Z a2a-go v2.5.0 against v2.6.0, the module trees from the Go module cache (go mod download), which the compare API's file list matches
+## files that differ, outside tests, itk/, internal/cli/, a2acrypto/, e2e/, examples/, cmd/, CI and docs
+Files v2.5.0/.gitignore and v2.6.0/.gitignore differ
+Files v2.5.0/.golangci.yml and v2.6.0/.golangci.yml differ
+Only in v2.5.0: .goreleaser.yaml
+Files v2.5.0/.release-please-manifest.json and v2.6.0/.release-please-manifest.json differ
+Files v2.5.0/CHANGELOG.md and v2.6.0/CHANGELOG.md differ
+Files v2.5.0/README.md and v2.6.0/README.md differ
+Files v2.5.0/a2a/agent.go and v2.6.0/a2a/agent.go differ
+Files v2.5.0/a2a/auth.go and v2.6.0/a2a/auth.go differ
+Files v2.5.0/a2a/core.go and v2.6.0/a2a/core.go differ
+Files v2.5.0/a2aclient/agentcard/resolver.go and v2.6.0/a2aclient/agentcard/resolver.go differ
+Files v2.5.0/a2aclient/client.go and v2.6.0/a2aclient/client.go differ
+Files v2.5.0/a2aclient/factory.go and v2.6.0/a2aclient/factory.go differ
+Files v2.5.0/a2aclient/rest.go and v2.6.0/a2aclient/rest.go differ
+Files v2.5.0/a2acompat/a2av0/conversions.go and v2.6.0/a2acompat/a2av0/conversions.go differ
+Files v2.5.0/a2acompat/a2av0/jsonrpc_server.go and v2.6.0/a2acompat/a2av0/jsonrpc_server.go differ
+Only in v2.6.0: a2acrypto
+Files v2.5.0/a2aevent/diff.go and v2.6.0/a2aevent/diff.go differ
+Files v2.5.0/a2apb/v0/pbconv/from_proto.go and v2.6.0/a2apb/v0/pbconv/from_proto.go differ
+Files v2.5.0/a2apb/v0/pbconv/to_proto.go and v2.6.0/a2apb/v0/pbconv/to_proto.go differ
+Files v2.5.0/a2apb/v1/pbconv/to_proto.go and v2.6.0/a2apb/v1/pbconv/to_proto.go differ
+Files v2.5.0/a2asrv/agentexec.go and v2.6.0/a2asrv/agentexec.go differ
+Files v2.5.0/a2asrv/handler.go and v2.6.0/a2asrv/handler.go differ
+Files v2.5.0/a2asrv/intercepted_handler.go and v2.6.0/a2asrv/intercepted_handler.go differ
+Files v2.5.0/a2asrv/rest.go and v2.6.0/a2asrv/rest.go differ
+Only in v2.6.0/a2asrv: signed_card.go
+Only in v2.6.0: acts
+Only in v2.5.0: cmd
+Files v2.5.0/go.mod and v2.6.0/go.mod differ
+Files v2.5.0/go.sum and v2.6.0/go.sum differ
+Only in v2.5.0/internal: cli
+Files v2.5.0/internal/rest/rest.go and v2.6.0/internal/rest/rest.go differ
+Files v2.5.0/internal/utils/utils.go and v2.6.0/internal/utils/utils.go differ
+Files v2.5.0/log/a2a_format.go and v2.6.0/log/a2a_format.go differ
+## unchanged, byte for byte: a2asrv/jsonrpc.go, a2asrv/agentcard.go, internal/jsonrpc/, a2aclient/jsonrpc.go
+  same a2asrv/jsonrpc.go
+  same a2asrv/agentcard.go
+  same internal/jsonrpc
+  same a2aclient/jsonrpc.go
+## callers of a2aevent.Recover in v2.6.0 outside tests (and in the lab)
+  lab references:        0
+## the source lines the lab's code comments cite at v2.5.0, compared with v2.6.0
+  same a2asrv/rest.go l.51-60
+  same a2apb/v1/a2av1_grpc.pb.go l.25-35
+  same a2asrv/handler.go l.341-341
+  same a2asrv/handler.go l.362-362
+## the non-test patch, as the compare API gives it (files above)
+=== a2a/agent.go
+@@ -20,10 +20,10 @@ type AgentCapabilities struct {
+ 	Extensions []AgentExtension `json:"extensions,omitempty" yaml:"extensions,omitempty" mapstructure:"extensions,omitempty"`
+ 
+ 	// PushNotifications indicates if the agent supports sending push notifications for asynchronous task updates.
+-	PushNotifications bool `json:"pushNotifications,omitempty" yaml:"pushNotifications,omitempty" mapstructure:"pushNotifications,omitempty"`
++	PushNotifications bool `json:"pushNotifications" yaml:"pushNotifications" mapstructure:"pushNotifications"`
+ 
+ 	// Streaming indicates if the agent supports streaming responses.
+-	Streaming bool `json:"streaming,omitempty" yaml:"streaming,omitempty" mapstructure:"streaming,omitempty"`
++	Streaming bool `json:"streaming" yaml:"streaming" mapstructure:"streaming"`
+ 
+ 	// ExtendedAgentCard indicates if the agent supports providing an extended agent card when authenticated.
+ 	ExtendedAgentCard bool `json:"extendedAgentCard,omitempty" yaml:"extendedAgentCard,omitempty" mapstructure:"extendedAgentCard,omitempty"`
+=== a2a/auth.go
+@@ -15,6 +15,7 @@
+ package a2a
+ 
+ import (
++	"bytes"
+ 	"encoding/gob"
+ 	"encoding/json"
+ 	"fmt"
+@@ -46,14 +47,57 @@ type SecurityRequirements map[SecuritySchemeName]SecuritySchemeScopes
+ type SecurityRequirementsOptions []SecurityRequirements
+ 
+ type securityRequirements struct {
+-	Schemes map[SecuritySchemeName]SecuritySchemeScopes `json:"schemes"`
++	Schemes map[SecuritySchemeName]securityScopeList `json:"schemes"`
++}
++
++// securityScopeList is the ProtoJSON StringList emulation for a single
++// security scheme's scopes. Canonical input is {} or {"list":[...]};
++// legacy array input [...] is accepted and canonicalized on marshal.
++type securityScopeList []string
++
++type securityScopeListJSON struct {
++	List []string `json:"list"`
++}
++
++// MarshalJSON implements json.Marshaler.
++func (s securityScopeList) MarshalJSON() ([]byte, error) {
++	if len(s) == 0 {
++		return []byte(`{}`), nil
++	}
++	return json.Marshal(securityScopeListJSON{List: s})
++}
++
++// UnmarshalJSON implements json.Unmarshaler.
++func (s *securityScopeList) UnmarshalJSON(b []byte) error {
++	if trimmed := bytes.TrimSpace(b); len(trimmed) > 0 && trimmed[0] == '[' {
++		var scopes []string
++		if err := json.Unmarshal(trimmed, &scopes); err != nil {
++			return err
++		}
++		*s = scopes
++		return nil
++	}
++	var wrapper securityScopeListJSON
++	if err := json.Unmarshal(b, &wrapper); err != nil {
++		return err
++	}
++	if wrapper.List == nil {
++		*s = securityScopeList{}
++		return nil
++	}
++	*s = wrapper.List
++	return nil
+ }
+ 
+ // MarshalJSON implements json.Marshaler.
+ func (rs SecurityRequirementsOptions) MarshalJSON() ([]byte, error) {
+-	var out []securityRequirements
++	out := make([]securityRequirements, 0, len(rs))
+ 	for _, req := range rs {
+-		out = append(out, securityRequirements{Schemes: req})
++		schemes := make(map[SecuritySchemeName]securityScopeList, len(req))
++		for name, scopes := range req {
++			schemes[name] = securityScopeList(scopes)
++		}
++		out = append(out, securityRequirements{Schemes: schemes})
+ 	}
+ 	return json.Marshal(out)
+ }
+@@ -66,7 +110,11 @@ func (rs *SecurityRequirementsOptions) UnmarshalJSON(b []byte) error {
+ 	}
+ 	result := make(SecurityRequirementsOptions, 0, len(wrapped))
+ 	for _, w := range wrapped {
+-		result = append(result, w.Schemes)
++		requirement := make(SecurityRequirements, len(w.Schemes))
++		for name, scopes := range w.Schemes {
++			requirement[name] = SecuritySchemeScopes(scopes)
++		}
++		result = append(result, requirement)
+ 	}
+ 	*rs = result
+ 	return nil
+=== a2a/core.go
+@@ -608,7 +608,7 @@ func NewRawPart(raw []byte) *Part {
+ 
+ // NewFileURLPart creates a Part that contains a URL.
+ func NewFileURLPart(url URL, mimeType string) *Part {
+-	return &Part{Content: URL(url), MediaType: mimeType}
++	return &Part{Content: url, MediaType: mimeType}
+ }
+ 
+ // NewDataPart creates a Part that contains structured data.
+=== a2aclient/agentcard/resolver.go
+@@ -17,6 +17,7 @@ package agentcard
+ import (
+ 	"context"
+ 	"encoding/json"
++	"errors"
+ 	"fmt"
+ 	"io"
+ 	"net/http"
+@@ -25,6 +26,7 @@ import (
+ 	"time"
+ 
+ 	"github.com/a2aproject/a2a-go/v2/a2a"
++	"github.com/a2aproject/a2a-go/v2/a2acrypto"
+ 	"github.com/a2aproject/a2a-go/v2/log"
+ )
+ 
+@@ -63,6 +65,8 @@ type Resolver struct {
+ 	Client *http.Client
+ 	// CardParser can be used to configure AgentCard parsing.
+ 	CardParser Parser
++	// Verifier optionally verifies AgentCard signatures after resolution.
++	Verifier *a2acrypto.Verifier
+ }
+ 
+ // NewResolver is a [Resolver] constructor function.
+@@ -104,7 +108,7 @@ func (r *Resolver) Resolve(ctx context.Context, baseURL string, opts ...ResolveO
+ 		if err != nil {
+ 			return nil, err
+ 		}
+-		return r.parseCard(body)
++		return r.parseCard(ctx, body)
+ 	}
+ 
+ 	client := r.Client
+@@ -117,7 +121,7 @@ func (r *Resolver) Resolve(ctx context.Context, baseURL string, opts ...ResolveO
+ 		return nil, err
+ 	}
+ 
+-	return r.parseCard(body)
++	return r.parseCard(ctx, body)
+ }
+ 
+ func buildURL(baseURL, path string) (string, error) {
+@@ -193,7 +197,7 @@ func readCardFile(u *url.URL) ([]byte, error) {
+ 	return body, nil
+ }
+ 
+-func (r *Resolver) parseCard(body []byte) (*a2a.AgentCard, error) {
++func (r *Resolver) parseCard(ctx context.Context, body []byte) (*a2a.AgentCard, error) {
+ 	parseFn := r.CardParser
+ 	if parseFn == nil {
+ 		parseFn = DefaultCardParser
+@@ -202,6 +206,23 @@ func (r *Resolver) parseCard(body []byte) (*a2a.AgentCard, error) {
+ 	if err != nil {
+ 		return nil, fmt.Errorf("card parsing failed: %w", err)
+ 	}
++
++	if r.Verifier != nil && len(card.Signatures) > 0 {
++		var verified bool
++		var errs []error
++		for _, sig := range card.Signatures {
++			if err := r.Verifier.Verify(ctx, body, &sig); err == nil {
++				verified = true
++				break
++			} else {
++				errs = append(errs, err)
++			}
++		}
++		if !verified {
++			return nil, fmt.Errorf("agent card signature verification failed: %w", errors.Join(errs...))
++		}
++	}
++
+ 	return card, nil
+ }
+ 
+=== a2aclient/client.go
+@@ -18,6 +18,7 @@ import (
+ 	"context"
+ 	"fmt"
+ 	"iter"
++	"slices"
+ 	"strings"
+ 	"sync/atomic"
+ 
+@@ -330,8 +331,8 @@ func interceptAfter[T any](ctx context.Context, c *Client, interceptors []CallIn
+ 	}
+ 
+ 	var zero T
+-	for i := len(interceptors) - 1; i >= 0; i-- {
+-		if err := interceptors[i].After(ctx, &resp); err != nil {
++	for _, interceptor := range slices.Backward(interceptors) {
++		if err := interceptor.After(ctx, &resp); err != nil {
+ 			return zero, err
+ 		}
+ 	}
+=== a2aclient/factory.go
+@@ -82,6 +82,10 @@ func NewFromEndpoints(ctx context.Context, endpoints []*a2a.AgentInterface, opts
+ // If PreferredTransports were not provided, we start from the PreferredTransport specified in the AgentCard
+ // and proceed in the order specified by the AdditionalInterfaces.
+ //
++// The provided card is assumed to be trusted. Verifying AgentCard signatures is the card
++// resolver's responsibility, so fetch cards through the resolver before calling this method
++// when the card comes from an untrusted source.
++//
+ // The method fails if we couldn't establish a compatible transport.
+ func (f *Factory) CreateFromCard(ctx context.Context, card *a2a.AgentCard) (*Client, error) {
+ 	if len(card.SupportedInterfaces) == 0 {
+@@ -196,7 +200,7 @@ func (f *Factory) selectTransport(available []*a2a.AgentInterface) ([]transportC
+ 		if candidate != nil {
+ 			priority := len(f.config.PreferredTransports)
+ 			for j, clientPref := range f.config.PreferredTransports {
+-				if clientPref == a2a.TransportProtocol(opt.ProtocolBinding) {
++				if clientPref == opt.ProtocolBinding {
+ 					priority = j
+ 					break
+ 				}
+=== a2aclient/rest.go
+@@ -200,7 +200,7 @@ func (t *RESTTransport) GetTask(ctx context.Context, params ServiceParams, req *
+ 	path := rest.MakeGetTaskPath(string(req.ID))
+ 	q := url.Values{}
+ 	if req.HistoryLength != nil {
+-		q.Add("historyLength", strconv.Itoa(*req.HistoryLength))
++		q.Add(rest.QueryHistoryLength, strconv.Itoa(*req.HistoryLength))
+ 	}
+ 	if encoded := q.Encode(); encoded != "" {
+ 		path += "?" + encoded
+@@ -225,25 +225,25 @@ func (t *RESTTransport) ListTasks(ctx context.Context, params ServiceParams, req
+ 
+ 	query := url.Values{}
+ 	if req.ContextID != "" {
+-		query.Add("contextId", string(req.ContextID))
++		query.Add(rest.QueryContextID, req.ContextID)
+ 	}
+ 	if req.Status != "" {
+-		query.Add("status", string(req.Status))
++		query.Add(rest.QueryStatus, string(req.Status))
+ 	}
+ 	if req.PageSize != 0 {
+-		query.Add("pageSize", strconv.Itoa(req.PageSize))
++		query.Add(rest.QueryPageSize, strconv.Itoa(req.PageSize))
+ 	}
+ 	if req.PageToken != "" {
+-		query.Add("pageToken", string(req.PageToken))
++		query.Add(rest.QueryPageToken, req.PageToken)
+ 	}
+ 	if req.HistoryLength != nil {
+-		query.Add("historyLength", strconv.Itoa(*req.HistoryLength))
++		query.Add(rest.QueryHistoryLength, strconv.Itoa(*req.HistoryLength))
+ 	}
+ 	if req.StatusTimestampAfter != nil {
+-		query.Add("lastUpdatedAfter", req.StatusTimestampAfter.Format(time.RFC3339))
++		query.Add(rest.QueryStatusTimestampAfter, req.StatusTimestampAfter.Format(time.RFC3339))
+ 	}
+ 	if req.IncludeArtifacts {
+-		query.Add("includeArtifacts", "true")
++		query.Add(rest.QueryIncludeArtifacts, "true")
+ 	}
+ 
+ 	if encoded := query.Encode(); encoded != "" {
+@@ -339,7 +339,7 @@ func (t *RESTTransport) SendStreamingMessage(ctx context.Context, params Service
+ 
+ // GetTaskPushConfig implements [a2a.Transport].
+ func (t *RESTTransport) GetTaskPushConfig(ctx context.Context, params ServiceParams, req *a2a.GetTaskPushConfigRequest) (*a2a.PushConfig, error) {
+-	path := rest.MakeGetPushConfigPath(string(req.TaskID), string(req.ID))
++	path := rest.MakeGetPushConfigPath(string(req.TaskID), req.ID)
+ 	var config a2a.PushConfig
+ 
+ 	if err := t.doRequest(ctx, &restRequest{
+@@ -390,7 +390,7 @@ func (t *RESTTransport) CreateTaskPushConfig(ctx context.Context, params Service
+ 
+ // DeleteTaskPushConfig implements [a2a.Transport].
+ func (t *RESTTransport) DeleteTaskPushConfig(ctx context.Context, params ServiceParams, req *a2a.DeleteTaskPushConfigRequest) error {
+-	path := rest.MakeDeletePushConfigPath(string(req.TaskID), string(req.ID))
++	path := rest.MakeDeletePushConfigPath(string(req.TaskID), req.ID)
+ 	return t.doRequest(ctx, &restRequest{
+ 		method:  "DELETE",
+ 		params:  params,
+=== a2acompat/a2av0/conversions.go
+@@ -24,7 +24,6 @@ import (
+ 	"github.com/a2aproject/a2a-go/v2/a2a"
+ 	"github.com/a2aproject/a2a-go/v2/a2aclient"
+ 	"github.com/a2aproject/a2a-go/v2/a2asrv"
+-	"github.com/a2aproject/a2a-go/v2/internal/utils"
+ 	"github.com/a2aproject/a2a-go/v2/log"
+ 
+ 	a2alegacy "github.com/a2aproject/a2a-go/a2a"
+@@ -670,7 +669,7 @@ func FromV1SendMessageRequest(req *a2a.SendMessageRequest) *a2alegacy.MessageSen
+ 			AcceptedOutputModes: req.Config.AcceptedOutputModes,
+ 			HistoryLength:       req.Config.HistoryLength,
+ 		}
+-		res.Config.Blocking = utils.Ptr(!req.Config.ReturnImmediately)
++		res.Config.Blocking = new(!req.Config.ReturnImmediately)
+ 		if req.Config.PushConfig != nil {
+ 			legacyTaskPushConfig := FromV1PushConfig(req.Config.PushConfig)
+ 			res.Config.PushConfig = &legacyTaskPushConfig.Config
+@@ -925,7 +924,7 @@ func ToV1AgentCard(card *a2alegacy.AgentCard) *a2a.AgentCard {
+ 			ProtocolVersion: a2a.ProtocolVersion(card.ProtocolVersion),
+ 		}
+ 		if iface.ProtocolVersion == "" {
+-			iface.ProtocolVersion = a2a.ProtocolVersion(Version)
++			iface.ProtocolVersion = Version
+ 		}
+ 		ifaces = append(ifaces, iface)
+ 	}
+@@ -942,7 +941,7 @@ func ToV1AgentCard(card *a2alegacy.AgentCard) *a2a.AgentCard {
+ 			ifaces = append(ifaces, &a2a.AgentInterface{
+ 				URL:             ai.URL,
+ 				ProtocolBinding: a2a.TransportProtocol(ai.Transport),
+-				ProtocolVersion: a2a.ProtocolVersion(Version),
++				ProtocolVersion: Version,
+ 			})
+ 		}
+ 	}
+=== a2acompat/a2av0/jsonrpc_server.go
+@@ -334,7 +334,6 @@ func (h *jsonrpcHandler) onSendMessageStream(ctx context.Context, raw json.RawMe
+ 			}
+ 		}
+ 	}
+-
+ }
+ 
+ func (h *jsonrpcHandler) onGetTaskPushConfig(ctx context.Context, raw json.RawMessage) (*a2alegacy.TaskPushConfig, error) {
+=== a2aevent/diff.go
+@@ -17,6 +17,7 @@ package a2aevent
+ import (
+ 	"reflect"
+ 	"slices"
++	"time"
+ 
+ 	"github.com/a2aproject/a2a-go/v2/a2a"
+ )
+@@ -97,7 +98,14 @@ func hasStatusChanged(prevState *a2a.Task, state *a2a.Task) bool {
+ 	return s1.State != s2.State ||
+ 		((s1.Message != nil) != (s2.Message != nil)) ||
+ 		(s1.Message != nil && s1.Message.ID != s2.Message.ID) ||
+-		s1.Timestamp != s2.Timestamp
++		!timestampsEqual(s1.Timestamp, s2.Timestamp)
++}
++
++func timestampsEqual(t1, t2 *time.Time) bool {
++	if t1 == nil || t2 == nil {
++		return t1 == t2
++	}
++	return t1.Equal(*t2)
+ }
+ 
+ type partsDiff struct {
+=== a2apb/v0/pbconv/from_proto.go
+@@ -115,7 +115,7 @@ func fromProtoFilePart(pPart *a2apb.FilePart, meta map[string]any) (a2a.Part, er
+ 	switch f := pPart.GetFile().(type) {
+ 	case *a2apb.FilePart_FileWithBytes:
+ 		buf := make([]byte, base64.StdEncoding.DecodedLen(len(f.FileWithBytes)))
+-		n, err := base64.StdEncoding.Decode(buf, []byte(f.FileWithBytes))
++		n, err := base64.StdEncoding.Decode(buf, f.FileWithBytes)
+ 		if err != nil {
+ 			return a2a.Part{}, fmt.Errorf("failed to decode base64 string: %w", err)
+ 		}
+@@ -631,7 +631,7 @@ func fromProtoAdditionalInterfaces(pCard *a2apb.AgentCard) []*a2a.AgentInterface
+ 		interfaces[i+1] = &a2a.AgentInterface{
+ 			ProtocolBinding: a2a.TransportProtocol(pIface.GetTransport()),
+ 			URL:             pIface.GetUrl(),
+-			ProtocolVersion: a2a.ProtocolVersion(a2av0.Version),
++			ProtocolVersion: a2av0.Version,
+ 		}
+ 	}
+ 	return interfaces
+=== a2apb/v0/pbconv/to_proto.go
+@@ -757,7 +757,7 @@ func toProtoSecurityScheme(scheme a2a.SecurityScheme) (*a2apb.SecurityScheme, er
+ 		return &a2apb.SecurityScheme{
+ 			Scheme: &a2apb.SecurityScheme_HttpAuthSecurityScheme{
+ 				HttpAuthSecurityScheme: &a2apb.HTTPAuthSecurityScheme{
+-					Scheme:       string(s.Scheme),
++					Scheme:       s.Scheme,
+ 					Description:  s.Description,
+ 					BearerFormat: s.BearerFormat,
+ 				},
+@@ -899,7 +899,7 @@ func ToProtoAgentCard(card *a2a.AgentCard) (*a2apb.AgentCard, error) {
+ 	}
+ 
+ 	agentInterfaceIdx := slices.IndexFunc(card.SupportedInterfaces, func(i *a2a.AgentInterface) bool {
+-		return i.ProtocolVersion == a2a.ProtocolVersion(a2av0.Version)
++		return i.ProtocolVersion == a2av0.Version
+ 	})
+ 	if agentInterfaceIdx == -1 {
+ 		return nil, fmt.Errorf("at least 1 interface supporting %s must be listed", a2av0.Version)
+@@ -909,7 +909,7 @@ func ToProtoAgentCard(card *a2a.AgentCard) (*a2apb.AgentCard, error) {
+ 	result.PreferredTransport = string(card.SupportedInterfaces[agentInterfaceIdx].ProtocolBinding)
+ 	var additionalInterfaces []*a2a.AgentInterface
+ 	for i, iface := range card.SupportedInterfaces {
+-		if i == agentInterfaceIdx || iface.ProtocolVersion != a2a.ProtocolVersion(a2av0.Version) {
++		if i == agentInterfaceIdx || iface.ProtocolVersion != a2av0.Version {
+ 			continue
+ 		}
+ 		additionalInterfaces = append(additionalInterfaces, iface)
+=== a2apb/v1/pbconv/to_proto.go
+@@ -19,7 +19,6 @@ import (
+ 
+ 	"github.com/a2aproject/a2a-go/v2/a2a"
+ 	"github.com/a2aproject/a2a-go/v2/a2apb/v1"
+-	"google.golang.org/protobuf/proto"
+ 	"google.golang.org/protobuf/types/known/structpb"
+ 	"google.golang.org/protobuf/types/known/timestamppb"
+ )
+@@ -92,7 +91,7 @@ func toProtoSendMessageConfig(config *a2a.SendMessageConfig) (*a2apb.SendMessage
+ 		ReturnImmediately:          config.ReturnImmediately,
+ 	}
+ 	if config.HistoryLength != nil {
+-		pConf.HistoryLength = proto.Int32(int32(*config.HistoryLength))
++		pConf.HistoryLength = new(int32(*config.HistoryLength))
+ 	}
+ 	return pConf, nil
+ }
+@@ -110,7 +109,7 @@ func ToProtoGetTaskRequest(req *a2a.GetTaskRequest) (*a2apb.GetTaskRequest, erro
+ 	}
+ 
+ 	if req.HistoryLength != nil {
+-		result.HistoryLength = proto.Int32(int32(*req.HistoryLength))
++		result.HistoryLength = new(int32(*req.HistoryLength))
+ 	}
+ 
+ 	return result, nil
+@@ -154,7 +153,7 @@ func ToProtoGetTaskPushConfigRequest(req *a2a.GetTaskPushConfigRequest) (*a2apb.
+ 	return &a2apb.GetTaskPushNotificationConfigRequest{
+ 		Tenant: req.Tenant,
+ 		TaskId: string(req.TaskID),
+-		Id:     string(req.ID),
++		Id:     req.ID,
+ 	}, nil
+ }
+ 
+@@ -167,7 +166,7 @@ func ToProtoDeleteTaskPushConfigRequest(req *a2a.DeleteTaskPushConfigRequest) (*
+ 	return &a2apb.DeleteTaskPushNotificationConfigRequest{
+ 		Tenant: req.Tenant,
+ 		TaskId: string(req.TaskID),
+-		Id:     string(req.ID),
++		Id:     req.ID,
+ 	}, nil
+ }
+ 
+@@ -481,10 +480,10 @@ func ToProtoListTasksRequest(request *a2a.ListTasksRequest) (*a2apb.ListTasksReq
+ 		PageSize:             &pageSize,
+ 		PageToken:            request.PageToken,
+ 		StatusTimestampAfter: lastUpdatedAfter,
+-		IncludeArtifacts:     proto.Bool(request.IncludeArtifacts),
++		IncludeArtifacts:     new(request.IncludeArtifacts),
+ 	}
+ 	if request.HistoryLength != nil {
+-		pbReq.HistoryLength = proto.Int32(int32(*request.HistoryLength))
++		pbReq.HistoryLength = new(int32(*request.HistoryLength))
+ 	}
+ 	return pbReq, nil
+ }
+@@ -535,7 +534,6 @@ func ToProtoTaskPushConfig(config *a2a.PushConfig) (*a2apb.TaskPushNotificationC
+ 	}
+ 
+ 	return pConf, nil
+-
+ }
+ 
+ // ToProtoListTaskPushConfigResponse converts a [a2a.ListTaskPushConfigResponse] to a [a2apb.ListTaskPushNotificationConfigResponse].
+@@ -618,10 +616,10 @@ func toProtoCapabilities(capabilities a2a.AgentCapabilities) (*a2apb.AgentCapabi
+ 	}
+ 
+ 	result := &a2apb.AgentCapabilities{
+-		Streaming:         proto.Bool(capabilities.Streaming),
+-		PushNotifications: proto.Bool(capabilities.PushNotifications),
++		Streaming:         new(capabilities.Streaming),
++		PushNotifications: new(capabilities.PushNotifications),
+ 		Extensions:        extensions,
+-		ExtendedAgentCard: proto.Bool(capabilities.ExtendedAgentCard),
++		ExtendedAgentCard: new(capabilities.ExtendedAgentCard),
+ 	}
+ 	return result, nil
+ }
+@@ -732,7 +730,7 @@ func toProtoSecurityScheme(scheme a2a.SecurityScheme) (*a2apb.SecurityScheme, er
+ 		return &a2apb.SecurityScheme{
+ 			Scheme: &a2apb.SecurityScheme_HttpAuthSecurityScheme{
+ 				HttpAuthSecurityScheme: &a2apb.HTTPAuthSecurityScheme{
+-					Scheme:       string(s.Scheme),
++					Scheme:       s.Scheme,
+ 					Description:  s.Description,
+ 					BearerFormat: s.BearerFormat,
+ 				},
+=== a2asrv/agentexec.go
+@@ -225,7 +225,7 @@ func (f *factory) loadExecutionContext(ctx context.Context, tid a2a.TaskID, para
+ 	}
+ 
+ 	if storedTask.Status.State.Terminal() {
+-		return nil, fmt.Errorf("task in a terminal state %q: %w", storedTask.Status.State, a2a.ErrInvalidParams)
++		return nil, fmt.Errorf("task in a terminal state %q: %w", storedTask.Status.State, a2a.ErrUnsupportedOperation)
+ 	}
+ 
+ 	updateHistory := !slices.ContainsFunc(storedTask.History, func(m *a2a.Message) bool {
+=== a2asrv/handler.go
+@@ -370,7 +370,16 @@ func (h *defaultRequestHandler) SubscribeToTask(ctx context.Context, req *a2a.Su
+ 
+ 		subscription, err := h.execManager.Resubscribe(ctx, req.ID)
+ 		if err != nil {
+-			yield(nil, fmt.Errorf("%w: %w", a2a.ErrTaskNotFound, err))
++			storedTask, getErr := h.taskStore.Get(ctx, req.ID)
++			if getErr != nil || storedTask == nil {
++				yield(nil, fmt.Errorf("%w: %w", a2a.ErrTaskNotFound, err))
++				return
++			}
++			if storedTask.Task.Status.State.Terminal() {
++				yield(nil, fmt.Errorf("task in a terminal state %q: %w", storedTask.Task.Status.State, a2a.ErrUnsupportedOperation))
++				return
++			}
++			yield(storedTask.Task, nil)
+ 			return
+ 		}
+ 
+=== a2asrv/intercepted_handler.go
+@@ -255,8 +255,8 @@ func interceptAfter[T any](ctx context.Context, interceptors []CallInterceptor,
+ 	response := &Response{Payload: payload, Err: responseErr}
+ 
+ 	var zero T
+-	for i := len(interceptors) - 1; i >= 0; i-- {
+-		if err := interceptors[i].After(ctx, callCtx, response); err != nil {
++	for _, interceptor := range slices.Backward(interceptors) {
++		if err := interceptor.After(ctx, callCtx, response); err != nil {
+ 			return zero, err
+ 		}
+ 	}
+=== a2asrv/rest.go
+@@ -136,7 +136,7 @@ func (h *restHandler) handleGetTask(taskID string, rw http.ResponseWriter, req *
+ 		return
+ 	}
+ 
+-	historyLength, err := parseIntOpt(req.URL.Query(), "historyLength")
++	historyLength, err := parseIntOpt(req.URL.Query(), rest.QueryHistoryLength)
+ 	if err != nil {
+ 		writeRESTError(ctx, rw, a2a.ErrInvalidRequest, a2a.TaskID(taskID))
+ 		return
+@@ -163,35 +163,35 @@ func (h *restHandler) handleListTasks(rw http.ResponseWriter, req *http.Request)
+ 	ctx := req.Context()
+ 	query := req.URL.Query()
+ 
+-	pageSize, err := parseInt(query, "pageSize")
++	pageSize, err := parseInt(query, rest.QueryPageSize)
+ 	if err != nil {
+ 		writeRESTError(ctx, rw, a2a.ErrInvalidRequest, a2a.TaskID(""))
+ 		return
+ 	}
+ 
+-	includeArtifacts, err := parseBool(query, "includeArtifacts")
++	includeArtifacts, err := parseBool(query, rest.QueryIncludeArtifacts)
+ 	if err != nil {
+ 		writeRESTError(ctx, rw, a2a.ErrInvalidRequest, a2a.TaskID(""))
+ 		return
+ 	}
+ 
+-	historyLength, err := parseIntOpt(query, "historyLength")
++	historyLength, err := parseIntOpt(query, rest.QueryHistoryLength)
+ 	if err != nil {
+ 		writeRESTError(ctx, rw, a2a.ErrInvalidRequest, a2a.TaskID(""))
+ 		return
+ 	}
+ 
+-	statusTimestampAfter, err := parseTimeOpt(query, "statusTimestampAfter")
++	statusTimestampAfter, err := parseTimeOpt(query, rest.QueryStatusTimestampAfter)
+ 	if err != nil {
+ 		writeRESTError(ctx, rw, a2a.ErrInvalidRequest, a2a.TaskID(""))
+ 		return
+ 	}
+ 
+ 	request := &a2a.ListTasksRequest{
+-		ContextID:            query.Get("contextId"),
+-		Status:               a2a.TaskState(query.Get("status")),
++		ContextID:            query.Get(rest.QueryContextID),
++		Status:               a2a.TaskState(query.Get(rest.QueryStatus)),
+ 		PageSize:             pageSize,
+-		PageToken:            query.Get("pageToken"),
++		PageToken:            query.Get(rest.QueryPageToken),
+ 		HistoryLength:        historyLength,
+ 		StatusTimestampAfter: statusTimestampAfter,
+ 		IncludeArtifacts:     includeArtifacts,
+@@ -422,7 +422,6 @@ func (h *restHandler) handleGetTaskPushConfig(rw http.ResponseWriter, req *http.
+ 	if err := json.NewEncoder(rw).Encode(result); err != nil {
+ 		log.Error(ctx, "failed to encode response", err)
+ 	}
+-
+ }
+ 
+ func (h *restHandler) handleListTaskPushConfigs(rw http.ResponseWriter, req *http.Request) {
+=== a2asrv/signed_card.go
+@@ -0,0 +1,72 @@
++// Copyright 2025 The A2A Authors
++//
++// Licensed under the Apache License, Version 2.0 (the "License");
++// you may not use this file except in compliance with the License.
++// You may obtain a copy of the License at
++//
++//     http://www.apache.org/licenses/LICENSE-2.0
++//
++// Unless required by applicable law or agreed to in writing, software
++// distributed under the License is distributed on an "AS IS" BASIS,
++// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++// See the License for the specific language governing permissions and
++// limitations under the License.
++
++package a2asrv
++
++import (
++	"context"
++	"encoding/json"
++	"fmt"
++
++	"github.com/a2aproject/a2a-go/v2/a2a"
++	"github.com/a2aproject/a2a-go/v2/a2acrypto"
++)
++
++// SignerResolverFunc is used for dynamic signer resolution.
++type SignerResolverFunc func(context.Context) ([]*a2acrypto.Signer, error)
++
++// NewSignedCardProducer wraps an AgentCardProducer to automatically sign every
++// produced AgentCard before returning it.
++//
++// Signer are resolved on every call, so keys can be rotated without restarting the server:
++// a card is signed once per currently-resolved key, and each signature is added to the produced card.
++// The card returned by the wrapped producer is left unmodified.
++func NewSignedCardProducer(wrapped AgentCardProducer, sr SignerResolverFunc) AgentCardProducer {
++	return &signedCardProducer{signerResolver: sr, wrapped: wrapped}
++}
++
++type signedCardProducer struct {
++	signerResolver SignerResolverFunc
++	wrapped        AgentCardProducer
++}
++
++// Card implements [AgentCardProducer].
++func (p *signedCardProducer) Card(ctx context.Context) (*a2a.AgentCard, error) {
++	card, err := p.wrapped.Card(ctx)
++	if err != nil {
++		return nil, err
++	}
++	raw, err := json.Marshal(card)
++	if err != nil {
++		return nil, fmt.Errorf("failed to marshal agent card: %w", err)
++	}
++	signers, err := p.signerResolver(ctx)
++	if err != nil {
++		return nil, fmt.Errorf("failed to resolve signers: %w", err)
++	}
++	var sigs []*a2a.AgentCardSignature
++	for i, signer := range signers {
++		sig, err := signer.Sign(ctx, raw)
++		if err != nil {
++			return nil, fmt.Errorf("failed to sign agent card with key %d: %w", i, err)
++		}
++		sigs = append(sigs, sig)
++	}
++	cardCopy := *card
++	cardCopy.Signatures = append([]a2a.AgentCardSignature(nil), card.Signatures...)
++	for _, sig := range sigs {
++		cardCopy.Signatures = append(cardCopy.Signatures, *sig)
++	}
++	return &cardCopy, nil
++}
+=== internal/rest/rest.go
+@@ -30,6 +30,17 @@ import (
+ 	"github.com/a2aproject/a2a-go/v2/internal/utils"
+ )
+ 
++// Query parameter names for the v1 HTTP+JSON binding.
++const (
++	QueryContextID            = "contextId"
++	QueryStatus               = "status"
++	QueryPageSize             = "pageSize"
++	QueryPageToken            = "pageToken"
++	QueryHistoryLength        = "historyLength"
++	QueryStatusTimestampAfter = "statusTimestampAfter"
++	QueryIncludeArtifacts     = "includeArtifacts"
++)
++
+ // PathBuilder constructs REST paths for A2A endpoints, optionally rooted
+ // under a version prefix. The zero value builds v1.0 paths (no prefix); the
+ // v0.3 compat binding uses NewPathBuilder("/v1") to prepend "/v1" to every
+=== internal/utils/utils.go
+@@ -26,8 +26,10 @@ import (
+ )
+ 
+ // Ptr returns a pointer to the argument simplifying pointer to primitive literals creation.
++//
++//go:fix inline
+ func Ptr[T any](v T) *T {
+-	return &v
++	return new(v)
+ }
+ 
+ // DeepCopy uses gob encode-decode pass to create a deep-copy of the referenced data.
+=== log/a2a_format.go
+@@ -46,7 +46,7 @@ func DefaultA2ATypeFormatter(val any) (slog.Value, bool) {
+ 			attrs = append(attrs, slog.String("task_id", string(v.TaskID)))
+ 		}
+ 		if v.ContextID != "" {
+-			attrs = append(attrs, slog.String("context_id", string(v.ContextID)))
++			attrs = append(attrs, slog.String("context_id", v.ContextID))
+ 		}
+ 		attrs = append(attrs, slog.Int("parts", len(v.Parts)))
+ 		return slog.GroupValue(attrs...), true
+@@ -57,7 +57,7 @@ func DefaultA2ATypeFormatter(val any) (slog.Value, bool) {
+ 		}
+ 		return slog.GroupValue(
+ 			slog.String("task_id", string(v.TaskID)),
+-			slog.String("context_id", string(v.ContextID)),
++			slog.String("context_id", v.ContextID),
+ 			slog.String("state", v.Status.State.String()),
+ 		), true
+ 
+@@ -67,7 +67,7 @@ func DefaultA2ATypeFormatter(val any) (slog.Value, bool) {
+ 		}
+ 		attrs := []slog.Attr{
+ 			slog.String("task_id", string(v.TaskID)),
+-			slog.String("context_id", string(v.ContextID)),
++			slog.String("context_id", v.ContextID),
+ 		}
+ 		if v.Artifact != nil {
+ 			attrs = append(attrs, slog.String("artifact_id", string(v.Artifact.ID)))

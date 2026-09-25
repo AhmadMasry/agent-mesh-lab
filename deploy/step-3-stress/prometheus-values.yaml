@@ -8,20 +8,20 @@
 # selector below, none of it repeated here; it is read with
 # `git show 896917a:deploy/step-3-stress-nohelm/prometheus.yaml`.
 #
-# Chart: prometheus-community/prometheus 29.31.1, appVersion v3.14.0, from
+# Chart: prometheus-community/prometheus 29.33.1, appVersion v3.15.0, from
 # https://prometheus-community.github.io/helm-charts. Pinned in versions.yaml under
-# prometheus-chart with the URLs read in this session. appVersion v3.14.0 is the
-# Prometheus version this lab already counted against, so the chart route does not
-# move Prometheus. Moved on 2026-09-19 (follow-ups 19) from 29.28.1, the chart this
-# file was written against; rendered with this file at both versions, the six objects
-# differ in the chart label and in one added pod annotation
-# (kubectl.kubernetes.io/default-container), and the chart's defaults named below
-# read the same at 29.31.1.
+# prometheus-chart with the URLs read in this session. Moved on 2026-09-19 (follow-ups
+# 19) from 29.28.1, the chart this file was written against, to 29.31.1 (appVersion
+# v3.14.0), and on 2026-09-25 (the currency pass of that day) to 29.33.1, whose
+# appVersion v3.15.0 is the Prometheus release this pass moved to. Rendered with this
+# file at 29.31.1 and 29.33.1, the six objects differ in the chart label and the
+# app.kubernetes.io/version label alone, and the chart's defaults named below read the
+# same at 29.33.1 (experiments/runs/2026-09-25-currency-pass/local/renders.txt).
 #
 # Scope rule 6, twice over. This chart is the one in the set that would otherwise
 # bring components this lab does not admit: four subcharts, every one of them
 # enabled in the chart's own defaults, and a configmap-reload sidecar. Chart.yaml at
-# 29.31.1 declares each subchart with a `condition`, so each is turned off by the
+# 29.33.1 declares each subchart with a `condition`, so each is turned off by the
 # key named in that condition, and all five disables are below and are counted in
 # the findings entry by `helm template | grep -c kind:`.
 alertmanager:
@@ -58,7 +58,7 @@ server:
   # runs and the scan record names, so the two routes run the same bytes.
   image:
     repository: prom/prometheus
-    tag: v3.14.0
+    tag: v3.15.0
 
   # `global` in the pod's prometheus.yml is written from this key and from nowhere
   # else, and a `global` given under serverFiles."prometheus.yml" as well is not

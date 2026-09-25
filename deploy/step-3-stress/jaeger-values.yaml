@@ -8,12 +8,13 @@
 # configuration and the query API, none of it repeated here; it is read with
 # `git show 896917a:deploy/step-3-stress-nohelm/jaeger.yaml`.
 #
-# Chart: jaegertracing/jaeger 4.13.1, appVersion 2.20.0, from
+# Chart: jaegertracing/jaeger 4.14.0, appVersion 2.21.0, from
 # https://jaegertracing.github.io/helm-charts. Pinned in versions.yaml under
 # trace-backend-chart with the URLs read in this session. The brief asked whether a
 # chart version runs Jaeger v2 all-in-one with in-memory storage the way the manifest
-# does: 4.13.1 does, and it is the chart's default behaviour rather than something
-# configured here.
+# does: 4.13.1 did, and it is the chart's default behaviour rather than something
+# configured here; rendered with this file, 4.14.0's output differs from 4.13.1's in the
+# chart and version labels alone (experiments/runs/2026-09-25-currency-pass/local/renders.txt).
 #
 #   - `jaeger.enabled` is true and `jaeger.replicas` is 1 in the chart's own
 #     defaults, and the rendered objects are one ServiceAccount, one Service and one
@@ -32,21 +33,17 @@
 #     could not add a component unnoticed (scope rule 6).
 #
 # The image is pinned rather than left to the chart's appVersion default. Since
-# 2026-09-19 (follow-ups 19, every pin at its latest stable release) the tag is 2.21.0,
-# one release ahead of the appVersion of the newest chart: the chart index read that
-# day lists 4.13.1 (appVersion 2.20.0) as its newest entry and no chart names 2.21.0.
-# `jaeger.image.tag` is the chart's own value for this; its values file says of the
-# tag, "Overrides the image tag where default is the chart appVersion". Rendered with
-# this file, the chart's output at the two tags differs in the image line alone, and
-# the 2.21.0 image reaches ready with a read-only root filesystem
-# (experiments/runs/2026-09-19-currency-pass/local/telemetry-images.txt). Jaeger 2.21.0
-# removed four legacy HTTP query endpoints (jaegertracing/jaeger#9260: /api/services,
-# /api/operations, /api/services/{service}/operations and the /api/traces search); this
-# lab's tools read /api/v3/traces, which is not among them. Findings entries and scan
-# records up to 2026-09-19 name 2.20.0. If the pairing of image 2.21.0 with chart 4.13.1
-# fails on the rebuilt cluster, the fallback is to set this tag back to 2.20.0, the
-# chart's appVersion, until a chart names 2.21.0, and the findings entry says so; the
-# walkthrough's /api/v3/services line answers the same on both versions and would stay.
+# 2026-09-19 (follow-ups 19, every pin at its latest stable release) the tag is 2.21.0.
+# That day it was one release ahead of the appVersion of the newest chart (4.13.1,
+# appVersion 2.20.0); since the currency pass of 2026-09-25 the chart is 4.14.0, whose
+# appVersion is 2.21.0, so the tag and the chart's default name the same release and the
+# tag is kept so the image stays written here. `jaeger.image.tag` is the chart's own
+# value for this; its values file says of the tag, "Overrides the image tag where default
+# is the chart appVersion". Jaeger 2.21.0 removed four legacy HTTP query endpoints
+# (jaegertracing/jaeger#9260: /api/services, /api/operations,
+# /api/services/{service}/operations and the /api/traces search); this lab's tools read
+# /api/v3/traces, which is not among them. Findings entries and scan records up to
+# 2026-09-19 name 2.20.0.
 
 # Release name `jaeger` in namespace `telemetry` already gives the Service the name
 # `jaeger`, which is what the collector's exporter

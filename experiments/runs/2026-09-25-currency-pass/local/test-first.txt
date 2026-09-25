@@ -1,0 +1,18 @@
+# 2026-09-25T17:01:16Z test first, fixtures/loadgen/stream_test.go TestModes_AgainstTheA2AGoServer, each run in a git archive copy (go test -count=1 -run TestModes_AgainstTheA2AGoServer ./fixtures/loadgen)
+## 1. the test as it was (b72f2246) against a2a-go v2.6.0 (the tree of 96e5ab1a): expected to FAIL
+	github.com/a2aproject/a2a-go/v2 v2.6.0
+--- FAIL: TestModes_AgainstTheA2AGoServer (0.31s)
+    stream_test.go:923: subscription to the finished task: exit 3, end map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:<port>] card_protocol_versions:[1.0] card_streaming:true content_type:text/event-stream dialled_url:http://127.0.0.1:<port> error:task in a terminal state "TASK_STATE_COMPLETED": this operation is not supported events:0 first_kind: first_state: first_task_id: http_status:200 last_kind: last_state: ledger:client line:end logical_work_item_id:lwi-b3 messageId: method:SubscribeToTask mode:subscribe posts:1 requested_task_id:<uuid> stream_end:error taskId:<uuid> terminal_seen:false ts:2026-09-25T17:01:18.420143Z ts_sent:2026-09-25T17:01:18.419744Z wire_error_code:-32004 wire_error_message:task in a terminal state "TASK_STATE_COMPLETED": this operation is not supported]; want no event and the wire code -32001
+FAIL
+FAIL	github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen	0.783s
+FAIL
+## 2. the changed test against a2a-go v2.5.0 (the tree of b72f2246): expected to FAIL
+	github.com/a2aproject/a2a-go/v2 v2.5.0
+--- FAIL: TestModes_AgainstTheA2AGoServer (0.31s)
+    stream_test.go:926: subscription to the finished task: exit 3, end map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:<port>] card_protocol_versions:[1.0] card_streaming:true content_type:text/event-stream dialled_url:http://127.0.0.1:<port> error:task not found: no active execution events:0 first_kind: first_state: first_task_id: http_status:200 last_kind: last_state: ledger:client line:end logical_work_item_id:lwi-b3 messageId: method:SubscribeToTask mode:subscribe posts:1 requested_task_id:<uuid> stream_end:error taskId:<uuid> terminal_seen:false ts:2026-09-25T17:01:19.807288Z ts_sent:2026-09-25T17:01:19.806796Z wire_error_code:-32001 wire_error_message:task not found: no active execution]; want no event and the wire code -32004
+    stream_test.go:929: the wire text of the refusal does not name the terminal state: map[a2a_version:1.0 advertised_urls:[http://127.0.0.1:<port>] card_protocol_versions:[1.0] card_streaming:true content_type:text/event-stream dialled_url:http://127.0.0.1:<port> error:task not found: no active execution events:0 first_kind: first_state: first_task_id: http_status:200 last_kind: last_state: ledger:client line:end logical_work_item_id:lwi-b3 messageId: method:SubscribeToTask mode:subscribe posts:1 requested_task_id:<uuid> stream_end:error taskId:<uuid> terminal_seen:false ts:2026-09-25T17:01:19.807288Z ts_sent:2026-09-25T17:01:19.806796Z wire_error_code:-32001 wire_error_message:task not found: no active execution]
+FAIL
+FAIL	github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen	0.680s
+FAIL
+## 3. the changed test against a2a-go v2.6.0 (the tree of 96e5ab1a): expected to PASS
+ok  	github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen

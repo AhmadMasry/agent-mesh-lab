@@ -186,7 +186,7 @@ func Transport(base http.RoundTripper) http.RoundTripper {
 // them. Those conventions live in their own repository,
 // open-telemetry/semantic-conventions-genai, and every name and rule used here
 // was read from docs/gen-ai/gen-ai-spans.md and docs/gen-ai/gen-ai-agent-spans.md
-// at commit c88d504ab3d9879f8e50d3cc87e69775e11db234 (versions.yaml,
+// at commit e57c543b4889619eb2a05702471937db5119165d (versions.yaml,
 // genai-semantic-conventions). Both pages read **Status: Development**.
 //
 // Go has no such instrumentation to install: opentelemetry-go-contrib carries no

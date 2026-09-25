@@ -108,23 +108,22 @@ helm-required:
 # Chart versions. Every one of these, and every values key the values files use, was
 # read from a document in the session that added it and is recorded in versions.yaml
 # with that URL. They are not the component versions: each chart's appVersion is the
-# component version this lab already counted against, which is why these four chart
-# versions and no others. Since 2026-09-19 (follow-ups 19) that sentence holds for Istio
-# and Prometheus only: the collector image (0.161.0) and the Jaeger image (2.21.0) are
-# each one release ahead of the appVersion of the newest chart that exists (0.173.1 ->
-# 0.160.0, 4.13.1 -> 2.20.0), set through each chart's own image tag value in the values
-# files; versions.yaml records the chart index reads under opentelemetry-collector-chart
-# and trace-backend-chart. No chart release names either image yet. If either pairing
-# fails on the rebuilt cluster, the fallback is to set that image's tag back to its
-# chart's appVersion in the values file until a chart names the newer release; these
-# chart versions stay either way.
-ISTIO_CHART_VERSION          := 1.31.0
+# component version this lab counts against, with one exception. Since 2026-09-19
+# (follow-ups 19) the collector image (0.161.0) is one release ahead of the appVersion of
+# the newest chart that exists (0.173.1 -> 0.160.0), set through the chart's own image tag
+# value in its values file; versions.yaml records the chart index reads under
+# opentelemetry-collector-chart. The Jaeger image (2.21.0) was in the same position until
+# the currency pass of 2026-09-25, when chart 4.14.0 named 2.21.0 as its appVersion. If
+# the collector pairing fails on a rebuilt cluster, the fallback is to set that image's
+# tag back to its chart's appVersion in the values file until a chart names the newer
+# release; these chart versions stay either way.
+ISTIO_CHART_VERSION          := 1.31.1
 ISTIO_CHART_REPO             := https://blob.istio.io/istio-release/charts
 OTEL_COLLECTOR_CHART_VERSION := 0.173.1
 OTEL_COLLECTOR_CHART_REPO    := https://open-telemetry.github.io/opentelemetry-helm-charts
-JAEGER_CHART_VERSION         := 4.13.1
+JAEGER_CHART_VERSION         := 4.14.0
 JAEGER_CHART_REPO            := https://jaegertracing.github.io/helm-charts
-PROMETHEUS_CHART_VERSION     := 29.31.1
+PROMETHEUS_CHART_VERSION     := 29.33.1
 PROMETHEUS_CHART_REPO        := https://prometheus-community.github.io/helm-charts
 
 .PHONY: cluster-kind cluster-eks step-1 step-2 step-2b step-2c step-3 verify-baseline teardown ledgers matrix replay replay-waypoint replay-ingress export-trace retry-on retry-off test orchestrator-image scan-images
@@ -222,7 +221,7 @@ step-1: check-go-sources-clean orchestrator-image
 	kubectl -n $(NAMESPACE) annotate --overwrite deployment/worker deployment/mockllm lab.agent-mesh/go-sources=$(GO_SOURCES_HASH)
 
 # step-2: Istio Ambient for L4, and agentgateway under its OWN control plane as the waypoint.
-# Versions come from versions.yaml (gateway-api v1.6.2 experimental; istio 1.31.0 through its
+# Versions come from versions.yaml (gateway-api v1.6.2 experimental; istio 1.31.1 through its
 # four Helm charts; agentgateway v1.5.0 through its two Helm charts, whose appVersion is the
 # proxy the controller deploys).
 #
@@ -253,9 +252,9 @@ step-2: helm-required check-go-sources-clean orchestrator-image
 	# and those reads were recorded with the client at the pinned version, so the
 	# client on PATH is held to the pin here.
 	istioctl version --remote=false
-	istioctl version --remote=false | grep -q 1.31.0 || { echo "istioctl on PATH is not the pinned 1.31.0 (see versions.yaml)" >&2; exit 1; }
+	istioctl version --remote=false | grep -q 1.31.1 || { echo "istioctl on PATH is not the pinned 1.31.1 (see versions.yaml)" >&2; exit 1; }
 	# Istio, by Helm (see the HELM comment at the top of this file): the four charts the
-	# ambient Helm install page installs, in the page's order, each pinned to 1.31.0 and
+	# ambient Helm install page installs, in the page's order, each pinned to 1.31.1 and
 	# each from the repository URL that page's `helm repo add` line gives. `--repo` is
 	# used instead of `helm repo add` so the target adds nothing to the user's Helm
 	# configuration. `helm upgrade -i` rather than the page's `helm install`, so a re-run

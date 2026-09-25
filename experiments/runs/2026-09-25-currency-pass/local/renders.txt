@@ -1,0 +1,68 @@
+# 2026-09-25T17:00:27Z helm template of every moved chart at its old and new version with the lab's values (the Makefile's release names, namespaces and values flags), in a Helm environment of this task's own (empty repositories file, empty caches); the values files are b72f2246's on both sides, so what differs is the chart
+# helm: v4.3.0+gbec5b06
+## base 1.31.0 -> 1.31.1: objects 17 -> 17; changed lines 68; after masking the version strings (s/1\.31\.[01]/1.31.X/g): 0
+## istiod 1.31.0 -> 1.31.1: objects 17 -> 17; changed lines 116; after masking the version strings (s/1\.31\.[01]/1.31.X/g): 38
+    <             image: "{{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy_init.image }}"
+    >             image: {{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy_init.image | quote }}
+    <             - "--log_output_level={{ annotation .ObjectMeta `sidecar.istio.io/agentLogLevel` .Values.global.logging.level }}"
+    >             - {{ printf "--log_output_level=%s" (annotation .ObjectMeta `sidecar.istio.io/agentLogLevel` .Values.global.logging.level) | quote }}
+    <             image: "{{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image }}"
+    >             image: {{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image | quote }}
+    <             - --proxyLogLevel={{ annotation .ObjectMeta `sidecar.istio.io/logLevel` .Values.global.proxy.logLevel }}
+    <             - --proxyComponentLogLevel={{ annotation .ObjectMeta `sidecar.istio.io/componentLogLevel` .Values.global.proxy.componentLogLevel }}
+    <             - --log_output_level={{ annotation .ObjectMeta `sidecar.istio.io/agentLogLevel` .Values.global.logging.level }}
+    >             - {{ printf "--proxyLogLevel=%s" (annotation .ObjectMeta `sidecar.istio.io/logLevel` .Values.global.proxy.logLevel) | quote }}
+    >             - {{ printf "--proxyComponentLogLevel=%s" (annotation .ObjectMeta `sidecar.istio.io/componentLogLevel` .Values.global.proxy.componentLogLevel) | quote }}
+    >             - {{ printf "--log_output_level=%s" (annotation .ObjectMeta `sidecar.istio.io/agentLogLevel` .Values.global.logging.level) | quote }}
+    <               name: {{ annotation .ObjectMeta `sidecar.istio.io/bootstrapOverride` "" }}
+    >               name: {{ annotation .ObjectMeta `sidecar.istio.io/bootstrapOverride` "" | quote }}
+    <             image: "{{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image }}"
+    >             image: {{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image | quote }}
+    <             - --proxyLogLevel={{ annotation .ObjectMeta `sidecar.istio.io/logLevel` .Values.global.proxy.logLevel }}
+    <             - --proxyComponentLogLevel={{ annotation .ObjectMeta `sidecar.istio.io/componentLogLevel` .Values.global.proxy.componentLogLevel }}
+    <             - --log_output_level={{ annotation .ObjectMeta `sidecar.istio.io/agentLogLevel` .Values.global.logging.level }}
+    >             - {{ printf "--proxyLogLevel=%s" (annotation .ObjectMeta `sidecar.istio.io/logLevel` .Values.global.proxy.logLevel) | quote }}
+    >             - {{ printf "--proxyComponentLogLevel=%s" (annotation .ObjectMeta `sidecar.istio.io/componentLogLevel` .Values.global.proxy.componentLogLevel) | quote }}
+    >             - {{ printf "--log_output_level=%s" (annotation .ObjectMeta `sidecar.istio.io/agentLogLevel` .Values.global.logging.level) | quote }}
+    <               name: {{ annotation .ObjectMeta `sidecar.istio.io/bootstrapOverride` "" }}
+    >               name: {{ annotation .ObjectMeta `sidecar.istio.io/bootstrapOverride` "" | quote }}
+    <             image: "{{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image }}"
+    >             image: {{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image | quote }}
+    <             - --proxyLogLevel={{ annotation .ObjectMeta `sidecar.istio.io/logLevel` .Values.global.proxy.logLevel }}
+    <             - --proxyComponentLogLevel={{ annotation .ObjectMeta `sidecar.istio.io/componentLogLevel` .Values.global.proxy.componentLogLevel }}
+    <             - --log_output_level={{ annotation .ObjectMeta `sidecar.istio.io/agentLogLevel` .Values.global.logging.level }}
+    >             - {{ printf "--proxyLogLevel=%s" (annotation .ObjectMeta `sidecar.istio.io/logLevel` .Values.global.proxy.logLevel) | quote }}
+    >             - {{ printf "--proxyComponentLogLevel=%s" (annotation .ObjectMeta `sidecar.istio.io/componentLogLevel` .Values.global.proxy.componentLogLevel) | quote }}
+    >             - {{ printf "--log_output_level=%s" (annotation .ObjectMeta `sidecar.istio.io/agentLogLevel` .Values.global.logging.level) | quote }}
+    <               name: {{ annotation .ObjectMeta `sidecar.istio.io/bootstrapOverride` "" }}
+    >               name: {{ annotation .ObjectMeta `sidecar.istio.io/bootstrapOverride` "" | quote }}
+    <                 image: "{{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image }}"
+    >                 image: {{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image | quote }}
+    <                 image: "{{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image }}"
+    >                 image: {{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image | quote }}
+## cni 1.31.0 -> 1.31.1: objects 9 -> 9; changed lines 44; after masking the version strings (s/1\.31\.[01]/1.31.X/g): 0
+## ztunnel 1.31.0 -> 1.31.1: objects 2 -> 2; changed lines 14; after masking the version strings (s/1\.31\.[01]/1.31.X/g): 0
+## jaeger 4.13.1 -> 4.14.0: objects 3 -> 3; changed lines 12; after masking the version strings (s/jaeger-4\.1[34]\.[01]/jaeger-4.X/g;s/"2\.2[01]\.0"/"2.2X.0"/g): 0
+## prometheus 29.31.1 -> 29.33.1: objects 6 -> 6; changed lines 28; after masking the version strings (s/29\.3[13]\.1/29.X/g;s/v3\.1[45]\.0/v3.1X.0/g): 0
+## images named in the new renderings
+   2 image:
+   2 image: "{{ .AgentgatewayImage }}"
+   5 image: "{{ .ProxyImage }}"
+   1 image: "{{ .ProxyInitImage }}"
+   2 image: "{{ annotation .ObjectMeta `gateway.istio.io/agentgatewayImage` .Values.global.agentgateway.image }}"
+   1 image: "docker.io/istio/install-cni:1.31.1-distroless"
+   1 image: "docker.io/istio/pilot:1.31.1-distroless"
+   1 image: "docker.io/istio/ztunnel:1.31.1-distroless"
+   1 image: "prom/prometheus:v3.14.0"
+   1 image: {{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy_init.image | quote }}
+   5 image: {{ annotation .ObjectMeta `sidecar.istio.io/proxyImage` .Values.global.proxy.image | quote }}
+   1 image: busybox:1.28
+   1 image: jaegertracing/jaeger:2.21.0
+## this tree's values files against b72f2246's, at the new chart versions
+### prometheus 29.33.1
+    260c260
+    <           image: "prom/prometheus:v3.14.0"
+    ---
+    >           image: "prom/prometheus:v3.15.0"
+### jaeger 4.14.0 (the values file's comments changed, not its values)
+    identical

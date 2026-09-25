@@ -1,0 +1,39 @@
+# 2026-09-25T17:06:14Z the lines impact.md section 3 rests on, as grep reads them in this tree
+## the task id each SubscribeToTask driver names
+experiments/runs/2026-09-23-c8-body-rule/c8.sh:86:	TASK="no-such-task-$LWI"
+experiments/runs/2026-09-23-c6-httproute/sends.sh:12:#           st   the load client, MODE=subscribe, TASK_ID naming no task: ONE SubscribeToTask. A refusal happens
+experiments/runs/2026-09-23-c6-httproute/sends.sh:78:TASK="no-such-task-$LWI"
+experiments/runs/2026-09-24-d2-bindings/sends.sh:16:#              st   the load client, MODE=subscribe, TASK_ID naming no task: ONE SubscribeToTask
+experiments/runs/2026-09-24-d2-bindings/sends.sh:75:TASK="no-such-task-$LWI"
+experiments/runs/2026-09-24-c10-application/c10.sh:15:#      SubscribeToTask naming no task (st), load-client SendStreamingMessage (ss), curl SubscribeToTask (cst).
+experiments/runs/2026-09-25-d3b-extauthz-shapes/d3b.sh:32:#       task named by no task, "cst's body" is cst's JSON-RPC body:
+experiments/runs/2026-09-25-d3b-extauthz-shapes/d3b.sh:228:TASK="no-such-task-$LWI"
+experiments/runs/2026-09-24-d3-extauthz/d3.sh:202:TASK="no-such-task-$LWI"
+## C-7's driver: lines naming SubscribeToTask or subscribe (none expected)
+0
+## the replay harness's body: its fields
+func buildBody(id, messageID, lwi, text string) ([]byte, error) {
+	req := a2areq.Build(lwi, text)
+	req.Message.ID = messageID
+	b, err := json.Marshal(clientRequest{
+		JSONRPC: jsonRPCVersion,
+		Method:  methodSendMessage,
+		Params:  req,
+		ID:      id,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal the request body: %w", err)
+	}
+	return b, nil
+}
+## the entries' own words on the running Task at each arrival
+- ## Experiment B / both receivers / B-3, `SubscribeToTask` during a running task — Does ONE `SubscribeToTask`,  :: 0 ms), so the Task was running at every arrival, 40 of 40
+- ## Experiment B / both receivers / B-4, the control with no proxy event — does the task still reach COMPLETED  :: 9 ms before the completed line, so **the Task was running at every Job 2 arrival, 40 of 40**, and Job 2 always went out after Job 1's end line
+- ## Experiment B / both receivers / B-5b, the agentgateway ingress removed under an open stream — does ONE `Sub :: 1 ms before the Task's terminal state**, so **the Task was running at every one of the 40 arrivals**; Job 1's stream had already ended at the instant Job 2
+- ## Experiment B / both receivers / B-5b, `agw-central` removed under an open stream — can ONE `SubscribeToTask :: 0 ms (go) before the Task's terminal state**, so `task_running_at_sub_arrival` is yes in 40 of 40, and `job1_stream_at_job2_apply` is **`<still open>`** in 40 of 40 — Job 2 went out while Job 1's s
+- ## Experiment B / both receivers / D-1, B-5b's rollout variant — with the agentgateway ingress replaced by a r :: - The Task was running at every arrival: its terminal state came 39 775
+## MODEL_MAX_RETRIES in the matrix: set to 1 by R3, R4 and R4/service only (MODEL_KNOB_VALUE; l.237 is the default, empty)
+237:MODEL_KNOB_VALUE=""
+315:	MODEL_KNOB_VALUE="1"
+324:	MODEL_KNOB_VALUE="1"
+352:	MODEL_KNOB_VALUE="1"
