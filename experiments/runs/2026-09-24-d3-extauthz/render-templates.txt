@@ -1,0 +1,62 @@
+# pod templates of each Deployment, consecutive steps, rendered 2026-09-25T00:38:02Z from the checked-out deploy subtree 79215f271637fe701c24758f5116204ebd52c89e
+# (the built commit b45cafdd's deploy subtree is 79215f271637fe701c24758f5116204ebd52c89e: equal)
+extauthz step-1-nomesh -> step-2-ambient-agw: absent at step-1-nomesh
+extauthz step-2-ambient-agw -> step-2b-agw-ingress-egress: absent at step-2-ambient-agw
+extauthz step-2b-agw-ingress-egress -> step-2c-gate2: identical
+extauthz step-2c-gate2 -> step-3-stress: identical
+worker step-1-nomesh -> step-2-ambient-agw: identical
+worker step-2-ambient-agw -> step-2b-agw-ingress-egress: DIFFERS
+    >         - name: MODEL_BASE_URL
+    >           value: http://model.lab.internal:8080/v1
+    <         - name: MODEL_BASE_URL
+    <           value: http://mockllm.lab.svc.cluster.local:8080/v1
+worker step-2b-agw-ingress-egress -> step-2c-gate2: identical
+worker step-2c-gate2 -> step-3-stress: DIFFERS
+    >         - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    >           value: http://otel-collector.telemetry.svc.cluster.local:4318
+    >         - name: OTEL_SERVICE_NAME
+    >           value: worker
+mockllm step-1-nomesh -> step-2-ambient-agw: identical
+mockllm step-2-ambient-agw -> step-2b-agw-ingress-egress: identical
+mockllm step-2b-agw-ingress-egress -> step-2c-gate2: identical
+mockllm step-2c-gate2 -> step-3-stress: DIFFERS
+    >         - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    >           value: http://otel-collector.telemetry.svc.cluster.local:4318
+    >         - name: OTEL_SERVICE_NAME
+    >           value: mockllm
+orchestrator step-1-nomesh -> step-2-ambient-agw: identical
+orchestrator step-2-ambient-agw -> step-2b-agw-ingress-egress: DIFFERS
+    >         - name: MODEL_BASE_URL
+    >           value: http://model.lab.internal:8080/v1
+    >         - name: PUBLIC_URL
+    >           value: http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local
+    >         - name: PUBLIC_GRPC_URL
+    >           value: agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80
+    <         - name: PUBLIC_URL
+    <           value: http://orchestrator.lab.svc.cluster.local:8080
+    <         - name: PUBLIC_GRPC_URL
+    <           value: orchestrator.lab.svc.cluster.local:8081
+    <         - name: MODEL_BASE_URL
+    <           value: http://mockllm.lab.svc.cluster.local:8080/v1
+orchestrator step-2b-agw-ingress-egress -> step-2c-gate2: identical
+orchestrator step-2c-gate2 -> step-3-stress: DIFFERS
+    >         - name: OTEL_SERVICE_NAME
+    >           value: orchestrator
+    >         - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    >           value: http://otel-collector.telemetry.svc.cluster.local:4318
+    >         - name: OTEL_EXPORTER_OTLP_PROTOCOL
+    >           value: http/protobuf
+    >         - name: OTEL_TRACES_EXPORTER
+    >           value: otlp
+    >         - name: OTEL_METRICS_EXPORTER
+    >           value: none
+    >         - name: OTEL_LOGS_EXPORTER
+    >           value: none
+    >         - name: OTEL_PROPAGATORS
+    >           value: tracecontext,baggage
+    >         - name: OTEL_TRACES_SAMPLER
+    >           value: always_on
+    >         - name: OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST
+    >           value: X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller
+    >         - name: OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST
+    >           value: X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller

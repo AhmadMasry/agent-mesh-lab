@@ -1,0 +1,16 @@
+# agentgateway/agentgateway #1848, #3212, #2162 read by number (review-d3 I3), 2026-09-25T00:43:41Z; core rate limit before: {"limit":60,"remaining":41,"reset":1790298133,"used":19}
+## #1848 [pr] state=closed state_reason=null created=2026-05-15T19:59:23Z closed=2026-05-18T22:40:44Z
+title: proxy: translate errors into gRPC errors for gRPC requests
+body: This gives more useful context to gRPC clients. This is only for internally generated errors. We fallback to standard gRPC mapping but can explicitly set the error type for specific errors too
+merged=true merged_at=2026-05-18T22:40:44Z merge_commit_sha=3501883511d6d87461d0ad3cdee2628847b6219a
+compare v1.5.0...3501883511d6d87461d0ad3cdee2628847b6219a: behind ahead_by=0 behind_by=749 (behind or identical: v1.5.0 contains it)
+## #3212 [issue] state=closed state_reason=completed created=2026-08-27T19:42:48Z closed=2026-09-01T00:33:40Z
+title: ext_proc never emits Frame::trailers, so gRPC grpc-status is dropped on every request
+body: ## Summary  agentgateway's `ext_proc` filter never emits a trailers frame downstream, so **gRPC's `grpc-status` — which lives in trailers — is dropped on every request routed through an ext_proc-enabled route.** Clients see headers and a body but no status, and fail with `UNKNOWN: Stream removed`, while the gateway logs `http.status=200` with no error at all.  `Frame::trailers` appears zero times in `crates/agentgateway/src/http/ext_proc.rs`. Confirmed on **v1.0.0** and **v1.4.1**.  This makes GAIE `InferencePool` routing unusable for any gRPC inference API (KServe v2 / Triton, and anything else gRPC-based), because attaching an Endpoint Picker means attaching ext_proc.  ## What happens  Bot
+## #2162 [pr] state=open state_reason=null created=2026-06-10T22:24:43Z closed=null
+title: proxy: do not leak error info to clients
+body: Today we have 1 representation of errors. This puts us in a dilemma - we cannot expose useful info since it gets exposed to clients, but then we cannot see useful info in debugging logs.  This splits the errors to have two representations: and internal and external one. The external ones are pretty opaque - more opaque than envoy though perhaps less opaque than nginx.   This opens us up to being more descriptive in our errors but I didn't do so.  
+merged=false merged_at=null merge_commit_sha=null
+## #847 [issue] state=open created=2026-01-16T15:27:55Z
+title: Unintuitive ext_authz grpc metadata handling
+body: While working on #678 to re-implement `ext_authz` metadata for `ext_proc`, I encountered several issues with the current agentgateway authz gRPC implementation.  Envoy's gRPC core [Metadata](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/core/v3/base.proto#config-core-v3-metadata) type used for `metadata_context` requests requires values to be namespaced. As a result, the following config doesn't work without using a CEL expression to return an object instead of a value.  This problem is only visible when enabling `RUST_LOG=info,agentgateway::http::ext_authz=trace`, which shows the values being dropped with encoding errors.  ## Example error: `trace   http::ext_authz failed to eva

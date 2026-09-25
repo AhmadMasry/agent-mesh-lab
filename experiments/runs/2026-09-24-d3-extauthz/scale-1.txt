@@ -1,0 +1,31 @@
+
+# read 2026-09-24T23:56:15Z
+$ kubectl -n lab scale deploy/extauthz --replicas=1
+deployment.apps/extauthz scaled
+# exit 0
+
+# read 2026-09-24T23:56:15Z
+$ kubectl -n lab rollout status deploy/extauthz --timeout=120s
+Waiting for deployment "extauthz" rollout to finish: 0 of 1 updated replicas are available...
+deployment "extauthz" successfully rolled out
+# exit 0
+
+# read 2026-09-24T23:56:18Z
+$ kubectl -n lab wait --for=condition=Ready pod -l app=extauthz --timeout=120s
+pod/extauthz-56cc898b74-w5d4c condition met
+# exit 0
+
+# read 2026-09-24T23:56:18Z
+$ kubectl -n lab get deploy extauthz -o wide --no-headers
+extauthz   1/1   1     1     36m   extauthz   kind.local/extauthz-a6fd0adf6a8a419bfe7dae02450617d3:ee8d1740abf73711eca50b88176f03b8ef808f362ac63c80d7ee73aff662deb0   app=extauthz
+# exit 0
+
+# read 2026-09-24T23:56:18Z
+$ kubectl -n lab get pods -l app=extauthz -o wide --no-headers
+extauthz-56cc898b74-w5d4c   1/1   Running   0     3s    10.244.1.156   agent-mesh-lab-worker   <none>   <none>
+# exit 0
+
+# read 2026-09-24T23:56:18Z
+$ kubectl -n lab get endpointslices -l kubernetes.io/service-name=extauthz -o jsonpath='{range .items[*]}{.metadata.name}{" endpoints="}{.endpoints}{"\n"}{end}'
+extauthz-rrx8p endpoints=[{"addresses":["10.244.1.156"],"conditions":{"ready":true,"serving":true,"terminating":false},"nodeName":"agent-mesh-lab-worker","targetRef":{"kind":"Pod","name":"extauthz-56cc898b74-w5d4c","namespace":"lab","uid":"0b990957-d9eb-4a9f-b37c-2d76eef55d32"}}]
+# exit 0

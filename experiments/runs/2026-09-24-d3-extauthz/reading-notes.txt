@@ -1,0 +1,138 @@
+Follow-on D-3: reading notes for this run directory. Stamps UTC from date -u. The findings entries that cite it are the three
+"Experiment C / both receivers / D-3, ..." entries of 2026-09-24/25.
+
+THE TREE. Three code commits on branch experiment-d3 on top of c6c9f35e, named by subject:
+  "test(loadgen): pin grpc.WithDisableServiceConfig by behaviour, D-2's carried review item"
+  "feat(extauthz): the lab's external-authorization fixture, one rule read per binding, its decision ledger before every
+   answer, with go-control-plane/envoy v1.39.0 pinned"
+  "feat(deploy): the extauthz fixture standing from step 2b in lab, enrolled, its port marked h2c, in make ledgers beside
+   the three and in make scan-images"
+The built tree is the third one's; build.txt lists every deployed subtree id beside the tree D-2's second rebuild proved
+(main's deployed paths at c6c9f35e equal those of that tree: git diff over the deployed paths is empty).
+
+THE REBUILD AND THE PROOF.
+  rebuild.sh, build.txt, timings.csv, rebuild-driver.txt  D-2's driver adapted (its header says in what). All seven make
+               targets exited 0, 23:15:56Z to 23:21:38Z. Tools: a lab-scoped istioctl 1.31.0 extracted in this task from the
+               tarball D-2 used (sha256 a0c4d353..., equal to the release checksum file re-fetched 2026-09-24T23:15:18Z) and an
+               empty Helm scope. Nothing on the host changed.
+  proof.sh     D-2's, adapted (header, scratch and tool paths, LASTPROOF = D-2's directory). It ran checks.sh part1, the
+               versions readback, checks.sh knobs and the unedited comparison program, each once, exit 0.
+  standard-counts-vs-last-proof.txt  same=64 DIFFERS=3, all three of the timing kind every proof has named:
+    - of the common legs, connection counts equal on 23 against 24: the Prometheus scrape of the ingress's metrics port,
+      17 against 16 (one connection per 15 s scrape since Prometheus started, read at another elapsed time);
+    - other ztunnel error lines 14 against 13, and of them "no healthy upstream" 11 against 10: all 11 to dst.addr
+      10.96.154.169:4318, the collector's Service, stamped 23:20:25.36Z to 23:20:35.36Z inside step-3 while the collector
+      was starting.
+  What the program does not compare, and D-3 adds: Deployment/lab/extauthz and Service/lab/extauthz (1/1 Running from
+  step 2b; cluster/facts.txt lists no lab pod, so 0 lines there); an extauthz.jsonl, 0 bytes, in each clean-check
+  collection; the stamp lab.agent-mesh/go-sources, whose value moved with the go.mod change and the added path.
+  Why the extauthz pod did not roll at step 2c or step 3 while the worker and the mock rolled at step 3: its rendered pod
+  template is byte-identical 2b -> 2c -> 3, and the worker's and the mock's gain OTEL_EXPORTER_OTLP_ENDPOINT and
+  OTEL_SERVICE_NAME at step 3 (render-templates.sh -> render-templates.txt); ko resolved one image digest per binary for
+  every build of the tree, so the image line did not change either (replicasets.txt: one extauthz ReplicaSet from 2b, which
+  the setting changes of the run later reused, and worker revisions 1 to 4 at step 1, the step-2 restart, 2b's
+  MODEL_BASE_URL and step 3's two OTEL settings).
+  NOT COMMITTED: checks.sh's byte copies of itself, checks.sh.as-run-20260924T232159Z-part1 and
+  checks.sh.as-run-20260924T232532Z-knobs, both sha256 4056b5596883187fe1a7b0528a833f533437aaf93760ee6a8130215ddd16224b,
+  the committed file's hash (experiments/runs/2026-09-20-experiment-a-agentgateway-only/checks.sh). They stay in a scratch
+  directory, as every earlier proof's did.
+
+THE CODE PROOF (code-proof/).
+  mutant-M01-loadgen.txt   the loadgen mutant dropping grpc.WithDisableServiceConfig: the new test fails (DeadlineExceeded).
+  mutants.py, mutants-extauthz.txt   15 mutants of the fixture, each run against go test ./fixtures/extauthz, all killed.
+               X04 (the ledger line written after the answer) was first killed only by a build failure; it was rewritten to
+               compile (a deferred write) and killed by TestCheck_NoLineNoAnswer: mutant-X04-compiling.txt.
+  module-lists.txt   go list -deps module paths and versions of worker, mockllm, loadgen and replay at c6c9f35e and at the
+               built tree: equal, so the go.mod move reaches no existing binary.
+  render-proof.sh, render-proof-results.txt   every overlay under deploy/ rendered at c6c9f35e and at the built tree,
+               object by object: every existing object byte-identical in all 14; the only additions Deployment/lab/extauthz
+               and Service/lab/extauthz in step 2b, 2c and 3.
+  fake-kubectl.sh.txt, ledgers-fake-kubectl.txt   make ledgers run against a stand-in kubectl first on PATH (no cluster):
+               the fixture present, absent, and a work item with only fixture lines.
+
+THE FILES OF THE RUN.
+  d3.sh        the one row driver (its header says what it was adapted from and each subcommand). rows.sh  the stages.
+  overlay-d3-extauthz/   the four AgentgatewayPolicies, never under deploy/.
+  phases.txt   every stage, setting change, scale and send, one line each, in order.
+  <phase>/<work item>/   one directory per send: client.jsonl, the Job or the curl request (padded bodies: their first 400
+               and last 40 bytes only), ingress-access.txt and agw-central-access.txt (the proxies' access lines since the send
+               began), ingress-log-window.txt (every ingress line of that window), extauthz-window.txt (every decision line the
+               fixture wrote since the send began), and the collection make ledgers wrote (ingress, execution, invocation,
+               client, extauthz). The batch probes' bodies carry no identity and the receivers' ledgers take none from the
+               header for a batch, so their receiver lines are found by the body hash the client recorded:
+               ingress-by-body-hash.txt.
+  readings-<label>.txt, config-dump-<proxy>-<label>.json   every AgentgatewayPolicy with its status, AuthorizationPolicies,
+               retry stanzas, the fixture's replicas and env, the lab pods, the fixture's decision-line count, the controller
+               log, both proxies' non-request lines of the last 3 minutes, and both dumps with the objects carrying extAuthz.
+  setting-allow.txt, setting-deny.txt, scale-0.txt, scale-1.txt   the fixture's changes, each with the pods before and after.
+  hop-deny-row1.txt, hop-deny-row1-raw.txt   the ingress-to-extauthz leg: ztunnel's workload view, PeerAuthentication,
+               and istio_tcp_connections_opened_total read through experiments/runs/2026-09-12-mtls-enforced/promq.sh.
+               (Its ztunnel-log grep read one ztunnel pod only, kubectl logs ds/ picking one, and found nothing.)
+  hop-ztunnel-lines.txt   the same leg in ztunnel's own connection lines, every ztunnel pod, --tail=-1, read after the rows:
+               4 lines, HBONE to <pod>:15008 for <pod>:9000, with source and destination identity.
+  trace-extauthz/   join.csv: for each of the 190 access lines of the deny and allow windows, its trace id and span id, the
+               ExtAuthz spans in that trace with their grpc.status, parent, service, span.kind, http.path and http.host (the
+               attributes added in the review round, re-read from the trace backend 2026-09-25T00:37Z, review-d3 M10), and
+               whether the fixture's request_id resolves to a trace; four traces kept whole as <trace id>.json (a delivered
+               SendMessage, two refused SubscribeToTask, and one fixture request_id, empty).
+               Final review round (review-d3 M10): extauthz-spans.jsonl (190 lines, 150,531 bytes), exported 2026-09-25T00:46Z
+               by export.sh from the same trace backend, not rebuilt since, holds the ExtAuthz span of each trace with its
+               parent reference, service and tags, and the fixture request_id's span count (the backend answers 404 for an id
+               it holds nothing under; read as 0). derive-join.py writes join.csv from it alone; its 190 rows equal the
+               backend read of 00:37Z as a set, and only their order changed (the send directories' sorted order).
+  render-templates.sh, render-templates.txt, replicasets.txt   the no-roll reading above.
+  shapes/, after-2/, after-2-driver.txt, readings-shapes-*.txt, config-dump-*-shapes-*.json   the review round's row.
+  upstream-search-grpc-deny.txt   the search before docs/upstream/agentgateway-extauth-denied-response-to-grpc-client.md
+               (review-d3 I2): 16 queries, none throttled; Envoy v1.39.1's source for the comparison is cited in sources.txt.
+               A second pass of 12 (review-d3 I3) found agentgateway#1848, which the first pass missed; the dated line in the
+               file says how. agw-pr1848-3212-2162.txt holds #1848, #3212, #2162 and #847 read by number (sign-off addresses
+               removed).
+  render-templates.txt's header names the deploy subtree it rendered, 79215f27..., equal to the built commit b45cafdd's
+               (review-d3 M11).
+  agw-pr3426.txt   agentgateway#3426 read by number, and which releases contain it (the sign-off line's address removed).
+  after/, after-driver.txt   the clean check after every stage, by the committed gate2-single-clean.sh.
+  counts.py -> counts.csv, counts.txt   reads only this directory. No figure is computed from an access-line stamp.
+  sources.txt  every document and source file read, with stamps and hashes; upstream-search.txt, gwapi-4198.txt,
+               gwapi-4198-comments.txt, agw-pr1589.txt  the search before the draft.
+  sleep-events.sh, sleep-events.csv   D-2's recorder, unedited: 0 Sleep, Wake, DarkWake or Maintenance events
+               2026-09-24T22:56:24Z (the task's first fetch) to 2026-09-25T00:47:22Z.
+
+THE WINDOWS, one fixture setting each (every decision line carries the setting; counts.txt's last lines count them):
+  p0       23:26:31Z-23:26:37Z  nothing applied; 2 curl SendMessage, 0 decision lines.
+  deny     23:26:44Z-23:38:56Z  overlay applied 23:26:45Z; fixture deny (pod extauthz-56cc898b74-qjv7r); 130 sends, 180
+           decision lines, all deny.
+  allow    23:39:23Z-23:39:56Z  set env EXTAUTHZ_UNDECIDABLE=allow 23:39:23Z, rollout finished 23:39:25Z (pod
+           extauthz-59849f5467-vd5wz); 10 sends, 10 decision lines, all allow.
+  unavail  23:40:07Z-23:56:19Z  set back to deny 23:40:07Z-23:40:08Z (pod extauthz-56cc898b74-pfngh); scaled to 0
+           23:40:09Z-23:40:11Z, no pod, the Service's EndpointSlice endpoints=null; 20 sends; 0 decision lines; scaled to 1
+           23:56:15Z-23:56:18Z, pod extauthz-56cc898b74-w5d4c, condition Ready met, env deny, 0 decision lines in its log.
+  off      23:56:32Z  overlay removed; 0 objects carrying extAuthz in either dump.
+  shapes   00:27:09Z-00:28:53Z  added in the review round (review-d3 I1), on the same cluster, no rebuild: the overlay applied
+           again 00:27:10Z, fixture at deny (pod extauthz-56cc898b74-w5d4c); per receiver 5 curl each of the shapes the fixture's
+           rule does not read (d3.sh xp, xa, xg, xr for go; xg, xr for py, whose JSON-RPC route cannot match /x or /a2a/v1);
+           30 sends, 30 decision lines, all deny setting, all allowed; overlay removed 00:28:44Z; 0 objects carrying extAuthz
+           after (readings-shapes-*.txt). The clean check after it: after-2/, 1/1/1/1/1 at both receivers, extauthz.jsonl 0 bytes.
+  In all 192 sends (162, then the review round's 30), one per Job or curl, nothing re-sent.
+
+WHAT DIFFERS FROM THE PLAN, OR NEEDS A WORD
+  - make ledgers in the unavailable window took 42.7 s median per send (42.7 to 42.9 s from the Job's end, including the
+    collection's 2 s pause; 46.0 s median from the send's start; driver stamps in steps.txt, counts.txt's last line) and exited 0: the Deployment exists with no pod, so
+    kubectl logs deploy/extauthz waits for one and then fails, and the collection reports the fixture's ledger missing
+    (ledgers-stderr.txt). The send itself was answered in 0 ms by the proxy's access line.
+  - The load client on the Go path reads the agent card through the same ingress route, so under the unavailable authorizer
+    its card GET is refused and no POST is sent (client line "resolve card: card request failed, status: 403 Forbidden").
+    On the Python path the card GET crosses agw-central, where no policy is applied, and the POST is refused.
+  - REST and gRPC rows used the load client only; no curl REST subscription was sent (D-2 sent one).
+  - source_principal is empty on every decision line: the ingress accepts each request in plaintext from its own ztunnel,
+    so the connection it holds has no peer certificate, which is C-7's reading for source.identity on the same hop.
+  - The gRPC SendMessage checks read body_len 135 against size 133: the proxy forwards the protobuf frame as lossy UTF-8
+    (ext_authz.rs l.442-455), and two bytes became three-byte replacement characters.
+
+LINE ENDINGS: the curl response and header files hold HTTP header lines, CRLF on the wire; this checkout's core.autocrlf is
+input, so the committed files end them in LF. counts.py reads either. counts.csv is written by Python's csv module, which
+ends rows in CRLF; the committed file ends them in LF, so a re-run of counts.py reproduces it byte for byte only after CR
+removal (tr -d '\r'); counts.txt reproduces byte for byte.
+
+THE CLUSTER LEFT: at step 3, nothing applied: the four deployed AgentgatewayPolicies only, 0 AuthorizationPolicy, 0 retry
+stanzas, extauthz at 1 replica with EXTAUTHZ_UNDECIDABLE=deny, the curl pod deleted. The finished Job pods of this step's
+sends remain, as every earlier run's have.

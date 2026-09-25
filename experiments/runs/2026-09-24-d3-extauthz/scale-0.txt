@@ -1,0 +1,25 @@
+
+# read 2026-09-24T23:40:09Z
+$ kubectl -n lab scale deploy/extauthz --replicas=0
+deployment.apps/extauthz scaled
+# exit 0
+
+# read 2026-09-24T23:40:09Z
+$ kubectl -n lab wait --for=delete pod -l app=extauthz --timeout=120s
+pod/extauthz-56cc898b74-pfngh condition met
+# exit 0
+
+# read 2026-09-24T23:40:11Z
+$ kubectl -n lab get deploy extauthz -o wide --no-headers
+extauthz   0/0   0     0     20m   extauthz   kind.local/extauthz-a6fd0adf6a8a419bfe7dae02450617d3:ee8d1740abf73711eca50b88176f03b8ef808f362ac63c80d7ee73aff662deb0   app=extauthz
+# exit 0
+
+# read 2026-09-24T23:40:11Z
+$ kubectl -n lab get pods -l app=extauthz -o wide --no-headers
+No resources found in lab namespace.
+# exit 0
+
+# read 2026-09-24T23:40:11Z
+$ kubectl -n lab get endpointslices -l kubernetes.io/service-name=extauthz -o jsonpath='{range .items[*]}{.metadata.name}{" endpoints="}{.endpoints}{"\n"}{end}'
+extauthz-rrx8p endpoints=null
+# exit 0

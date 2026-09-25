@@ -1,0 +1,18 @@
+#4198 [closed] External Auth feedback created 2025-10-23T17:32:43Z pr=false
+```
+	// It is expected that implementations will buffer the request body up to
+	// `forwardBody.maxSize` bytes. Bodies over that size must be rejected with a
+	// 4xx series error (413 or 403 are common examples), and fail processing
+	// of the filter.
+```
+
+```
+	// MaxSize specifies how large in bytes the largest body that will be buffered
+	// and sent to the authorization server. If the body size is larger than
+	// `maxSize`, then the body sent to the authorization server must be
+	// truncated to `maxSize` bytes.
+```
+
+These two are contradictory. We should clarify which is the expected behavior.
+
+While we are at it: the gRPC protobuf has a `body` and `raw_body`. We don't specify which to set. Do we want to intentionally leave this unspecified?

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# fake kubectl for the ledgers recipe test: canned logs per deployment
+case "$*" in
+  "get deploy/extauthz -n lab") [ -n "$FAKE_NO_EXTAUTHZ" ] && exit 1; exit 0;;
+  "logs deploy/worker -n lab") printf '%s\n' '{"ledger":"ingress","logical_work_item_id":"w1","messageId":"m","taskId":""}' '2026 plain log line';;
+  "logs deploy/orchestrator -n lab") :;;
+  "logs deploy/mockllm -n lab") :;;
+  "logs deploy/extauthz -n lab") printf '%s\n' '2026/09/24 extauthz listening' '{"ledger":"extauthz","logical_work_item_id":"w1","taskId":"t1","decision":"deny"}' '{"ledger":"extauthz","logical_work_item_id":"other","taskId":"","decision":"allow"}';;
+  *) exit 0;;
+esac

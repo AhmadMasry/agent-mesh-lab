@@ -1,0 +1,160 @@
+# Job template for the a2a-go load client with the A.2 retry knobs set.
+#
+# Same Job as loadgen-job.yaml, and deliberately the same Job NAME
+# (loadgen-deny-rest-go-st-d3a-2), so `make ledgers LWI=<id>` collects its client lines from
+# the pods labelled job-name=loadgen-<id> without knowing which template
+# produced them. The one difference is the CLIENT_* environment variables below.
+#
+# Like loadgen-job.yaml it is NOT listed in the base kustomization: a Job in the
+# overlay would run on every apply, and each repetition needs its own Job named
+# after its work item. experiments/gate2-a2.sh and experiments/gate3-matrix.sh
+# substitute deny-rest-go-st-d3a-2, http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local, 0, off,
+# transport and target and pipe the result to `ko apply -f -`.
+#
+# All four are always rendered, and the values that mean "off" (0, off, the
+# default mode transport, and an empty CLIENT_DIAL) are what every substitution
+# that is not the layer under test writes, so a run can never leave a knob on by
+# omitting it. The loadgen binary treats anything that is not a positive integer,
+# or not exactly "on", or not exactly "transport+503", as the default; that is
+# asserted by TestKnobs_DefaultOff, TestKnobs_UnreadableValuesLeaveTheKnobOff and
+# TestKnobs_RetryOnModeIsAskedForByName.
+#
+# CLIENT_DIAL is not a retry knob: it says where the one send goes. Empty, the
+# client dials the URL the agent card advertises, which is what every run before
+# 2026-09-19 did; "target" dials TARGET_URL, for the matrix's SUB=service rows.
+# Unlike the three above, any other value, an unsubstituted placeholder included,
+# stops the Job before it sends (TestDialFromEnv), so a template rendered by a
+# script that does not know this variable fails loudly rather than sending.
+#
+# MODE and TASK_ID (added on 2026-09-21, for Experiment B) say WHAT the one
+# request is: empty, the SendMessage every earlier row sent; MODE=stream one
+# SendStreamingMessage; MODE=subscribe one SubscribeToTask for TASK_ID. Both are
+# rendered empty by every script that renders this template and is not a B row
+# (experiments/gate2-a2.sh, experiments/gate3-matrix.sh), and the client reads
+# empty as unset (TestMode_DefaultOff). Like CLIENT_DIAL, any other value, an
+# unsubstituted placeholder included, stops the Job before it sends
+# (TestModeFromEnv_KnownValuesAndRefusals), and so does either mode with a retry
+# knob on (TestMode_RetryKnobsAreRefusedOnAStreamOrASubscription).
+#
+# CANCEL_AFTER_MS (added on 2026-09-22, for Experiment B's control row, B-4)
+# says whether the one stream is cancelled by the client itself: empty, never;
+# a positive whole number k with MODE=stream, the stream's request context is
+# cancelled k ms after the send, once, and nothing is sent after it
+# (fixtures/loadgen/cancel.go). It is rendered empty by every script that
+# renders this template and is not a B-4 row, and the client reads empty as
+# off (TestCancel_DefaultOff). Any other value, an unsubstituted placeholder
+# included, stops the Job before it sends, and so does the setting with any
+# mode but MODE=stream (TestCancelFromEnv_AnythingElseIsRefused,
+# TestCancelFromEnv_RefusedWithAnyModeButStream).
+#
+# CLIENT_HOST (added on 2026-09-22, the author's note of that date in
+# docs/proposal-notes.md) says which host every request of the Job names:
+# empty, the host of each request's URL, as every row before it; a bare host
+# name, that name as the Host of the card GET and of every POST, in every mode,
+# with nothing else on the request changed (fixtures/loadgen/main.go). It is for
+# Experiment B's Go rows through the agentgateway ingress, whose route to the
+# worker matches the host worker.lab.internal. It is rendered empty by every
+# script that renders this template and is not such a row, and the client reads
+# empty as off (TestHost_DefaultOff). Like CLIENT_DIAL, any value that is not a
+# bare host name, an unsubstituted placeholder included, stops the Job before it
+# sends (TestHostFromEnv_AnythingElseIsRefused).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: loadgen-deny-rest-go-st-d3a-2
+  namespace: lab
+  labels:
+    app: loadgen
+    lwi: "deny-rest-go-st-d3a-2"
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: loadgen
+        lwi: "deny-rest-go-st-d3a-2"
+    spec:
+      restartPolicy: Never
+      # No workload of ours talks to the Kubernetes API -- the agents serve A2A, the
+      # fixtures speak HTTP to each other and to the mock -- so the ServiceAccount
+      # token the kubelet mounts by default is a credential with no reader. It is not
+      # mounted.
+      automountServiceAccountToken: false
+      # Read-only root filesystem and non-root for every container of ours, applied
+      # once here so every overlay inherits it. uid:gid 65532:65532 is one uid for
+      # the whole lab: it is the uid of the distroless static nonroot base .ko.yaml
+      # pins for the Go images (read from that image's config: User=65532), and
+      # agents/orchestrator/Dockerfile creates the same uid for the Python agent.
+      # No writable volume is declared. That is a measurement, not an assumption:
+      # agents/, fixtures/ and internal/ grep clean of file writes (os.Create,
+      # os.WriteFile, os.OpenFile, tempfile, open(..., "w")) -- every ledger line is
+      # JSON on stdout -- and the orchestrator image was started with
+      # `docker run --read-only` before this was applied
+      # (experiments/runs/2026-09-10-images-rebuilt/readonly-proofs.txt). If a
+      # container ever does need a path to write, the emptyDir goes at that one path
+      # with a comment naming the measured write.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: loadgen
+          image: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:48512c70e99d73e5b0b83c4c0b8dd93c8043eeceb9cfce69117742524d0f0ab6
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          env:
+            - name: TARGET_URL
+              value: "http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local"
+            - name: LWI
+              value: "deny-rest-go-st-d3a-2"
+            - name: TEXT
+              value: "hello"
+            # Tracing. The load client emits spans only when it is told where to
+            # send them, so these two are what start a work item's trace at the
+            # client. The endpoint is set unconditionally: on a cluster without the
+            # telemetry namespace (steps 1, 2, 2b, 2c) the client's exporter has
+            # nowhere to flush and its exit waits on the provider shutdown for up to
+            # 30 s (fixtures/loadgen/main.go); the ledgers and counts are unaffected.
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector.telemetry.svc.cluster.local:4318"
+            - name: OTEL_SERVICE_NAME
+              value: "loadgen"
+            # CLIENT_BINDING and CLIENT_GRPC_AUTHORITY (added by follow-on D-2):
+            # the binding the one request is sent on, and the gRPC call's
+            # :authority (fixtures/loadgen/binding.go). Empty is off -- JSON-RPC,
+            # and the dialled host -- and is what every row renders; they are
+            # literal values, not placeholders, so no script that substitutes
+            # this template changes. A D-2 row sets them in its own rendered
+            # copy. Any other value stops the client before anything is sent.
+            - name: CLIENT_BINDING
+              value: "rest"
+            - name: CLIENT_GRPC_AUTHORITY
+              value: ""
+            - name: CLIENT_RETRIES
+              value: "0"
+            - name: CLIENT_SDK_RESEND
+              value: "off"
+            - name: CLIENT_RETRY_ON
+              value: "transport"
+            - name: CLIENT_DIAL
+              value: "target"
+            - name: CLIENT_HOST
+              value: "worker.lab.internal"
+            - name: MODE
+              value: "subscribe"
+            - name: TASK_ID
+              value: "no-such-task-deny-rest-go-st-d3a-2"
+            - name: CANCEL_AFTER_MS
+              value: ""
