@@ -1,0 +1,178 @@
+$ make step-3
+helm: /opt/homebrew/bin/helm
+== certificate check ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           c1a4e6469202093cbb27b9bb0f110bb0     2026-10-02T21:56:23Z     2026-09-25T21:54:23Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     2036-09-22T21:53:10Z     2026-09-25T21:53:10Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           5c19bd4f6c12f150b27883b1fe6034fe     2026-10-02T21:54:12Z     2026-09-25T21:52:12Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     2036-09-22T21:53:10Z     2026-09-25T21:53:10Z
+spiffe://cluster.local/ns/lab/sa/orchestrator                              Leaf     Available     true           da12095ea536d14456fddcf398b8763d     2026-10-02T21:54:04Z     2026-09-25T21:52:04Z
+spiffe://cluster.local/ns/lab/sa/orchestrator                              Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     2036-09-22T21:53:10Z     2026-09-25T21:53:10Z
+spiffe://cluster.local/ns/lab/sa/worker                                    Leaf     Available     true           7a348251734584a1ba72f1732e5fb936     2026-10-02T21:54:04Z     2026-09-25T21:52:04Z
+spiffe://cluster.local/ns/lab/sa/worker                                    Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     2036-09-22T21:53:10Z     2026-09-25T21:53:10Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/worker and spiffe://cluster.local/ns/lab/sa/orchestrator; ztunnel not restarted
+# The telemetry components, by Helm (see the HELM comment at the top of this file):
+# each of the three from its project's chart, pinned above, with its values file in
+# deploy/step-3-stress. The namespace is created by the configuration overlay, which
+# is applied first so `--create-namespace` is not needed and the namespace's own
+# labels are the overlay's.
+step-3: telemetry via Helm (/opt/homebrew/bin/helm); collector chart 0.173.1, jaeger chart 4.14.0, prometheus chart 29.33.1
+kubectl kustomize deploy/step-3-stress | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/26 00:57:42 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/extauthz
+2026/09/26 00:57:42 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+2026/09/26 00:57:42 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+2026/09/26 00:57:43 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-25-walkthrough/
+
+2026/09/26 00:57:43 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-25-walkthrough/
+
+2026/09/26 00:57:43 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/extauthz for linux/arm64/v8
+2026/09/26 00:57:43 Building github.com/AhmadMasry/agent-mesh-lab/agents/worker for linux/arm64/v8
+2026/09/26 00:57:44 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-25-walkthrough/
+
+2026/09/26 00:57:44 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm for linux/arm64/v8
+2026/09/26 00:57:44 Loading kind.local/extauthz-a6fd0adf6a8a419bfe7dae02450617d3:aa2f3cf5da518004e4c3ec99c932160e472981e031fe3f660de8256e8d9059dd
+2026/09/26 00:57:45 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:f0bed93f2aacf59d2ab7a3113e1847e8c7997fbe703520e61563cce37895ccba
+2026/09/26 00:57:45 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:6b79d06cf0912d52b489ad02501c428ffe4a8fd00b14774c589ae61bbe3da3da
+2026/09/26 00:57:59 Loaded kind.local/worker-918a018b7a581926ead34dec2ba0fb83:f0bed93f2aacf59d2ab7a3113e1847e8c7997fbe703520e61563cce37895ccba
+2026/09/26 00:57:59 Adding tag latest
+2026/09/26 00:57:59 Added tag latest
+2026/09/26 00:58:00 Loaded kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:6b79d06cf0912d52b489ad02501c428ffe4a8fd00b14774c589ae61bbe3da3da
+2026/09/26 00:58:00 Adding tag latest
+2026/09/26 00:58:00 Added tag latest
+2026/09/26 00:58:00 Loaded kind.local/extauthz-a6fd0adf6a8a419bfe7dae02450617d3:aa2f3cf5da518004e4c3ec99c932160e472981e031fe3f660de8256e8d9059dd
+2026/09/26 00:58:00 Adding tag latest
+2026/09/26 00:58:00 Added tag latest
+namespace/agentgateway-ingress unchanged
+namespace/agentgateway-waypoint unchanged
+namespace/lab unchanged
+namespace/telemetry created
+serviceaccount/loadgen unchanged
+serviceaccount/orchestrator unchanged
+serviceaccount/worker unchanged
+service/extauthz unchanged
+service/mockllm unchanged
+service/orchestrator unchanged
+service/worker unchanged
+deployment.apps/extauthz unchanged
+deployment.apps/mockllm configured
+deployment.apps/orchestrator configured
+deployment.apps/worker configured
+agentgatewaybackend.agentgateway.dev/mockllm unchanged
+agentgatewayparameters.agentgateway.dev/agentgateway-ingress-params unchanged
+agentgatewayparameters.agentgateway.dev/agw-central-params unchanged
+agentgatewaypolicy.agentgateway.dev/access-logs created
+agentgatewaypolicy.agentgateway.dev/tracing created
+agentgatewaypolicy.agentgateway.dev/access-logs created
+agentgatewaypolicy.agentgateway.dev/tracing created
+grpcroute.gateway.networking.k8s.io/orchestrator-grpc-ingress configured
+grpcroute.gateway.networking.k8s.io/worker-grpc-ingress configured
+gateway.gateway.networking.k8s.io/agentgateway-ingress unchanged
+gateway.gateway.networking.k8s.io/agw-central unchanged
+httproute.gateway.networking.k8s.io/model-via-agw configured
+httproute.gateway.networking.k8s.io/orchestrator configured
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+serviceentry.networking.istio.io/model-external unchanged
+peerauthentication.security.istio.io/agentgateway-ingress-metrics unchanged
+peerauthentication.security.istio.io/default unchanged
+helm upgrade -i otel-collector opentelemetry-collector --repo https://open-telemetry.github.io/opentelemetry-helm-charts \
+		--version 0.173.1 -n telemetry \
+		-f deploy/step-3-stress/otel-collector-values.yaml --wait
+Release "otel-collector" does not exist. Installing it now.
+NAME: otel-collector
+LAST DEPLOYED: Sat Sep 26 00:58:03 2026
+NAMESPACE: telemetry
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+[WARNING] No resource limits or requests were set. Consider setting resource requests and limits for your collector(s) via the `resources` field.
+
+[WARNING] "useGOMEMLIMIT" is enabled but memory limits have not been supplied so the GOMEMLIMIT env var could not be added. Solve this problem by setting resources.limits.memory or disabling useGOMEMLIMIT
+
+[DEPRECATION] Exporter 'otlp' has been renamed to 'otlp_grpc'. Your config has been automatically rewritten for this release. Please update your values.yaml — auto-rewrite will be removed in a future release. See UPGRADING.md.
+[DEPRECATION] Pipeline 'traces' references renamed exporter 'otlp'. It has been automatically rewritten to 'otlp_grpc' for this release. Please update your values.yaml — auto-rewrite will be removed in a future release. See UPGRADING.md.
+helm upgrade -i jaeger jaeger --repo https://jaegertracing.github.io/helm-charts \
+		--version 4.14.0 -n telemetry \
+		-f deploy/step-3-stress/jaeger-values.yaml --wait
+Release "jaeger" does not exist. Installing it now.
+NAME: jaeger
+LAST DEPLOYED: Sat Sep 26 00:58:18 2026
+NAMESPACE: telemetry
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+###################################################################
+### ⚠️  EXPERIMENTAL - NO STABILITY GUARANTEES                  ###
+###                                                             ###
+### This chart is under active development.                     ###
+### Breaking changes may occur in minor versions.               ###
+###                                                             ###
+### See README.md for configuration details.                    ###
+###################################################################
+
+🚀 Congratulations on successfully installing Jaeger v2.21.0 (Chart v4.14.0)!
+
+To access the query UI:
+  export POD_NAME=$(kubectl get pods --namespace telemetry -l "app.kubernetes.io/instance=jaeger,app.kubernetes.io/component=all-in-one" -o jsonpath="{.items[0].metadata.name}")
+  kubectl port-forward --namespace telemetry $POD_NAME 16686:16686 --address 0.0.0.0 &
+  Visit http://127.0.0.1:16686/
+helm upgrade -i prometheus prometheus --repo https://prometheus-community.github.io/helm-charts \
+		--version 29.33.1 -n telemetry \
+		-f deploy/step-3-stress/prometheus-values.yaml --wait
+Release "prometheus" does not exist. Installing it now.
+NAME: prometheus
+LAST DEPLOYED: Sat Sep 26 00:58:28 2026
+NAMESPACE: telemetry
+STATUS: deployed
+REVISION: 1
+DESCRIPTION: Install complete
+TEST SUITE: None
+NOTES:
+The Prometheus server can be accessed via port 9090 on the following DNS name from within your cluster:
+prometheus.telemetry.svc.cluster.local
+
+
+Get the Prometheus server URL by running these commands in the same shell:
+  export POD_NAME=$(kubectl get pods --namespace telemetry -l "app.kubernetes.io/name=prometheus,app.kubernetes.io/instance=prometheus" -o jsonpath="{.items[0].metadata.name}")
+  kubectl --namespace telemetry port-forward $POD_NAME 9090
+#################################################################################
+######   WARNING: Persistence is disabled!!! You will lose your data when   #####
+######            the Server pod is terminated.                             #####
+#################################################################################
+
+
+
+
+
+For more information on running Prometheus, visit:
+https://prometheus.io/
+kubectl -n telemetry rollout status deployment/otel-collector --timeout=180s
+deployment "otel-collector" successfully rolled out
+kubectl -n telemetry rollout status deployment/jaeger --timeout=180s
+deployment "jaeger" successfully rolled out
+kubectl -n telemetry rollout status deployment/prometheus --timeout=180s
+deployment "prometheus" successfully rolled out
+kubectl -n lab rollout status deployment/extauthz --timeout=120s
+deployment "extauthz" successfully rolled out
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm deployment/extauthz lab.agent-mesh/go-sources=2645ebf6ecdfc6968f00e72bdcdb612cc649a760
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+deployment.apps/extauthz annotated
+
+trace backend query Service: jaeger.telemetry.svc.cluster.local:16686 (its own UI and API; nothing else is installed)
+read it from this host with: kubectl -n telemetry port-forward svc/jaeger 16686:16686  then open http://127.0.0.1:16686
+wall 86.985s exit 0

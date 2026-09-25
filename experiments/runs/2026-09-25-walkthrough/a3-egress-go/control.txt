@@ -1,0 +1,34 @@
+2026-09-25T22:08:47Z pre-run retry stanzas across every HTTPRoute: 0
+2026-09-25T22:08:47Z pre-run retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-waypoint/model-via-agw=0 lab/orchestrator=0
+2026-09-25T22:09:18Z run wta3e: RUN=egress RECEIVER=go SUB=none REPS=1 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport CLIENT_DIAL=<empty> MODEL_RETRIES=<left as deployed> route-retry=egress
+2026-09-25T22:09:18Z deployment/worker replicas: spec=1 ready=1
+2026-09-25T22:09:18Z deployment/mockllm replicas: spec=1 ready=1
+2026-09-25T22:09:18Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-25T22:09:18Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+2026-09-25T22:09:18Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+route objects read back into experiments/runs/2026-09-25-walkthrough/a3-egress-go/routes.txt
+2026-09-25T22:09:18Z retry stanzas on agentgateway-waypoint/model-via-agw: 1
+2026-09-25T22:09:18Z retry stanzas with ROUTE=egress on: 1 on the egress routes and 1 across every HTTPRoute (expected 1 each)
+2026-09-25T22:09:18Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-25T22:09:19Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-25T22:09:19Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-25T22:09:19Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"a3m-egress-go-wta3e-dry"} -> 204
+2026-09-25T22:09:42Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-wta3e-dry)
+2026-09-25T22:09:42Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-wta3e-dry)
+2026-09-25T22:09:51Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-25T22:09:51Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-25T22:09:51Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (before-repetition)
+2026-09-25T22:09:51Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"http500","lwi":"a3m-egress-go-wta3e-01"} -> 204
+2026-09-25T22:10:16Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-wta3e-01)
+2026-09-25T22:10:16Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (after a3m-egress-go-wta3e-01)
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+route objects read back into experiments/runs/2026-09-25-walkthrough/a3-egress-go/routes-off/routes.txt
+2026-09-25T22:10:25Z retry-off ROUTE=egress restored; retry stanzas across every HTTPRoute: 0
+2026-09-25T22:10:25Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-25T22:10:25Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (restore)
+2026-09-25T22:10:25Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (restore)

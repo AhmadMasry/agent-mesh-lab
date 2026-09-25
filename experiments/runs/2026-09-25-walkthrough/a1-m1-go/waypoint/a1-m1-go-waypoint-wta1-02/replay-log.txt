@@ -1,0 +1,21 @@
+kubectl -n lab delete job replay-a1-m1-go-waypoint-wta1-02 --ignore-not-found --wait=true
+sed -e 's/${LWI}/a1-m1-go-waypoint-wta1-02/g' -e 's#${TARGET_URL}#http://worker.lab.svc.cluster.local:8080#g' -e 's/${MODE}/M1/g' -e 's/${GAP_MS}/0/g' deploy/base/replay-job.yaml \
+		| KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/26 01:03:27 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/replay
+2026/09/26 01:03:28 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-25-walkthrough/
+
+2026/09/26 01:03:28 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/replay for linux/arm64/v8
+2026/09/26 01:03:29 Loading kind.local/replay-693f7c26c04c2e161a535fb994879193:8100b55e430c8efcbae58be94249112531032c07d2d7d5ac54ce0ec648c56913
+2026/09/26 01:03:44 Loaded kind.local/replay-693f7c26c04c2e161a535fb994879193:8100b55e430c8efcbae58be94249112531032c07d2d7d5ac54ce0ec648c56913
+2026/09/26 01:03:44 Adding tag latest
+2026/09/26 01:03:44 Added tag latest
+job.batch/replay-a1-m1-go-waypoint-wta1-02 created
+replay: job replay-a1-m1-go-waypoint-wta1-02 completed
+## ingress
+## execution
+## invocation
+## client
+## extauthz

@@ -1,0 +1,22 @@
+$ python3 - <<'PY'
+import csv
+rows = list(csv.DictReader(open(
+    "experiments/runs/2026-09-25-walkthrough/step-3/trace/a3t-wt3-r1-worker/spans.csv")))
+for r in sorted(rows, key=lambda r: (r["trace_id"], int(r["start_us"]))):
+    print("%-24s %-44s %s" % (r["service"], r["operation"], r["http_status"]))
+PY
+loadgen                  HTTP GET                                     200
+agw-central              GET /*                                       200
+agw-central              GET worker.lab.svc.cluster.local:8080        200
+worker                   GET /.well-known/agent-card.json             200
+loadgen                  invoke_agent worker                          
+loadgen                  HTTP POST                                    200
+agw-central              POST /*                                      200
+agw-central              POST worker.lab.svc.cluster.local:8080       200
+worker                   POST /                                       200
+worker                   chat mock                                    
+worker                   HTTP POST                                    200
+agw-central              POST /*                                      200
+agw-central              POST mockllm.lab.svc.cluster.local:8080      200
+mockllm                  POST /v1/chat/completions                    200
+wall 0.027s exit 0

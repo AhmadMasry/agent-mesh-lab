@@ -1,0 +1,36 @@
+$ RUN=baseline RECEIVER=go REPS=2 RUN_ID=wta3b RUN_ITEM=2026-09-25-walkthrough/a3-baseline-go \
+  experiments/gate3-matrix.sh
+== certificate check ==
+CERTIFICATE NAME                                                           TYPE     STATUS        VALID CERT     SERIAL NUMBER                        NOT AFTER                NOT BEFORE
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           c1a4e6469202093cbb27b9bb0f110bb0     2026-10-02T21:56:23Z     2026-09-25T21:54:23Z
+spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     2036-09-22T21:53:10Z     2026-09-25T21:53:10Z
+spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           5c19bd4f6c12f150b27883b1fe6034fe     2026-10-02T21:54:12Z     2026-09-25T21:52:12Z
+spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     2036-09-22T21:53:10Z     2026-09-25T21:53:10Z
+spiffe://cluster.local/ns/lab/sa/orchestrator                              Leaf     Available     true           da12095ea536d14456fddcf398b8763d     2026-10-02T21:54:04Z     2026-09-25T21:52:04Z
+spiffe://cluster.local/ns/lab/sa/orchestrator                              Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     2036-09-22T21:53:10Z     2026-09-25T21:53:10Z
+spiffe://cluster.local/ns/lab/sa/worker                                    Leaf     Available     true           7a348251734584a1ba72f1732e5fb936     2026-10-02T21:54:04Z     2026-09-25T21:52:04Z
+spiffe://cluster.local/ns/lab/sa/worker                                    Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     2036-09-22T21:53:10Z     2026-09-25T21:53:10Z
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/worker and spiffe://cluster.local/ns/lab/sa/orchestrator; ztunnel not restarted
+2026-09-25T22:04:49Z image freshness: deployment/worker checkout-go-sources-hash=2645ebf6ecdfc6968f00e72bdcdb612cc649a760 annotation=2645ebf6ecdfc6968f00e72bdcdb612cc649a760 pod-imageIDs: worker-6c9bbcb5d6-lqpz2=sha256:0248705a900d9c2c1ad72eed56c5e9bb60bb7744ce8415730d2e687edcf99878 
+2026-09-25T22:04:49Z image freshness: deployment/mockllm checkout-go-sources-hash=2645ebf6ecdfc6968f00e72bdcdb612cc649a760 annotation=2645ebf6ecdfc6968f00e72bdcdb612cc649a760 pod-imageIDs: mockllm-78cdfb6996-msv8x=sha256:d6fa8d9b4770a92d4345c3e069859dfbf054234eeef90b03ce48c95a84b4765a 
+pre-run retry stanzas across every HTTPRoute: 0
+pre-run retry stanzas per route: lab/worker=0 lab/worker-ingress=0 lab/orchestrator-ingress=0 agentgateway-waypoint/model-via-agw=0 lab/orchestrator=0
+2026-09-25T22:04:49Z pre-run knob assertion passed for RUN=baseline: stanzas=0 MODEL_RETRIES=<unset> (this row sets it: no) CLIENT_*=<none on any Deployment> job=CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport CLIENT_DIAL=<empty>
+== starting the control pod ==
+2026-09-25T22:04:50Z run wta3b: RUN=baseline RECEIVER=go SUB=none REPS=2 knobs: CLIENT_RETRIES=0 CLIENT_SDK_RESEND=off CLIENT_RETRY_ON=transport CLIENT_DIAL=<empty> MODEL_RETRIES=<left as deployed> route-retry=none
+2026-09-25T22:04:50Z deployment/worker replicas: spec=1 ready=1
+2026-09-25T22:04:50Z deployment/mockllm replicas: spec=1 ready=1
+== dry run: one repetition, its directory deleted afterwards ==
+== baseline go: logical_work_item_id=a3m-baseline-go-wta3b-dry ==
+  go,baseline,none,a3m-baseline-go-wta3b-dry,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+== dry run done; experiments/runs/2026-09-25-walkthrough/a3-baseline-go/a3m-baseline-go-wta3b-dry removed ==
+== baseline go: 2 repetitions ==
+== baseline go: logical_work_item_id=a3m-baseline-go-wta3b-01 ==
+  go,baseline,none,a3m-baseline-go-wta3b-01,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+== baseline go: logical_work_item_id=a3m-baseline-go-wta3b-02 ==
+  go,baseline,none,a3m-baseline-go-wta3b-02,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+== summary ==
+receiver,run,sub,work_item,deliveries,dispatched,distinct_messageIds,tasks,invocations,client_result,trace_spans,spans_by_service,second_delivery_layer,notes
+go,baseline,none,a3m-baseline-go-wta3b-01,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+go,baseline,none,a3m-baseline-go-wta3b-02,1,1,1,1,1,task/TASK_STATE_FAILED,14,agw-central=6|loadgen=3|mockllm=1|worker=4,none,client_lines=1;
+wall 104.855s exit 0

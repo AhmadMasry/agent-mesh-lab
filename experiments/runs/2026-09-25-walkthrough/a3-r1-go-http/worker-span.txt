@@ -1,0 +1,241 @@
+$ python3 experiments/runs/2026-09-19-currency-rebuild/worker-span/worker-span-reading.py \
+  experiments/runs/2026-09-25-walkthrough/a3-r1-go-http/a3m-r1-go-http-wta3r1-01
+# experiments/runs/2026-09-25-walkthrough/a3-r1-go-http/a3m-r1-go-http-wta3r1-01: 17 spans; by service: agw-central=8|loadgen=3|mockllm=1|worker=5
+## 1. the worker's server span(s), in start order: 3 span(s)
+  service=worker scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=GET /.well-known/agent-card.json
+    kind=server
+    status.code=Unset
+    status.description=""
+    lab.injection=<absent>
+    http.request.method=GET
+    http.response.status_code=200
+    url.path=/.well-known/agent-card.json
+    lab.work_item=a3m-r1-go-http-wta3r1-01
+    duration_ms=0.1 events=0 span_id=fb35e19b0c33c488 parent=5deb00a7894946f9
+    every attribute:
+      client.address=10.244.1.19
+      http.request.method=GET
+      http.response.body.size=677
+      http.response.status_code=200
+      lab.caller=loadgen
+      lab.work_item=a3m-r1-go-http-wta3r1-01
+      network.peer.address=10.244.1.19
+      network.peer.port=57789
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.path=/.well-known/agent-card.json
+      url.scheme=http
+      user_agent.original=Go-http-client/1.1
+  service=worker scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=POST /
+    kind=server
+    status.code=Error
+    status.description="injected: close-after-read"
+    lab.injection=close-after-read
+    http.request.method=POST
+    http.response.status_code=200
+    url.path=/
+    lab.work_item=a3m-r1-go-http-wta3r1-01
+    duration_ms=0.1 events=0 span_id=e4ed4d73f02e2360 parent=ba1c7025b94c1ab7
+    every attribute:
+      client.address=10.244.1.19
+      http.request.body.size=296
+      http.request.method=POST
+      http.response.status_code=200
+      lab.caller=loadgen
+      lab.injection=close-after-read
+      lab.work_item=a3m-r1-go-http-wta3r1-01
+      network.peer.address=10.244.1.19
+      network.peer.port=57789
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.path=/
+      url.scheme=http
+      user_agent.original=Go-http-client/1.1
+  service=worker scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=POST /
+    kind=server
+    status.code=Unset
+    status.description=""
+    lab.injection=<absent>
+    http.request.method=POST
+    http.response.status_code=200
+    url.path=/
+    lab.work_item=a3m-r1-go-http-wta3r1-01
+    duration_ms=205.2 events=0 span_id=fc5417c6f297df5d parent=dbcbc35267cf5dc0
+    every attribute:
+      client.address=10.244.1.19
+      http.request.body.size=296
+      http.request.method=POST
+      http.response.body.size=592
+      http.response.status_code=200
+      lab.caller=loadgen
+      lab.work_item=a3m-r1-go-http-wta3r1-01
+      network.peer.address=10.244.1.19
+      network.peer.port=57005
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.path=/
+      url.scheme=http
+      user_agent.original=Go-http-client/1.1
+## 2. the proxy's entry span(s) on the agent route lab/worker, in start order: 3 span(s)
+  service=agw-central scope=agentgateway
+    name=GET /*
+    kind=server
+    status.code=Unset
+    status.description=""
+    http.method=GET
+    http.status=200
+    reason=<absent>
+    route=lab/worker
+    retry.attempt=<absent>
+    duration_ms=0.4 events=0 span_id=164fd06ac8b4eda1 parent=df1999b27ce3ac70
+    every attribute:
+      duration=0ms
+      endpoint=10.244.1.33:8080
+      gateway=agentgateway-waypoint/agw-central
+      http.host=worker.lab.svc.cluster.local
+      http.method=GET
+      http.path=/.well-known/agent-card.json
+      http.status=200
+      http.version=HTTP/1.1
+      listener=inner-http
+      network.protocol.version=1.1
+      protocol=http
+      route=lab/worker
+      span.id=164fd06ac8b4eda1
+      src.addr=10.244.1.60:49062
+      src.identity=spiffe://cluster.local/ns/lab/sa/loadgen
+      trace.id=f6e6018fff0897132f95206bd032b3e9
+      url.scheme=http
+  service=agw-central scope=agentgateway
+    name=POST /*
+    kind=server
+    status.code=Error
+    status.description="upstream call failed: SendRequest: connection closed before message completed"
+    http.method=POST
+    http.status=503
+    reason=UpstreamFailure
+    route=lab/worker
+    retry.attempt=<absent>
+    duration_ms=0.3 events=0 span_id=7253a90bd2f59fa1 parent=6b98b0716c3ec515
+    every attribute:
+      duration=0ms
+      endpoint=10.244.1.33:8080
+      gateway=agentgateway-waypoint/agw-central
+      http.host=worker.lab.svc.cluster.local
+      http.method=POST
+      http.path=/
+      http.status=503
+      http.version=HTTP/1.1
+      listener=inner-http
+      network.protocol.version=1.1
+      protocol=http
+      reason=UpstreamFailure
+      route=lab/worker
+      span.id=7253a90bd2f59fa1
+      src.addr=10.244.1.60:49062
+      src.identity=spiffe://cluster.local/ns/lab/sa/loadgen
+      trace.id=715a545f32ed8dc296332c6b7a5763d8
+      url.scheme=http
+  service=agw-central scope=agentgateway
+    name=POST /*
+    kind=server
+    status.code=Unset
+    status.description=""
+    http.method=POST
+    http.status=200
+    reason=<absent>
+    route=lab/worker
+    retry.attempt=<absent>
+    duration_ms=245.8 events=0 span_id=a335bb8d594fc15d parent=6b98b0716c3ec515
+    every attribute:
+      duration=245ms
+      endpoint=10.244.1.33:8080
+      gateway=agentgateway-waypoint/agw-central
+      http.host=worker.lab.svc.cluster.local
+      http.method=POST
+      http.path=/
+      http.status=200
+      http.version=HTTP/1.1
+      listener=inner-http
+      network.protocol.version=1.1
+      protocol=http
+      route=lab/worker
+      span.id=a335bb8d594fc15d
+      src.addr=10.244.1.60:49062
+      src.identity=spiffe://cluster.local/ns/lab/sa/loadgen
+      trace.id=715a545f32ed8dc296332c6b7a5763d8
+      url.scheme=http
+## 3. the load client's client span(s), in start order: 3 span(s)
+  service=loadgen scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=HTTP GET
+    kind=client
+    status.code=Unset
+    status.description=""
+    http.request.method=GET
+    http.response.status_code=200
+    error.type=<absent>
+    http.request.resend_count=<absent>
+    duration_ms=114.3 events=0 span_id=df1999b27ce3ac70 parent=<none>
+    every attribute:
+      http.request.method=GET
+      http.response.status_code=200
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.full=http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json
+  service=loadgen scope=github.com/AhmadMasry/agent-mesh-lab/internal/otel
+    name=invoke_agent worker
+    kind=client
+    status.code=Unset
+    status.description=""
+    http.request.method=<absent>
+    http.response.status_code=<absent>
+    error.type=<absent>
+    http.request.resend_count=<absent>
+    duration_ms=247.1 events=0 span_id=9dbaf08ec9189169 parent=<none>
+    every attribute:
+      gen_ai.agent.description=agent-mesh-lab agent: one model call per message
+      gen_ai.agent.name=worker
+      gen_ai.agent.version=0.0.0
+      gen_ai.conversation.id=01a0da9c-62e6-7d85-b08e-829fb9bd3220
+      gen_ai.operation.name=invoke_agent
+      gen_ai.provider.name=a2a
+      lab.caller=loadgen
+      lab.message_id=01a0da9c-62bd-755f-943e-370df35b4688
+      lab.work_item=a3m-r1-go-http-wta3r1-01
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+  service=loadgen scope=go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+    name=HTTP POST
+    kind=client
+    status.code=Unset
+    status.description=""
+    http.request.method=POST
+    http.response.status_code=200
+    error.type=<absent>
+    http.request.resend_count=<absent>
+    duration_ms=246.9 events=0 span_id=6b98b0716c3ec515 parent=9dbaf08ec9189169
+    every attribute:
+      http.request.method=POST
+      http.response.status_code=200
+      network.protocol.version=1.1
+      server.address=worker.lab.svc.cluster.local
+      server.port=8080
+      url.full=http://worker.lab.svc.cluster.local:8080
+## 4. the ledgers
+  ingress: deliveries (JSON-RPC arrivals) = 2 (SendMessage@worker, SendMessage@worker)
+  execution: received = 1, execute = 1, tasks (distinct taskId) = 1
+    execution line: event=state state=TASK_STATE_SUBMITTED error=""
+    execution line: event=state state=TASK_STATE_WORKING error=""
+    execution line: event=state state=TASK_STATE_COMPLETED error=""
+    execution line: event=result state=TASK_STATE_COMPLETED error=""
+  invocation: lines = 1; by outcome: ok=1
+    invocation line: caller=worker injection=none outcome=ok latency_ms=202.786
+  client line: attempt=1 result_kind=task state=TASK_STATE_COMPLETED error=""
+wall 0.029s exit 0

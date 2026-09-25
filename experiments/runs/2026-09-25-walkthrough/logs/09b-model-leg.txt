@@ -1,0 +1,9 @@
+$ echo '## agw-central model-route lines'; kubectl -n agentgateway-waypoint logs deploy/agw-central | grep chat/completions | tail -2; echo; echo '## mockllm invocation ledger, both clean work items'; kubectl -n lab logs deploy/mockllm | grep -E 'g2c-wt2b-(worker|orchestrator)'
+## agw-central model-route lines
+2026-09-25T21:56:46.403918Z	info	request gateway=agentgateway-waypoint/agw-central listener=inner-http route=agentgateway-waypoint/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.26:43482 src.identity=spiffe://cluster.local/ns/lab/sa/worker http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 http.status=200 protocol=http duration=203ms
+2026-09-25T21:57:08.373812Z	info	request gateway=agentgateway-waypoint/agw-central listener=inner-http route=agentgateway-waypoint/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.26:43482 src.identity=spiffe://cluster.local/ns/lab/sa/worker http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 http.status=200 protocol=http duration=201ms
+
+## mockllm invocation ledger, both clean work items
+{"ledger":"invocation","ts":"2026-09-25T21:56:46.40363225Z","logical_work_item_id":"g2c-wt2b-worker","messageId":"01a0da92-25f5-7d48-8e5b-6c888e147d6c","taskId":"01a0da92-25f6-76c2-8066-cb8e45cb7d19","caller":"worker","body_sha256":"f18bfd0627f99e89b4f91c23f0e7a9402d854a765ee0b5fb3aa65c83e74663ab","stream":false,"injection":"none","outcome":"ok","latency_ms":201.762}
+{"ledger":"invocation","ts":"2026-09-25T21:57:08.373524011Z","logical_work_item_id":"g2c-wt2b-orchestrator","messageId":"9b857f88-6aa2-4a88-9359-e06600d0682f","taskId":"01a0da92-7bcc-789b-be63-8a7dd83e381e","caller":"worker","body_sha256":"0fcde9674099b2c769c22a1029c9b8afc5703b2586d0be8135bc83a7b86aeda1","stream":false,"injection":"none","outcome":"ok","latency_ms":200.605}
+wall 0.073s exit 0

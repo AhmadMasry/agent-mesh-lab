@@ -1,0 +1,71 @@
+$ kubectl get gateway -A; echo; kubectl get ns -L istio.io/dataplane-mode
+NAMESPACE               NAME                   CLASS          ADDRESS        PROGRAMMED   AGE
+agentgateway-ingress    agentgateway-ingress   agentgateway   10.96.58.152   True         3s
+agentgateway-waypoint   agw-central            agentgateway   10.96.18.93    True         2m22s
+
+NAME                    STATUS   AGE     DATAPLANE-MODE
+agentgateway-ingress    Active   4s      ambient
+agentgateway-system     Active   2m52s   
+agentgateway-waypoint   Active   2m22s   
+default                 Active   6m36s   
+istio-system            Active   3m27s   
+kube-node-lease         Active   6m36s   
+kube-public             Active   6m36s   
+kube-system             Active   6m36s   
+lab                     Active   5m15s   ambient
+local-path-storage      Active   6m32s   
+wall 0.192s exit 0
+$ kubectl -n lab get deploy orchestrator worker -o json | jq -r '.items[] | .metadata.name + ": " +
+  ([.spec.template.spec.containers[0].env[]? | select(.name=="MODEL_BASE_URL" or .name=="PUBLIC_URL") |
+  "\(.name)=\(.value)"] | join(" "))'
+orchestrator: MODEL_BASE_URL=http://model.lab.internal:8080/v1 PUBLIC_URL=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local
+worker: MODEL_BASE_URL=http://model.lab.internal:8080/v1 PUBLIC_URL=http://worker.lab.svc.cluster.local:8080
+wall 0.042s exit 0
+$ kubectl -n lab get deploy,svc extauthz -o wide
+NAME                       READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                                                                                                                  SELECTOR
+deployment.apps/extauthz   1/1     1            1           4s    extauthz     kind.local/extauthz-a6fd0adf6a8a419bfe7dae02450617d3:aa2f3cf5da518004e4c3ec99c932160e472981e031fe3f660de8256e8d9059dd   app=extauthz
+
+NAME               TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+service/extauthz   ClusterIP   10.96.105.167   <none>        9000/TCP   4s    app=extauthz
+wall 0.040s exit 0
+$ 
+S="${TMPDIR:-/tmp}"
+kubectl -n agentgateway-ingress port-forward svc/agentgateway-ingress 18080:80 >/dev/null 2>&1 &
+PF=$!
+for i in $(seq 1 30); do
+  curl -sS -o /dev/null --max-time 2 http://127.0.0.1:18080/.well-known/agent-card.json 2>/dev/null && break
+  python3 -c "import time;time.sleep(1)"
+done
+echo "## the card the ingress serves"
+curl -s http://127.0.0.1:18080/.well-known/agent-card.json | jq -c "{name, supportedInterfaces}"
+echo
+echo "## the advertised address, resolved from this host"
+curl -sS -o /dev/null --max-time 5 http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ ; echo "exit=$?"
+echo
+echo "## the send, by hand"
+LWI=wt2b-ingress
+OUT="${TMPDIR:-/tmp}/ingress-resp.json"
+curl -s -o "$OUT" -w "http=%{http_code}\n" -X POST http://127.0.0.1:18080/ \
+  -H "Host: orchestrator.lab.internal" -H "Content-Type: application/json" -H "A2A-Version: 1.0" \
+  -H "X-Logical-Work-Item-Id: $LWI" \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":\"$(uuidgen)\",\"method\":\"SendMessage\",\"params\":{\"message\":{\"messageId\":\"$(uuidgen)\",\"role\":\"ROLE_USER\",\"parts\":[{\"text\":\"lwi:$LWI hello\"}],\"metadata\":{\"logical_work_item_id\":\"$LWI\"}}}}"
+echo
+echo "## the answer"
+jq -c "{taskId: .result.task.id, contextId: .result.task.contextId, state: .result.task.status.state}" "$OUT"
+kill "$PF" >/dev/null 2>&1 || true
+wait "$PF" >/dev/null 2>&1 || true
+echo "## port-forward closed"
+## the card the ingress serves
+{"name":"orchestrator","supportedInterfaces":[{"url":"http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","protocolBinding":"JSONRPC","protocolVersion":"1.0"},{"url":"http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","protocolBinding":"HTTP+JSON","protocolVersion":"1.0"},{"url":"agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80","protocolBinding":"GRPC","protocolVersion":"1.0"}]}
+
+## the advertised address, resolved from this host
+curl: (28) Resolving timed out after 5003 milliseconds
+exit=28
+
+## the send, by hand
+http=200
+
+## the answer
+{"taskId":"bb9c0ef4-f19e-4c30-a1f0-45acc191eb69","contextId":"9a0e5f6b-df69-4511-a310-cad0d9d99d53","state":"TASK_STATE_COMPLETED"}
+## port-forward closed
+wall 6.319s exit 0

@@ -1,0 +1,12 @@
+$ python3 - <<'PY'
+import csv
+rows = list(csv.DictReader(open(
+    "experiments/runs/2026-09-25-walkthrough/step-3/trace/a3t-wt3-r1-worker/spans.csv")))
+for r in sorted(rows, key=lambda r: (r["trace_id"], int(r["start_us"]))):
+    if r["service"] == "agw-central" and r["route"]:
+        print("%-10s %-38s %s" % (r["operation"], r["route"], r["retry_attempt"] or "-"))
+PY
+GET /*     lab/worker                             -
+POST /*    lab/worker                             -
+POST /*    agentgateway-waypoint/model-via-agw    -
+wall 0.025s exit 0

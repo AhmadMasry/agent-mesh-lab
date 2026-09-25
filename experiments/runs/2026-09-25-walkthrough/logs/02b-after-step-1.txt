@@ -1,0 +1,23 @@
+$ kubectl -n lab get deploy,svc,pods -o wide; echo; kubectl -n lab get serviceaccounts
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS     IMAGES                                                                                                                 SELECTOR
+deployment.apps/mockllm        1/1     1            1           3s    mockllm        kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:d8ff352b51aa5ff5a2ecf195601c9c04c869110d024d97d67baa87a7df1ff58d   app=mockllm
+deployment.apps/orchestrator   1/1     1            1           3s    orchestrator   orchestrator:dev                                                                                                       app=orchestrator
+deployment.apps/worker         1/1     1            1           3s    worker         kind.local/worker-918a018b7a581926ead34dec2ba0fb83:6b5d10a2ec1edf227f4785f798ec256219ab6e60841edf0f8b9bb549b87bec16    app=worker
+
+NAME                   TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)             AGE   SELECTOR
+service/mockllm        ClusterIP   10.96.179.73    <none>        8080/TCP            3s    app=mockllm
+service/orchestrator   ClusterIP   10.96.98.1      <none>        8080/TCP,8081/TCP   3s    app=orchestrator
+service/worker         ClusterIP   10.96.249.127   <none>        8080/TCP,8081/TCP   3s    app=worker
+
+NAME                                READY   STATUS        RESTARTS   AGE   IP           NODE                    NOMINATED NODE   READINESS GATES
+pod/mockllm-955d9d655-cx8xq         1/1     Running       0          3s    10.244.1.2   agent-mesh-lab-worker   <none>           <none>
+pod/orchestrator-6f86bb6dd-g6m8w    1/1     Running       0          3s    10.244.1.5   agent-mesh-lab-worker   <none>           <none>
+pod/orchestrator-78fdcfd784-d6694   1/1     Terminating   0          3s    10.244.1.3   agent-mesh-lab-worker   <none>           <none>
+pod/worker-8564464f7-vpnxd          1/1     Running       0          3s    10.244.1.4   agent-mesh-lab-worker   <none>           <none>
+
+NAME           AGE
+default        4s
+loadgen        4s
+orchestrator   4s
+worker         4s
+wall 0.076s exit 0

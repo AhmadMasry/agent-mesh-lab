@@ -1,0 +1,18 @@
+$ kubectl get httproute -A; echo; kubectl get grpcroute -A; echo; kubectl -n lab get svc -o json | jq -r '.items[] |
+  "\(.metadata.name)  istio.io/use-waypoint=\(.metadata.labels["istio.io/use-waypoint"] // "-")"'
+NAMESPACE               NAME                   HOSTNAMES                                AGE
+agentgateway-waypoint   model-via-agw          ["model.lab.internal"]                   78s
+lab                     orchestrator           ["orchestrator.lab.svc.cluster.local"]   1s
+lab                     orchestrator-ingress                                            78s
+lab                     worker                 ["worker.lab.svc.cluster.local"]         3m37s
+lab                     worker-ingress         ["worker.lab.internal"]                  1s
+
+NAMESPACE   NAME                        HOSTNAMES                            AGE
+lab         orchestrator-grpc-ingress   ["orchestrator-grpc.lab.internal"]   1s
+lab         worker-grpc-ingress         ["worker-grpc.lab.internal"]         1s
+
+extauthz  istio.io/use-waypoint=-
+mockllm  istio.io/use-waypoint=-
+orchestrator  istio.io/use-waypoint=agw-central
+worker  istio.io/use-waypoint=agw-central
+wall 0.097s exit 0

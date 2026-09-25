@@ -1,0 +1,120 @@
+Where a file of this record reads other than a reader would take it. Written 2026-09-25 (UTC), after the run.
+
+1. The run's commands and paths. Every command in logs/ is the walkthrough's own, run once in the order the text gives,
+   by drivers/walk.sh, in a shell that had sourced drivers/setup-tools.sh (the walkthrough's "Before you start" block,
+   byte for byte). The one difference is the run directory: RUN_ITEM and the paths read from it name
+   experiments/runs/2026-09-25-walkthrough where the text names experiments/runs/my-walkthrough (logs/README.txt,
+   note 3). Six logs hold several of the text's commands run together, in the text's order, with a section label
+   printed between them: 02b, 07b, 07c, 08b, 09c and 10b. 07c runs the probe against both receivers in one loop, where
+   the text shows the worker's command and says the same for the orchestrator; 09c opens the port-forward in the
+   background and waits for it to answer before the card read, where the text asks the reader to give it a terminal.
+   Four logs also hold reads the text does not show as commands, and the text cites their results (added 2026-09-26,
+   after the review of this record):
+     logs/09b-model-leg.txt greps the mock's log for the g2c-wt2b work items; the text cites the result in step 2b's
+       model-leg paragraph ("both name caller: worker and the taskId the worker's executor minted");
+     logs/22-cleanup-state.txt reads the orchestrator's DOWNSTREAM_A2A_URL, the Job count, the pod-status count and
+       kubectl -n lab get deploy; the text cites them in the cleanup section (the URL restored; 24 Jobs, 24 Completed
+       pods and one Terminating pod; the four Deployments standing);
+     logs/24-my-walkthrough-size.txt runs du -sh on the run directory; the text cites it as 1.3 MB;
+     logs/03b-restore-deterministic.txt runs git status on the restored directory after the text's git checkout; the
+       text does not cite it, and it printed nothing (item 2).
+
+2. What was read beyond the walkthrough's own commands, and where it is. Inside the walk: the four reads item 1 names
+   (logs/09b, 22, 24 and 03b). After the walk: drivers/versions.sh wrote tool-versions.txt and
+   cluster-versions.txt after the walk; the cluster-after.sh of
+   experiments/runs/2026-09-20-experiment-a-agentgateway-only, run unedited, wrote cluster-after.txt; drivers/trees.sh
+   wrote proof/tree.txt (the deployed subtree and blob ids of the built tree beside follow-ups 22's; only the Makefile,
+   experiments/lib and experiments/gate3-matrix.sh differ, the three paths of this task's commit 1, and the Go-sources
+   hash is 2645ebf6ecdfc6968f00e72bdcdb612cc649a760, unchanged); drivers/compare-rows.py wrote rows-vs-entries.txt;
+   drivers/sleep-events.sh wrote sleep-events.csv. The step directories' .txt readings (step-1/after-step-1.txt, step-2/*.txt,
+   step-2b/model-leg.txt and reads.txt, step-2c/reads.txt, step-3/*.txt, step-3/trace/worker-spans.txt and
+   agw-central-routes.txt, a3-r1-go-http/worker-span.txt, cleanup/*.txt) are byte copies of the logs/ files they name
+   in their first line, or the concatenation of them in log order; step-1/mockllm-deterministic/ holds the two files
+   the determinism check wrote into experiments/runs/2026-09-05-mockllm-deterministic/, copied before
+   logs/03b-restore-deterministic.txt put the committed ones back (its git status line is empty: nothing left changed).
+
+3. The six rows beside their entry. rows-vs-entries.txt compares each row with its summary.csv in
+   experiments/runs/2026-09-20-experiment-a-agentgateway-only/, which holds twenty repetitions where this run holds two
+   (one on egress). A column is compared as the SET of the values its repetitions took, after masking identifiers only
+   (the patterns of experiments/runs/2026-09-25-currency-rebuild/drivers/cellcompare.py, and the two RUN_IDs with the
+   repetition number): 74 cells the same, 0 differing. A set comparison cannot say that a value the entry counted in
+   20 of 20 would also hold in 20 of 20 here; it says that every value this run took is the one the entry took.
+
+4. The standard proof, and its 16 differing rows. proof/ holds D-4's checks.sh (experiments/runs/2026-09-20-
+   experiment-a-agentgateway-only/checks.sh, sha256 4056b559..., unedited; both as-run copies equal to it and moved out
+   of the record, proof/checks-as-run-sha256.txt), part1 then the retry knobs, run by drivers/proof.sh after the walk
+   on the same cluster, and compared with follow-ups 22's proof by the comparison program of follow-ups 21, unedited:
+   same=51, DIFFERS=16 (proof/standard-counts-vs-last-proof.txt). Follow-ups 22's proof was taken on a cluster that
+   had carried its own proof traffic only; this one was taken after the whole walk, and ztunnel's
+   istio_tcp_connections_opened_total and its log hold everything since the pods started. So:
+   - 14 rows are leg and connection counts (legs 45 | 24, mutual_tls 29 | 14, unknown 16 | 10, common legs with
+     equal counts 3 | 24, and ten per-leg rows, each higher here or, for the ingress to the worker, present here
+     only). The 21 legs present only in this
+     proof (proof/strict/hops-security.csv against follow-ups 22's) are each a workload of the walk: the rows' control
+     pods a1-curl, a2-curl, a3m-curl and gate2-curl, the cleanup pod wt-cleanup, the two A.1 replay Jobs, the ingress
+     to the worker (A.1's ingress path), the load client to the orchestrator pod, the orchestrator's own model call
+     (the R2 py row, where the Python receiver calls the model), the worker's direct call to the mock at step 2 (before
+     step 2b moved the model URL), and the walk's own plaintext probe to the orchestrator (the destination-side leg
+     with an unknown source and policy). Every new leg into a captured workload reads mutual_tls; every unknown leg is
+     either to the opted-out mock or that refused probe.
+   - 2 rows are ztunnel's other error lines: all 18 | 13, and of them policy rejection 3 | 1 (no healthy upstream
+     10 | 10, the same). The five lines more:
+       two policy rejections at 21:54:57Z, the walk's own probe against both receivers (step-2/plaintext-probe.txt);
+       two warn lines "HBONE ping timeout/error" from the ingress pod's outbound HBONE pool at 21:58:28Z and
+       22:02:18Z. The lab ReplicaSets were created at 21:58:01Z (step 3's roll) and 22:01:53Z (the walkthrough's
+       orchestrator restart) (proof/lab-replicasets-after.txt), 27 s and 25 s before; the lines fit a pooled connection
+       to a replaced pod. That is read from the stamps and not verified;
+       one inbound close from agw-central to the orchestrator pod of ReplicaSet 5df4f585cd at 22:04:42Z, error "while
+       closing connection: receive: io error: broken pipe", bytes_sent=945 bytes_recv=473, duration 137918 ms. That pod
+       stood from 22:01:53Z to 22:10:58Z by the same file, so the close was not a pod removal. Its cause is NOT
+       ESTABLISHED. A.2 was running at the time (22:03:59Z..22:04:48Z); its cells read the same as its entry's.
+   The standard counts themselves read the same: the clean check 1/1/1/1/1 on both receivers, 81 and 14 spans with 0
+   dangling parents and 0 GenAI spans missing a required or expected attribute, Prometheus 7/7, plaintext refused 2 of
+   2 with curl exit 56, and the retry knobs 1>0>2>0>1>0>0.
+
+5. Identities in the walkthrough's step-3 certificate read. The lab/sa/default leaf there reads NOT AFTER
+   2026-10-02T21:54:12Z, so it was issued at 21:54:12Z, seven days, the leaf lifetime, earlier: during step 2's clean
+   check (21:54:11Z..21:54:57Z), whose short-lived control pod runs on the default account, and before the
+   authorization fixture, also on the default account, existed (step 2b, 21:55:28Z..21:56:26Z). The text says both.
+
+6. Host paths. The replacements the controller's ruling asks for (the expansion of TMPDIR to "${TMPDIR:-/tmp}", any home
+   path to "$HOME/") were applied to every committed file of this record: 0 replacements in every file, because no
+   file printed either (a scan for the home-directory prefix and its dashed form, the two temporary-directory prefixes
+   and the host name finds 0 lines). The
+   commands that take a scratch directory print "${TMPDIR:-/tmp}" unexpanded. The one email address in the record is
+   the Amazon Linux package-signing key's user id, which the orchestrator image build prints in logs/02-step-1.txt,
+   logs/06-step-2.txt and logs/08-step-2b.txt, as every build record since the currency pass carries it. The addresses
+   outside the pod range are the kind node network (172.18.0.2, 172.18.0.3) and Istio's automatic ServiceEntry address
+   240.240.0.1.
+
+7. ko's digests. The worker and the mock built at step 1 carry other digests than the same sources built at step 2b and
+   later: the tree was clean at step 1 and held the untracked run directory from then on, and Go stamps vcs.modified
+   into the binary (logs/02-step-1.txt, logs/08-step-2b.txt). The Go-sources stamp on every Deployment is the same,
+   2645ebf6..., which is what the matrix's freshness check reads (a3-*/knobs.txt).
+
+8. Keep-awake and host sleep. The run and the proof started no keep-awake and changed no power setting; keep-awake is
+   not claimed absent. sleep-events.csv carries the host's Sleep, Wake, DarkWake and Maintenance events inside the two
+   windows of windows.csv, kind and UTC stamp only, and each kind's count per window: 0 of every kind in both. Per
+   CLAUDE.md, no other line of the host's power log is recorded, read or counted here: no assertion line, and nothing
+   that names an assertion's owner. The 2026-09-20 record's host-sleep files are not reused.
+
+9. The guard commit this run's tree carries. make-test.txt is make test at the built tree, taken after the proof: exit 0,
+   36 ok lines, the guard ok on experiments/gate3-matrix.sh and five mutants refused; no worker.test process was left
+   (pgrep, exit 1). guard-before-after.txt runs experiments/lib/go-sources-lists.sh as it stood at 1a3fe1f6 and as it
+   stands at the built tree over each mutant and the harness: before, appended-list.sh and command-in-comment.sh exit
+   0 (accepted); after, every mutant exits 1 and the harness exits 0.
+
+10. Logs as .txt. logs/ holds every command's output as .txt. The experiment scripts also write a per-work-item log
+   that the repository ignores (.gitignore, experiments/runs/**/*.log): apply.log (ko's output for the load Job),
+   collect.log (the ledger and trace collection's messages) and replay.log (the replay harness's output). Each of the
+   20 such files is committed beside itself as a byte copy named apply-log.txt, collect-log.txt or replay-log.txt. No
+   count rests on them: every summary.csv column is computed by its script from the committed .jsonl ledgers,
+   client.jsonl (A.1's resp1 and resp2 included) and spans.csv, and every output block the walkthrough quotes comes
+   from a logs/*.txt file or a committed .csv or .txt. The 2026-09-20 record keeps the same three kinds ignored, and
+   on this checkout its directory holds 9 apply.log, 7 collect.log and 4 replay.log, none in git; its quoted blocks
+   come from its logs/*.txt and its .csv files, and its summary columns from its committed ledgers, in the same way.
+
+11. The walkthrough's abridgement statement (2026-09-26, after the review). The statement at the head of the text was
+   carried from the text of 2026-09-20, and it ended "Nothing else is cut" while two blocks cut one thing more each:
+   the make ledgers block drops each line's ts field, and the step-3 certificate block drops the NOT BEFORE column. The
+   statement now names both. No output block changed.

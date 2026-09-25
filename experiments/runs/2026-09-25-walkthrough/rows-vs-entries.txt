@@ -1,0 +1,88 @@
+## a1-m1-go: experiments/runs/2026-09-20-experiment-a-agentgateway-only/a1-m1-go/summary.csv | experiments/runs/2026-09-25-walkthrough/a1-m1-go/summary.csv
+  key M1,go,ingress: repetitions 20 | 2
+    same     work_item: a1-m1-go-ingress-<run>-<rep> | a1-m1-go-ingress-<run>-<rep>
+    same     deliveries: 2 | 2
+    same     executes: 2 | 2
+    same     distinct_message_ids: 1 | 1
+    same     tasks_created: 2 | 2
+    same     invocations: 2 | 2
+    same     resp1: task/TASK_STATE_COMPLETED | task/TASK_STATE_COMPLETED
+    same     resp2: task/TASK_STATE_COMPLETED | task/TASK_STATE_COMPLETED
+    same     same_task: no | no
+    same     notes:  | 
+  key M1,go,waypoint: repetitions 20 | 2
+    same     work_item: a1-m1-go-waypoint-<run>-<rep> | a1-m1-go-waypoint-<run>-<rep>
+    same     deliveries: 2 | 2
+    same     executes: 2 | 2
+    same     distinct_message_ids: 1 | 1
+    same     tasks_created: 2 | 2
+    same     invocations: 2 | 2
+    same     resp1: task/TASK_STATE_COMPLETED | task/TASK_STATE_COMPLETED
+    same     resp2: task/TASK_STATE_COMPLETED | task/TASK_STATE_COMPLETED
+    same     same_task: no | no
+    same     notes:  | 
+## a2-go-http-503: experiments/runs/2026-09-20-experiment-a-agentgateway-only/a2-go-http-503/summary.csv | experiments/runs/2026-09-25-walkthrough/a2-go-http-503/summary.csv
+  key go,http: repetitions 20 | 2
+    same     work_item: a2-go-http-503-<run>-<rep> | a2-go-http-503-<run>-<rep>
+    same     arrivals: 2 | 2
+    same     messageId_reused: yes | yes
+    same     id_reused: yes | yes
+    same     body_identical: yes | yes
+    same     injection_fired: 1 | 1
+    same     executes: 1 | 1
+    same     invocations: 1 | 1
+    same     client_result: task/TASK_STATE_COMPLETED | task/TASK_STATE_COMPLETED
+    same     notes: knob=CLIENT_RETRIES=1 CLIENT_RETRY_ON=transport+503;client_lines=1; | knob=CLIENT_RETRIES=1 CLIENT_RETRY_ON=transport+503;client_lines=1;
+## a3-baseline-go: experiments/runs/2026-09-20-experiment-a-agentgateway-only/a3-baseline-go/summary.csv | experiments/runs/2026-09-25-walkthrough/a3-baseline-go/summary.csv
+  key go,baseline,none: repetitions 20 | 2
+    same     work_item: a3m-baseline-go-<run>-<rep> | a3m-baseline-go-<run>-<rep>
+    same     deliveries: 1 | 1
+    same     dispatched: 1 | 1
+    same     distinct_messageIds: 1 | 1
+    same     tasks: 1 | 1
+    same     invocations: 1 | 1
+    same     client_result: task/TASK_STATE_FAILED | task/TASK_STATE_FAILED
+    same     trace_spans: 14 | 14
+    same     spans_by_service: agw-central=6|loadgen=3|mockllm=1|worker=4 | agw-central=6|loadgen=3|mockllm=1|worker=4
+    same     second_delivery_layer: none | none
+    same     notes: client_lines=1; | client_lines=1;
+## a3-r1-go-http: experiments/runs/2026-09-20-experiment-a-agentgateway-only/a3-r1-go-http/summary.csv | experiments/runs/2026-09-25-walkthrough/a3-r1-go-http/summary.csv
+  key go,R1,http: repetitions 20 | 2
+    same     work_item: a3m-r1-go-http-<run>-<rep> | a3m-r1-go-http-<run>-<rep>
+    same     deliveries: 2 | 2
+    same     dispatched: 1 | 1
+    same     distinct_messageIds: 1 | 1
+    same     tasks: 1 | 1
+    same     invocations: 1 | 1
+    same     client_result: task/TASK_STATE_COMPLETED | task/TASK_STATE_COMPLETED
+    same     trace_spans: 17 | 17
+    same     spans_by_service: agw-central=8|loadgen=3|mockllm=1|worker=5 | agw-central=8|loadgen=3|mockllm=1|worker=5
+    same     second_delivery_layer: client-http | client-http
+    same     notes: client_lines=1;layer_reason=the two worker server spans have distinct parent span ids <id16> and <id16> that do not converge on one proxy span / so each attempt crossed the proxy separately / client lines 1 which does not separate the two layers because the lab's HTTP retry loops below the line the client prints / a proxy that exports nothing leaves both parents dangling and is caught by the shared-parent rule instead because Task 2 measured the istiod-driven waypoint (retired 2026-09-19) issuing one span id for both of its own attempts; | client_lines=1;layer_reason=the two worker server spans have distinct parent span ids <id16> and <id16> that do not converge on one proxy span / so each attempt crossed the proxy separately / client lines 1 which does not separate the two layers because the lab's HTTP retry loops below the line the client prints / a proxy that exports nothing leaves both parents dangling and is caught by the shared-parent rule instead because Task 2 measured the istiod-driven waypoint (retired 2026-09-19) issuing one span id for both of its own attempts;
+## a3-egress-go: experiments/runs/2026-09-20-experiment-a-agentgateway-only/a3-egress-go/summary.csv | experiments/runs/2026-09-25-walkthrough/a3-egress-go/summary.csv
+  key go,egress,none: repetitions 20 | 1
+    same     work_item: a3m-egress-go-<run>-<rep> | a3m-egress-go-<run>-<rep>
+    same     deliveries: 1 | 1
+    same     dispatched: 1 | 1
+    same     distinct_messageIds: 1 | 1
+    same     tasks: 1 | 1
+    same     invocations: 2 | 2
+    same     client_result: task/TASK_STATE_FAILED | task/TASK_STATE_FAILED
+    same     trace_spans: 16 | 16
+    same     spans_by_service: agw-central=7|loadgen=3|mockllm=2|worker=4 | agw-central=7|loadgen=3|mockllm=2|worker=4
+    same     second_delivery_layer: gateway | gateway
+    same     notes: client_lines=1;layer_reason=one call entered route agentgateway-waypoint/model-via-agw and the proxy made 2 upstream attempts under it / so the proxy re-sent it; | client_lines=1;layer_reason=one call entered route agentgateway-waypoint/model-via-agw and the proxy made 2 upstream attempts under it / so the proxy re-sent it;
+## a3-r2-py-service: experiments/runs/2026-09-20-experiment-a-agentgateway-only/a3-r2-py-service/summary.csv | experiments/runs/2026-09-25-walkthrough/a3-r2-py-service/summary.csv
+  key py,R2,service: repetitions 20 | 2
+    same     work_item: a3m-r2-py-service-<run>-<rep> | a3m-r2-py-service-<run>-<rep>
+    same     deliveries: 2 | 2
+    same     dispatched: 1 | 1
+    same     distinct_messageIds: 1 | 1
+    same     tasks: 1 | 1
+    same     invocations: 1 | 1
+    same     client_result: task/TASK_STATE_COMPLETED | task/TASK_STATE_COMPLETED
+    same     trace_spans: 75 | 75
+    same     spans_by_service: agw-central=7|loadgen=3|mockllm=1|orchestrator=64 | agw-central=7|loadgen=3|mockllm=1|orchestrator=64
+    same     second_delivery_layer: gateway | gateway
+    same     notes: client_lines=1;layer_reason=route lab/orchestrator on the agw-central in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received; | client_lines=1;layer_reason=route lab/orchestrator on the agw-central in front of orchestrator shows one inbound span with 2 upstream attempts / so the proxy re-sent the delivery it received;
+# cells: same=74 DIFFERS=0
