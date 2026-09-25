@@ -1,0 +1,21 @@
+Follow-ups 22, reading notes. Written in the review round of 2026-09-25 (the controller's ruling on the review of the record commit).
+
+1. The telemetry pods' stamps (telemetry-pods-after.txt) were read at 2026-09-25T21:35:52Z, AFTER the run, read-only, on
+   the same pods: the cluster was not rebuilt or changed after the matrix row, each pod's name matches the one the proof
+   recorded (checks.txt, strict/posture.txt), and every container reads restartCount 0 with an empty lastState, so each
+   startedAt is its first start. The proof's own files carry no pod creation or start stamp; build.txt carries only
+   helm's LAST DEPLOYED for each release.
+2. The matrix script's identity at the row (row-start-git-status.txt): a git status taken by the same invocation that ran
+   the script, just before it, listing only the untracked run directory; HEAD 8dd9ea9c; the script's blob at HEAD
+   96c53505, equal to the blob build.txt records at the rebuild's start and to the committed file at 8dd9ea9c and in the
+   record commit; no commit touched the file after ecd54c27.
+3. A2A-Version for the row (a2a-version-row.txt): read from the row's own ingress ledgers, 1.0 on 20 of 20 arrivals and
+   20 of 20 responses at the go receiver, the load client being a2a-go v2.6.0. The proof's reading (b), the wire-version
+   script, was not taken.
+4. The make test guard (experiments/lib/go-sources-lists.sh) checks three things: the Makefile's two pathspecs are equal;
+   the harness's one line of the form GO_SOURCES_PATHS=(...) equals them; and each of the two command strings occurs
+   exactly once in the harness. The review showed two drift shapes it accepts: a later line appending to the array
+   (GO_SOURCES_PATHS+=(...)), and the command string kept only on a comment line while the real command passes a slice.
+   Hardening it is code and is carried into the next task's first code commit, as is the stale comment at
+   gate3-matrix.sh l.662-666 ("both the worker and the mock Deployment", "those two binaries"), which the extauthz
+   stamp has outgrown.

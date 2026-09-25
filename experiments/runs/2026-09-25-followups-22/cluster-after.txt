@@ -1,0 +1,52 @@
+# 2026-09-25T21:23:17Z the cluster after the matrix row (reads only)
+$ kubectl get authorizationpolicy -A
+No resources found
+$ kubectl get peerauthentication -A
+NAMESPACE              NAME                           MODE     AGE
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   21m
+istio-system           default                        STRICT   22m
+$ kubectl get httproute,grpcroute -A
+NAMESPACE               NAME                                                       HOSTNAMES                                AGE
+agentgateway-waypoint   httproute.gateway.networking.k8s.io/model-via-agw          ["model.lab.internal"]                   21m
+lab                     httproute.gateway.networking.k8s.io/orchestrator           ["orchestrator.lab.svc.cluster.local"]   20m
+lab                     httproute.gateway.networking.k8s.io/orchestrator-ingress                                            21m
+lab                     httproute.gateway.networking.k8s.io/worker                 ["worker.lab.svc.cluster.local"]         22m
+lab                     httproute.gateway.networking.k8s.io/worker-ingress         ["worker.lab.internal"]                  20m
+
+NAMESPACE   NAME                                                            HOSTNAMES                            AGE
+lab         grpcroute.gateway.networking.k8s.io/orchestrator-grpc-ingress   ["orchestrator-grpc.lab.internal"]   20m
+lab         grpcroute.gateway.networking.k8s.io/worker-grpc-ingress         ["worker-grpc.lab.internal"]         20m
+$ kubectl get gateway -A
+NAMESPACE               NAME                   CLASS          ADDRESS         PROGRAMMED   AGE
+agentgateway-ingress    agentgateway-ingress   agentgateway   10.96.41.148    True         21m
+agentgateway-waypoint   agw-central            agentgateway   10.96.232.152   True         22m
+$ kubectl get agentgatewaypolicy -A
+NAMESPACE               NAME          ACCEPTED   ATTACHED   AGE
+agentgateway-ingress    access-logs   True       True       20m
+agentgateway-ingress    tracing       True       True       20m
+agentgateway-waypoint   access-logs   True       True       20m
+agentgateway-waypoint   tracing       True       True       20m
+$ kubectl get deploy -A
+NAMESPACE               NAME                     READY   UP-TO-DATE   AVAILABLE   AGE
+agentgateway-ingress    agentgateway-ingress     1/1     1            1           21m
+agentgateway-system     agentgateway             1/1     1            1           22m
+agentgateway-waypoint   agw-central              1/1     1            1           22m
+istio-system            istiod                   1/1     1            1           23m
+kube-system             coredns                  2/2     2            2           25m
+lab                     extauthz                 1/1     1            1           21m
+lab                     mockllm                  1/1     1            1           24m
+lab                     orchestrator             1/1     1            1           24m
+lab                     worker                   1/1     1            1           24m
+local-path-storage      local-path-provisioner   1/1     1            1           25m
+telemetry               jaeger                   1/1     1            1           19m
+telemetry               otel-collector           1/1     1            1           20m
+telemetry               prometheus               1/1     1            1           19m
+$ retry stanzas across every HTTPRoute
+0
+$ lab.agent-mesh/go-sources annotations
+worker 2645ebf6ecdfc6968f00e72bdcdb612cc649a760
+mockllm 2645ebf6ecdfc6968f00e72bdcdb612cc649a760
+extauthz 2645ebf6ecdfc6968f00e72bdcdb612cc649a760
+$ MODEL_MAX_RETRIES on the orchestrator, CLIENT_ variables on the agents
+worker <none>
+orchestrator MODEL_MAX_RETRIES=0
