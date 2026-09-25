@@ -684,13 +684,14 @@ fi
 # pruning was automatic and silent, each of these is a deliberate operator
 # action, and only a step target ever changes either Deployment's image in
 # this lab.
-GO_SOURCES_PATHS=(agents/worker fixtures/mockllm internal go.mod go.sum)
+# Source of this list: the Makefile's GO_SOURCES_HASH and GO_SOURCES_DIRTY, word for word; make test compares them.
+GO_SOURCES_PATHS=(agents/worker fixtures/mockllm fixtures/extauthz internal go.mod go.sum ':!**/*_test.go')
 GO_SOURCES_DIRTY="$(git status --porcelain -- "${GO_SOURCES_PATHS[@]}" 2>/dev/null || true)"
 if [ -n "$GO_SOURCES_DIRTY" ]; then
 	echo "gate3-matrix: ${GO_SOURCES_PATHS[*]} has an uncommitted change; a stale image cannot be ruled out against a change with no commit to hash. Commit or stash before running RUN=${RUN}." >&2
 	exit 1
 fi
-CHECKOUT_GO_SOURCES_HASH="$(git ls-files -s -- "${GO_SOURCES_PATHS[@]}" ':!**/*_test.go' 2>/dev/null | git hash-object --stdin 2>/dev/null || true)"
+CHECKOUT_GO_SOURCES_HASH="$(git ls-files -s -- "${GO_SOURCES_PATHS[@]}" 2>/dev/null | git hash-object --stdin 2>/dev/null || true)"
 if [ -z "$CHECKOUT_GO_SOURCES_HASH" ]; then
 	echo "gate3-matrix: could not compute the Go-sources hash from this checkout (git ls-files or git hash-object failed or returned nothing); refusing to guess whether any Deployment is current" >&2
 	exit 1

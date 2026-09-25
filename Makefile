@@ -948,3 +948,17 @@ test:
 		fi; \
 	done < experiments/fixtures/derive-layer/expected.txt; \
 	[ "$$fail" = "0" ] || exit 1
+	@# The matrix harness's Go-sources pathspec against GO_SOURCES_HASH and
+	@# GO_SOURCES_DIRTY above, word for word (follow-ups 22: the harness's list
+	@# lacked fixtures/extauthz from D-3's deploy commit to 2026-09-25). Then each
+	@# mutant in experiments/fixtures/go-sources-lists/ must be refused.
+	@experiments/lib/go-sources-lists.sh Makefile experiments/gate3-matrix.sh
+	@fail=0; \
+	for m in experiments/fixtures/go-sources-lists/*.sh; do \
+		if experiments/lib/go-sources-lists.sh Makefile "$$m" >/dev/null 2>&1; then \
+			echo "FAIL go-sources-lists: mutant $$m was accepted" >&2; fail=1; \
+		else \
+			echo "ok  go-sources-lists: mutant $$m refused"; \
+		fi; \
+	done; \
+	[ "$$fail" = "0" ] || exit 1

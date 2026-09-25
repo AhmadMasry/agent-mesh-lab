@@ -5,13 +5,14 @@ requires-python = ">=3.10"
 dependencies = [
     "a2a-sdk[http-server]==1.1.5",
     # The gRPC binding (follow-on D-2): a2a-sdk's GrpcHandler imports grpc and
-    # grpc.aio and nothing else of the gRPC packages (a2a-sdk 1.1.4,
+    # grpc.aio and nothing else of the gRPC packages (a2a-sdk 1.1.5,
     # server/request_handlers/grpc_handler.py l.9-11; types/a2a_pb2_grpc.py
     # imports grpc alone). Depended on directly rather than through the SDK's
     # a2a-sdk[grpc] extra, which also names grpcio-tools and grpcio_reflection:
-    # with a2a-sdk's protobuf<7 their 1.84.0 cannot resolve, so the extra would
-    # hold them at 1.81.1 and add setuptools, none of which runs here. Pinned in
-    # versions.yaml under grpcio.
+    # a2a-sdk 1.1.5 requires protobuf>=5.29.5 with no upper bound (1.1.4 had <7),
+    # so their 1.84.0, which require protobuf>=7.35.1,<8, are no longer excluded,
+    # but the extra would still add both and grpcio-tools' setuptools, none of
+    # which runs here. Pinned in versions.yaml under grpcio.
     "grpcio==1.84.0",
     "openai==3.19.2",
     "uvicorn==0.54.0",
@@ -23,8 +24,8 @@ dependencies = [
     # is what the A2A SDK's server is built on, and httpx, which is what its client uses.
     # opentelemetry-instrumentation-asgi arrives under the Starlette one.
     #
-    # 0.65b0 and 1.44.0 are one release, "Version 1.44.0/0.65b0"; the project already
-    # resolved opentelemetry-api 1.44.0 transitively, so nothing else moves. Pinned in
+    # 0.66b0 and 1.45.0 are one release, "Version 1.45.0/0.66b0"; the lock resolves
+    # opentelemetry-api and opentelemetry-sdk at 1.45.0 with it. Pinned in
     # versions.yaml under otel-python-distro.
     "opentelemetry-distro==0.66b0",
     "opentelemetry-exporter-otlp-proto-http==1.45.0",
