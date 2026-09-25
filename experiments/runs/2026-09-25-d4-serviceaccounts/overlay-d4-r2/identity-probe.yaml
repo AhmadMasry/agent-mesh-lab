@@ -1,0 +1,42 @@
+# R2 (the controller's ruling of 2026-09-25 on D-4's Step 1): a READING, not an enforcement row. C-7's probe-header
+# technique on the ingress's two HTTPRoutes: a Deny that only this step's probes can match, one expression per value
+# read. x-d4-probe: verified fires when source.identity.serviceAccount is loadgen; x-d4-probe: unverified fires when
+# source.unverifiedWorkload.serviceAccount is loadgen. source.identity is "The (Istio SPIFFE) identity of the downstream
+# connection, if available" (schema/cel.md at v1.5.0, l.112-115); source.unverifiedWorkload is "resolved from the
+# workload discovery store by source IP", NOT CRYPTOGRAPHICALLY AUTHENTICATED (l.122-125). A Deny over a missing field
+# does not fire (authorization.md l.276), so a probe that passes read no such value. Deny rules are OR'd.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d4-r2-identity-probe-worker-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - "request.headers['x-d4-probe'] == 'verified' && source.identity.serviceAccount == 'loadgen'"
+          - "request.headers['x-d4-probe'] == 'unverified' && source.unverifiedWorkload.serviceAccount == 'loadgen'"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d4-r2-identity-probe-orchestrator-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - "request.headers['x-d4-probe'] == 'verified' && source.identity.serviceAccount == 'loadgen'"
+          - "request.headers['x-d4-probe'] == 'unverified' && source.unverifiedWorkload.serviceAccount == 'loadgen'"

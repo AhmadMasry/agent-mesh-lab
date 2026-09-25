@@ -1,0 +1,63 @@
+## 2026-09-25T09:00:39.661164Z $ kubectl get authorizationpolicy -A -o yaml
+apiVersion: v1
+items: []
+kind: List
+metadata:
+  resourceVersion: ""
+
+## 2026-09-25T09:00:39.702991Z $ kubectl get agentgatewaypolicy -A -o json | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name) authorization=\(.spec.traffic.authorization != null) extAuth=\(.spec.traffic.extAuth != null) ancestors=\([.status.ancestors[]? | .conditions[]? | "\(.type)=\(.status)/\(.reason)"] | join(","))"'
+agentgateway-ingress/access-logs authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+agentgateway-ingress/tracing authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+agentgateway-waypoint/access-logs authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+agentgateway-waypoint/tracing authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+lab/d4-a-allow-orchestrator-on-worker authorization=true extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+
+## 2026-09-25T09:00:39.743057Z $ istioctl ztunnel-config policy
+NAMESPACE            POLICY NAME                                                ACTION SCOPE
+agentgateway-ingress converted_peer_authentication_agentgateway-ingress-metrics Deny   WorkloadSelector
+istio-system         istio_converted_static_strict                              Deny   WorkloadSelector
+
+## 2026-09-25T09:00:39.805815Z $ kubectl get peerauthentication -A --no-headers
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   8m22s
+istio-system           default                        STRICT   9m21s
+
+## 2026-09-25T09:00:39.846493Z $ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+
+## 2026-09-25T09:00:39.887334Z $ kubectl -n lab get serviceaccount
+NAME           AGE
+default        10m
+loadgen        10m
+orchestrator   10m
+worker         10m
+
+## 2026-09-25T09:00:39.925836Z $ kubectl -n lab get pods -o custom-columns=NAME:.metadata.name,SA:.spec.serviceAccountName,IP:.status.podIP,PHASE:.status.phase
+NAME                                      SA             IP            PHASE
+d4-ctl                                    default        10.244.1.41   Running
+extauthz-7bf98b7698-8p7zh                 default        10.244.1.14   Running
+loadgen-a3t-fu3ct-r1-orchestrator-2dffx   loadgen        10.244.1.29   Succeeded
+loadgen-a3t-fu3ct-r1-worker-6f6zz         loadgen        10.244.1.28   Succeeded
+loadgen-a3t-fu3ct-r2-orchestrator-dc4th   loadgen        10.244.1.31   Succeeded
+loadgen-a3t-fu3ct-r2-worker-z2nj9         loadgen        10.244.1.30   Succeeded
+loadgen-d4z-z1-fwd-1-7l7zd                loadgen        10.244.1.36   Succeeded
+loadgen-d4z-z1-fwd-2-hlz79                loadgen        10.244.1.37   Succeeded
+loadgen-d4z-z1-fwd-3-bd5bs                loadgen        10.244.1.38   Succeeded
+loadgen-d4z-z1-fwd-4-v7cwb                loadgen        10.244.1.39   Succeeded
+loadgen-d4z-z1-fwd-5-dx9fx                loadgen        10.244.1.40   Succeeded
+loadgen-g2c-fu3cc-orchestrator-22cqq      loadgen        10.244.1.26   Succeeded
+loadgen-g2c-fu3cc-worker-kn7ph            loadgen        10.244.1.25   Succeeded
+mockllm-5486885664-t4q2f                  default        10.244.1.18   Running
+orchestrator-5fcccb4474-dz25q             orchestrator   10.244.1.19   Running
+worker-757cd75f9b-wc25x                   worker         10.244.1.20   Running
+
+## 2026-09-25T09:00:40.286360Z $ jq -r '(.policies // []) | length as $n | "agw-central policies: \($n)", (.[] | "  name=\(.name|tostring) target=\(.target|tostring|.[0:160]) policy=\(.policy|tostring|.[0:300])")' 'experiments/runs/2026-09-25-d4-serviceaccounts/a/config-dump-agw-central-applied.txt.json'
+agw-central policies: 3
+  name={"kind":"AgentgatewayPolicy","name":"access-logs","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} policy={"frontend":{"accessLog":{"otlp":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"protocol":"grpc"}}}}
+  name={"kind":"AgentgatewayPolicy","name":"tracing","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} policy={"frontend":{"tracing":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"attributes":{},"resources":{},"remove":[],"randomSampling":"true","clientSampling":"true","path":"/v1/traces","protocol":"grpc"}}}
+  name={"kind":"AgentgatewayPolicy","name":"d4-a-allow-orchestrator-on-worker","namespace":"lab"} target={"route":{"name":"worker","namespace":"lab","kind":"HTTPRoute"}} policy={"traffic":{"phase":"route","authorization":{"rules":{"allow":["source.identity.namespace == 'lab' && source.identity.serviceAccount == 'orchestrator'"]}}}}
+
+## 2026-09-25T09:00:40.628415Z $ jq -r '(.policies // []) | length as $n | "agentgateway-ingress policies: \($n)", (.[] | "  name=\(.name|tostring) target=\(.target|tostring|.[0:160]) policy=\(.policy|tostring|.[0:300])")' 'experiments/runs/2026-09-25-d4-serviceaccounts/a/config-dump-agentgateway-ingress-applied.txt.json'
+agentgateway-ingress policies: 2
+  name={"kind":"AgentgatewayPolicy","name":"access-logs","namespace":"agentgateway-ingress"} target={"gateway":{"gatewayName":"agentgateway-ingress","gatewayNamespace":"agentgateway-ingress","listenerName":null}} policy={"frontend":{"accessLog":{"otlp":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"protocol":"grpc"}}}}
+  name={"kind":"AgentgatewayPolicy","name":"tracing","namespace":"agentgateway-ingress"} target={"gateway":{"gatewayName":"agentgateway-ingress","gatewayNamespace":"agentgateway-ingress","listenerName":null}} policy={"frontend":{"tracing":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"attributes":{},"resources":{},"remove":[],"randomSampling":"true","clientSampling":"true","path":"/v1/traces","protocol":"grpc"}}}
+

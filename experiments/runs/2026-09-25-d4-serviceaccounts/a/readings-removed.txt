@@ -1,0 +1,71 @@
+## 2026-09-25T09:01:32.566211Z $ kubectl get authorizationpolicy -A -o yaml
+apiVersion: v1
+items: []
+kind: List
+metadata:
+  resourceVersion: ""
+
+## 2026-09-25T09:01:32.607481Z $ kubectl get agentgatewaypolicy -A -o json | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name) authorization=\(.spec.traffic.authorization != null) extAuth=\(.spec.traffic.extAuth != null) ancestors=\([.status.ancestors[]? | .conditions[]? | "\(.type)=\(.status)/\(.reason)"] | join(","))"'
+agentgateway-ingress/access-logs authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+agentgateway-ingress/tracing authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+agentgateway-waypoint/access-logs authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+agentgateway-waypoint/tracing authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+
+## 2026-09-25T09:01:32.647941Z $ istioctl ztunnel-config policy
+NAMESPACE            POLICY NAME                                                ACTION SCOPE
+agentgateway-ingress converted_peer_authentication_agentgateway-ingress-metrics Deny   WorkloadSelector
+istio-system         istio_converted_static_strict                              Deny   WorkloadSelector
+
+## 2026-09-25T09:01:32.709064Z $ kubectl get peerauthentication -A --no-headers
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   9m15s
+istio-system           default                        STRICT   10m
+
+## 2026-09-25T09:01:32.747107Z $ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+
+## 2026-09-25T09:01:32.788127Z $ kubectl -n lab get serviceaccount
+NAME           AGE
+default        11m
+loadgen        11m
+orchestrator   11m
+worker         11m
+
+## 2026-09-25T09:01:32.826690Z $ kubectl -n lab get pods -o custom-columns=NAME:.metadata.name,SA:.spec.serviceAccountName,IP:.status.podIP,PHASE:.status.phase
+NAME                                      SA             IP            PHASE
+d4-ctl                                    default        10.244.1.41   Running
+extauthz-7bf98b7698-8p7zh                 default        10.244.1.14   Running
+loadgen-a3t-fu3ct-r1-orchestrator-2dffx   loadgen        10.244.1.29   Succeeded
+loadgen-a3t-fu3ct-r1-worker-6f6zz         loadgen        10.244.1.28   Succeeded
+loadgen-a3t-fu3ct-r2-orchestrator-dc4th   loadgen        10.244.1.31   Succeeded
+loadgen-a3t-fu3ct-r2-worker-z2nj9         loadgen        10.244.1.30   Succeeded
+loadgen-d4a-a1-fwd-1-cfkzv                loadgen        10.244.1.43   Succeeded
+loadgen-d4a-a1-fwd-2-5fd9v                loadgen        10.244.1.45   Succeeded
+loadgen-d4a-a1-fwd-3-kfrz5                loadgen        10.244.1.47   Succeeded
+loadgen-d4a-a1-fwd-4-5q2dm                loadgen        10.244.1.49   Succeeded
+loadgen-d4a-a1-fwd-5-j6bgj                loadgen        10.244.1.51   Succeeded
+loadgen-d4a-a1-lg-1-w24mj                 loadgen        10.244.1.42   Failed
+loadgen-d4a-a1-lg-2-s7nn6                 loadgen        10.244.1.44   Failed
+loadgen-d4a-a1-lg-3-9z75z                 loadgen        10.244.1.46   Failed
+loadgen-d4a-a1-lg-4-8zvfd                 loadgen        10.244.1.48   Failed
+loadgen-d4a-a1-lg-5-qgppm                 loadgen        10.244.1.50   Failed
+loadgen-d4z-z1-fwd-1-7l7zd                loadgen        10.244.1.36   Succeeded
+loadgen-d4z-z1-fwd-2-hlz79                loadgen        10.244.1.37   Succeeded
+loadgen-d4z-z1-fwd-3-bd5bs                loadgen        10.244.1.38   Succeeded
+loadgen-d4z-z1-fwd-4-v7cwb                loadgen        10.244.1.39   Succeeded
+loadgen-d4z-z1-fwd-5-dx9fx                loadgen        10.244.1.40   Succeeded
+loadgen-g2c-fu3cc-orchestrator-22cqq      loadgen        10.244.1.26   Succeeded
+loadgen-g2c-fu3cc-worker-kn7ph            loadgen        10.244.1.25   Succeeded
+mockllm-5486885664-t4q2f                  default        10.244.1.18   Running
+orchestrator-5fcccb4474-dz25q             orchestrator   10.244.1.19   Running
+worker-757cd75f9b-wc25x                   worker         10.244.1.20   Running
+
+## 2026-09-25T09:01:33.216325Z $ jq -r '(.policies // []) | length as $n | "agw-central policies: \($n)", (.[] | "  name=\(.name|tostring) target=\(.target|tostring|.[0:160]) policy=\(.policy|tostring|.[0:300])")' 'experiments/runs/2026-09-25-d4-serviceaccounts/a/config-dump-agw-central-removed.txt.json'
+agw-central policies: 2
+  name={"kind":"AgentgatewayPolicy","name":"access-logs","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} policy={"frontend":{"accessLog":{"otlp":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"protocol":"grpc"}}}}
+  name={"kind":"AgentgatewayPolicy","name":"tracing","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} policy={"frontend":{"tracing":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"attributes":{},"resources":{},"remove":[],"randomSampling":"true","clientSampling":"true","path":"/v1/traces","protocol":"grpc"}}}
+
+## 2026-09-25T09:01:33.573714Z $ jq -r '(.policies // []) | length as $n | "agentgateway-ingress policies: \($n)", (.[] | "  name=\(.name|tostring) target=\(.target|tostring|.[0:160]) policy=\(.policy|tostring|.[0:300])")' 'experiments/runs/2026-09-25-d4-serviceaccounts/a/config-dump-agentgateway-ingress-removed.txt.json'
+agentgateway-ingress policies: 2
+  name={"kind":"AgentgatewayPolicy","name":"access-logs","namespace":"agentgateway-ingress"} target={"gateway":{"gatewayName":"agentgateway-ingress","gatewayNamespace":"agentgateway-ingress","listenerName":null}} policy={"frontend":{"accessLog":{"otlp":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"protocol":"grpc"}}}}
+  name={"kind":"AgentgatewayPolicy","name":"tracing","namespace":"agentgateway-ingress"} target={"gateway":{"gatewayName":"agentgateway-ingress","gatewayNamespace":"agentgateway-ingress","listenerName":null}} policy={"frontend":{"tracing":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"attributes":{},"resources":{},"remove":[],"randomSampling":"true","clientSampling":"true","path":"/v1/traces","protocol":"grpc"}}}
+

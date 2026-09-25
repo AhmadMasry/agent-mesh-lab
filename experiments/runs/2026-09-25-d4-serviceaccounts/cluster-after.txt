@@ -1,0 +1,73 @@
+# the cluster after every D-4 row, read 2026-09-25T09:06:58Z, read only
+## $ kubectl get authorizationpolicy -A --no-headers
+No resources found
+## $ kubectl get agentgatewaypolicy -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,AUTHZ:.spec.traffic.authorization.action,EXTAUTH:.spec.traffic.extAuth.backendRef.name --no-headers
+agentgateway-ingress    access-logs   <none>   <none>
+agentgateway-ingress    tracing       <none>   <none>
+agentgateway-waypoint   access-logs   <none>   <none>
+agentgateway-waypoint   tracing       <none>   <none>
+## $ kubectl get peerauthentication -A --no-headers
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   14m
+istio-system           default                        STRICT   15m
+## $ kubectl -n lab get serviceaccount
+NAME           AGE
+default        17m
+loadgen        17m
+orchestrator   17m
+worker         17m
+## $ kubectl -n lab get pods -o custom-columns=NAME:.metadata.name,SA:.spec.serviceAccountName,AUTOMOUNT:.spec.automountServiceAccountToken,PHASE:.status.phase --no-headers
+extauthz-7bf98b7698-8p7zh                 default        false    Running
+gate2-curl                                default        <none>   Running
+loadgen-a3t-fu3ct-r1-orchestrator-2dffx   loadgen        false    Succeeded
+loadgen-a3t-fu3ct-r1-worker-6f6zz         loadgen        false    Succeeded
+loadgen-a3t-fu3ct-r2-orchestrator-dc4th   loadgen        false    Succeeded
+loadgen-a3t-fu3ct-r2-worker-z2nj9         loadgen        false    Succeeded
+loadgen-d1-hdr-go-stream-d4h1-tqz7b       loadgen        false    Succeeded
+loadgen-d1-hdr-go-subscribe-d4h1-k2dlf    loadgen        false    Failed
+loadgen-d1-hdr-go-unary-d4h1-gnvch        loadgen        false    Succeeded
+loadgen-d1-hdr-py-stream-d4h1-dvp8l       loadgen        false    Succeeded
+loadgen-d1-hdr-py-subscribe-d4h1-kg8lf    loadgen        false    Failed
+loadgen-d1-hdr-py-unary-d4h1-5v5ct        loadgen        false    Succeeded
+loadgen-d4a-a1-fwd-1-cfkzv                loadgen        false    Succeeded
+loadgen-d4a-a1-fwd-2-5fd9v                loadgen        false    Succeeded
+loadgen-d4a-a1-fwd-3-kfrz5                loadgen        false    Succeeded
+loadgen-d4a-a1-fwd-4-5q2dm                loadgen        false    Succeeded
+loadgen-d4a-a1-fwd-5-j6bgj                loadgen        false    Succeeded
+loadgen-d4a-a1-lg-1-w24mj                 loadgen        false    Failed
+loadgen-d4a-a1-lg-2-s7nn6                 loadgen        false    Failed
+loadgen-d4a-a1-lg-3-9z75z                 loadgen        false    Failed
+loadgen-d4a-a1-lg-4-8zvfd                 loadgen        false    Failed
+loadgen-d4a-a1-lg-5-qgppm                 loadgen        false    Failed
+loadgen-d4x-x1-go-1-bmn8b                 loadgen        false    Succeeded
+loadgen-d4x-x1-go-2-cwnhq                 loadgen        false    Succeeded
+loadgen-d4x-x1-go-3-6jswz                 loadgen        false    Succeeded
+loadgen-d4x-x1-go-4-2zhf9                 loadgen        false    Succeeded
+loadgen-d4x-x1-go-5-p9smw                 loadgen        false    Succeeded
+loadgen-d4x-x1-py-1-d2qtn                 loadgen        false    Succeeded
+loadgen-d4x-x1-py-2-pkj7n                 loadgen        false    Succeeded
+loadgen-d4x-x1-py-3-lfc67                 loadgen        false    Succeeded
+loadgen-d4x-x1-py-4-59khl                 loadgen        false    Succeeded
+loadgen-d4x-x1-py-5-ph86t                 loadgen        false    Succeeded
+loadgen-d4z-z1-fwd-1-7l7zd                loadgen        false    Succeeded
+loadgen-d4z-z1-fwd-2-hlz79                loadgen        false    Succeeded
+loadgen-d4z-z1-fwd-3-bd5bs                loadgen        false    Succeeded
+loadgen-d4z-z1-fwd-4-v7cwb                loadgen        false    Succeeded
+loadgen-d4z-z1-fwd-5-dx9fx                loadgen        false    Succeeded
+loadgen-g2c-d4after-orchestrator-4ct4z    loadgen        false    Succeeded
+loadgen-g2c-d4after-worker-zrzch          loadgen        false    Succeeded
+loadgen-g2c-fu3cc-orchestrator-22cqq      loadgen        false    Succeeded
+loadgen-g2c-fu3cc-worker-kn7ph            loadgen        false    Succeeded
+mockllm-5486885664-t4q2f                  default        false    Running
+orchestrator-5fcccb4474-6kdvp             orchestrator   false    Running
+worker-757cd75f9b-qphxz                   worker         false    Running
+## $ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+## $ kubectl -n lab get jobs --no-headers | wc -l
+      39
+## $ kubectl -n lab get deploy (serviceAccountName, automount, LEDGER_HEADERS, EXTAUTHZ_UNDECIDABLE), 2026-09-25T09:07:09Z
+extauthz sa=default automount=false LEDGER_HEADERS=[] EXTAUTHZ_UNDECIDABLE=[deny]
+mockllm sa=default automount=false LEDGER_HEADERS=[] EXTAUTHZ_UNDECIDABLE=[]
+orchestrator sa=orchestrator automount=false LEDGER_HEADERS=[] EXTAUTHZ_UNDECIDABLE=[]
+worker sa=worker automount=false LEDGER_HEADERS=[] EXTAUTHZ_UNDECIDABLE=[]
+## $ kubectl -n lab get pod gate2-curl (the committed clean-check script deletes it with --wait=false)
+Error from server (NotFound): pods "gate2-curl" not found

@@ -1,0 +1,22 @@
+# Row Z (the controller's ruling of 2026-09-25 on D-4's Step 1): ztunnel's L4 ALLOW on principals at the worker, C-3's
+# layer. C-3's policy allowed only agw-central's identity; this one allows agw-central's AND the orchestrator's, so that
+# with three accounts the load client's identity is refused and the orchestrator's admitted on the direct path.
+# "pods with the label ... only permit traffic from sources with an identity principal of ..." (istio.io release-1.31,
+# ambient/usage/l4-policy l.38; principals, l.54). Behind agw-central the destination ztunnel sees the proxy's identity,
+# not the caller's (l4-policy l.100-104), so on the Service path this policy admits whatever agw-central delivers.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: d4-z-allow-orchestrator-and-agw-central
+  namespace: lab
+spec:
+  selector:
+    matchLabels:
+      app: worker
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/agentgateway-waypoint/sa/agw-central
+              - cluster.local/ns/lab/sa/orchestrator

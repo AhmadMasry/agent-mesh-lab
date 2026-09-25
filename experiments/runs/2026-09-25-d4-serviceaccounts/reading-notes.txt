@@ -1,0 +1,68 @@
+Follow-on D-4: reading notes for this run directory. Stamps UTC from date -u. The findings entries that cite it are the
+four "D-4, ..." entries of 2026-09-25.
+
+THE TREE. Three code commits on branch experiment-d4 on top of f5d44695, named by subject:
+  "test(extauthz): goDecode held to a2a-go v2.5.0's own JSON-RPC handler over generated bodies, D-3b's carried review item"
+  "feat(deploy): the load client, the worker and the orchestrator each on their own ServiceAccount, from base, token automount off"
+  "fix(checks): the six certificate checks name the worker's and the orchestrator's identities, both required"
+The built tree is the third one's; build.txt lists every deployed subtree id beside the tree D-3b's rebuild proved (217b2da9).
+
+THE CODE PROOF (code-proof/), committed with the code:
+  render-proof.sh (D-3's, unedited), render-proof-results.txt, render-diff.txt   every overlay before and after: +3 ServiceAccounts
+               and 2 Deployments changed, one serviceAccountName line each, in the six step overlays; everything else identical.
+  job-templates.txt   both load-client Job templates, rendered as the scripts render them, read by a client dry run.
+  cert-check-table.py, cert-check-table.txt   the new certificate check's program, read from the five scripts and make -n step-3,
+               on 7 synthetic tables, 0 wrong.
+  cert-check-live-before-rebuild.txt   the standing D-3b cluster: the old check passes, the new one fails.
+
+THE DOCUMENTS read in Step 1 (fetched 2026-09-25T08:36Z to 08:39Z by curl --retry 0, not committed; cited by line in the entries):
+  istio/istio.io at 16a06db6 (release-1.31): ambient/architecture/data-plane, ambient/architecture/control-plane,
+    ambient/usage/l4-policy, concepts/security, reference/config/security/authorization-policy.
+  agentgateway/agentgateway at v1.5.0: schema/cel.md.
+  agentgateway/website at 30e8aa69 (main) and 10cda98d: assets/agw-docs/pages/security/authorization.md (action table identical).
+  kubernetes/website at 1e1be1df: content/en/docs/tasks/configure-pod-container/configure-service-account.md.
+
+THE REBUILD. rebuild.sh (adapted from D-3b's, the changes listed in its header), build.txt, timings.csv, rebuild-driver.txt.
+  Tools: istioctl 1.31.0 under ${TMPDIR}/d4/tools, equal byte for byte to the binary in the release tarball whose sha256
+  a0c4d35320f930e5254de119512f0761f65a76fb614973281bf9435e24306d66 equals the release's checksum file re-fetched
+  2026-09-25T08:47:38Z; Helm with an empty repositories file and empty caches. Seven make targets, each exit 0.
+  make step-3's certificate check: VALID CERT true for sa/worker and sa/orchestrator (build.txt, the step-3 section).
+
+THE PROOF. proof.sh (D-3b's, changed only in paths and LASTPROOF = D-3b's directory), proof-driver.txt. checks.sh, versions-readback.sh
+  and standard-counts-vs-rebuild-2.py run from the records that hold them, unedited. Outputs: clean-check/, trace/, prometheus-targets.txt,
+  strict/, proxies/, cluster/, retry-knobs/, versions-readback.txt, standard-counts-vs-last-proof.txt (same=59 DIFFERS=8).
+  NOT COMMITTED: checks.sh's byte copies of itself, as-run, both sha256 4056b5596883187fe1a7b0528a833f533437aaf93760ee6a8130215ddd16224b,
+  equal to the committed file.
+  The comparison program's own labels say REBUILD-2 for the last proof's side; here that side is D-3b's directory.
+  Its named-leg comparison keys on source_principal, so the two legs into the agents from agw-central read "same" although their
+  destination_principal moved from lab/sa/default to lab/sa/worker and lab/sa/orchestrator (strict/legs.csv).
+
+THE ROWS. rows.sh (one phase per run), each phase's directory with phases.txt, driver.txt, readings-*.txt, config dumps, apply and
+  remove records, the access lines and ztunnel lines of the window, one directory per work item (client.jsonl, the three ledgers, or
+  ledgers-stderr.txt where make ledgers found no line of any kind).
+  z/    Row Z, overlay-d4-z/, 08:59:06Z to 08:59:48Z.
+  a/    Row A, overlay-d4-a/, 09:00:39Z to 09:01:33Z.
+  r2/   R2, overlay-d4-r2/, 09:02:06Z to 09:02:29Z.
+  xa/   the ingress's ext-authz source principal, D-3's overlay applied unedited from experiments/runs/2026-09-24-d3-extauthz/
+        overlay-d3-extauthz, 09:03:21Z to 09:04:14Z, the fixture at its deployed setting (deny).
+  headers/   D-1's headers.sh run unedited from its record (RUN_ID d4h1), driver 09:04:30Z to 09:05:17Z, reading window from 09:04:34Z; LEDGER_HEADERS restored empty on
+        both agents by its trap (control.txt).
+  after/     the closing clean check by the committed gate2-single-clean.sh (RUN_ID d4after), and hop-lines/ with the ztunnel
+        connection lines and both proxies' access lines of its window (from 09:05:52Z).
+  The probe pods d4-as-orchestrator and d4-as-loadgen are curl pods run under the orchestrator's and the load client's
+  ServiceAccounts with automount false: the probe carries the identity ztunnel and agentgateway read, the lab standing in for the
+  caller. d4-ctl is a curl pod on the default account used only for the control resets.
+  The worker and orchestrator pods changed twice during headers/ (its two rollouts); every earlier phase ran on the pods the rebuild
+  started, then the rollout's pods; phases.txt of each names the pods it used.
+
+counts.py, counts.txt   every count the entries cite, from this directory alone.
+cluster-after.txt   the cluster after every row. sleep-events.sh (D-3b's, unedited), sleep-events.csv: 0 events 08:47:36Z to 09:07:16Z.
+
+2026-09-25, review round (review-d4 M3), added below and nothing above edited. The pod sentence above, said plainly: the standard
+proof and the phases z/, a/, r2/ and xa/ all ran on the pods the rebuild started, worker-757cd75f9b-wc25x and
+orchestrator-5fcccb4474-dz25q (each phase's phases.txt). headers/ changed them twice: its reading window ran on the pods of its
+first rollout, worker-5687cff595-bt7jc and orchestrator-74c7654b85-5x6wx (LEDGER_HEADERS on), and its restore rolled them to
+worker-757cd75f9b-qphxz and orchestrator-5fcccb4474-6kdvp (the deployed template again), on which the closing clean check after/
+ran and which cluster-after.txt lists.
+Also added in this round (review-d4 I1): z/agw-central-to-worker-connections.txt, the counter of connections agw-central opened to
+the worker over Row Z's window, read 2026-09-25T09:23:32Z, read only.
