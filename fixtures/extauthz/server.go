@@ -30,6 +30,8 @@ type decisionLine struct {
 	RequestID          string   `json:"request_id"`
 	HTTPMethod         string   `json:"http_method"`
 	Path               string   `json:"path"`
+	DecodedPath        string   `json:"decoded_path"`
+	JSONRPCReach       string   `json:"jsonrpc_reach"`
 	Host               string   `json:"host"`
 	Protocol           string   `json:"protocol"`
 	Binding            string   `json:"binding"`
@@ -80,7 +82,8 @@ func (s *server) Check(_ context.Context, req *authv3.CheckRequest) (*authv3.Che
 	line := decisionLine{
 		Ledger: "extauthz", TS: time.Now().UTC().Format(time.RFC3339Nano),
 		LogicalWorkItemID: d.LogicalWorkItemID, MessageID: d.MessageID, TaskID: d.TaskID, JSONRPCID: d.JSONRPCID,
-		RequestID: http.GetId(), HTTPMethod: http.GetMethod(), Path: http.GetPath(), Host: http.GetHost(),
+		RequestID: http.GetId(), HTTPMethod: http.GetMethod(), Path: http.GetPath(), DecodedPath: d.DecodedPath,
+		JSONRPCReach: d.JSONRPCReach, Host: http.GetHost(),
 		Protocol: http.GetProtocol(), Binding: d.Binding, Operation: d.Operation, DecidedBy: d.DecidedBy,
 		BodyLen: d.BodyLen, Size: d.Size, Partial: d.Partial, HeaderNames: d.HeaderNames,
 		SourcePrincipal: attrs.GetSource().GetPrincipal(), UndecidableSetting: s.setting,
