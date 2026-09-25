@@ -90,8 +90,8 @@ echo "== certificate check =="
 CERTS="$(istioctl ztunnel-config certificates --node "${CLUSTER_NAME}-worker")"
 printf '%s\n' "$HEADER" "$CERTS" "" >>"${RUN_DIR}/certificates.txt"
 printf '%s\n' "$CERTS"
-if ! printf '%s\n' "$CERTS" | awk '$1 ~ /ns\/lab\/sa\/default$/ && $2 == "Leaf" { print $4 }' | grep -qx true; then
-	echo "certificate check: VALID CERT is not true for spiffe://cluster.local/ns/lab/sa/default; restart ds/ztunnel and record it" >&2
+if ! printf '%s\n' "$CERTS" | awk '$2 == "Leaf" && $4 == "true" { if ($1 ~ /ns\/lab\/sa\/worker$/) w = 1; if ($1 ~ /ns\/lab\/sa\/orchestrator$/) o = 1 } END { exit !(w && o) }'; then
+	echo "certificate check: VALID CERT is not true for spiffe://cluster.local/ns/lab/sa/worker and spiffe://cluster.local/ns/lab/sa/orchestrator; restart ds/ztunnel and record it" >&2
 	exit 1
 fi
 

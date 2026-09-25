@@ -234,12 +234,12 @@ trap cleanup EXIT
 # measures, so this runs before anything is sent.
 CERT_FILE="${RUN_DIR}/certificates.txt"
 cert_valid() {
-	awk '$1 ~ /ns\/lab\/sa\/default$/ && $2 == "Leaf" { print $4 }' "$CERT_FILE" | grep -qx true
+	awk '$2 == "Leaf" && $4 == "true" { if ($1 ~ /ns\/lab\/sa\/worker$/) w = 1; if ($1 ~ /ns\/lab\/sa\/orchestrator$/) o = 1 } END { exit !(w && o) }' "$CERT_FILE"
 }
 echo "== certificate check =="
 istioctl ztunnel-config certificates --node "${CLUSTER_NAME}-worker" >"$CERT_FILE"
 if cert_valid; then
-	echo "certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted"
+	echo "certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/worker and spiffe://cluster.local/ns/lab/sa/orchestrator; ztunnel not restarted"
 else
 	echo "certificate check: VALID CERT is not true; restarting ztunnel" >&2
 	kubectl -n istio-system rollout restart daemonset/ztunnel

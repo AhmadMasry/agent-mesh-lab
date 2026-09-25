@@ -188,19 +188,19 @@ echo "== certificate check =="
 CERTS="$(istioctl ztunnel-config certificates --node "${CLUSTER_NAME}-worker")"
 printf '%s\n' "$HEADER" "$CERTS" "" >>"$CERT_FILE"
 printf '%s\n' "$CERTS"
-if ! printf '%s\n' "$CERTS" | awk '$1 ~ /ns\/lab\/sa\/default$/ && $2 == "Leaf" { print $4 }' | grep -qx true; then
-	echo "certificate check: VALID CERT is not true for spiffe://cluster.local/ns/lab/sa/default; restarting ztunnel" >&2
+if ! printf '%s\n' "$CERTS" | awk '$2 == "Leaf" && $4 == "true" { if ($1 ~ /ns\/lab\/sa\/worker$/) w = 1; if ($1 ~ /ns\/lab\/sa\/orchestrator$/) o = 1 } END { exit !(w && o) }'; then
+	echo "certificate check: VALID CERT is not true for spiffe://cluster.local/ns/lab/sa/worker and spiffe://cluster.local/ns/lab/sa/orchestrator; restarting ztunnel" >&2
 	kubectl -n istio-system rollout restart daemonset/ztunnel
 	kubectl -n istio-system rollout status daemonset/ztunnel --timeout=180s
 	CERTS="$(istioctl ztunnel-config certificates --node "${CLUSTER_NAME}-worker")"
 	printf '%s\n' "== after a ztunnel restart ==" "$CERTS" "" >>"$CERT_FILE"
-	printf '%s\n' "$CERTS" | awk '$1 ~ /ns\/lab\/sa\/default$/ && $2 == "Leaf" { print $4 }' | grep -qx true || {
+	printf '%s\n' "$CERTS" | awk '$2 == "Leaf" && $4 == "true" { if ($1 ~ /ns\/lab\/sa\/worker$/) w = 1; if ($1 ~ /ns\/lab\/sa\/orchestrator$/) o = 1 } END { exit !(w && o) }' || {
 		echo "certificate check: VALID CERT still not true after a ztunnel restart" >&2
 		exit 1
 	}
 	echo "certificate check: VALID CERT true after a ztunnel restart"
 else
-	echo "certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default; ztunnel not restarted"
+	echo "certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/worker and spiffe://cluster.local/ns/lab/sa/orchestrator; ztunnel not restarted"
 fi
 
 {
