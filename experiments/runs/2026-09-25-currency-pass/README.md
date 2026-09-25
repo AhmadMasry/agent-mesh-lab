@@ -144,3 +144,10 @@ that command always moves), orchestrator:cur-2026-09-25 (scratch; orchestrator:d
 from, is untouched), ko.local/cur-grpc184/worker (the scratch grpc v1.84.0 build) and prom/prometheus:v3.15.0 (pulled
 for the start check). The lab-scoped istioctl 1.31.1 is under the task's own TMPDIR tools directory. No container of
 this phase is left. Keep-awake: this phase started none and changed no power setting.
+
+## Note of 2026-09-25, after the controller's ruling on Phase 1
+
+The opentelemetry-util-genai hold described above as living in uv.lock alone was made a constraint in
+agents/orchestrator/pyproject.toml ([tool.uv] constraint-dependencies, opentelemetry-util-genai<1.2b0) by the
+controller's ruling, in its own commit after this directory's. Under it, uv lock --upgrade keeps 1.1b0; the check is
+recorded in experiments/runs/2026-09-25-currency-rebuild/local/util-genai-constraint.txt. The text above is not edited.

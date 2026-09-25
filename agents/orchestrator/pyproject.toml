@@ -47,6 +47,16 @@ dev = [
     "pytest-asyncio==1.4.0",
 ]
 
+[tool.uv]
+# A hold, not a dependency (the currency pass of 2026-09-25; versions.yaml,
+# otel-python-genai-openai). opentelemetry-util-genai 1.2b0 no longer has the
+# module opentelemetry.util.genai.instruments, which
+# opentelemetry-instrumentation-openai-v2 2.4b0 imports, while 2.4b0 declares
+# util-genai>=0.4b0.dev; so without this line the resolver takes 1.2b0, the
+# test collection fails and the launcher loads no chat span. Lifts with an
+# openai-v2 release that no longer imports opentelemetry.util.genai.instruments.
+constraint-dependencies = ["opentelemetry-util-genai<1.2b0"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 # Deprecation notices raised inside dependencies (the A2A SDK's proto validators, the Starlette
