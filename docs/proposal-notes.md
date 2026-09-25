@@ -406,3 +406,16 @@ or content-type. The rule is unchanged (refuse SubscribeToTask, allow everything
 its default. It is rebuilt from a deleted cluster and counted against D-3's rows and the shapes D-3 found, plus any shape the
 routing reading adds. It runs on the current topology, before the two standing changes, as the note of 2026-09-24 orders. No
 third-party project is added. The proposal text is unchanged.
+
+## 2026-09-25 — a currency pass: every dependency at its latest stable release, with the rows a moved dependency can change re-counted
+
+Decision by the author, after the D series. a2a-go v2.6.0 was released on 2026-09-25 and changes an answer the lab counted
+(the reply to a SubscribeToTask naming a terminal task, B-3 and D-1's Python-client row, a2a-go#442). The author asked for a full
+dependency upgrade rather than one pin: **every pin is re-read from its release source and moved to its latest stable release**
+(the rule of 2026-09-19: no alpha, beta, release candidate or nightly; a project with no stable line is pinned at the latest release
+of the only line it has and named so), each move recorded in versions.yaml with its source, and a pin held below its latest only
+with the documents that justify the hold. The lab is then rebuilt from a deleted cluster at the new pins and the standard proof is
+run. **Re-run scope, the author's choice:** every experiment row whose outcome a moved dependency could change is re-counted with
+its committed driver, the rows chosen from each moved release's changelog and code diff and listed before any is run; the rows no
+diff touches are listed with the reason they were not re-run. Earlier entries stay the records of their versions. Nothing is added
+to the lab's scope; a moved dependency that needs a code change gets the smallest change, test first. The proposal text is unchanged.
