@@ -1,0 +1,24 @@
+# D-4 counts, from d4z
+
+## Row Z: ztunnel ALLOW on principals at the worker (agw-central's and the orchestrator's identities)
+  probe pods: {'d4-as-orchestrator': '10.244.1.194', 'd4-as-loadgen': '10.244.1.195'}
+  direct, as the orchestrator's account, policy in force: 5 work items
+    5 x {"client": ["GetAgentCard=200/exit0", "SendMessage=200/exit0"], "invocations": 1, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": ["10.244.1.194"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  direct, as the load client's account, policy in force: 5 work items
+    5 x {"client": ["GetAgentCard=000/exit56", "SendMessage=000/exit56"], "none": true}
+  the forward control (a load-client Job to the orchestrator's Service), policy in force: 5 work items
+    5 x {"client": "task/TASK_STATE_COMPLETED", "invocations": 1, "orchestrator_arrivals": 1, "orchestrator_executes": 1, "orchestrator_last_state": "TASK_STATE_COMPLETED", "orchestrator_received": 1, "orchestrator_tasks": 1, "remotes": ["10.244.1.169", "10.244.1.17"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  direct, as the orchestrator's account, after removal: 1 work items
+    1 x {"client": ["GetAgentCard=200/exit0", "SendMessage=200/exit0"], "invocations": 1, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": ["10.244.1.194"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  direct, as the load client's account, after removal: 1 work items
+    1 x {"client": ["GetAgentCard=200/exit0", "SendMessage=200/exit0"], "invocations": 1, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": ["10.244.1.195"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  ztunnel connection lines in the window, inbound to the worker's pod on its port 8080, by source address:
+    10 x ('d4-as-loadgen', 'spiffe://cluster.local/ns/lab/sa/loadgen', 'spiffe://cluster.local/ns/lab/sa/worker', 'policy-rejection')
+    10 x ('d4-as-orchestrator', 'spiffe://cluster.local/ns/lab/sa/orchestrator', 'spiffe://cluster.local/ns/lab/sa/worker', 'ok')
+  every policy-rejection line in the window: 10, naming {'spiffe://cluster.local/ns/lab/sa/loadgen': 10}
+  agw-central's access lines in the window (route, src.identity, path, status):
+    10 x ('agentgateway-waypoint/model-via-agw', 'spiffe://cluster.local/ns/lab/sa/worker', '/v1/chat/completions', '200')
+    5 x ('lab/orchestrator', 'spiffe://cluster.local/ns/lab/sa/loadgen', '/.well-known/agent-card.json', '200')
+    5 x ('lab/worker', 'spiffe://cluster.local/ns/lab/sa/orchestrator', '/', '200')
+
+## Row A: agentgateway Allow on source.identity (lab/orchestrator) on agw-central's route lab/worker

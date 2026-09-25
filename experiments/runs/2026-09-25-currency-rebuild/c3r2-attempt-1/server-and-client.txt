@@ -1,0 +1,19 @@
+
+# read 2026-09-25T18:50:18Z
+$ kubectl -n repro exec deploy/server -- sh -c 'nginx -v 2>&1; id; nginx -T 2>&1 | grep -n -E "^# configuration file|listen|keepalive"'
+nginx version: nginx/1.30.5
+uid=101(nginx) gid=101(nginx) groups=101(nginx)
+3:# configuration file /etc/nginx/nginx.conf:
+35:    keepalive_timeout  65;
+42:# configuration file /etc/nginx/mime.types:
+143:# configuration file /etc/nginx/conf.d/default.conf:
+145:    listen       8080;
+164:    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+170:    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+# exit 0
+
+# read 2026-09-25T18:50:19Z
+$ istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.namespace=="repro") | {name,namespace,serviceAccount,protocol,authorizationPolicies}'
+{"name":"client","namespace":"repro","serviceAccount":"default","protocol":"HBONE","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+{"name":"server-64b5d85cf7-6wdvq","namespace":"repro","serviceAccount":"default","protocol":"HBONE","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+# exit 0

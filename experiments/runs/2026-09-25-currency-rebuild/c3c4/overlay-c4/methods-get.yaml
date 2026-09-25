@@ -1,0 +1,16 @@
+# C-4: the same policy plus an operation rule, `to.operation.methods`, with the value
+# Istio's L4 page uses for its own example (istio.io release-1.31,
+# content/en/docs/ambient/usage/l4-policy/index.md, the example at l.70-88, `methods: ["GET"]` at l.87).
+# The page's statement this meets: "The ztunnel cannot enforce L7 policies. If a policy
+# with rules matching L7 attributes ... is targeted such that it will be enforced by a
+# receiving ztunnel, it will fail safe by becoming a `DENY` policy." (l.66)
+#
+# GET, not POST, so the four outcomes are told apart on one path: refused (the object
+# is rejected and C-3's policy stands), enforced (the agent-card GET passes and the
+# SendMessage POST is refused), accepted with nothing changed (both pass, as in C-3),
+# or the documented fail-safe (both refused).
+- op: add
+  path: /spec/rules/0/to
+  value:
+    - operation:
+        methods: ["GET"]

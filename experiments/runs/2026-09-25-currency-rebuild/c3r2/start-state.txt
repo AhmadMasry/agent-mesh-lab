@@ -1,0 +1,208 @@
+
+# read 2026-09-25T19:08:15Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-25T19:08:15Z
+$ kubectl get peerauthentication -A
+NAMESPACE              NAME                           MODE     AGE
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   101m
+istio-system           default                        STRICT   110m
+# exit 0
+
+# read 2026-09-25T19:08:15Z
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+# exit 0
+
+# read 2026-09-25T19:08:15Z
+$ kubectl get httproute -A
+NAMESPACE               NAME                   HOSTNAMES                                AGE
+agentgateway-waypoint   model-via-agw          ["model.lab.internal"]                   101m
+lab                     orchestrator           ["orchestrator.lab.svc.cluster.local"]   101m
+lab                     orchestrator-ingress                                            101m
+lab                     worker                 ["worker.lab.svc.cluster.local"]         110m
+lab                     worker-ingress         ["worker.lab.internal"]                  101m
+# exit 0
+
+# read 2026-09-25T19:08:15Z
+$ kubectl get ns --show-labels
+NAME                    STATUS   AGE    LABELS
+agentgateway-ingress    Active   101m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=agentgateway-ingress
+agentgateway-system     Active   111m   kubernetes.io/metadata.name=agentgateway-system,name=agentgateway-system
+agentgateway-waypoint   Active   110m   kubernetes.io/metadata.name=agentgateway-waypoint
+default                 Active   115m   kubernetes.io/metadata.name=default
+istio-system            Active   112m   kubernetes.io/metadata.name=istio-system,name=istio-system
+kube-node-lease         Active   115m   kubernetes.io/metadata.name=kube-node-lease
+kube-public             Active   115m   kubernetes.io/metadata.name=kube-public
+kube-system             Active   115m   kubernetes.io/metadata.name=kube-system
+lab                     Active   114m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=lab
+local-path-storage      Active   115m   kubernetes.io/metadata.name=local-path-storage
+telemetry               Active   100m   kubernetes.io/metadata.name=telemetry
+# exit 0
+
+# read 2026-09-25T19:08:15Z
+$ kubectl -n istio-system get pods -l app=ztunnel -o wide
+NAME            READY   STATUS    RESTARTS   AGE    IP           NODE                           NOMINATED NODE   READINESS GATES
+ztunnel-4ggh5   1/1     Running   0          112m   10.244.0.6   agent-mesh-lab-control-plane   <none>           <none>
+ztunnel-gvtqr   1/1     Running   0          112m   10.244.1.8   agent-mesh-lab-worker          <none>           <none>
+# exit 0
+
+# read 2026-09-25T19:08:15Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq -c '.[] | {name,namespace,scope,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-25T19:08:15Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-control-plane -o json | jq -c '.[] | {name,namespace,scope,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-25T19:08:15Z
+$ kubectl get nodes -o wide; kubectl describe node agent-mesh-lab-control-plane | grep -i -A2 taints
+NAME                           STATUS   ROLES           AGE    VERSION   INTERNAL-IP   EXTERNAL-IP   OS-IMAGE                       KERNEL-VERSION            CONTAINER-RUNTIME
+agent-mesh-lab-control-plane   Ready    control-plane   115m   v1.37.0   172.18.0.3    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+agent-mesh-lab-worker          Ready    <none>          115m   v1.37.0   172.18.0.2    <none>        Debian GNU/Linux 13 (trixie)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+Taints:             node-role.kubernetes.io/control-plane:NoSchedule
+Unschedulable:      false
+Lease:
+# exit 0
+
+# read 2026-09-25T19:08:15Z
+$ kubectl -n lab get pods -o wide
+NAME                                              READY   STATUS        RESTARTS   AGE     IP             NODE                    NOMINATED NODE   READINESS GATES
+d5-as-loadgen                                     1/1     Terminating   0          3m41s   10.244.1.206   agent-mesh-lab-worker   <none>           <none>
+d5-ctl                                            1/1     Terminating   0          3m42s   10.244.1.205   agent-mesh-lab-worker   <none>           <none>
+extauthz-59477cd747-h7g4t                         1/1     Running       0          101m    10.244.1.14    agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-fu3ct-r1-orchestrator-vxtsc           0/1     Completed     0          93m     10.244.1.29    agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-fu3ct-r1-worker-t64p2                 0/1     Completed     0          94m     10.244.1.28    agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-fu3ct-r2-orchestrator-jg7q6           0/1     Completed     0          92m     10.244.1.31    agent-mesh-lab-worker   <none>           <none>
+loadgen-a3t-fu3ct-r2-worker-cbv4d                 0/1     Completed     0          93m     10.244.1.30    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3x-01-swbw4                   0/1     Error         0          85m     10.244.1.37    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3x-02-nggts                   0/1     Error         0          84m     10.244.1.38    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3x-03-b4f2v                   0/1     Error         0          84m     10.244.1.39    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-01-cnh6f                   0/1     Completed     0          80m     10.244.1.41    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-01-s-vqtz6                 0/1     Error         0          80m     10.244.1.42    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-02-n5tpj                   0/1     Completed     0          80m     10.244.1.43    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-02-s-trn2s                 0/1     Error         0          79m     10.244.1.44    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-03-gvrpv                   0/1     Completed     0          79m     10.244.1.45    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-03-s-gbtjm                 0/1     Error         0          79m     10.244.1.46    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-04-8djs8                   0/1     Completed     0          78m     10.244.1.47    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-04-s-trws5                 0/1     Error         0          78m     10.244.1.48    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-05-l7lkq                   0/1     Completed     0          77m     10.244.1.49    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-05-s-gr2wq                 0/1     Error         0          77m     10.244.1.50    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-06-rbjjw                   0/1     Completed     0          77m     10.244.1.51    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-06-s-qbb8t                 0/1     Error         0          76m     10.244.1.52    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-07-l4v6q                   0/1     Completed     0          76m     10.244.1.53    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-07-s-vl52r                 0/1     Error         0          76m     10.244.1.54    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-08-6jhmq                   0/1     Completed     0          75m     10.244.1.55    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-08-s-xvbqq                 0/1     Error         0          75m     10.244.1.56    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-09-r4v48                   0/1     Completed     0          74m     10.244.1.57    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-09-s-lxjdz                 0/1     Error         0          74m     10.244.1.58    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-10-d8g9b                   0/1     Completed     0          74m     10.244.1.59    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-10-s-k5jm2                 0/1     Error         0          73m     10.244.1.60    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-11-rlttb                   0/1     Completed     0          73m     10.244.1.61    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-11-s-kp85c                 0/1     Error         0          72m     10.244.1.62    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-12-7559j                   0/1     Completed     0          72m     10.244.1.63    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-12-s-9j4tc                 0/1     Error         0          72m     10.244.1.64    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-13-fqzpg                   0/1     Completed     0          71m     10.244.1.65    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-13-s-26b7l                 0/1     Error         0          71m     10.244.1.66    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-14-mvt9z                   0/1     Completed     0          70m     10.244.1.67    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-14-s-pd9wp                 0/1     Error         0          70m     10.244.1.68    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-15-rkwtb                   0/1     Completed     0          70m     10.244.1.69    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-15-s-tvt5b                 0/1     Error         0          69m     10.244.1.70    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-16-fx9t2                   0/1     Completed     0          69m     10.244.1.71    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-16-s-bvmkh                 0/1     Error         0          68m     10.244.1.72    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-17-s-mpptt                 0/1     Error         0          68m     10.244.1.74    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-17-sw8w7                   0/1     Completed     0          68m     10.244.1.73    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-18-nd5nm                   0/1     Completed     0          67m     10.244.1.75    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-18-s-445xf                 0/1     Error         0          67m     10.244.1.76    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-19-mxlq6                   0/1     Completed     0          66m     10.244.1.77    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-19-s-p2qtw                 0/1     Error         0          66m     10.244.1.78    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-20-s-mvf4f                 0/1     Error         0          65m     10.244.1.80    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-go-cur3y-20-wrkzh                   0/1     Completed     0          66m     10.244.1.79    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-01-jt4fh                   0/1     Completed     0          65m     10.244.1.82    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-01-s-c4nd5                 0/1     Error         0          64m     10.244.1.83    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-02-dhzmh                   0/1     Completed     0          64m     10.244.1.84    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-02-s-l2nnf                 0/1     Error         0          64m     10.244.1.85    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-03-s-gmcl8                 0/1     Error         0          63m     10.244.1.87    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-03-v6286                   0/1     Completed     0          63m     10.244.1.86    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-04-s-k9kww                 0/1     Error         0          62m     10.244.1.89    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-04-zss68                   0/1     Completed     0          62m     10.244.1.88    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-05-n4r5m                   0/1     Completed     0          62m     10.244.1.90    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-05-s-4xp8r                 0/1     Error         0          61m     10.244.1.91    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-06-2cldt                   0/1     Completed     0          61m     10.244.1.92    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-06-s-g4rf2                 0/1     Error         0          60m     10.244.1.93    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-07-s-t99q7                 0/1     Error         0          60m     10.244.1.95    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-07-sjl8q                   0/1     Completed     0          60m     10.244.1.94    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-08-bx7pk                   0/1     Completed     0          59m     10.244.1.96    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-08-s-29bh7                 0/1     Error         0          59m     10.244.1.97    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-09-s-sq4zz                 0/1     Error         0          58m     10.244.1.99    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-09-vvvrk                   0/1     Completed     0          59m     10.244.1.98    agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-10-p27v8                   0/1     Completed     0          58m     10.244.1.100   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-10-s-c9v69                 0/1     Error         0          57m     10.244.1.101   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-11-s-vbrml                 0/1     Error         0          57m     10.244.1.103   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-11-z47zq                   0/1     Completed     0          57m     10.244.1.102   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-12-qdxzf                   0/1     Completed     0          56m     10.244.1.104   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-12-s-r9dxz                 0/1     Error         0          56m     10.244.1.105   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-13-7x259                   0/1     Completed     0          56m     10.244.1.106   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-13-s-lt64w                 0/1     Error         0          55m     10.244.1.107   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-14-7mg48                   0/1     Completed     0          55m     10.244.1.108   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-14-s-h9mst                 0/1     Error         0          54m     10.244.1.109   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-15-f7v9f                   0/1     Completed     0          54m     10.244.1.110   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-15-s-b96br                 0/1     Error         0          54m     10.244.1.111   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-16-jll2q                   0/1     Completed     0          53m     10.244.1.112   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-16-s-mzdnh                 0/1     Error         0          53m     10.244.1.113   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-17-4nzbk                   0/1     Completed     0          53m     10.244.1.114   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-17-s-6dxh8                 0/1     Error         0          52m     10.244.1.115   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-18-d7xmj                   0/1     Completed     0          52m     10.244.1.116   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-18-s-ks8x9                 0/1     Error         0          51m     10.244.1.117   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-19-4sm27                   0/1     Completed     0          51m     10.244.1.118   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-19-s-wq5ls                 0/1     Error         0          51m     10.244.1.119   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-20-22gc2                   0/1     Completed     0          50m     10.244.1.120   agent-mesh-lab-worker   <none>           <none>
+loadgen-b3-sx-py-cur3y-20-s-jzkww                 0/1     Error         0          50m     10.244.1.121   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-01-7ldr6    0/1     Completed     0          47m     10.244.1.130   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-02-7sj7w    0/1     Completed     0          47m     10.244.1.132   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-03-s2hgj    0/1     Completed     0          46m     10.244.1.134   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-04-r2rcg    0/1     Completed     0          46m     10.244.1.136   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-05-z4bq2    0/1     Completed     0          46m     10.244.1.138   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-06-qpjrn    0/1     Completed     0          45m     10.244.1.140   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-07-89m26    0/1     Completed     0          45m     10.244.1.142   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-08-6bffl    0/1     Completed     0          44m     10.244.1.144   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-09-jtmnj    0/1     Completed     0          44m     10.244.1.146   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-10-8fqnr    0/1     Completed     0          44m     10.244.1.148   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-11-mstvw    0/1     Completed     0          43m     10.244.1.150   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-12-6g9hx    0/1     Completed     0          43m     10.244.1.152   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-13-2wldn    0/1     Completed     0          42m     10.244.1.154   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-14-5v7p6    0/1     Completed     0          42m     10.244.1.156   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-15-2cxdh    0/1     Completed     0          42m     10.244.1.158   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-16-f8vrb    0/1     Completed     0          41m     10.244.1.160   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-17-2g2cv    0/1     Completed     0          41m     10.244.1.162   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-18-85vh5    0/1     Completed     0          40m     10.244.1.164   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-19-kjqvh    0/1     Completed     0          40m     10.244.1.166   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1p-20-5lp6s    0/1     Completed     0          40m     10.244.1.168   agent-mesh-lab-worker   <none>           <none>
+loadgen-d1-pyc-central-graceful-cur1pd-01-nmkfj   0/1     Completed     0          49m     10.244.1.125   agent-mesh-lab-worker   <none>           <none>
+loadgen-d4z-cur4z-fwd-1-qkr5c                     0/1     Completed     0          12m     10.244.1.196   agent-mesh-lab-worker   <none>           <none>
+loadgen-d4z-cur4z-fwd-2-mc7n7                     0/1     Completed     0          12m     10.244.1.197   agent-mesh-lab-worker   <none>           <none>
+loadgen-d4z-cur4z-fwd-3-7plqf                     0/1     Completed     0          12m     10.244.1.198   agent-mesh-lab-worker   <none>           <none>
+loadgen-d4z-cur4z-fwd-4-5c9dg                     0/1     Completed     0          12m     10.244.1.199   agent-mesh-lab-worker   <none>           <none>
+loadgen-d4z-cur4z-fwd-5-wqvwx                     0/1     Completed     0          12m     10.244.1.200   agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c3-orchestrator-s9xf6                 0/1     Completed     0          37m     10.244.1.174   agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c3-worker-8m6rj                       0/1     Completed     0          38m     10.244.1.173   agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c34after-orchestrator-dkmsx           0/1     Completed     0          23m     10.244.1.181   agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c34after-worker-4jz9j                 0/1     Completed     0          24m     10.244.1.180   agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c3r2after-orchestrator-h4tm6          0/1     Completed     0          15m     10.244.1.191   agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c3r2after-worker-96ck7                0/1     Completed     0          15m     10.244.1.190   agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c3rafter-orchestrator-dv9x6           0/1     Completed     0          20m     10.244.1.186   agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-c3rafter-worker-pbmfq                 0/1     Completed     0          20m     10.244.1.185   agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-fu3cc-orchestrator-w8t4l              0/1     Completed     0          94m     10.244.1.26    agent-mesh-lab-worker   <none>           <none>
+loadgen-g2c-fu3cc-worker-s8hqb                    0/1     Completed     0          95m     10.244.1.25    agent-mesh-lab-worker   <none>           <none>
+loadgen-wv-curwv-go-001-nf47s                     0/1     Completed     0          88m     10.244.1.34    agent-mesh-lab-worker   <none>           <none>
+loadgen-wv-curwv-py-001-5j4fp                     0/1     Completed     0          87m     10.244.1.35    agent-mesh-lab-worker   <none>           <none>
+mockllm-cd84bfbd7-j822f                           1/1     Running       0          100m    10.244.1.18    agent-mesh-lab-worker   <none>           <none>
+orchestrator-59fbf88d7c-rrc84                     1/1     Running       0          39m     10.244.1.170   agent-mesh-lab-worker   <none>           <none>
+worker-76b6f68bf9-dq57d                           1/1     Running       0          100m    10.244.1.20    agent-mesh-lab-worker   <none>           <none>
+# exit 0

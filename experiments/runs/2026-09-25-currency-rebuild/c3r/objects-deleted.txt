@@ -1,0 +1,71 @@
+
+# read 2026-09-25T18:46:25Z
+$ kubectl delete -f experiments/runs/2026-09-25-currency-rebuild/c3r/objects/client.yaml -f experiments/runs/2026-09-25-currency-rebuild/c3r/objects/server.yaml --wait=true
+pod "c3r-client" deleted from c3r namespace
+deployment.apps "c3r-server" deleted from c3r namespace
+# exit 0
+
+# read 2026-09-25T18:46:55Z
+$ kubectl delete -f experiments/runs/2026-09-25-currency-rebuild/c3r/objects/namespace.yaml --wait=true --timeout=180s
+namespace "c3r" deleted
+# exit 0
+
+# read 2026-09-25T18:47:00Z
+$ kubectl get ns c3r
+Error from server (NotFound): namespaces "c3r" not found
+# exit 1
+
+# read 2026-09-25T18:47:00Z
+$ kubectl get all,authorizationpolicy -n c3r
+No resources found in c3r namespace.
+# exit 0
+
+# read 2026-09-25T18:47:00Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-25T18:47:00Z
+$ kubectl get peerauthentication -A
+NAMESPACE              NAME                           MODE     AGE
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   80m
+istio-system           default                        STRICT   89m
+# exit 0
+
+# read 2026-09-25T18:47:00Z
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+# exit 0
+
+# read 2026-09-25T18:47:00Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq -c '.[] | {name,namespace,scope,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-25T18:47:00Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-control-plane -o json | jq -c '.[] | {name,namespace,scope,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-25T18:47:00Z
+$ istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq '[.[] | select(.namespace == "c3r")] | length'
+0
+# exit 0
+
+# read 2026-09-25T18:47:00Z
+$ kubectl get ns --show-labels
+NAME                    STATUS   AGE   LABELS
+agentgateway-ingress    Active   80m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=agentgateway-ingress
+agentgateway-system     Active   90m   kubernetes.io/metadata.name=agentgateway-system,name=agentgateway-system
+agentgateway-waypoint   Active   89m   kubernetes.io/metadata.name=agentgateway-waypoint
+default                 Active   94m   kubernetes.io/metadata.name=default
+istio-system            Active   91m   kubernetes.io/metadata.name=istio-system,name=istio-system
+kube-node-lease         Active   94m   kubernetes.io/metadata.name=kube-node-lease
+kube-public             Active   94m   kubernetes.io/metadata.name=kube-public
+kube-system             Active   94m   kubernetes.io/metadata.name=kube-system
+lab                     Active   92m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=lab
+local-path-storage      Active   94m   kubernetes.io/metadata.name=local-path-storage
+telemetry               Active   79m   kubernetes.io/metadata.name=telemetry
+# exit 0

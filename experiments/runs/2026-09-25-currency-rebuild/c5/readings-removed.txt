@@ -1,0 +1,183 @@
+
+# read 2026-09-25T18:53:57Z
+$ kubectl get authorizationpolicy -A -o yaml
+apiVersion: v1
+items: []
+kind: List
+metadata:
+  resourceVersion: ""
+# exit 0
+
+# read 2026-09-25T18:53:57Z
+$ kubectl get authorizationpolicy -A --no-headers | wc -l
+No resources found
+       0
+# exit 0
+
+# read 2026-09-25T18:53:57Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json
+[
+    {
+        "name": "converted_peer_authentication_agentgateway-ingress-metrics",
+        "namespace": "agentgateway-ingress",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notDestinationPorts": [
+                            15020
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    },
+    {
+        "name": "istio_converted_static_strict",
+        "namespace": "istio-system",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    }
+]
+# exit 0
+
+# read 2026-09-25T18:53:57Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-control-plane -o json
+[
+    {
+        "name": "converted_peer_authentication_agentgateway-ingress-metrics",
+        "namespace": "agentgateway-ingress",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notDestinationPorts": [
+                            15020
+                        ]
+                    }
+                ],
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    },
+    {
+        "name": "istio_converted_static_strict",
+        "namespace": "istio-system",
+        "scope": "WorkloadSelector",
+        "action": "Deny",
+        "rules": [
+            [
+                [
+                    {
+                        "notPrincipals": [
+                            {
+                                "Presence": []
+                            }
+                        ]
+                    }
+                ]
+            ]
+        ]
+    }
+]
+# exit 0
+
+# read 2026-09-25T18:53:57Z
+$ kubectl -n istio-system logs deploy/istiod --since-time=2026-09-25T18:53:57Z
+2026-09-25T18:53:57.424201Z	info	status	object is removed, no action needed	key=agentgateway-waypoint/c5-deny-probe-header
+2026-09-25T18:53:57.525177Z	info	ads	Push debounce stable[596] 1 for config AuthorizationPolicy/agentgateway-waypoint/c5-deny-probe-header: 100.952709ms since last change, 100.952667ms since last push, forced=false
+2026-09-25T18:53:57.525292Z	info	ads	XDS: Pushing Services:14 ConnectedEndpoints:2 Version:2026-09-25T18:53:57Z/596
+2026-09-25T18:53:57.525361Z	info	delta	WADS: PUSH for node:ztunnel-4ggh5.istio-system resources:0 removed:1 size:0B
+2026-09-25T18:53:57.525382Z	info	delta	WADS: PUSH for node:ztunnel-gvtqr.istio-system resources:0 removed:1 size:0B
+# exit 0
+
+# read 2026-09-25T18:53:57Z
+$ kubectl -n agentgateway-system logs deploy/agentgateway --since-time=2026-09-25T18:53:57Z
+# exit 0
+
+# read 2026-09-25T18:53:57Z
+$ kubectl -n agentgateway-waypoint logs deploy/agw-central --since-time=2026-09-25T18:53:57Z | grep -v 'request gateway='
+# exit 1
+
+# read 2026-09-25T18:53:57Z
+$ kubectl get agentgatewaypolicy -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,TARGET:.spec.targetRefs[*].name,KEYS:.spec
+NS                      NAME          TARGET                 KEYS
+agentgateway-ingress    access-logs   agentgateway-ingress   map[frontend:map[accessLog:map[otlp:map[backendRef:map[group: kind:Service name:otel-collector namespace:telemetry port:4317] protocol:GRPC]]] targetRefs:[map[group:gateway.networking.k8s.io kind:Gateway name:agentgateway-ingress]]]
+agentgateway-ingress    tracing       agentgateway-ingress   map[frontend:map[tracing:map[backendRef:map[group: kind:Service name:otel-collector namespace:telemetry port:4317] clientSampling:true protocol:GRPC randomSampling:true]] targetRefs:[map[group:gateway.networking.k8s.io kind:Gateway name:agentgateway-ingress]]]
+agentgateway-waypoint   access-logs   agw-central            map[frontend:map[accessLog:map[otlp:map[backendRef:map[group: kind:Service name:otel-collector namespace:telemetry port:4317] protocol:GRPC]]] targetRefs:[map[group:gateway.networking.k8s.io kind:Gateway name:agw-central]]]
+agentgateway-waypoint   tracing       agw-central            map[frontend:map[tracing:map[backendRef:map[group: kind:Service name:otel-collector namespace:telemetry port:4317] clientSampling:true protocol:GRPC randomSampling:true]] targetRefs:[map[group:gateway.networking.k8s.io kind:Gateway name:agw-central]]]
+# exit 0
+
+# read 2026-09-25T18:53:57Z
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+# exit 0
+
+# read 2026-09-25T18:53:58Z
+$ jq -r '(.policies // []) | length as $n | "policies: \($n)", (.[] | "  key=\(.key) name=\(.name|tostring) target=\(.target|tostring|.[0:160]) kinds=\(.policy|keys|join(","))")' experiments/runs/2026-09-25-currency-rebuild/c5/config-dump-agw-central-removed.json
+policies: 2
+  key=frontend/agentgateway-waypoint/access-logs:frontend-logging:agentgateway-waypoint/agw-central name={"kind":"AgentgatewayPolicy","name":"access-logs","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} kinds=frontend
+  key=frontend/agentgateway-waypoint/tracing:frontend-tracing:agentgateway-waypoint/agw-central name={"kind":"AgentgatewayPolicy","name":"tracing","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} kinds=frontend
+# exit 0
+
+# read 2026-09-25T18:53:58Z
+$ grep -o -i 'x-c5-probe\|c5-deny-probe-header\|AuthorizationPolicy\|authorization' experiments/runs/2026-09-25-currency-rebuild/c5/config-dump-agw-central-removed.json | sort | uniq -c
+# exit 0
+
+# read 2026-09-25T18:53:58Z
+$ wc -c < experiments/runs/2026-09-25-currency-rebuild/c5/config-dump-agw-central-removed.json; shasum -a 256 experiments/runs/2026-09-25-currency-rebuild/c5/config-dump-agw-central-removed.json
+   48246
+1f206131814ae0321c15503232a2c7429f92e55c0c6ce6d09fdbabfc6c6fceb9  experiments/runs/2026-09-25-currency-rebuild/c5/config-dump-agw-central-removed.json
+# exit 0

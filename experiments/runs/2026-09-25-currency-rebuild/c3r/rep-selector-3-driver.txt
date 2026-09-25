@@ -1,0 +1,17 @@
+2026-09-25T18:46:01.015Z rep selector-3 start T0=2026-09-25T18:46:00Z ztunnel=ztunnel-gvtqr istiod=istiod-6d7fbf75-dqb57 server=c3r-server-6bd8c8bf84-kdxbj 10.244.1.183:8080 policy=c3r-selector
+2026-09-25T18:46:01.157Z held connection: kubectl -n c3r exec -i c3r-client -- nc 10.244.1.183 8080 (stdin held open by this script)
+2026-09-25T18:46:01.161Z r1 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-selector-3-r1
+2026-09-25T18:46:01.231Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-25T18:46:01.408Z apply: kubectl apply -f experiments/runs/2026-09-25-currency-rebuild/c3r/objects/policy-selector.yaml
+2026-09-25T18:46:01.618Z ztunnel holds c3r/c3r-selector (istioctl ztunnel-config policy)
+2026-09-25T18:46:01.686Z ztunnel lists c3r/c3r-selector on the server workload (istioctl ztunnel-config workloads)
+2026-09-25T18:46:01.711Z held connection after the push: complete responses 1 200; nc running
+2026-09-25T18:46:02.071Z r2 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-selector-3-r2 on the held connection
+2026-09-25T18:46:02.118Z r2 result: complete responses on the held connection: 2 200 200; nc running
+2026-09-25T18:46:02.123Z new connection: one curl --retry 0, X-Logical-Work-Item-Id: c3r-selector-3-new
+2026-09-25T18:46:02.345Z close: EOF on nc's input
+2026-09-25T18:46:02.378Z held connection ended: nc exited 2026-09-25T18:46:02.352Z exit=0; complete responses on it: 2 200 200
+2026-09-25T18:46:02.517Z remove: kubectl delete -f experiments/runs/2026-09-25-currency-rebuild/c3r/objects/policy-selector.yaml
+2026-09-25T18:46:02.688Z ztunnel no longer holds c3r/c3r-selector
+2026-09-25T18:46:02.756Z ztunnel no longer lists c3r/c3r-selector on the server workload
+2026-09-25T18:46:03.018Z rep selector-3 end

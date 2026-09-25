@@ -1,0 +1,140 @@
+Reading notes: the currency pass of 2026-09-25, Phase 2 (the rebuild at the pins of 2026-09-25, the standard proof, the
+read-back, and the approved rows re-counted). Every deviation below was ruled on by the controller before it ran, unless a
+note says otherwise.
+
+1. The tree. Built at 7ec4649665b20ee165afb0fa3353a1897c2f4806, "build(orchestrator): the opentelemetry-util-genai hold as a
+   pyproject constraint, <1.2b0", three commits on b72f2246 (96e5ab1a a2a-go v2.6.0 and its test; 8d659ef9 every other pin;
+   7ec46496 the util-genai constraint). build.txt lists the deployed subtree and blob ids beside those of the tree D-4's
+   rebuild proved (e2de6a32, "fix(checks): the six certificate checks name the worker's and the orchestrator's
+   identities, both required"). The record commit comes after the build and touches no deployed path.
+
+2. The rebuild. drivers/rebuild.sh, adapted from D-4's (header, scratch and tool paths, the istioctl version on PATH,
+   the subjects). Seven make targets, each exit 0, the checkout clean before each and after the last, 0 "context canceled"
+   lines. The host slept during make step-2 (Sleep and DarkWake lines from 17:19:48Z, Wake 17:23:58Z; sleep-events.csv),
+   so step-2's wall time (645.760 s) and the build total (1179.304 s) are NOT READABLE and are not reported as figures.
+   Step-3 (290.070 s) began after the wake; it was long because two Docker Hub pulls timed out once each
+   ("timeout awaiting response headers": jaegertracing/jaeger:2.21.0 at 17:28:32Z, prom/prometheus:v3.15.0 at 17:30:36Z)
+   and the kubelet's own image back-off pulled them again; that is the kubelet's, not lab retry logic. The ztunnel
+   certificates were issued at this rebuild (17:15:55Z); the accumulated host sleep since then is the one sleep above,
+   about 4 min, far from the renewal quirk's limit (84 h 01 min at 168 h leaves).
+
+3. The istioctl on PATH. The lab-scoped copy of 1.31.1 (${TMPDIR}/cur/tools/istioctl-1.31.1, the release tarball whose
+   sha256 equals the published checksum file: ../2026-09-25-currency-pass/local/istioctl.txt) was first on PATH for the
+   rebuild, the proof, the read-back and every row. Four committed drivers prepend a lab-scoped 1.31.0 directory of their
+   own task, which still existed in ${TMPDIR}:
+     experiments/runs/2026-09-21-b3-streaming-client/rows.sh     ${TMPDIR}/b3/tools/istioctl-1.31.0
+     experiments/runs/2026-09-24-d1-current-topology/pyclient.sh ${TMPDIR}/d1/tools/istioctl-1.31.0
+     experiments/runs/2026-09-23-c5-istio-policy-agw-central/c5.sh ${TMPDIR}/c5/tools/istioctl-1.31.0
+     experiments/runs/2026-09-25-d4-serviceaccounts/rows.sh      ${TMPDIR}/d4/tools/istioctl-1.31.0
+   By the controller's ruling those four directories were renamed aside for the rows and renamed back after them
+   (istioctl-renames.txt: 17:42:16Z and 19:59:01Z); the other seven such directories were left as they were. Every
+   driver's own first line records "istioctl on PATH: client version: 1.31.1" (rows-logs/). No driver ran 1.31.0.
+
+4. Output paths (the controller's ruling after B-3 attempt 1). A driver that takes its output path as a setting ran
+   unedited with it pointed here: pyclient.sh (RUNREL=.../d1p), c5.sh (.../c5), D-4 rows.sh (.../d4z), d5.sh (.../d5),
+   and gate1-wire-version.sh and gate2-single-clean.sh (RUN_ITEM). Inputs those drivers read from their own directory are byte
+   copies here (overlay-c5, overlay-d4-z, marking-add.json, marking-remove.json; cmp identical). A driver that writes into
+   its own dated directory ran from a copy here with only its output path changed, listed in its header: B-3 rows.sh
+   (drivers/b3-rows.sh), C-3/C-4 send-one.sh, counts.sh, proxy-spans.sh (c3c4/), C-3R and C-3R2 rep.sh (c3r/, c3r2/).
+   After every row, git status showed nothing outside this directory (rows-logs/rows-log.txt).
+
+5. Template placeholders. The load-client Job template gained ${CANCEL_AFTER_MS} (8dbee452) and ${CLIENT_HOST}
+   (af3fcf7d) after B-3; both commits render them empty on every existing row. B-3's rows.sh substitutes neither, so in
+   attempt 1 the load client refused before sending ("CLIENT_HOST="${CLIENT_HOST}" is not a bare host name ... nothing
+   was sent"), 3 repetitions, and the driver was stopped in the 4th. Attempt 1 also overwrote B-3's committed
+   subscribe-terminal/certificates.txt and appended 15 lines to its control.txt; both were restored with git checkout of
+   those two paths, by ruling; what attempt 1 wrote is kept in b3-attempt-1/. The copy drivers/b3-rows.sh renders the two
+   placeholders empty (change a) and writes to b3-subscribe-terminal/ (change b). Every other driver renders all nine.
+
+6. The matrix (A.3 R3 py, R4 py, R4 py service). experiments/gate3-matrix.sh refused each row at its image-freshness check
+   before its dry run (matrix-attempt-1/): it hashes agents/worker fixtures/mockllm internal go.mod go.sum, while the
+   Makefile's GO_SOURCES_HASH, and so the annotation, has included fixtures/extauthz since b45cafdd (D-3's deploy commit).
+   The Makefile's list at the built tree hashes to 2645ebf6ecdfc6968f00e72bdcdb612cc649a760, the annotation. By ruling the
+   rows ran from drivers/gate3-matrix.sh, two changes in its header: fixtures/extauthz in GO_SOURCES_PATHS, and REPO_ROOT
+   from git rev-parse --show-toplevel (from the copy's location dirname/.. is this directory). go-sources-hash-audit.txt:
+   gate3-matrix.sh is the only live committed script on the pre-b45cafdd list; a latent defect D-3 left, a follow-up of
+   its own (the fix changes a deployed path), not fixed here.
+
+7. Replays. C-3/C-4, C-3R, C-3R2, C-5 and D-5 were each counted by replaying the steps their records hold (phases.txt and
+   the commands their reading files keep), in order: c3c4/replay.sh, c3r-replay.sh, c5/replay.sh, d5/replay.sh. Where an
+   original reading named one day's pod (an istiod or ztunnel pod) or grepped for one run's IP or trace id, the replay
+   names today's pods and keeps the window's whole lines. C-3R's server Deployment takes today's deploy/worker image
+   reference (c3r/objects/server.yaml), the way the original took its own. C-3's second ingress send ran at the
+   original's offset (777 s after the apply).
+
+8. Timing of the C-3R replay. It ran its seven repetitions back to back: selector-1 started 0.4 s after none-1 ended, where
+   the original left 39 s. Each repetition reads the server's log with --since-time at 1 s resolution, so selector-1's read
+   included none-1's last arrival (18:45:13.050Z, remote :49471), and counts.py took it as the held connection. The
+   repetition's own arrivals, r1 at 18:45:13.802Z and r2 at 18:45:14.650Z, are both on remote :59341, and the client read
+   "2 200 200": r2 was delivered on the held connection. The cell keeps its verdict "differs" with this cause.
+
+9. C-3R2, two attempts. Attempt 1 (c3r2-attempt-1/) ran with a 2 s gap before each repetition, which I chose after C-3R.
+   The controller's ruling "C-3/C-4, C-3R accepted; C-3R2 at the original's gaps" arrived after attempt 1 had run, so the
+   2 s gap was not what was ruled. Two later messages crossed: one said no re-run was needed, since the held connection is
+   opened, policed and tested inside each repetition by rep.sh's own timing and the gap does not enter the verdict cells;
+   the last one ("Settle C-3R2: run attempt 2 as planned") superseded both and settled it: attempt 2 (c3r2/) replays the
+   original's start offsets, derived from the millisecond stamp on the first line of each repetition's events.txt in
+   experiments/runs/2026-09-21-c3r2-public-server/: selector-1 +11.297 s, namespace-1 +63.070, selector-2 +100.742,
+   namespace-2 +102.778, selector-3 +124.522, namespace-3 +126.613 from none-1. Achieved: +11.385, +63.145, +100.745,
+   +102.876, +124.520, +126.684. Both attempts read every verdict cell the same as the original.
+   Attempt 1's rep.sh (c3r2-attempt-1/rep.sh) sets R to experiments/runs/2026-09-25-currency-rebuild/c3r2, its header's
+   "this copy's directory" at the time it ran: attempt 1 wrote into c3r2/, and the whole directory was moved to
+   c3r2-attempt-1/ afterwards, before attempt 2 ran into a fresh c3r2/ (the review round's M-5).
+
+10. Counting tools that name one day's values. C-3R's counts.py (l.179) and C-3R2's (ZT_NODE, l.49) match the worker
+    node's ztunnel by its 2026-09-21 pod name, ztunnel-sdq6z; today's is ztunnel-gvtqr, so push_apply and push_remove read
+    "none". They ran unedited; push-sizes-current-pod.txt in c3r/, c3r2/ and c3r2-attempt-1/ reads the same istiod lines
+    for today's pod, beside them. D-4's counts.py selects Row Z's work items by the original RUN_ID prefix (d4z-z1-);
+    d4z/counts-z.py is a copy whose one change is that prefix (d4z-cur4z-), accepted by the controller; it stops at Row A's
+    absent directory after printing Row Z whole (d4z/counts-stderr.txt).
+
+11. D-1p's race split. Two categorical cells settle on which of two events comes first at agw-central's drain (the
+    forward's stream end and the Task's terminal state, fwd1_end_to_worker_terminal_ms_c2c -2.5..0.3 ms at D-1, -2.0..1.2 ms
+    here). From the two summary.csv files:
+      worker_stream_end_ingress  D-1: client-gone 13, complete 7        here: client-gone 17, complete 3
+      worker_stream_result       D-1: consumer-gone/err:queue read failed: context canceled 11, complete 7, consumer-gone 2
+                                 here: consumer-gone/err:queue read failed: context canceled 17, complete 3
+    The cause of the shift is not established.
+
+12. D-1p's span-processor reading. pyclient-counts.py (l.130) reads "BatchSpanProcessor.Shutdown.Timeout" from oldpod.log,
+    the removed agw-central pod's log, agentgateway's own opentelemetry_sdk: yes 20 of 20, as at D-1. The Phase 1 impact
+    list said it sat on the moved OpenTelemetry Python exporter; that was wrong, and a dated note beside it says so.
+
+13. D-5's unmarked phase. agw-central still pooled connections opened at 18:52:27Z (during C-5, used by D-4 Row Z). They
+    carried the phase's control reset, so no reset connections appear, and ended with broken pipe at the set's first
+    request (18:58:22.028Z) as new ones opened (18:58:22.029Z), which closed together after 92 s with broken pipe. The
+    replay's order of rows put those connections there; the count D-5 answers (one per agent per path per burst) is
+    unaffected.
+
+14. The proof's three differing rows. (a) prometheus -> agentgateway-ingress:15020, 20 connections here against 16: the leg
+    opens one connection per 15 s scrape (prom-ingress-rate.txt: +4 in 60 s) and was read about 5 min after Prometheus
+    started (17:31:17Z). (b, c) other ztunnel error lines 34 against 14, "no healthy upstream" 31 against 11: all 31 are the
+    lab pods' OTLP exports to the collector's 4318, stamped 17:27:24.756Z to 17:27:56.582Z, between the collector pod's
+    creation (17:27:23Z) and its container start (17:27:57Z) after a 33.3 s image pull.
+
+15. Not committed: the two checks.sh as-run copies (sha256 in checks-as-run-sha256.txt, equal to the committed checks.sh),
+    the Phase 2 scratch (TMPDIR), and the documents Phase 1 fetched.
+
+16. Keep-awake. This task started no keep-awake and changed no power setting; keep-awake is not claimed absent (the controller
+    reported during the rebuild that the author holds one; the agent harness holds its own). sleep-events.csv carries
+    kinds and stamps only.
+
+17. The cluster left at step 3 (the review round's M-4; read after the rows). In lab: 182 Jobs, 142 Complete and 40 Failed,
+    and 186 pods, 142 Completed, 40 Error and 4 Running (worker, orchestrator, mockllm, extauthz). The 40 Failed Jobs and
+    40 Error pods are B-3's Job 2 (loadgen-b3-sx-go-cur3y-NN-s and loadgen-b3-sx-py-cur3y-NN-s, 20 each): the one
+    SubscribeToTask for a finished task, which exits 3 by design ("Failed/exit3", as B-3's own run recorded). The Complete
+    Jobs: B-3's Job 1 (40), D-1p (20 and 1 dry), the three matrix rows (20 each), D-4 Row Z's forward (5), the clean checks
+    and after-checks of the proof and the replays (10), the trace work items (4) and the wire-version work items (2).
+    No policy, route, marking or setting of any row is left applied (cluster-after.txt).
+
+18. D-1p's pod logs (the review round's I-1). pyclient-counts.py (l.120-130) reads the removed and the new agw-central
+    pods' logs, oldpod.log and newpod.log, which .gitignore leaves out (experiments/runs/**/*.log). Every repetition's
+    oldpod, newpod and apply-1 logs are committed as .txt copies, as D-1's own record did, and counting the .txt copies
+    alone gives a summary.csv byte-identical to the committed one (d1p/log-copies.txt).
+
+19. The follow-up, a task of its own (each item is a deployed path or a pin record, so it needs its own rebuild or pass):
+    (a) experiments/gate3-matrix.sh's Go-sources list, missing fixtures/extauthz since b45cafdd (go-sources-hash-audit.txt);
+    (b) the stale comments in agents/orchestrator/pyproject.toml l.8-13, which still say that with a2a-sdk's protobuf<7
+        the grpcio extra would hold grpcio-tools at 1.81.1 (a2a-sdk 1.1.5 dropped protobuf<7; the review round's M-2);
+    (c) versions.yaml's grpc-go wording, which gives both advisories as the hold's basis: since GHSA-2v4p-qf9q-27wj's
+        update of 2026-09-25T17:42:24Z the hold stands on GO-2026-6443 alone (local/grpc-advisories-review.txt).

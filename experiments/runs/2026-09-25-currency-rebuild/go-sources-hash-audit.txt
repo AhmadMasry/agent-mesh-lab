@@ -1,0 +1,16 @@
+# 2026-09-25T19:21:04Z read-only audit, by the controller's ruling: every committed script under experiments/ and every Makefile target with its own Go-sources path list or image-freshness check, against the Makefile's GO_SOURCES_HASH list since b45cafdd (agents/worker fixtures/mockllm fixtures/extauthz internal go.mod go.sum).
+# HEAD 7ec46496. Commands: git grep -nE 'go-sources|GO_SOURCES|agents/worker fixtures/mockllm|git ls-files|hash-object|freshness' over experiments/*.sh, experiments/lib, Makefile and experiments/runs/*.sh.
+
+## Makefile: current (lines 37, 41; annotated at steps 1, 2, 2b, 2c, 3)
+Makefile:37:GO_SOURCES_HASH := $(shell git ls-files -s -- agents/worker fixtures/mockllm fixtures/extauthz internal go.mod go.sum ':!**/*_test.go' | git hash-object --stdin)
+Makefile:41:GO_SOURCES_DIRTY := $(shell git status --porcelain -- agents/worker fixtures/mockllm fixtures/extauthz internal go.mod go.sum ':!**/*_test.go')
+
+## live committed scripts with their own list: ON THE PRE-b45cafdd LIST (1)
+experiments/gate3-matrix.sh:687:GO_SOURCES_PATHS=(agents/worker fixtures/mockllm internal go.mod go.sum)
+   effect: its freshness check (l.693-712) cannot pass on any tree since b45cafdd; every gate3-matrix.sh row refuses before sending (this pass: rows-logs/matrix-*-driver.txt). A latent defect D-3 left; a follow-up task of its own, since the fix changes a deployed path and needs a rebuild. Not fixed in this pass.
+
+## dated run-record scripts that compute the old list (2): print-only stamps in records that predate b45cafdd, not checks
+experiments/runs/2026-09-15-ingress-namespace/rebuild/versions-readback.sh:31:H=$(git ls-files -s -- agents/worker fixtures/mockllm internal go.mod go.sum ':!**/*_test.go' | git hash-object --stdin)
+experiments/runs/2026-09-16-genai-spans/rebuild/versions-readback.sh:31:H=$(git ls-files -s -- agents/worker fixtures/mockllm internal go.mod go.sum ':!**/*_test.go' | git hash-object --stdin)
+
+## no other committed script under experiments/ or experiments/lib carries a Go-sources list or a freshness check

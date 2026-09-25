@@ -1,0 +1,35 @@
+# Experiment C, step C-5. What istiod does with an AuthorizationPolicy whose targetRefs names agw-central, and
+# whether it reaches that proxy at all. Istio's policy has no attribute that reads a body: an Operation matches
+# hosts, ports, methods and paths (authorization_policy.proto at istio/api 1.31.0, l.537-587), the word "body"
+# occurs 0 times in that file and 0 times in the conditions page (and l.128-130: applied to TCP traffic, even the
+# HTTP attributes "cannot be processed"). So it cannot express C's rule (refuse SubscribeToTask, allow SendMessage: two POSTs to one path
+# that differ only in the JSON-RPC method in the body); this policy is a rule that WOULD be observable if
+# enforced and touches nothing the lab depends on:
+#   - DENY, one rule, one condition: the request header x-c5-probe equal to "deny" (the key form is Istio's
+#     conditions page at istio.io release-1.31, l.21, "request.headers[User-Agent]"). Only this step's probe sends
+#     that header; no fixture, agent or proxy of the lab does. Enforced at L7 on agw-central, the probe would be
+#     refused and every other request -- the agent legs and the model leg -- would not match.
+#   - DENY and not ALLOW: an ALLOW policy that selects a proxy refuses whatever it does not name, so a mistake
+#     in it would fail every model call; a DENY with one header condition refuses only what matches.
+#   - targetRefs and not selector: the proto (l.305) says waypoint proxies need targetRefs; istiod's ambient
+#     conversion drops every targetRefs policy before building one for ztunnel (pilot/pkg/serviceregistry/
+#     ambient/authorization.go at istio/istio 1.31.0, l.419-422, "TargetRef is not intended for ztunnel"),
+#     and agw-central's namespace is not enrolled in ambient, so no ztunnel captures its inbound.
+# The policy sits in the Gateway's own namespace: a Gateway target must be in the same namespace
+# (type/v1beta1/selector.proto at 1.31.0, l.130, the namespace field validation "cross namespace referencing is not
+# currently supported"; authorization_policy.proto l.292 "kind: Gateway ... in the same namespace").
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: c5-deny-probe-header
+  namespace: agentgateway-waypoint
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: agw-central
+  action: DENY
+  rules:
+    - when:
+        - key: request.headers[x-c5-probe]
+          values: ["deny"]

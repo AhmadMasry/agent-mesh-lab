@@ -1,0 +1,26 @@
+
+# read 2026-09-25T18:50:07Z
+$ kubectl apply -f experiments/runs/2026-09-25-currency-rebuild/c3r2/objects/setup.yaml
+namespace/repro created
+deployment.apps/server created
+pod/client created
+# exit 0
+
+# read 2026-09-25T18:50:07Z
+$ kubectl -n repro wait --for=condition=Available deploy/server --timeout=180s && kubectl -n repro wait --for=condition=Ready pod/client --timeout=180s
+deployment.apps/server condition met
+pod/client condition met
+# exit 0
+
+# read 2026-09-25T18:50:18Z
+$ kubectl -n repro get pods -o wide
+NAME                      READY   STATUS    RESTARTS   AGE   IP             NODE                    NOMINATED NODE   READINESS GATES
+client                    1/1     Running   0          11s   10.244.1.187   agent-mesh-lab-worker   <none>           <none>
+server-64b5d85cf7-6wdvq   1/1     Running   0          11s   10.244.1.188   agent-mesh-lab-worker   <none>           <none>
+# exit 0
+
+# read 2026-09-25T18:50:18Z
+$ kubectl -n repro get pods -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.serviceAccountName}{" "}{.metadata.annotations.ambient\.istio\.io/redirection}{" "}{.status.containerStatuses[0].imageID}{"\n"}{end}'
+client default enabled docker.io/curlimages/curl@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+server-64b5d85cf7-6wdvq default enabled docker.io/nginxinc/nginx-unprivileged@sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3
+# exit 0

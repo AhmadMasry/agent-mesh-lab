@@ -1,0 +1,15 @@
+2026-09-25T19:09:30.742Z rep namespace-1 start T0=2026-09-25T19:09:30Z ztunnel=ztunnel-gvtqr istiod=istiod-6d7fbf75-dqb57 server=server-64b5d85cf7-r2d4n 10.244.1.208:8080 policy=repro-namespace REQ_PATH=/?rep=namespace-1
+2026-09-25T19:09:30.880Z held connection: kubectl -n repro exec -i client -- nc 10.244.1.208 8080 (stdin held open by this script)
+2026-09-25T19:09:30.884Z r1 write: GET /?rep=namespace-1 HTTP/1.1, Host: server
+2026-09-25T19:09:30.955Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-25T19:09:31.133Z apply: kubectl apply -f experiments/runs/2026-09-25-currency-rebuild/c3r2/objects/policy-namespace.yaml
+2026-09-25T19:09:31.302Z ztunnel holds repro-namespace (istioctl ztunnel-config policy, the draft's jq)
+2026-09-25T19:09:31.327Z held connection after the push: complete responses 1 200; nc running
+2026-09-25T19:09:31.717Z r2 write: GET /?rep=namespace-1 HTTP/1.1, Host: server, on the held connection
+2026-09-25T19:09:51.035Z r2 result: complete responses on the held connection: 1 200; nc running
+2026-09-25T19:09:51.039Z new connection: the draft's step 5, one curl -sS --retry 0
+2026-09-25T19:09:51.265Z close: exec 3>&- (EOF on nc's input)
+2026-09-25T19:09:51.305Z held connection ended: nc exited 2026-09-25T19:09:51.281Z exit=0; complete responses on it: 1 200
+2026-09-25T19:09:51.436Z remove: kubectl delete -f experiments/runs/2026-09-25-currency-rebuild/c3r2/objects/policy-namespace.yaml
+2026-09-25T19:09:51.604Z ztunnel no longer holds repro-namespace
+2026-09-25T19:09:51.865Z rep namespace-1 end

@@ -1,0 +1,158 @@
+
+# read 2026-09-25T19:08:28Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-25T19:08:28Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "repro") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"client","inbound":[],"outbound":[]}
+{"pod":"server-64b5d85cf7-r2d4n","inbound":[],"outbound":[]}
+# exit 0
+
+# read 2026-09-25T19:08:28Z
+$ kubectl -n repro exec client -- netstat -tn
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 10.244.1.207:37891      10.244.1.208:8080       ESTABLISHED 
+tcp        0      0 10.244.1.207:55650      10.244.1.208:15008      ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.207:37891 ESTABLISHED 
+# exit 0
+
+# read 2026-09-25T19:08:28Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "repro") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"client","inbound":[],"outbound":[{"src":"10.244.1.207:37891","originalDst":"10.244.1.208:8080","actualDst":"10.244.1.208:15008","protocol":"HBONE"}]}
+{"pod":"server-64b5d85cf7-r2d4n","inbound":[{"src":"10.244.1.207:55650","originalDst":"","actualDst":"10.244.1.208:8080","protocol":"HBONE"}],"outbound":[]}
+# exit 0
+
+# read 2026-09-25T19:08:28Z
+$ kubectl -n repro logs server-64b5d85cf7-r2d4n --timestamps --since-time=2026-09-25T19:08:27Z
+2026-09-25T19:08:27.088865006Z /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+2026-09-25T19:08:27.088876797Z /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+2026-09-25T19:08:27.089412714Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+2026-09-25T19:08:27.092028672Z 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+2026-09-25T19:08:27.095724422Z 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+2026-09-25T19:08:27.095787089Z /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+2026-09-25T19:08:27.095842256Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+2026-09-25T19:08:27.096980297Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+2026-09-25T19:08:27.097650756Z /docker-entrypoint.sh: Configuration complete; ready for start up
+2026-09-25T19:08:27.101266547Z 2026/09/25 19:08:27 [notice] 1#1: using the "epoll" event method
+2026-09-25T19:08:27.101273047Z 2026/09/25 19:08:27 [notice] 1#1: nginx/1.30.5
+2026-09-25T19:08:27.101273881Z 2026/09/25 19:08:27 [notice] 1#1: built by gcc 14.2.0 (Debian 14.2.0-19) 
+2026-09-25T19:08:27.101274422Z 2026/09/25 19:08:27 [notice] 1#1: OS: Linux 7.0.12-linuxkit
+2026-09-25T19:08:27.101275172Z 2026/09/25 19:08:27 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1073741816:1073741816
+2026-09-25T19:08:27.101277756Z 2026/09/25 19:08:27 [notice] 1#1: start worker processes
+2026-09-25T19:08:27.101360297Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 32
+2026-09-25T19:08:27.101430297Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 33
+2026-09-25T19:08:27.101501214Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 34
+2026-09-25T19:08:27.101629756Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 35
+2026-09-25T19:08:27.101672589Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 36
+2026-09-25T19:08:27.101776464Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 37
+2026-09-25T19:08:27.101860422Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 38
+2026-09-25T19:08:27.102046756Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 39
+2026-09-25T19:08:27.102166006Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 40
+2026-09-25T19:08:27.102372547Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 41
+2026-09-25T19:08:27.102485339Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 42
+2026-09-25T19:08:27.102640839Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 43
+2026-09-25T19:08:27.102817506Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 44
+2026-09-25T19:08:27.103023547Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 45
+2026-09-25T19:08:27.103247922Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 46
+2026-09-25T19:08:27.103470214Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 47
+2026-09-25T19:08:28.607874381Z 10.244.1.207 - - [25/Sep/2026:19:08:28 +0000] "GET /?rep=none-1 HTTP/1.1" 200 896 "-" "-" "-"
+# exit 0
+
+# read 2026-09-25T19:08:28Z
+$ kubectl -n repro exec client -- curl -sS --retry 0 "http://10.244.1.208:8080/?rep=none-1"
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, nginx is successfully installed and working.
+Further configuration is required for the web server, reverse proxy, 
+API gateway, load balancer, content cache, or other features.</p>
+
+<p>For online documentation and support please refer to
+<a href="https://nginx.org/">nginx.org</a>.<br/>
+To engage with the community please visit
+<a href="https://community.nginx.org/">community.nginx.org</a>.<br/>
+For enterprise grade support, professional services, additional 
+security features and capabilities please refer to
+<a href="https://f5.com/nginx">f5.com/nginx</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+# exit 0
+
+# read 2026-09-25T19:08:28Z
+$ kubectl -n repro logs server-64b5d85cf7-r2d4n --timestamps --since-time=2026-09-25T19:08:27Z
+2026-09-25T19:08:27.088865006Z /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+2026-09-25T19:08:27.088876797Z /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+2026-09-25T19:08:27.089412714Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+2026-09-25T19:08:27.092028672Z 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+2026-09-25T19:08:27.095724422Z 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+2026-09-25T19:08:27.095787089Z /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+2026-09-25T19:08:27.095842256Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+2026-09-25T19:08:27.096980297Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+2026-09-25T19:08:27.097650756Z /docker-entrypoint.sh: Configuration complete; ready for start up
+2026-09-25T19:08:27.101266547Z 2026/09/25 19:08:27 [notice] 1#1: using the "epoll" event method
+2026-09-25T19:08:27.101273047Z 2026/09/25 19:08:27 [notice] 1#1: nginx/1.30.5
+2026-09-25T19:08:27.101273881Z 2026/09/25 19:08:27 [notice] 1#1: built by gcc 14.2.0 (Debian 14.2.0-19) 
+2026-09-25T19:08:27.101274422Z 2026/09/25 19:08:27 [notice] 1#1: OS: Linux 7.0.12-linuxkit
+2026-09-25T19:08:27.101275172Z 2026/09/25 19:08:27 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1073741816:1073741816
+2026-09-25T19:08:27.101277756Z 2026/09/25 19:08:27 [notice] 1#1: start worker processes
+2026-09-25T19:08:27.101360297Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 32
+2026-09-25T19:08:27.101430297Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 33
+2026-09-25T19:08:27.101501214Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 34
+2026-09-25T19:08:27.101629756Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 35
+2026-09-25T19:08:27.101672589Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 36
+2026-09-25T19:08:27.101776464Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 37
+2026-09-25T19:08:27.101860422Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 38
+2026-09-25T19:08:27.102046756Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 39
+2026-09-25T19:08:27.102166006Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 40
+2026-09-25T19:08:27.102372547Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 41
+2026-09-25T19:08:27.102485339Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 42
+2026-09-25T19:08:27.102640839Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 43
+2026-09-25T19:08:27.102817506Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 44
+2026-09-25T19:08:27.103023547Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 45
+2026-09-25T19:08:27.103247922Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 46
+2026-09-25T19:08:27.103470214Z 2026/09/25 19:08:27 [notice] 1#1: start worker process 47
+2026-09-25T19:08:28.607874381Z 10.244.1.207 - - [25/Sep/2026:19:08:28 +0000] "GET /?rep=none-1 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-25T19:08:28.814231757Z 10.244.1.207 - - [25/Sep/2026:19:08:28 +0000] "GET /?rep=none-1 HTTP/1.1" 200 896 "-" "-" "-"
+2026-09-25T19:08:28.918209632Z 10.244.1.207 - - [25/Sep/2026:19:08:28 +0000] "GET /?rep=none-1 HTTP/1.1" 200 896 "-" "curl/8.22.0" "-"
+# exit 0
+
+# read 2026-09-25T19:08:28Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "repro") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"client","inbound":[],"outbound":[{"src":"10.244.1.207:37891","originalDst":"10.244.1.208:8080","actualDst":"10.244.1.208:15008","protocol":"HBONE"}]}
+{"pod":"server-64b5d85cf7-r2d4n","inbound":[{"src":"10.244.1.207:55650","originalDst":"","actualDst":"10.244.1.208:8080","protocol":"HBONE"}],"outbound":[]}
+# exit 0
+
+# read 2026-09-25T19:08:29Z
+$ kubectl -n istio-system logs ztunnel-gvtqr --since-time=2026-09-25T19:08:27Z | grep -E 'no longer allowed|policy change|policy rejection|RBAC|10\.244\.1\.208'
+2026-09-25T19:08:28.918441Z	info	access	connection complete	src.addr=10.244.1.207:55650 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.208:15008 dst.hbone_addr=10.244.1.208:8080 dst.workload="server-64b5d85cf7-r2d4n" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=1134 bytes_recv=92 duration="0ms"
+2026-09-25T19:08:28.918503Z	info	access	connection complete	src.addr=10.244.1.207:48636 src.workload="client" src.namespace="repro" src.identity="spiffe://cluster.local/ns/repro/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.208:15008 dst.hbone_addr=10.244.1.208:8080 dst.workload="server-64b5d85cf7-r2d4n" dst.namespace="repro" dst.identity="spiffe://cluster.local/ns/repro/sa/default" dst.cluster="Kubernetes" direction="outbound" bytes_sent=92 bytes_recv=1134 duration="0ms"
+# exit 0
+
+# read 2026-09-25T19:08:29Z
+$ kubectl -n repro exec client -- netstat -tn
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 10.244.1.207:37891      10.244.1.208:8080       TIME_WAIT   
+tcp        0      0 10.244.1.207:48636      10.244.1.208:8080       TIME_WAIT   
+tcp        0      0 10.244.1.207:55650      10.244.1.208:15008      ESTABLISHED 
+# exit 0
+
+# read 2026-09-25T19:08:29Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "repro") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"client","inbound":[],"outbound":[]}
+{"pod":"server-64b5d85cf7-r2d4n","inbound":[],"outbound":[]}
+# exit 0

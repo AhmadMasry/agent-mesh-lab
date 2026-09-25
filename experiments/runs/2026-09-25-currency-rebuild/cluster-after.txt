@@ -1,0 +1,96 @@
+# 2026-09-25T19:59:18Z the cluster after the rows (reads only)
+$ kubectl get authorizationpolicy -A
+No resources found
+$ kubectl get peerauthentication -A
+NAMESPACE              NAME                           MODE     AGE
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   152m
+istio-system           default                        STRICT   161m
+$ kubectl get httproute,grpcroute -A
+NAMESPACE               NAME                                                       HOSTNAMES                                AGE
+agentgateway-waypoint   httproute.gateway.networking.k8s.io/model-via-agw          ["model.lab.internal"]                   152m
+lab                     httproute.gateway.networking.k8s.io/orchestrator           ["orchestrator.lab.svc.cluster.local"]   152m
+lab                     httproute.gateway.networking.k8s.io/orchestrator-ingress                                            152m
+lab                     httproute.gateway.networking.k8s.io/worker                 ["worker.lab.svc.cluster.local"]         161m
+lab                     httproute.gateway.networking.k8s.io/worker-ingress         ["worker.lab.internal"]                  152m
+
+NAMESPACE   NAME                                                            HOSTNAMES                            AGE
+lab         grpcroute.gateway.networking.k8s.io/orchestrator-grpc-ingress   ["orchestrator-grpc.lab.internal"]   152m
+lab         grpcroute.gateway.networking.k8s.io/worker-grpc-ingress         ["worker-grpc.lab.internal"]         152m
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+$ kubectl get agentgatewaypolicy -A
+NAMESPACE               NAME          ACCEPTED   ATTACHED   AGE
+agentgateway-ingress    access-logs   True       True       151m
+agentgateway-ingress    tracing       True       True       151m
+agentgateway-waypoint   access-logs   True       True       151m
+agentgateway-waypoint   tracing       True       True       151m
+$ kubectl get agentgatewaybackend -A
+NAMESPACE               NAME      ACCEPTED   AGE
+agentgateway-waypoint   mockllm   True       152m
+$ kubectl get ns --show-labels
+NAME                    STATUS   AGE    LABELS
+agentgateway-ingress    Active   152m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=agentgateway-ingress
+agentgateway-system     Active   162m   kubernetes.io/metadata.name=agentgateway-system,name=agentgateway-system
+agentgateway-waypoint   Active   161m   kubernetes.io/metadata.name=agentgateway-waypoint
+default                 Active   166m   kubernetes.io/metadata.name=default
+istio-system            Active   163m   kubernetes.io/metadata.name=istio-system,name=istio-system
+kube-node-lease         Active   166m   kubernetes.io/metadata.name=kube-node-lease
+kube-public             Active   166m   kubernetes.io/metadata.name=kube-public
+kube-system             Active   166m   kubernetes.io/metadata.name=kube-system
+lab                     Active   165m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=lab
+local-path-storage      Active   166m   kubernetes.io/metadata.name=local-path-storage
+telemetry               Active   152m   kubernetes.io/metadata.name=telemetry
+$ kubectl -n lab get deploy -o custom-columns=NAME:.metadata.name,SA:.spec.template.spec.serviceAccountName,READY:.status.readyReplicas
+NAME           SA             READY
+extauthz       <none>         1
+mockllm        <none>         1
+orchestrator   orchestrator   1
+worker         worker         1
+$ kubectl -n lab get svc worker orchestrator -o jsonpath='{range .items[*]}{.metadata.name} {range .spec.ports[*]}{.name}/{.port}/appProtocol={.appProtocol} {end}{"
+"}{end}'
+worker http/8080/appProtocol= grpc/8081/appProtocol=kubernetes.io/h2c 
+orchestrator http/8080/appProtocol= grpc/8081/appProtocol=kubernetes.io/h2c 
+$ kubectl -n lab get deploy orchestrator -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{"
+"}{end}'
+OTEL_SERVICE_NAME=orchestrator
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.telemetry.svc.cluster.local:4318
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+OTEL_TRACES_EXPORTER=otlp
+OTEL_METRICS_EXPORTER=none
+OTEL_LOGS_EXPORTER=none
+OTEL_PROPAGATORS=tracecontext,baggage
+OTEL_TRACES_SAMPLER=always_on
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_SERVER_REQUEST=X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller
+OTEL_INSTRUMENTATION_HTTP_CAPTURE_HEADERS_CLIENT_REQUEST=X-Logical-Work-Item-Id,X-A2A-Message-Id,X-A2A-Task-Id,X-Caller
+MODEL_BASE_URL=http://model.lab.internal:8080/v1
+PUBLIC_URL=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local
+PUBLIC_GRPC_URL=agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80
+AGENT_NAME=orchestrator
+PORT=8080
+GRPC_PORT=8081
+PLAN_MODEL_CALL=off
+MODEL_NAME=mock
+MODEL_API_KEY=unused
+MODEL_MAX_RETRIES=0
+REFUSE_OPERATION=
+LEDGER_HEADERS=
+FORWARD_RESUBSCRIBE=
+DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+$ kubectl -n lab get deploy worker -o jsonpath='{range .spec.template.spec.containers[0].env[*]}{.name}={.value}{"
+"}{end}'
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.telemetry.svc.cluster.local:4318
+OTEL_SERVICE_NAME=worker
+MODEL_BASE_URL=http://model.lab.internal:8080/v1
+AGENT_NAME=worker
+MODEL_NAME=mock
+MODEL_API_KEY=unused
+PUBLIC_URL=http://worker.lab.svc.cluster.local:8080
+GRPC_LISTEN_ADDR=:8081
+PUBLIC_GRPC_URL=worker.lab.svc.cluster.local:8081
+REFUSE_OPERATION=
+LEDGER_HEADERS=
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq -c '.[] | {name,namespace,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","action":"Deny"}
+$ kubectl get pods -A --no-headers | awk '$4 != "Running" && $4 != "Completed"' | wc -l
+      40

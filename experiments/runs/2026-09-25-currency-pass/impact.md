@@ -145,3 +145,21 @@ them are listed for a ruling before anything is re-run.
   puts the checksum-verified 1.31.1 copy (local/istioctl.txt) first on PATH for them, so the version on PATH is the pin.
 - C-3 and C-4 applied their policies by steps recorded in their entry rather than by one script; their re-count follows
   those steps with the same objects, and says so.
+
+## Note of 2026-09-25, after Phase 2 (the text above is not edited)
+
+- **A correction to section 2a (D-1).** It says the span processor's shutdown timeout "sits on the OTLP/HTTP exporter that
+  moved". It does not. D-1's pyclient-counts.py (l.130) reads "BatchSpanProcessor.Shutdown.Timeout" from oldpod.log,
+  the log of the agw-central pod the row removes: agentgateway's own opentelemetry_sdk. agentgateway v1.5.0 did not
+  move. Re-derived in Phase 2 the way D-1 derived it: yes 20 of 20, as at D-1.
+- **A correction to section 4.** It says the drivers' lab-scoped istioctl-1.31.0 directories are absent. Four of them
+  existed (b3, d1, c5, d4). By the controller's ruling they were renamed aside for the rows and back after them
+  (experiments/runs/2026-09-25-currency-rebuild/istioctl-renames.txt), so every driver ran 1.31.1.
+- The re-counts, as ruled (2a and 2b), and their comparisons: experiments/runs/2026-09-25-currency-rebuild/ and the four
+  findings entries of 2026-09-25 that follow "Experiment B / both receivers / the table after D-1".
+- **A correction to section 3, the Python receiver rows with odd JSON bodies (the review round, M-3).** The reason given
+  there ("the parse of those shapes is JSON decoding before protobuf") is not right: the SDK parses the JSON-RPC params
+  with protobuf's json_format.ParseDict, which moved between protobuf 6 and 7, depth guards among the changes. The
+  conclusion holds for another reason: padt and padsm pad a flat string (params.tenant), pad and batch are refused before
+  ParseDict, and dup has no nesting (experiments/runs/2026-09-24-d3-extauthz/d3.sh l.14-16, l.216-228), so no shape
+  reaches a depth the new guards limit.

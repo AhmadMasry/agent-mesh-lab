@@ -1,0 +1,109 @@
+2026-09-25T18:56:39Z step 2.1 start (replay); d5.sh sha256 f43a7345d30eca5cea0b6b3effa672436dfe1f7fa4b4541b833e1cc47d9b76f5; istioctl client version: 1.31.1
+2026-09-25T18:56:39.993055Z phase conn unmarked RUN_ID curs21; HEAD 7ec4649665b20ee165afb0fa3353a1897c2f4806; this driver sha256 f43a7345d30eca5cea0b6b3effa672436dfe1f7fa4b4541b833e1cc47d9b76f5
+2026-09-25T18:56:40.072998Z worker pod: worker-76b6f68bf9-dq57d ip=10.244.1.20; orchestrator pod: orchestrator-59fbf88d7c-rrc84 ip=10.244.1.170
+2026-09-25T18:56:40.117518Z proxy pods: agentgateway-ingress/agentgateway-ingress-6c897d8685-qjcnz ip=10.244.1.17; agentgateway-waypoint/agw-central-86c64668b5-ck667 ip=10.244.1.169; 
+2026-09-25T18:56:40.163060Z Services' http port: worker:http/8080/appProtocol=; orchestrator:http/8080/appProtocol=; 
+2026-09-25T18:56:40.754401Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T18:56:40.813524Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T18:56:40.871505Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T18:56:41.098757Z probe up: d5-as-loadgen sa=loadgen ip=10.244.1.202
+2026-09-25T18:56:41.771610Z quiet 100 s, so that agw-central's and the ingress's pools to the agents are idle-closed before the set
+2026-09-25T18:58:21.923326Z counters pre: 14 series; agw-central->worker(dest)=31 agw-central->orchestrator(dest)=28 ingress->worker(dest)=6 ingress->orchestrator(dest)=10
+2026-09-25T18:58:21.942959Z set opens
+2026-09-25T18:58:22.057586Z   d5c-unmarked-curs21-wc GetAgentCard GET http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json host=worker.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=8909ae52d70e8308ac251698785e37b4
+2026-09-25T18:58:22.368724Z   d5c-unmarked-curs21-wc SendMessage POST http://worker.lab.svc.cluster.local:8080/ host=worker.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=20d9c821f8982f6dec72c1c4295075bd
+2026-09-25T18:58:22.479501Z   d5c-unmarked-curs21-oc GetAgentCard GET http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json host=orchestrator.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=d002dcf29f260ea30d285e7fa8f4d4aa
+2026-09-25T18:58:22.803822Z   d5c-unmarked-curs21-oc SendMessage POST http://orchestrator.lab.svc.cluster.local:8080/ host=orchestrator.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=4b1f3279a8302f63078666da93d7dff3
+2026-09-25T18:58:22.919190Z   d5c-unmarked-curs21-wi GetAgentCard GET http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json host=worker.lab.internal -> http=200 exit=0 trace=43cfe1c6cb4b4e1a4c25246cf3c07966
+2026-09-25T18:58:23.243318Z   d5c-unmarked-curs21-wi SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal -> http=200 exit=0 trace=358c6c0ed308106922c8f07fe467ba53
+2026-09-25T18:58:23.364156Z   d5c-unmarked-curs21-oi GetAgentCard GET http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local -> http=200 exit=0 trace=adb6093464121c2c23cedcedfb4fca08
+2026-09-25T18:58:23.681606Z   d5c-unmarked-curs21-oi SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local -> http=200 exit=0 trace=10a02a2396452b2504842aa02889c5a4
+2026-09-25T18:58:23.701430Z set closes
+2026-09-25T18:58:23.835030Z counters post: 14 series; agw-central->worker(dest)=32 agw-central->orchestrator(dest)=29 ingress->worker(dest)=7 ingress->orchestrator(dest)=11
+2026-09-25T18:58:23.845331Z quiet 100 s, so that the set's connections idle out and write their ztunnel lines
+2026-09-25T19:00:03.991322Z counters idle: 14 series; agw-central->worker(dest)=32 agw-central->orchestrator(dest)=29 ingress->worker(dest)=7 ingress->orchestrator(dest)=11
+2026-09-25T19:00:04.180808Z logs since 2026-09-25T18:58:21.933233Z (set): agw-central 10 request lines of 10, ingress 4 of 4, ztunnel 25 lines
+2026-09-25T19:00:04.664794Z   d5c-unmarked-curs21-wc ledgers ingress=2 execution=6 invocation=1
+2026-09-25T19:00:05.126315Z   d5c-unmarked-curs21-oc ledgers ingress=4 execution=12 invocation=1
+2026-09-25T19:00:05.636537Z   d5c-unmarked-curs21-wi ledgers ingress=2 execution=6 invocation=1
+2026-09-25T19:00:06.129650Z   d5c-unmarked-curs21-oi ledgers ingress=4 execution=12 invocation=1
+2026-09-25T19:00:06.176171Z phase conn driver exit
+2026-09-25T19:00:06Z conn unmarked exit=0
+2026-09-25T19:00:06.219646Z phase mark  RUN_ID curs21; HEAD 7ec4649665b20ee165afb0fa3353a1897c2f4806; this driver sha256 f43a7345d30eca5cea0b6b3effa672436dfe1f7fa4b4541b833e1cc47d9b76f5
+2026-09-25T19:00:06.291140Z worker pod: worker-76b6f68bf9-dq57d ip=10.244.1.20; orchestrator pod: orchestrator-59fbf88d7c-rrc84 ip=10.244.1.170
+2026-09-25T19:00:06.331913Z proxy pods: agentgateway-ingress/agentgateway-ingress-6c897d8685-qjcnz ip=10.244.1.17; agentgateway-waypoint/agw-central-86c64668b5-ck667 ip=10.244.1.169; 
+2026-09-25T19:00:06.373543Z Services' http port: worker:http/8080/appProtocol=; orchestrator:http/8080/appProtocol=; 
+2026-09-25T19:00:07.481005Z agw-central dump: [[.policies[]? | tostring | test("a2a"; "i")] | map(select(.)) | length == 2] after ~0s
+2026-09-25T19:00:07.811651Z agentgateway-ingress dump: [[.policies[]? | tostring | test("a2a"; "i")] | map(select(.)) | length == 2] after ~0s
+2026-09-25T19:00:08.516490Z phase mark driver exit
+2026-09-25T19:00:08Z mark exit=0
+2026-09-25T19:00:08.556639Z phase conn marked RUN_ID curs21; HEAD 7ec4649665b20ee165afb0fa3353a1897c2f4806; this driver sha256 f43a7345d30eca5cea0b6b3effa672436dfe1f7fa4b4541b833e1cc47d9b76f5
+2026-09-25T19:00:08.630903Z worker pod: worker-76b6f68bf9-dq57d ip=10.244.1.20; orchestrator pod: orchestrator-59fbf88d7c-rrc84 ip=10.244.1.170
+2026-09-25T19:00:08.674309Z proxy pods: agentgateway-ingress/agentgateway-ingress-6c897d8685-qjcnz ip=10.244.1.17; agentgateway-waypoint/agw-central-86c64668b5-ck667 ip=10.244.1.169; 
+2026-09-25T19:00:08.715373Z Services' http port: worker:http/8080/appProtocol=agentgateway.dev/a2a; orchestrator:http/8080/appProtocol=agentgateway.dev/a2a; 
+2026-09-25T19:00:37.975579Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T19:00:38.036443Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T19:00:38.096792Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T19:00:38.321860Z probe up: d5-as-loadgen sa=loadgen ip=10.244.1.204
+2026-09-25T19:00:39.009454Z quiet 100 s, so that agw-central's and the ingress's pools to the agents are idle-closed before the set
+2026-09-25T19:02:19.169580Z counters pre: 14 series; agw-central->worker(dest)=33 agw-central->orchestrator(dest)=30 ingress->worker(dest)=7 ingress->orchestrator(dest)=11
+2026-09-25T19:02:19.188390Z set opens
+2026-09-25T19:02:19.298721Z   d5c-marked-curs21-wc GetAgentCard GET http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json host=worker.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=c419b601bae3f05df052368759bcec87
+2026-09-25T19:02:19.612549Z   d5c-marked-curs21-wc SendMessage POST http://worker.lab.svc.cluster.local:8080/ host=worker.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=c6124ff782489c6b949d38f68e68777d
+2026-09-25T19:02:19.760771Z   d5c-marked-curs21-oc GetAgentCard GET http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json host=orchestrator.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=c19fb1c285edbe2275116956f34c0fd4
+2026-09-25T19:02:20.077795Z   d5c-marked-curs21-oc SendMessage POST http://orchestrator.lab.svc.cluster.local:8080/ host=orchestrator.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=f524808e1ddd41fb0c54d23ea0905ced
+2026-09-25T19:02:20.185801Z   d5c-marked-curs21-wi GetAgentCard GET http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json host=worker.lab.internal -> http=200 exit=0 trace=497a86fedc42b07804766f8e26e29b5f
+2026-09-25T19:02:20.500817Z   d5c-marked-curs21-wi SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal -> http=200 exit=0 trace=735c7017046124e7065b74f4001f36eb
+2026-09-25T19:02:20.613969Z   d5c-marked-curs21-oi GetAgentCard GET http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local -> http=200 exit=0 trace=9d2508399a15d2c0d23f313ec7aabc7c
+2026-09-25T19:02:20.942006Z   d5c-marked-curs21-oi SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local -> http=200 exit=0 trace=47db9f2a1fad0d1a20791f48d06d24c4
+2026-09-25T19:02:20.963654Z set closes
+2026-09-25T19:02:21.098100Z counters post: 14 series; agw-central->worker(dest)=34 agw-central->orchestrator(dest)=31 ingress->worker(dest)=8 ingress->orchestrator(dest)=12
+2026-09-25T19:02:21.108345Z quiet 100 s, so that the set's connections idle out and write their ztunnel lines
+2026-09-25T19:04:01.267827Z counters idle: 14 series; agw-central->worker(dest)=34 agw-central->orchestrator(dest)=31 ingress->worker(dest)=8 ingress->orchestrator(dest)=12
+2026-09-25T19:04:01.459230Z logs since 2026-09-25T19:02:19.179073Z (set): agw-central 10 request lines of 10, ingress 4 of 4, ztunnel 23 lines
+2026-09-25T19:04:01.924432Z   d5c-marked-curs21-wc ledgers ingress=2 execution=6 invocation=1
+2026-09-25T19:04:02.406507Z   d5c-marked-curs21-oc ledgers ingress=4 execution=12 invocation=1
+2026-09-25T19:04:02.881087Z   d5c-marked-curs21-wi ledgers ingress=2 execution=6 invocation=1
+2026-09-25T19:04:03.350330Z   d5c-marked-curs21-oi ledgers ingress=4 execution=12 invocation=1
+2026-09-25T19:04:03.395494Z phase conn driver exit
+2026-09-25T19:04:03Z conn marked exit=0
+2026-09-25T19:04:03.437011Z phase unmark  RUN_ID curs21; HEAD 7ec4649665b20ee165afb0fa3353a1897c2f4806; this driver sha256 f43a7345d30eca5cea0b6b3effa672436dfe1f7fa4b4541b833e1cc47d9b76f5
+2026-09-25T19:04:03.504818Z worker pod: worker-76b6f68bf9-dq57d ip=10.244.1.20; orchestrator pod: orchestrator-59fbf88d7c-rrc84 ip=10.244.1.170
+2026-09-25T19:04:03.547621Z proxy pods: agentgateway-ingress/agentgateway-ingress-6c897d8685-qjcnz ip=10.244.1.17; agentgateway-waypoint/agw-central-86c64668b5-ck667 ip=10.244.1.169; 
+2026-09-25T19:04:03.589528Z Services' http port: worker:http/8080/appProtocol=agentgateway.dev/a2a; orchestrator:http/8080/appProtocol=agentgateway.dev/a2a; 
+2026-09-25T19:04:04.007958Z agw-central dump: [[.policies[]? | tostring | test("a2a"; "i")] | map(select(.)) | length == 0] after ~0s
+2026-09-25T19:04:04.339593Z agentgateway-ingress dump: [[.policies[]? | tostring | test("a2a"; "i")] | map(select(.)) | length == 0] after ~0s
+2026-09-25T19:04:05.063644Z phase unmark driver exit
+2026-09-25T19:04:05Z unmark exit=0
+2026-09-25T19:04:05.103557Z phase conn removed RUN_ID curs21; HEAD 7ec4649665b20ee165afb0fa3353a1897c2f4806; this driver sha256 f43a7345d30eca5cea0b6b3effa672436dfe1f7fa4b4541b833e1cc47d9b76f5
+2026-09-25T19:04:05.176647Z worker pod: worker-76b6f68bf9-dq57d ip=10.244.1.20; orchestrator pod: orchestrator-59fbf88d7c-rrc84 ip=10.244.1.170
+2026-09-25T19:04:05.217350Z proxy pods: agentgateway-ingress/agentgateway-ingress-6c897d8685-qjcnz ip=10.244.1.17; agentgateway-waypoint/agw-central-86c64668b5-ck667 ip=10.244.1.169; 
+2026-09-25T19:04:05.256334Z Services' http port: worker:http/8080/appProtocol=; orchestrator:http/8080/appProtocol=; 
+2026-09-25T19:04:34.445074Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T19:04:34.504451Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T19:04:34.563410Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-25T19:04:34.796766Z probe up: d5-as-loadgen sa=loadgen ip=10.244.1.206
+2026-09-25T19:04:35.484337Z quiet 100 s, so that agw-central's and the ingress's pools to the agents are idle-closed before the set
+2026-09-25T19:06:15.640172Z counters pre: 14 series; agw-central->worker(dest)=35 agw-central->orchestrator(dest)=32 ingress->worker(dest)=8 ingress->orchestrator(dest)=12
+2026-09-25T19:06:15.661453Z set opens
+2026-09-25T19:06:15.773047Z   d5c-removed-curs21-wc GetAgentCard GET http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json host=worker.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=881eb20292dcf146f511400bbed5ad76
+2026-09-25T19:06:16.082952Z   d5c-removed-curs21-wc SendMessage POST http://worker.lab.svc.cluster.local:8080/ host=worker.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=f3b9456dceda1bc1d637baea89f163ef
+2026-09-25T19:06:16.233428Z   d5c-removed-curs21-oc GetAgentCard GET http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json host=orchestrator.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=b6d7416c4d3932c9a6e4d7306cf6f85e
+2026-09-25T19:06:16.548705Z   d5c-removed-curs21-oc SendMessage POST http://orchestrator.lab.svc.cluster.local:8080/ host=orchestrator.lab.svc.cluster.local:8080 -> http=200 exit=0 trace=b18a1aec4d83301077c5e5e8877b8a60
+2026-09-25T19:06:16.655925Z   d5c-removed-curs21-wi GetAgentCard GET http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json host=worker.lab.internal -> http=200 exit=0 trace=3301a3ce6c9495461a00dfb26b8d8c67
+2026-09-25T19:06:16.992281Z   d5c-removed-curs21-wi SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal -> http=200 exit=0 trace=fd678bae4fbbf7de355b8bd7be558781
+2026-09-25T19:06:17.119108Z   d5c-removed-curs21-oi GetAgentCard GET http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local -> http=200 exit=0 trace=cb899042f3e597924a7606240b00fe9e
+2026-09-25T19:06:17.442492Z   d5c-removed-curs21-oi SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local -> http=200 exit=0 trace=a258d1470b021aaa93f3e67493afc07d
+2026-09-25T19:06:17.466382Z set closes
+2026-09-25T19:06:17.602874Z counters post: 14 series; agw-central->worker(dest)=36 agw-central->orchestrator(dest)=33 ingress->worker(dest)=9 ingress->orchestrator(dest)=13
+2026-09-25T19:06:17.613403Z quiet 100 s, so that the set's connections idle out and write their ztunnel lines
+2026-09-25T19:07:57.757925Z counters idle: 14 series; agw-central->worker(dest)=36 agw-central->orchestrator(dest)=33 ingress->worker(dest)=9 ingress->orchestrator(dest)=13
+2026-09-25T19:07:57.949630Z logs since 2026-09-25T19:06:15.650583Z (set): agw-central 10 request lines of 10, ingress 4 of 4, ztunnel 23 lines
+2026-09-25T19:07:58.446743Z   d5c-removed-curs21-wc ledgers ingress=2 execution=6 invocation=1
+2026-09-25T19:07:58.931698Z   d5c-removed-curs21-oc ledgers ingress=4 execution=12 invocation=1
+2026-09-25T19:07:59.413209Z   d5c-removed-curs21-wi ledgers ingress=2 execution=6 invocation=1
+2026-09-25T19:07:59.910693Z   d5c-removed-curs21-oi ledgers ingress=4 execution=12 invocation=1
+2026-09-25T19:07:59.955265Z phase conn driver exit
+2026-09-25T19:07:59Z conn removed exit=0
+2026-09-25T19:07:59Z step 2.1 end (replay)
+2026-09-25T19:08:00Z counts.py exit=0

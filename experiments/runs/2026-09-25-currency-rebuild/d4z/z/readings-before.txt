@@ -1,0 +1,170 @@
+## 2026-09-25T18:54:58.538466Z $ kubectl get authorizationpolicy -A -o yaml
+apiVersion: v1
+items: []
+kind: List
+metadata:
+  resourceVersion: ""
+
+## 2026-09-25T18:54:58.577646Z $ kubectl get agentgatewaypolicy -A -o json | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name) authorization=\(.spec.traffic.authorization != null) extAuth=\(.spec.traffic.extAuth != null) ancestors=\([.status.ancestors[]? | .conditions[]? | "\(.type)=\(.status)/\(.reason)"] | join(","))"'
+agentgateway-ingress/access-logs authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+agentgateway-ingress/tracing authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+agentgateway-waypoint/access-logs authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+agentgateway-waypoint/tracing authorization=false extAuth=false ancestors=Accepted=True/Valid,Attached=True/Attached
+
+## 2026-09-25T18:54:58.619872Z $ istioctl ztunnel-config policy
+NAMESPACE            POLICY NAME                                                ACTION SCOPE
+agentgateway-ingress converted_peer_authentication_agentgateway-ingress-metrics Deny   WorkloadSelector
+istio-system         istio_converted_static_strict                              Deny   WorkloadSelector
+
+## 2026-09-25T18:54:58.694170Z $ kubectl get peerauthentication -A --no-headers
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   88m
+istio-system           default                        STRICT   97m
+
+## 2026-09-25T18:54:58.734126Z $ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+
+## 2026-09-25T18:54:58.776601Z $ kubectl -n lab get serviceaccount
+NAME           AGE
+default        100m
+loadgen        100m
+orchestrator   100m
+worker         100m
+
+## 2026-09-25T18:54:58.816114Z $ kubectl -n lab get pods -o custom-columns=NAME:.metadata.name,SA:.spec.serviceAccountName,IP:.status.podIP,PHASE:.status.phase
+NAME                                              SA             IP             PHASE
+d4-ctl                                            default        10.244.1.193   Running
+extauthz-59477cd747-h7g4t                         default        10.244.1.14    Running
+loadgen-a3t-fu3ct-r1-orchestrator-vxtsc           loadgen        10.244.1.29    Succeeded
+loadgen-a3t-fu3ct-r1-worker-t64p2                 loadgen        10.244.1.28    Succeeded
+loadgen-a3t-fu3ct-r2-orchestrator-jg7q6           loadgen        10.244.1.31    Succeeded
+loadgen-a3t-fu3ct-r2-worker-cbv4d                 loadgen        10.244.1.30    Succeeded
+loadgen-b3-sx-go-cur3x-01-swbw4                   loadgen        10.244.1.37    Failed
+loadgen-b3-sx-go-cur3x-02-nggts                   loadgen        10.244.1.38    Failed
+loadgen-b3-sx-go-cur3x-03-b4f2v                   loadgen        10.244.1.39    Failed
+loadgen-b3-sx-go-cur3y-01-cnh6f                   loadgen        10.244.1.41    Succeeded
+loadgen-b3-sx-go-cur3y-01-s-vqtz6                 loadgen        10.244.1.42    Failed
+loadgen-b3-sx-go-cur3y-02-n5tpj                   loadgen        10.244.1.43    Succeeded
+loadgen-b3-sx-go-cur3y-02-s-trn2s                 loadgen        10.244.1.44    Failed
+loadgen-b3-sx-go-cur3y-03-gvrpv                   loadgen        10.244.1.45    Succeeded
+loadgen-b3-sx-go-cur3y-03-s-gbtjm                 loadgen        10.244.1.46    Failed
+loadgen-b3-sx-go-cur3y-04-8djs8                   loadgen        10.244.1.47    Succeeded
+loadgen-b3-sx-go-cur3y-04-s-trws5                 loadgen        10.244.1.48    Failed
+loadgen-b3-sx-go-cur3y-05-l7lkq                   loadgen        10.244.1.49    Succeeded
+loadgen-b3-sx-go-cur3y-05-s-gr2wq                 loadgen        10.244.1.50    Failed
+loadgen-b3-sx-go-cur3y-06-rbjjw                   loadgen        10.244.1.51    Succeeded
+loadgen-b3-sx-go-cur3y-06-s-qbb8t                 loadgen        10.244.1.52    Failed
+loadgen-b3-sx-go-cur3y-07-l4v6q                   loadgen        10.244.1.53    Succeeded
+loadgen-b3-sx-go-cur3y-07-s-vl52r                 loadgen        10.244.1.54    Failed
+loadgen-b3-sx-go-cur3y-08-6jhmq                   loadgen        10.244.1.55    Succeeded
+loadgen-b3-sx-go-cur3y-08-s-xvbqq                 loadgen        10.244.1.56    Failed
+loadgen-b3-sx-go-cur3y-09-r4v48                   loadgen        10.244.1.57    Succeeded
+loadgen-b3-sx-go-cur3y-09-s-lxjdz                 loadgen        10.244.1.58    Failed
+loadgen-b3-sx-go-cur3y-10-d8g9b                   loadgen        10.244.1.59    Succeeded
+loadgen-b3-sx-go-cur3y-10-s-k5jm2                 loadgen        10.244.1.60    Failed
+loadgen-b3-sx-go-cur3y-11-rlttb                   loadgen        10.244.1.61    Succeeded
+loadgen-b3-sx-go-cur3y-11-s-kp85c                 loadgen        10.244.1.62    Failed
+loadgen-b3-sx-go-cur3y-12-7559j                   loadgen        10.244.1.63    Succeeded
+loadgen-b3-sx-go-cur3y-12-s-9j4tc                 loadgen        10.244.1.64    Failed
+loadgen-b3-sx-go-cur3y-13-fqzpg                   loadgen        10.244.1.65    Succeeded
+loadgen-b3-sx-go-cur3y-13-s-26b7l                 loadgen        10.244.1.66    Failed
+loadgen-b3-sx-go-cur3y-14-mvt9z                   loadgen        10.244.1.67    Succeeded
+loadgen-b3-sx-go-cur3y-14-s-pd9wp                 loadgen        10.244.1.68    Failed
+loadgen-b3-sx-go-cur3y-15-rkwtb                   loadgen        10.244.1.69    Succeeded
+loadgen-b3-sx-go-cur3y-15-s-tvt5b                 loadgen        10.244.1.70    Failed
+loadgen-b3-sx-go-cur3y-16-fx9t2                   loadgen        10.244.1.71    Succeeded
+loadgen-b3-sx-go-cur3y-16-s-bvmkh                 loadgen        10.244.1.72    Failed
+loadgen-b3-sx-go-cur3y-17-s-mpptt                 loadgen        10.244.1.74    Failed
+loadgen-b3-sx-go-cur3y-17-sw8w7                   loadgen        10.244.1.73    Succeeded
+loadgen-b3-sx-go-cur3y-18-nd5nm                   loadgen        10.244.1.75    Succeeded
+loadgen-b3-sx-go-cur3y-18-s-445xf                 loadgen        10.244.1.76    Failed
+loadgen-b3-sx-go-cur3y-19-mxlq6                   loadgen        10.244.1.77    Succeeded
+loadgen-b3-sx-go-cur3y-19-s-p2qtw                 loadgen        10.244.1.78    Failed
+loadgen-b3-sx-go-cur3y-20-s-mvf4f                 loadgen        10.244.1.80    Failed
+loadgen-b3-sx-go-cur3y-20-wrkzh                   loadgen        10.244.1.79    Succeeded
+loadgen-b3-sx-py-cur3y-01-jt4fh                   loadgen        10.244.1.82    Succeeded
+loadgen-b3-sx-py-cur3y-01-s-c4nd5                 loadgen        10.244.1.83    Failed
+loadgen-b3-sx-py-cur3y-02-dhzmh                   loadgen        10.244.1.84    Succeeded
+loadgen-b3-sx-py-cur3y-02-s-l2nnf                 loadgen        10.244.1.85    Failed
+loadgen-b3-sx-py-cur3y-03-s-gmcl8                 loadgen        10.244.1.87    Failed
+loadgen-b3-sx-py-cur3y-03-v6286                   loadgen        10.244.1.86    Succeeded
+loadgen-b3-sx-py-cur3y-04-s-k9kww                 loadgen        10.244.1.89    Failed
+loadgen-b3-sx-py-cur3y-04-zss68                   loadgen        10.244.1.88    Succeeded
+loadgen-b3-sx-py-cur3y-05-n4r5m                   loadgen        10.244.1.90    Succeeded
+loadgen-b3-sx-py-cur3y-05-s-4xp8r                 loadgen        10.244.1.91    Failed
+loadgen-b3-sx-py-cur3y-06-2cldt                   loadgen        10.244.1.92    Succeeded
+loadgen-b3-sx-py-cur3y-06-s-g4rf2                 loadgen        10.244.1.93    Failed
+loadgen-b3-sx-py-cur3y-07-s-t99q7                 loadgen        10.244.1.95    Failed
+loadgen-b3-sx-py-cur3y-07-sjl8q                   loadgen        10.244.1.94    Succeeded
+loadgen-b3-sx-py-cur3y-08-bx7pk                   loadgen        10.244.1.96    Succeeded
+loadgen-b3-sx-py-cur3y-08-s-29bh7                 loadgen        10.244.1.97    Failed
+loadgen-b3-sx-py-cur3y-09-s-sq4zz                 loadgen        10.244.1.99    Failed
+loadgen-b3-sx-py-cur3y-09-vvvrk                   loadgen        10.244.1.98    Succeeded
+loadgen-b3-sx-py-cur3y-10-p27v8                   loadgen        10.244.1.100   Succeeded
+loadgen-b3-sx-py-cur3y-10-s-c9v69                 loadgen        10.244.1.101   Failed
+loadgen-b3-sx-py-cur3y-11-s-vbrml                 loadgen        10.244.1.103   Failed
+loadgen-b3-sx-py-cur3y-11-z47zq                   loadgen        10.244.1.102   Succeeded
+loadgen-b3-sx-py-cur3y-12-qdxzf                   loadgen        10.244.1.104   Succeeded
+loadgen-b3-sx-py-cur3y-12-s-r9dxz                 loadgen        10.244.1.105   Failed
+loadgen-b3-sx-py-cur3y-13-7x259                   loadgen        10.244.1.106   Succeeded
+loadgen-b3-sx-py-cur3y-13-s-lt64w                 loadgen        10.244.1.107   Failed
+loadgen-b3-sx-py-cur3y-14-7mg48                   loadgen        10.244.1.108   Succeeded
+loadgen-b3-sx-py-cur3y-14-s-h9mst                 loadgen        10.244.1.109   Failed
+loadgen-b3-sx-py-cur3y-15-f7v9f                   loadgen        10.244.1.110   Succeeded
+loadgen-b3-sx-py-cur3y-15-s-b96br                 loadgen        10.244.1.111   Failed
+loadgen-b3-sx-py-cur3y-16-jll2q                   loadgen        10.244.1.112   Succeeded
+loadgen-b3-sx-py-cur3y-16-s-mzdnh                 loadgen        10.244.1.113   Failed
+loadgen-b3-sx-py-cur3y-17-4nzbk                   loadgen        10.244.1.114   Succeeded
+loadgen-b3-sx-py-cur3y-17-s-6dxh8                 loadgen        10.244.1.115   Failed
+loadgen-b3-sx-py-cur3y-18-d7xmj                   loadgen        10.244.1.116   Succeeded
+loadgen-b3-sx-py-cur3y-18-s-ks8x9                 loadgen        10.244.1.117   Failed
+loadgen-b3-sx-py-cur3y-19-4sm27                   loadgen        10.244.1.118   Succeeded
+loadgen-b3-sx-py-cur3y-19-s-wq5ls                 loadgen        10.244.1.119   Failed
+loadgen-b3-sx-py-cur3y-20-22gc2                   loadgen        10.244.1.120   Succeeded
+loadgen-b3-sx-py-cur3y-20-s-jzkww                 loadgen        10.244.1.121   Failed
+loadgen-d1-pyc-central-graceful-cur1p-01-7ldr6    loadgen        10.244.1.130   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-02-7sj7w    loadgen        10.244.1.132   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-03-s2hgj    loadgen        10.244.1.134   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-04-r2rcg    loadgen        10.244.1.136   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-05-z4bq2    loadgen        10.244.1.138   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-06-qpjrn    loadgen        10.244.1.140   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-07-89m26    loadgen        10.244.1.142   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-08-6bffl    loadgen        10.244.1.144   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-09-jtmnj    loadgen        10.244.1.146   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-10-8fqnr    loadgen        10.244.1.148   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-11-mstvw    loadgen        10.244.1.150   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-12-6g9hx    loadgen        10.244.1.152   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-13-2wldn    loadgen        10.244.1.154   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-14-5v7p6    loadgen        10.244.1.156   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-15-2cxdh    loadgen        10.244.1.158   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-16-f8vrb    loadgen        10.244.1.160   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-17-2g2cv    loadgen        10.244.1.162   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-18-85vh5    loadgen        10.244.1.164   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-19-kjqvh    loadgen        10.244.1.166   Succeeded
+loadgen-d1-pyc-central-graceful-cur1p-20-5lp6s    loadgen        10.244.1.168   Succeeded
+loadgen-d1-pyc-central-graceful-cur1pd-01-nmkfj   loadgen        10.244.1.125   Succeeded
+loadgen-g2c-c3-orchestrator-s9xf6                 loadgen        10.244.1.174   Succeeded
+loadgen-g2c-c3-worker-8m6rj                       loadgen        10.244.1.173   Succeeded
+loadgen-g2c-c34after-orchestrator-dkmsx           loadgen        10.244.1.181   Succeeded
+loadgen-g2c-c34after-worker-4jz9j                 loadgen        10.244.1.180   Succeeded
+loadgen-g2c-c3r2after-orchestrator-h4tm6          loadgen        10.244.1.191   Succeeded
+loadgen-g2c-c3r2after-worker-96ck7                loadgen        10.244.1.190   Succeeded
+loadgen-g2c-c3rafter-orchestrator-dv9x6           loadgen        10.244.1.186   Succeeded
+loadgen-g2c-c3rafter-worker-pbmfq                 loadgen        10.244.1.185   Succeeded
+loadgen-g2c-fu3cc-orchestrator-w8t4l              loadgen        10.244.1.26    Succeeded
+loadgen-g2c-fu3cc-worker-s8hqb                    loadgen        10.244.1.25    Succeeded
+loadgen-wv-curwv-go-001-nf47s                     loadgen        10.244.1.34    Succeeded
+loadgen-wv-curwv-py-001-5j4fp                     loadgen        10.244.1.35    Succeeded
+mockllm-cd84bfbd7-j822f                           default        10.244.1.18    Running
+orchestrator-59fbf88d7c-rrc84                     orchestrator   10.244.1.170   Running
+worker-76b6f68bf9-dq57d                           worker         10.244.1.20    Running
+
+## 2026-09-25T18:54:59.232525Z $ jq -r '(.policies // []) | length as $n | "agw-central policies: \($n)", (.[] | "  name=\(.name|tostring) target=\(.target|tostring|.[0:160]) policy=\(.policy|tostring|.[0:300])")' 'experiments/runs/2026-09-25-currency-rebuild/d4z/z/config-dump-agw-central-before.txt.json'
+agw-central policies: 2
+  name={"kind":"AgentgatewayPolicy","name":"access-logs","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} policy={"frontend":{"accessLog":{"otlp":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"protocol":"grpc"}}}}
+  name={"kind":"AgentgatewayPolicy","name":"tracing","namespace":"agentgateway-waypoint"} target={"gateway":{"gatewayName":"agw-central","gatewayNamespace":"agentgateway-waypoint","listenerName":null}} policy={"frontend":{"tracing":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"attributes":{},"resources":{},"remove":[],"randomSampling":"true","clientSampling":"true","path":"/v1/traces","protocol":"grpc"}}}
+
+## 2026-09-25T18:54:59.570291Z $ jq -r '(.policies // []) | length as $n | "agentgateway-ingress policies: \($n)", (.[] | "  name=\(.name|tostring) target=\(.target|tostring|.[0:160]) policy=\(.policy|tostring|.[0:300])")' 'experiments/runs/2026-09-25-currency-rebuild/d4z/z/config-dump-agentgateway-ingress-before.txt.json'
+agentgateway-ingress policies: 2
+  name={"kind":"AgentgatewayPolicy","name":"access-logs","namespace":"agentgateway-ingress"} target={"gateway":{"gatewayName":"agentgateway-ingress","gatewayNamespace":"agentgateway-ingress","listenerName":null}} policy={"frontend":{"accessLog":{"otlp":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"protocol":"grpc"}}}}
+  name={"kind":"AgentgatewayPolicy","name":"tracing","namespace":"agentgateway-ingress"} target={"gateway":{"gatewayName":"agentgateway-ingress","gatewayNamespace":"agentgateway-ingress","listenerName":null}} policy={"frontend":{"tracing":{"service":{"name":"telemetry/otel-collector.telemetry.svc.cluster.local","port":4317},"attributes":{},"resources":{},"remove":[],"randomSampling":"true","clientSampling":"true","path":"/v1/traces","protocol":"grpc"}}}
+

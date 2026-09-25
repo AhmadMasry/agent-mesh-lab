@@ -151,3 +151,21 @@ The opentelemetry-util-genai hold described above as living in uv.lock alone was
 agents/orchestrator/pyproject.toml ([tool.uv] constraint-dependencies, opentelemetry-util-genai<1.2b0) by the
 controller's ruling, in its own commit after this directory's. Under it, uv lock --upgrade keeps 1.1b0; the check is
 recorded in experiments/runs/2026-09-25-currency-rebuild/local/util-genai-constraint.txt. The text above is not edited.
+
+## Note of 2026-09-25, after Phase 2
+
+"What could not be verified here" is taken up by experiments/runs/2026-09-25-currency-rebuild/: the rebuild at these
+pins, the standard proof, the A2A-Version from real requests (1.0 at a2a-go v2.6.0 and a2a-python 1.1.5), the running
+images and charts read back, make scan-images (0 findings in each of six images), and the rows impact.md named for
+re-count. Two statements of impact.md are corrected in a dated note beside it. The text above is not edited.
+
+## Note of 2026-09-25, the review round (M-1): the grpc-go hold stands on GO-2026-6443 alone
+
+GHSA-2v4p-qf9q-27wj was updated at 2026-09-25T17:42:24Z, after this pass read it: its 1.84 range now ends at
+1.84.0-dev.0.20260825144003-d5a41119e0e3, the cherry-pick v1.84.0 carries, so v1.84.0 is outside every GHSA range, and
+OSV mirrors that (modified 2026-09-25T18:00:05Z). GO-2026-6443 (modified 2026-09-15T18:39:25Z) still covers v1.84.0
+([1.84.0-dev, 1.85.0-dev.0.20260825072537-93e31b48545e)). The hold of grpc-go at v1.83.2 stands on GO-2026-6443 alone,
+and lifts when the Go advisory names a fixed release or drops v1.84.0. The Kubescape reading above (1 High at v1.84.0,
+DB built 2026-09-25) cannot say which text of the GHSA its database held. The three documents re-read:
+experiments/runs/2026-09-25-currency-rebuild/local/grpc-advisories-review.txt. versions.yaml's grpc-go wording is left
+for the follow-up. The text above is not edited.

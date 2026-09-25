@@ -1,0 +1,78 @@
+
+# read 2026-09-25T19:10:56Z
+$ kubectl delete -f experiments/runs/2026-09-25-currency-rebuild/c3r2/objects/setup.yaml --wait=true --timeout=180s
+namespace "repro" deleted
+deployment.apps "server" deleted from repro namespace
+pod "client" deleted from repro namespace
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ kubectl get ns repro
+Error from server (NotFound): namespaces "repro" not found
+# exit 1
+
+# read 2026-09-25T19:11:38Z
+$ kubectl get all,authorizationpolicy -n repro
+No resources found in repro namespace.
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ kubectl get peerauthentication -A
+NAMESPACE              NAME                           MODE     AGE
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   105m
+istio-system           default                        STRICT   113m
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq -c '.[] | {name,namespace,scope,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-control-plane -o json | jq -c '.[] | {name,namespace,scope,action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq '[.[] | select(.namespace == "repro")] | length'
+0
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ kubectl get ns --show-labels
+NAME                    STATUS   AGE    LABELS
+agentgateway-ingress    Active   105m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=agentgateway-ingress
+agentgateway-system     Active   115m   kubernetes.io/metadata.name=agentgateway-system,name=agentgateway-system
+agentgateway-waypoint   Active   113m   kubernetes.io/metadata.name=agentgateway-waypoint
+default                 Active   119m   kubernetes.io/metadata.name=default
+istio-system            Active   116m   kubernetes.io/metadata.name=istio-system,name=istio-system
+kube-node-lease         Active   119m   kubernetes.io/metadata.name=kube-node-lease
+kube-public             Active   119m   kubernetes.io/metadata.name=kube-public
+kube-system             Active   119m   kubernetes.io/metadata.name=kube-system
+lab                     Active   117m   istio.io/dataplane-mode=ambient,kubernetes.io/metadata.name=lab
+local-path-storage      Active   119m   kubernetes.io/metadata.name=local-path-storage
+telemetry               Active   104m   kubernetes.io/metadata.name=telemetry
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ docker exec agent-mesh-lab-worker crictl rmi docker.io/nginxinc/nginx-unprivileged@sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3
+Deleted: docker.io/nginxinc/nginx-unprivileged@sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3
+# exit 0
+
+# read 2026-09-25T19:11:38Z
+$ for n in agent-mesh-lab-control-plane agent-mesh-lab-worker; do printf '%s nginx images: ' $n; docker exec $n crictl images | grep -c nginx; done
+agent-mesh-lab-control-plane nginx images: 0
+agent-mesh-lab-worker nginx images: 0
+# exit 1

@@ -112,3 +112,18 @@ For the author, not part of the comment.
 - **Standing: superseded.** The comment would go on a closed issue whose fix has shipped, so it is not to be posted as
   written. The lab's count stands as a reading of a2a-go v2.5.0, which the lab still pins. Whether v2.6.0 is adopted
   and the row re-measured is the author's call. The draft is kept, not deleted.
+
+## 2026-09-25, a dated note from the currency pass of that day (the text above is unchanged): SUPERSEDED, confirmed in counts
+
+- The lab now pins a2a-go v2.6.0 (versions.yaml a2a-go). B-3's terminal-task row (D3) was re-counted on a cluster rebuilt
+  at the pins of 2026-09-25, 20 per receiver, and compared cell by cell with the entry of 2026-09-21
+  (experiments/runs/2026-09-25-currency-rebuild/b3-subscribe-terminal/compare-with-b3.txt).
+- **Go receiver, 20 of 20:** one SubscribeToTask for a completed task is answered HTTP 200, text/event-stream, with
+  JSON-RPC -32004 "task in a terminal state "TASK_STATE_COMPLETED": this operation is not supported", 0 events, and no
+  second execute, task or invocation. At v2.5.0 it was -32001 "task not found: no active execution".
+- D-1's Python-client row moved the same way, 20 of 20: the worker answers the one resubscription for its failed task
+  with -32004, and the orchestrator's a2a-sdk 1.1.5 client raises UnsupportedOperationError where it raised
+  TaskNotFoundError.
+- **Standing: superseded, confirmed in counts.** The fix the comment proposes is in the release the lab runs. The draft is
+  kept as the record of v2.5.0, not posted and not deleted. Findings: "Experiment B / both receivers / the currency pass
+  of 2026-09-25".

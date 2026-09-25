@@ -1,0 +1,20 @@
+# C-3R scope (a), selector-scoped: C-3's shape -- an ALLOW policy with a workload
+# `selector`, which istiod scopes WorkloadSelector for ztunnel -- here on the
+# throwaway server. Its one rule admits one principal, a service account in this
+# namespace that no pod runs as; the client runs as ns/c3r/sa/default, so under this
+# policy the client is denied. Applied and removed by rep.sh, three times.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: c3r-selector
+  namespace: c3r
+spec:
+  selector:
+    matchLabels:
+      app: c3r-server
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/c3r/sa/c3r-admitted
