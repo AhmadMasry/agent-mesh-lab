@@ -1,0 +1,26 @@
+Follow-on D-3b: the restore check after the FIRST mutant run, which ran in the checkout (mutants-d3b-first-run-in-checkout.txt),
+as the controller asked on 2026-09-25 ("Mutants: verify restore before any commit"). Recorded as a limit of that run.
+
+THE LIMIT. That run started before the controller's message arrived, so no sha256 of the touched files was taken before it
+began. It touched fixtures/extauthz/decide.go (uncommitted then, so with no git baseline) and internal/workermux/workermux.go
+(committed then in the workermux commit). Every later mutant run was made in a git archive copy in a scratch directory
+(checkout-sha-around-the-archive-run.txt: the checkout's hashes, equal before and after that run).
+
+WHAT WAS CHECKED INSTEAD, after the run:
+  - git diff HEAD empty for internal/workermux and agents/: those files equal their commit.
+  - git status: only the intended changes (decide.go and server.go modified, shapes_test.go new), with their hashes:
+      c454c8c36a52055c6da0587e1c658f82244f58c4a4bb41e904fc6aee6f2959f1  fixtures/extauthz/decide.go
+      1a315951a3434dab59fc2e48f0d150b3e7394c4a95906bd6efd9aed41e078bae  fixtures/extauthz/server.go
+      0d201937e8fc118e5b17f868a47faffd94b6177ad8fbd369dcb83fb33dd75200  internal/workermux/workermux.go
+    decide.go and server.go are committed with those same bytes in the fixture's commit.
+  - None of the ten non-shape mutants' inserted text present (grep for each); the 22 shape mutants' marker "mutant": 0
+    occurrences in any file.
+  - go test ./... -count=1 on the restored tree: FAILED in agents/worker, TestMain_LedgerHeadersIsReadAtStart and
+    TestMain_RefuseOperationIsReadAtStart, "the process never accepted a connection". Cause: a worker.test child this session's
+    test runs had left running (parent 1, -test.run=^TestMain_LedgerHeadersIsReadAtStart$) held port 8081, so a later child
+    could not start its gRPC listener. That child was stopped; then go test ./... -count=1 passed in all 9 packages, with -p 1
+    and without. Two more such children from earlier tasks' runs (2026-09-24) were stopped by the controller. The test's leak
+    is fixed in the worker test commit (leak-check.sh, leak-before.txt, leak-after.txt).
+  - Two verdicts of that first run were wrong and are superseded by mutants-d3b-final.txt: S-xq survived because the test body
+    had lost its \u0054 escape (the test was fixed, not the mutant), and N09 was killed only by the worker failures above
+    (a test for it was added). The final run, on a git archive copy of the built tree: 32 of 32 killed.

@@ -1,0 +1,46 @@
+
+# read 2026-09-25T07:50:32Z
+$ kubectl -n lab get pods -l app=extauthz -o wide --no-headers
+extauthz-6df58568b5-45678   1/1   Running   0     14m   10.244.1.14   agent-mesh-lab-worker   <none>   <none>
+# exit 0
+
+# read 2026-09-25T07:50:32Z
+$ kubectl -n agentgateway-ingress get pods -o wide --no-headers
+agentgateway-ingress-788ff86cf-x9qhq   1/1   Running   0     14m   10.244.1.17   agent-mesh-lab-worker   <none>   <none>
+# exit 0
+
+# read 2026-09-25T07:50:32Z
+$ kubectl -n istio-system logs ds/ztunnel --since=15m --prefix | grep -F 'dst.addr=10.244.1.14:9000' | tail -40
+Found 2 pods, using pod/ztunnel-4b285
+# exit 0
+
+# read 2026-09-25T07:50:32Z
+$ kubectl -n istio-system logs ds/ztunnel --since=15m | grep -F 'dst.addr=10.244.1.14:9000' | grep -o 'connection_security_policy=[a-z_]*\|src.identity="[^"]*"\|dst.identity="[^"]*"' | sort | uniq -c
+Found 2 pods, using pod/ztunnel-4b285
+# exit 0
+
+# read 2026-09-25T07:50:32Z
+$ istioctl ztunnel-config workloads --node agent-mesh-lab-worker | grep -E 'extauthz|agentgateway-ingress|NAMESPACE'
+NAMESPACE             POD NAME                                             ADDRESS                       NODE                         WAYPOINT PROTOCOL
+agentgateway-ingress  agentgateway-ingress-788ff86cf-x9qhq                 10.244.1.17                   agent-mesh-lab-worker        None     HBONE
+lab                   extauthz-6df58568b5-45678                            10.244.1.14                   agent-mesh-lab-worker        None     HBONE
+# exit 0
+
+# read 2026-09-25T07:51:07Z
+$ experiments/runs/2026-09-12-mtls-enforced/promq.sh security > experiments/runs/2026-09-25-d3b-extauthz-shapes/hop-deny-row1-raw.txt 2>&1; grep -c . experiments/runs/2026-09-25-d3b-extauthz-shapes/hop-deny-row1-raw.txt
+256
+# exit 0
+
+# read 2026-09-25T07:51:07Z
+$ grep '"destination_app": "extauthz"' experiments/runs/2026-09-25-d3b-extauthz-shapes/hop-deny-row1-raw.txt | jq -r '[.connection_security_policy, .source_workload, .source_workload_namespace, .source_principal, .destination_workload, .destination_principal, .reporter, .value[1]? // .value] | @tsv' 2>/dev/null || grep extauthz experiments/runs/2026-09-25-d3b-extauthz-shapes/hop-deny-row1-raw.txt
+mutual_tls	agentgateway-ingress	agentgateway-ingress	spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress	extauthz	spiffe://cluster.local/ns/lab/sa/default	destination	
+{"__name__": "istio_tcp_connections_opened_total", "connection_security_policy": "mutual_tls", "destination_app": "extauthz", "destination_canonical_revision": "latest", "destination_canonical_service": "extauthz", "destination_cluster": "Kubernetes", "destination_principal": "spiffe://cluster.local/ns/lab/sa/default", "destination_region": "unknown", "destination_service": "extauthz.lab.svc.cluster.local", "destination_service_name": "extauthz", "destination_service_namespace": "lab", "destination_version": "latest", "destination_workload": "extauthz", "destination_workload_namespace": "lab", "destination_zone": "unknown", "instance": "10.244.1.8:15020", "job": "ztunnel", "reporter": "destination", "request_protocol": "tcp", "response_flags": "-", "source_app": "agentgateway-ingress", "source_canonical_revision": "latest", "source_canonical_service": "agentgateway-ingress", "source_cluster": "Kubernetes", "source_principal": "spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress", "source_region": "unknown", "source_version": "latest", "source_workload": "agentgateway-ingress", "source_workload_namespace": "agentgateway-ingress", "source_zone": "unknown"} => 1
+{"__name__": "istio_tcp_connections_opened_total", "connection_security_policy": "mutual_tls", "destination_app": "extauthz", "destination_canonical_revision": "latest", "destination_canonical_service": "extauthz", "destination_cluster": "Kubernetes", "destination_principal": "spiffe://cluster.local/ns/lab/sa/default", "destination_region": "unknown", "destination_service": "unknown", "destination_service_name": "unknown", "destination_service_namespace": "unknown", "destination_version": "latest", "destination_workload": "extauthz", "destination_workload_namespace": "lab", "destination_zone": "unknown", "instance": "10.244.1.8:15020", "job": "ztunnel", "reporter": "source", "request_protocol": "tcp", "response_flags": "-", "source_app": "agentgateway-ingress", "source_canonical_revision": "latest", "source_canonical_service": "agentgateway-ingress", "source_cluster": "Kubernetes", "source_principal": "spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress", "source_region": "unknown", "source_version": "latest", "source_workload": "agentgateway-ingress", "source_workload_namespace": "agentgateway-ingress", "source_zone": "unknown"} => 1
+# exit 0
+
+# read 2026-09-25T07:51:08Z
+$ kubectl get peerauthentication -A -o wide
+NAMESPACE              NAME                           MODE     AGE
+agentgateway-ingress   agentgateway-ingress-metrics   STRICT   14m
+istio-system           default                        STRICT   15m
+# exit 0

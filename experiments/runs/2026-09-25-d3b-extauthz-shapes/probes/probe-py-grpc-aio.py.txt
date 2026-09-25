@@ -1,0 +1,26 @@
+# Scratch probe (not committed): grpc.aio 1.84.0 server with a2a-python's A2AService over a recording servicer;
+# the client sends each :path as given.
+import asyncio, grpc
+from a2a.types import a2a_pb2, a2a_pb2_grpc
+got = []
+class S(a2a_pb2_grpc.A2AServiceServicer):
+    async def SubscribeToTask(self, request, context):
+        got.append("SubscribeToTask(" + request.id + ")")
+        await context.abort(grpc.StatusCode.NOT_FOUND, "stub")
+        yield
+async def main():
+    srv = grpc.aio.server(); a2a_pb2_grpc.add_A2AServiceServicer_to_server(S(), srv)
+    port = srv.add_insecure_port("127.0.0.1:0"); await srv.start()
+    async with grpc.aio.insecure_channel(f"127.0.0.1:{port}") as ch:
+        for p in ["/lf.a2a.v1.A2AService/SubscribeToTask", "/lf.a2a.v1.A2AService/Subscribe%54oTask", "/lf.a2a.v1.A2AService%2FSubscribeToTask",
+                  "/lf.a2a.v1.A2AService/SubscribeToTask?x=1", "//lf.a2a.v1.A2AService/SubscribeToTask", "/lf.a2a.v1.A2AService/SubscribeToTask/"]:
+            del got[:]
+            call = ch.unary_stream(p, request_serializer=a2a_pb2.SubscribeToTaskRequest.SerializeToString, response_deserializer=lambda b: b)(a2a_pb2.SubscribeToTaskRequest(id="t9"))
+            try:
+                async for _ in call: pass
+                code = "OK"
+            except grpc.aio.AioRpcError as e:
+                code = e.code().name
+            print(f"pygrpc {p!r:48} status={code} dispatched={got or '-'}")
+    await srv.stop(None)
+asyncio.run(main())

@@ -1,0 +1,99 @@
+# every row: verdict, what, this rebuild | REBUILD-2
+## clean check (clean-check/summary.csv)
+  same     worker [g2c-fu3cc-worker | g2c-fu3cc-worker] deliveries/received/executes/tasks_created/invocations/client_result: 1/1/1/1/1/task/TASK_STATE_COMPLETED | 1/1/1/1/1/task/TASK_STATE_COMPLETED
+  same     orchestrator [g2c-fu3cc-orchestrator | g2c-fu3cc-orchestrator] deliveries/received/executes/tasks_created/invocations/client_result: 1/1/1/1/1/task/TASK_STATE_COMPLETED | 1/1/1/1/1/task/TASK_STATE_COMPLETED
+  same     rows: 2 | 2
+## trace per work item (trace/summary.csv)
+  same     r1-orchestrator trace_ids: 2 | 2
+  same     r1-orchestrator spans: 81 | 81
+  same     r1-orchestrator spans_by_service: agentgateway-ingress=2|agw-central=6|loadgen=3|mockllm=1|orchestrator=66|worker=3 | agentgateway-ingress=2|agw-central=6|loadgen=3|mockllm=1|orchestrator=66|worker=3
+  same     r1-orchestrator hops_without_span: none | none
+  same     r1-orchestrator lab_work_item_on_all: no:8/81 | no:8/81
+  same     r1-worker trace_ids: 2 | 2
+  same     r1-worker spans: 14 | 14
+  same     r1-worker spans_by_service: agw-central=6|loadgen=3|mockllm=1|worker=4 | agw-central=6|loadgen=3|mockllm=1|worker=4
+  same     r1-worker hops_without_span: none | none
+  same     r1-worker lab_work_item_on_all: no:5/14 | no:5/14
+  same     r2-orchestrator trace_ids: 2 | 2
+  same     r2-orchestrator spans: 81 | 81
+  same     r2-orchestrator spans_by_service: agentgateway-ingress=2|agw-central=6|loadgen=3|mockllm=1|orchestrator=66|worker=3 | agentgateway-ingress=2|agw-central=6|loadgen=3|mockllm=1|orchestrator=66|worker=3
+  same     r2-orchestrator hops_without_span: none | none
+  same     r2-orchestrator lab_work_item_on_all: no:8/81 | no:8/81
+  same     r2-worker trace_ids: 2 | 2
+  same     r2-worker spans: 14 | 14
+  same     r2-worker spans_by_service: agw-central=6|loadgen=3|mockllm=1|worker=4 | agw-central=6|loadgen=3|mockllm=1|worker=4
+  same     r2-worker hops_without_span: none | none
+  same     r2-worker lab_work_item_on_all: no:5/14 | no:5/14
+## dangling parents (trace/dangling.csv)
+  same     r1-orchestrator spans/trace_ids/roots/dangling_parents: 81/2/2/0 | 81/2/2/0
+  same     r1-worker spans/trace_ids/roots/dangling_parents: 14/2/2/0 | 14/2/2/0
+  same     r2-orchestrator spans/trace_ids/roots/dangling_parents: 81/2/2/0 | 81/2/2/0
+  same     r2-worker spans/trace_ids/roots/dangling_parents: 14/2/2/0 | 14/2/2/0
+## GenAI spans (trace/genai/summary.csv)
+  same     r1-orchestrator chat/invoke_agent/missing Required/missing expected/agent.id: 1/2/0/0/0 | 1/2/0/0/0
+  same     r1-worker chat/invoke_agent/missing Required/missing expected/agent.id: 1/1/0/0/0 | 1/1/0/0/0
+  same     r2-orchestrator chat/invoke_agent/missing Required/missing expected/agent.id: 1/2/0/0/0 | 1/2/0/0/0
+  same     r2-worker chat/invoke_agent/missing Required/missing expected/agent.id: 1/1/0/0/0 | 1/1/0/0/0
+## Prometheus targets (prometheus-targets.txt)
+  same     the script's own total: 7/7 targets up | 7/7 targets up
+  same     jobs and health, sorted: agentgateway-controlplane=up|agentgateway-proxies=up|agentgateway-proxies=up|istiod=up|otel-collector=up|ztunnel=up|ztunnel=up | agentgateway-controlplane=up|agentgateway-proxies=up|agentgateway-proxies=up|istiod=up|otel-collector=up|ztunnel=up|ztunnel=up
+## STRICT: every ztunnel series (strict/hops-security.csv)
+  same     legs (rows): 24 | 24
+  same     legs with connection_security_policy=mutual_tls: 14 | 14
+  same     legs with connection_security_policy=unknown: 10 | 10
+  same     legs present on both sides, by every column but the connection count: 24 | 24
+  DIFFERS  of the common legs, connection counts equal on: 23 | 24
+    count differs: destination,prometheus,telemetry,unknown,agentgateway-ingress,agentgateway-ingress  16 | 17
+## STRICT: the named legs (strict/legs.csv)
+  same     caller (loadgen) -> agw-central, to the worker Service: 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default | 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default
+  same     caller (loadgen) -> agw-central, to the orchestrator Service (the card): 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default | 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default
+  same     agw-central -> worker: 1/mutual_tls/1/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central | 1/mutual_tls/1/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  same     agw-central -> orchestrator: 1/mutual_tls/1/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central | 1/mutual_tls/1/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  same     worker -> model host, via agw-central: 1/mutual_tls/1/spiffe://cluster.local/ns/lab/sa/default | 1/mutual_tls/1/spiffe://cluster.local/ns/lab/sa/default
+  same     orchestrator -> worker Service (the forward), via agw-central: 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default | 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default
+  same     agw-central -> mockllm (neither end captured): 0/no-series/0/ | 0/no-series/0/
+  same     caller (loadgen) -> agentgateway-ingress, source side: 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default | 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default
+  same     caller (loadgen) -> agentgateway-ingress, destination side: 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default | 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/default
+  same     agentgateway-ingress -> orchestrator: 1/mutual_tls/1/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress | 1/mutual_tls/1/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress
+  same     agentgateway-ingress -> worker: 0/no-series/0/ | 0/no-series/0/
+  same     plaintext probe -> worker: 0/no-series/0/ | 0/no-series/0/
+  same     plaintext probe -> orchestrator: 1/unknown/1/unknown | 1/unknown/1/unknown
+## plaintext probe (strict/plaintext-probe.csv, plaintext-probe-ztunnel.txt, ztunnel-other-error-lines.txt)
+  same     http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json: http=000 curl_exit=56 | http=000 curl_exit=56
+  same     http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json: http=000 curl_exit=56 | http=000 curl_exit=56
+  same     ztunnel lines saying policy rejection: 2 | 2
+  same     of them naming istio-system/istio_converted_static_strict: 2 | 2
+  same     of them attributed to src.workload=mtls-probe: 1 | 1
+  same     other ztunnel error/denied/reject lines, all: 14 | 14
+  same       of them `no healthy upstream`: 11 | 11
+  same       of them `policy rejection`: 1 | 1
+## A2A-Version (wire-version/summary.csv)
+  not taken here: reading (b) of REBUILD-2 is not part of this task's proof; nothing compared, nothing counted
+## retry knobs (retry-knobs/readings.txt | REBUILD-2's retry-knobs/readings.txt)
+  same     stanzas across every route after each make call: 1>0>2>0>1>0>0 | 1>0>2>0>1>0>0
+  same     agentgateway-waypoint/model-via-agw, stanza count at each read: 0>0>0>0>0>1>0>0 | 0>0>0>0>0>1>0>0
+  same     lab/orchestrator, stanza count at each read: 0>0>0>0>0>0>0>0 | 0>0>0>0>0>0>0>0
+  same     lab/orchestrator-ingress, stanza count at each read: 0>0>0>1>0>0>0>0 | 0>0>0>1>0>0>0>0
+  same     lab/worker, stanza count at each read: 0>1>0>0>0>0>0>0 | 0>1>0>0>0>0>0>0
+  same     lab/worker-ingress, stanza count at each read: 0>0>0>1>0>0>0>0 | 0>0>0>1>0>0>0>0
+  same     stanzas on every route at the last read: 0+0+0+0+0 | 0+0+0+0+0
+## cluster facts (cluster/facts.txt), stamps and durations masked, every differing line whole
+  same     lines: 108 | 108
+  differing lines (- REBUILD-2, + this rebuild): 16
+    -agentgateway-ingress    agentgateway-ingress   agentgateway   True         10.96.167.228
+    -agentgateway-waypoint   agw-central            agentgateway   True         10.96.4.230
+    +agentgateway-ingress    agentgateway-ingress   agentgateway   True         10.96.165.98
+    +agentgateway-waypoint   agw-central            agentgateway   True         10.96.239.20
+    -agw-central-68ffb54568-g4kc9   none             agw-central   <none>        cr.agentgateway.dev/agentgateway:v1.5.0   agw-central
+    +agw-central-6f6f59b5cc-s4g2r   none             agw-central   <none>        cr.agentgateway.dev/agentgateway:v1.5.0   agw-central
+    -agentgateway-ingress-b5b4748c6-qngxf   <none>           agentgateway-ingress   enabled       cr.agentgateway.dev/agentgateway:v1.5.0   agentgateway-ingress
+    +agentgateway-ingress-788ff86cf-x9qhq   <none>           agentgateway-ingress   enabled       cr.agentgateway.dev/agentgateway:v1.5.0   agentgateway-ingress
+    -spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           6d1d6a148d977dbc27ba75d547687eab     <stamp>     <stamp>
+    -spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           317780241274081d8cf1c2104c8c5d33     <stamp>     <stamp>
+    -spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           d393c2927572bb678a14460b4f864a3      <stamp>     <stamp>
+    -spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           317780241274081d8cf1c2104c8c5d33     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           e6790c51e44f9bf5067ae50cfd5287a1     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           91005a496486c7cf3f4044cc65d35e6a     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           dc49b347296e45d53dd35359906de67b     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           91005a496486c7cf3f4044cc65d35e6a     <stamp>     <stamp>
+# rows: same=66 DIFFERS=1 (the cluster-facts lines above are listed, not counted here)

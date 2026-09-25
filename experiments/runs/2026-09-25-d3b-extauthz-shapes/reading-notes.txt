@@ -1,0 +1,103 @@
+Follow-on D-3b: reading notes for this run directory. Stamps UTC from date -u. The findings entry that cites it is the one
+"Experiment C / both receivers / D-3b, ..." entry of 2026-09-25.
+
+THE TREE. Three code commits on branch experiment-d3b on top of 33a51e2a, named by subject:
+  "refactor(worker): the worker's two ServeMux pattern sets moved to internal/workermux, for the extauthz fixture to replay,
+   its dispatch per request shape pinned before and after"
+  "feat(extauthz): the decision covers every request shape either receiver dispatches, the path decoded as the receivers
+   decode it and the body read wherever a JSON-RPC handler would read it"
+  "test(worker): the TestMain children are stopped and waited on however the test ends, and never take the default gRPC port"
+The built tree is the third one's; build.txt lists every deployed subtree id beside the tree D-3's rebuild proved (b45cafdd).
+
+THE READING BEFORE THE CODE. routing-reading.txt (the controller accepted it, the shape list and the 155 sends); sources.txt;
+probes/ (scratch programs kept as .txt, with their output).
+
+THE CODE PROOF (code-proof/).
+  worker-mux-shapes-before.txt, -after.txt   agents/worker/mux_shapes_test.go, run on 33a51e2a's tree with the test copied in and
+               on the built tree: 47 subtests each, identical results (the move changes no dispatch).
+  mutants-d3b.py, mutants-d3b-final.txt   32 mutants (each dispatched shape allowed in turn, 22; decoding skipped; the trailing
+               newline skipped; the body read only on "/"; the worker's pattern set without the catch-all; the case-folded
+               duplicate check removed; and five of the implementer's own), run on a git archive copy of the built tree, the
+               worker's TestMain_ tests skipped (they start processes): 32 of 32 killed.
+  mutants-d3b-first-run-in-checkout.txt, restore-check.txt, checkout-sha-around-the-archive-run.txt   the first run, made in
+               the checkout before the controller ruled that runs go in a copy, and the check of its restore, with its limit.
+  leak-check.sh, leak-force.py, leak-fix.py, leak-before.txt, leak-after.txt   the worker test's leaked child: the failure forced
+               in archive copies (the readiness dial sent to a closed port): before the fix 1 child left, parent 1, on :8081;
+               after, 0.
+  render-proof.sh (D-3's), render-proof-results.txt   every overlay under deploy/ rendered at 33a51e2a and at the built tree:
+               every object byte-identical in all 14 (images are ko:// references in the render).
+  module-lists.txt   go list -deps: internal/workermux added to the worker and the fixture, no other binary changes.
+
+THE REBUILD AND THE PROOF.
+  rebuild.sh, build.txt, timings.csv, rebuild-driver.txt   D-3's driver adapted (its header says in what). Seven make targets,
+               each exit 0, 2026-09-25T07:32:04Z to 07:38:20Z. Tools: a lab-scoped istioctl 1.31.0 (the binary equal byte for
+               byte to the tarball's; the tarball's sha256 equal to the release checksum file re-fetched 07:31:21Z) and an
+               empty Helm scope. Nothing on the host changed.
+  proof.sh     D-3's, adapted (LASTPROOF = D-3's directory). checks.sh part1, the versions readback, checks.sh knobs and the
+               unedited comparison program, each once, exit 0.
+  standard-counts-vs-last-proof.txt  same=66 DIFFERS=1: of the common legs, connection counts equal on 23 against 24, the one
+               the Prometheus scrape of the ingress's metrics port, 17 against 16 (one connection per 15 s scrape since
+               Prometheus started, read at another elapsed time), the timing kind every proof has named. Cluster facts: 108
+               lines each; 16 differ, pod names, Service addresses and certificate serials only.
+  replicasets.txt   the lab images: extauthz, worker AND mockllm have new digests against D-3's, with the same base image digest
+               and the same go1.27.1 in both builds (build.txt). Every Go binary carries the commit it was built at
+               (vcs.revision, go build's default -buildvcs; go version -m), so a new commit moves every Go image digest;
+               mockllm's code did not change.
+  NOT COMMITTED: checks.sh's byte copies of itself, as-run, both sha256 4056b5596883187fe1a7b0528a833f533437aaf93760ee6a8130215ddd16224b,
+               the committed file's hash; they stay in a scratch directory, as every earlier proof's did.
+
+THE FILES OF THE RUN.
+  d3b.sh       D-3's d3.sh adapted (its header says in what): the D-3b kinds added; a curl request's method, body and HTTP
+               version made per kind (HEAD by curl's --head, GET with no body, gRPC over HTTP/2 with prior knowledge); the
+               binary bodies (xb, x16 and the gRPC frames) kept as hex. rows.sh the stages.
+  overlay-d3-extauthz/   D-3's overlay, copied unchanged (policies.yaml byte-identical), applied from this directory.
+  phases.txt   every stage, setting change and send, one line each, in order.
+  <phase>/<work item>/   as in D-3: client.jsonl, the request, the proxy's access lines of the send's window, the fixture's
+               decision lines of that window (extauthz-window.txt) and the collection make ledgers wrote.
+  batch-by-hash.sh, batch-by-hash.txt   the batch probes' receiver lines found by the body hash the client recorded, as D-3 did,
+               with the field source set as make ledgers sets it (ingress-by-body-hash.txt in each batch send's directory).
+  readings-<label>.txt, config-dump-<proxy>-<label>.json, hop-deny-row1*.txt, setting-*.txt   as in D-3.
+  after/, after-driver.txt   the clean check after the restore, by the committed gate2-single-clean.sh.
+  counts.py -> counts.csv, counts.txt   reads only this directory and D-3's counts.csv (its last section compares every D-3 cell
+               of the deny and allow windows). No figure is computed from an access-line stamp.
+  sleep-events.sh (D-2's recorder, unedited, as D-3 kept it), sleep-events.csv   0 Sleep, Wake, DarkWake or Maintenance events
+               2026-09-25T06:49:03Z (the task's first fetch) to 08:06:56Z.
+  curl-version.txt   the curl in the curl pod (8.22.0, nghttp2 1.69.0), for the gRPC shapes.
+
+THE WINDOWS, one fixture setting each (every decision line carries the setting):
+  deny     07:43:25Z-07:55:38Z  overlay applied 07:43:26Z; fixture deny (pod extauthz-6df58568b5-45678, from the rebuild); 130
+           sends, 180 decision lines (130 operation checks, 50 card GETs on the Go path), all deny setting.
+  shapes   07:56:02Z-08:03:13Z  policy still in force, same pod; 155 sends (go 18 shapes x 5, py 13 x 5), 155 decision lines.
+  allow    08:03:35Z-08:04:08Z  set env EXTAUTHZ_UNDECIDABLE=allow 08:03:35Z, rollout finished 08:03:38Z (pod
+           extauthz-58754b8f98-fjdsn); 10 sends, 10 decision lines, all allow setting.
+  restore  08:04:08Z-08:04:21Z  set back to deny 08:04:08Z-08:04:11Z (pod extauthz-6df58568b5-t4jvr); overlay removed 08:04:12Z;
+           0 objects carrying extAuthz in either dump after.
+  In all 295 sends, one per Job or curl, nothing re-sent. The unavailable row was not repeated: the proxy's failure mode with no
+  authorizer does not depend on the fixture's code.
+
+WHAT DIFFERS FROM THE PLAN, OR NEEDS A WORD
+  - build.txt is the rebuild's log as written, except one edit: the docker build prints a package-signing key's user id with a
+    vendor email address three times; the address is replaced by <address removed> (no email address in a committed file).
+  - The first mutant run was made in the checkout (code-proof/restore-check.txt).
+  - batch-by-hash.sh first wrote the raw log lines without the field source, so counts.py found 0 arrivals for the allow
+    window's two batches against D-3's 1; with source added, as make ledgers adds it, both read 1 and the comparison with D-3
+    reads same=324 DIFFERS=0. The file D-3 used is not in its run directory as a script; this one is.
+  - The tool that wrote this task's files decodes a written backslash-u escape before the file is written: the xq shape's
+    test body lost its escape once (caught by a surviving mutant) and two notes here were corrected by script. The bytes sent
+    for xq carry the escape (shapes/*-xq-*/request.json).
+
+THE CLUSTER LEFT: at step 3, nothing applied: the four deployed AgentgatewayPolicies only, 0 AuthorizationPolicy, 0 retry
+stanzas, extauthz at 1 replica with EXTAUTHZ_UNDECIDABLE=deny, the curl pod deleted. The finished Job pods of this step's sends
+remain, as every earlier run's have.
+
+LINE ENDINGS: as in D-3, the curl response and header files hold HTTP header lines, CRLF on the wire, committed in LF
+(core.autocrlf input); counts.csv is written by Python's csv module in CRLF and committed in LF, so a re-run of counts.py
+reproduces it only after CR removal; counts.txt reproduces byte for byte.
+
+2026-09-25, after the review of this record (review-d3b; the record commit amended before merge, the code commits unmoved):
+  - M3: "47 subtests each" above is wrong: worker-mux-shapes-before.txt and -after.txt hold 2 tests and 45 subtests (37 HTTP
+    on port 8080, 8 gRPC on 8081), 47 PASS lines each, identical.
+  - M4: code-proof/image-buildinfo.txt holds go version -m of the extauthz, worker and mockllm binaries as deployed, each
+    exported read-only from the kind node: go1.27.1, vcs.revision 217b2da9a5605950124e7d3b1065bb827d4de098, vcs.modified false.
+  - M5: batch-by-hash's first reading (0 arrivals for the two allow-window batches, the comparison with D-3 not 324 same) was
+    overwritten by its corrected run before the commit and is not kept; it cannot be re-derived from this directory.

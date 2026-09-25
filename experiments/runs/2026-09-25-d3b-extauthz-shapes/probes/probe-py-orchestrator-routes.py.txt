@@ -1,0 +1,69 @@
+# Scratch probe (not committed): the orchestrator's route set (server.py build_app: card, JSON-RPC at "/", REST at the
+# root without the tenant mount) over a stub handler; each request is given to the app as uvicorn's h11 protocol builds
+# the scope (h11_impl.py l.204-205: path = unquote(raw target before "?")).
+import asyncio, json
+from urllib.parse import unquote
+from starlette.applications import Starlette
+from starlette.routing import Mount
+from a2a.server.routes import create_jsonrpc_routes, create_rest_routes
+from a2a.server.request_handlers.request_handler import RequestHandler
+got = []
+class Stub(RequestHandler):
+    pass
+for name in [n for n in dir(RequestHandler) if n.startswith("on_")]:
+    def mk(n):
+        async def f(self, *a, **k):
+            got.append(n)
+            raise RuntimeError("stub")
+        async def g(self, *a, **k):
+            got.append(n)
+            raise RuntimeError("stub")
+            yield None
+        return g if n in ("on_subscribe_to_task", "on_message_send_stream") else f
+    setattr(Stub, name, mk(name))
+Stub.__abstractmethods__ = frozenset()
+h = Stub()
+routes = [*create_jsonrpc_routes(h, rpc_url="/"), *[r for r in create_rest_routes(h) if not isinstance(r, Mount)]]
+app = Starlette(routes=routes)
+async def call(method, raw, body=b"", ctype=b"application/json"):
+    rawp, _, q = raw.partition("?")
+    scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": method, "scheme": "http",
+             "path": unquote(rawp), "raw_path": rawp.encode(), "root_path": "", "query_string": q.encode(),
+             "headers": [(b"content-type", ctype), (b"content-length", str(len(body)).encode()), (b"a2a-version", b"1.0")],
+             "server": ("t", 80), "client": ("c", 1)}
+    sent = []
+    msgs = [{"type": "http.request", "body": body, "more_body": False}]
+    async def recv():
+        return msgs.pop(0) if msgs else {"type": "http.disconnect"}
+    async def send(m): sent.append(m)
+    del got[:]
+    try:
+        await app(scope, recv, send)
+    except Exception as e:
+        sent.append({"type": "exc", "e": repr(e)[:60]})
+    st = next((m.get("status") for m in sent if m["type"] == "http.response.start"), None)
+    loc = next((dict(m.get("headers", [])).get(b"location") for m in sent if m["type"] == "http.response.start"), None)
+    b = b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body")[:80]
+    print(f"py {method:5} {raw!r:44} http={st} dispatched={got or '-'} loc={loc} body={b!r}")
+sub = b'{"jsonrpc":"2.0","id":"1","method":"SubscribeToTask","params":{"id":"t9"}}'
+async def main():
+    for m, raw, body, ct in [
+        ("POST", "/", sub, b"application/json"), ("POST", "/", sub, b"application/grpc"), ("POST", "/x", sub, b"application/json"),
+        ("POST", "/%0A", sub, b"application/json"), ("POST", "//", sub, b"application/json"), ("POST", "/?x=1", sub, b"application/json"),
+        ("POST", "/message:send/", sub, b"application/json"), ("POST", "/lf.a2a.v1.A2AService/SendMessage", sub, b"application/json"),
+        ("POST", "/", b'{"jsonrpc":"2.0","id":"1","METHOD":"SubscribeToTask","params":{"id":"t9"}}', b"application/json"),
+        ("POST", "/", b'{"jsonrpc":"2.0","id":"1","method":"SendMessage","METHOD":"SubscribeToTask","params":{"id":"t9"}}', b"application/json"),
+        ("POST", "/", sub + b" trailing", b"application/json"), ("POST", "/", b"\xef\xbb\xbf" + sub, b"application/json"),
+        ("POST", "/", sub.decode().encode("utf-16-le"), b"application/json"), ("POST", "/", sub.decode().encode("utf-16"), b"application/json"),
+        ("POST", "/", b'{"jsonrpc":"2.0","id":"1","method":"Subscribe\\u0054oTask","params":{"id":"t9"}}', b"application/json"),
+        ("POST", "/", b'{"jsonrpc":"2.0","id":"1","method":"subscribetotask","params":{"id":"t9"}}', b"application/json"),
+        ("POST", "/tasks/t9:subscribe", b"", b"application/json"), ("GET", "/tasks/t9:subscribe", b"", b""), ("HEAD", "/tasks/t9:subscribe", b"", b""),
+        ("PUT", "/tasks/t9:subscribe", b"", b""), ("POST", "/tasks/t9:subscribe", b"", b"application/grpc"),
+        ("POST", "/tasks/t9%3Asubscribe", b"", b""), ("POST", "/tasks/t9%3asubscribe", b"", b""), ("POST", "/%74asks/t9:%73ubscribe", b"", b""),
+        ("POST", "/tasks%2Ft9:subscribe", b"", b""), ("POST", "/tasks/a%2Fb:subscribe", b"", b""), ("POST", "/tasks/t9%253Asubscribe", b"", b""),
+        ("POST", "//tasks/t9:subscribe", b"", b""), ("POST", "/tasks/./t9:subscribe", b"", b""), ("POST", "/tasks/t9:subscribe/", b"", b""),
+        ("POST", "/tasks/t9:subscribe%0A", b"", b""), ("GET", "/tasks/t9:subscribe%0A", b"", b""), ("POST", "/tasks/t9:Subscribe", b"", b""),
+        ("POST", "/Tasks/t9:subscribe", b"", b""), ("POST", "/tenant/tasks/t9:subscribe", b"", b""), ("POST", "/tasks/t9:subscribe%0A%0A", b"", b""),
+    ]:
+        await call(m, raw, body, ct)
+asyncio.run(main())

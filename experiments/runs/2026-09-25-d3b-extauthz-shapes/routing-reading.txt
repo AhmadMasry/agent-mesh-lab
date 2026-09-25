@@ -1,0 +1,64 @@
+Follow-on D-3b, Step 1: the routing reading, written before any code and accepted by the controller on 2026-09-25. What each
+receiver hands to each of its binding handlers, from the source at the pinned versions (sources.txt, with lines), each claim
+also run against the SDK's own handlers with a recording stub (probes/: the worker's mux chain and gRPC server built from
+a2a-go v2.5.0 and grpc-go v1.83.2 at go1.27.1; the orchestrator's route set in its locked environment, the scope built as
+uvicorn's h11 protocol builds it; a grpc.aio 1.84.0 server with a2a-python's A2AService). The probes are scratch programs, kept
+here as .txt; agents/worker/mux_shapes_test.go pins the worker's side in the repository.
+
+AGENTGATEWAY v1.5.0. The check carries req.uri().path_and_query() (ext_authz.rs l.482-486), the same Uri the upstream request
+is sent with; no normalization or decoding of the request path anywhere in crates/. The four ingress routes carry no match, so
+a PathPrefix "/" (agent_xds.rs l.2119): every path reaches the backend. So the fixture sees the path the receiver gets. The body
+reaches it as lossy UTF-8 (l.442-455), cut at forwardBody.maxSize with size -1.
+
+THE GO WORKER. Port 8080: a root ServeMux (/healthz, /control/inject, /control/reset, and / for everything else, behind the
+ingress ledger), then the A2A ServeMux (the card; REST prefixes /message:send, /message:stream, /tasks, /tasks/,
+/extendedAgentCard; / the JSON-RPC handler, a catch-all). Go 1.27.1's ServeMux cleans the escaped path and answers a
+non-clean one (//, /./, /../) with a 307, dispatching nothing; it matches patterns segment by segment on each segment
+unescaped, so %3A, %74, %73 decode and %2F never splits a segment; a GET pattern also takes HEAD. a2a-go's REST handler
+dispatches SubscribeToTask on GET, HEAD and POST of /tasks/{idAndAction} when the unescaped segment ends in ":subscribe".
+Its JSON-RPC handler takes POST only, reads the first JSON value with one json.Decoder (trailing data ignored), matches member
+names without case, and ignores the content type. Port 8081: the same root mux, then grpc-go's ServeHTTP: POST, a
+content type beginning "application/grpc", HTTP/2; the method is the decoded URL path's text after its last "/".
+
+THE PYTHON ORCHESTRATOR. uvicorn (h11) decodes the path once, leniently (urllib.parse.unquote of the target before "?").
+Starlette matches each route's pattern, which ends in "$", and Python's "$" also matches before one final newline: ^/$ matches
+"/\n" and the subscribe route matches ".../t:subscribe\n". GET routes also take HEAD; a miss that a trailing slash would fix
+gets a 307. The JSON-RPC route is Route("/", POST), content type ignored; the body is read by json.loads(bytes), which also
+reads a UTF-8 byte order mark and UTF-16 and UTF-32; the method is the exact key "method". REST at the root:
+/tasks/{id}:subscribe on GET, HEAD and POST, {id} = [^/]+. grpc.aio looks the method up by the raw :path, exactly.
+
+THE SHAPES, SubscribeToTask naming no task. G, P: the worker, the orchestrator dispatches it (source and probes). D-3's
+fixture's decision, and D-3b's. Counted: 5 sends per receiver where that receiver dispatches it (155 in all).
+  kind  request                                                         G  P  D-3's fixture       D-3b's fixture
+  xp    POST /x, JSON-RPC body                                          G  -  allow               deny (rule 4)
+  xa    POST /a2a/v1, JSON-RPC body                                     G  -  allow               deny (rule 4)
+  xg    POST /, JSON-RPC body, Content-Type application/grpc            G  P  allow               deny (rule 3)
+  xr    POST /tasks/<t>%3Asubscribe                                     G  P  allow               deny (rule 1)
+  xn    POST /%0A, JSON-RPC body                                        G  P  allow               deny (rule 3)
+  xt    POST /message:send/, JSON-RPC body                              G  -  allow               deny (rule 4)
+  xm    POST /lf.a2a.v1.A2AService/SendMessage, application/grpc,
+        JSON-RPC body (port 8080)                                       G  -  allow               deny (rule 4)
+  xc    POST /tasks/<t>:subscribe, application/grpc                     G  P  allow               deny (rule 1)
+  xh    HEAD /tasks/<t>:subscribe                                       G  P  allow               deny (rule 1)
+  xl    POST /tasks/<t>:%73ubscribe                                     G  P  allow               deny (rule 1)
+  xs    POST /tasks%2F<t>:subscribe                                     -  P  allow               deny (rule 1)
+  xe    POST /tasks/<t>:subscribe%0A                                    -  P  allow               deny (rule 1)
+  gp    gRPC /lf.a2a.v1.A2AService/Subscribe%54oTask                    G  -  allow               deny (rule 2)
+  gs    gRPC /lf.a2a.v1.A2AService%2FSubscribeToTask                    G  -  allow               deny (rule 2)
+  xb    POST /, UTF-8 byte order mark, JSON-RPC body                    -  P  undecidable, deny   deny (rule 3, after the mark)
+  x16   POST /, JSON-RPC body in UTF-16LE                               -  P  undecidable, deny   undecidable, deny (rule 3)
+  gq    gRPC /lf.a2a.v1.A2AService/SubscribeToTask?x=1                  G  -  deny                deny (rule 2)
+  xu    POST /, member name METHOD                                      G  -  deny                deny (rule 3)
+  xq    POST /, method written Subscribe\u0054oTask               G  P  deny                deny (rule 3)
+  xi    POST /tasks/a%2F<t>:subscribe                                   G  -  deny                deny (rule 1)
+  rg    GET /tasks/<t>:subscribe                                        G  P  deny                deny (rule 1)
+  xk    POST /?x=1, JSON-RPC body                                       G  P  deny                deny (rule 3)
+Dispatched by neither, unit tests only (fixtures/extauthz/shapes_test.go and the worker's mux_shapes_test.go): the colon
+double-encoded (%253A), //tasks, /tasks/./, a trailing slash after :subscribe, :Subscribe, /Tasks/, a tenant segment with no
+body, PUT, a lower-case method value, JSON-RPC at //, and gRPC at //, with a trailing slash, with %0A, and lower-case.
+
+NO SHAPE THE FIXTURE CANNOT SEE. Every dispatching shape is in the path and body the proxy sends. The one lossy class is a body
+in an encoding other than UTF-8, which only the orchestrator reads: it reaches the fixture as lossy UTF-8 and cannot be read
+faithfully, and packAsBytes is not settable at v1.5.0 (D-3's reading, traffic_plugin.go l.1364). Ruled by the controller: it
+stays undecidable (the setting, deny by default). One leading UTF-8 byte order mark is removed before the strict reading on
+"/": a2a-python reads through one, a2a-go rejects it, so the removal matters for the orchestrator only.

@@ -1,0 +1,32 @@
+# Follow-on D-3b: the documents and source files read in this task, with the read stamp and the sha256 (a prefix where the
+# file is not kept). Everything was read this session; the lock and module cache are the pinned ones (go.sum, uv.lock).
+2026-09-25T06:49:03Z | 200 | 7136211 B | sha256 caae805d51d44f9602c5a4059e7e4c7f6da6f558c8948c3f2f615e9e3b6a7874 | agentgateway v1.5.0 tarball, https://codeload.github.com/agentgateway/agentgateway/tar.gz/refs/tags/v1.5.0 (equal to C-8's, D-2's and D-3's)
+    crates/agentgateway/src/http/ext_authz.rs sha256 e927363f24c44eaf (equal to D-3's) l.482-486 the check's path is req.uri().path_and_query(); l.442-455 the body as lossy UTF-8
+    crates/agentgateway/src/types/agent_xds.rs sha256 6bd210f2cf66b2d0 l.2119 a route rule with no path match is PathPrefix "/"
+    grep of crates/ for normaliz|merge_slash|percent_decod|percent_encod|dot_segment|remove_dot: no match on the request path
+2026-09-25T06:53:07Z | 200 | sha256 e2a1fd041cb144bf5e593b63281c0f9835ea2b7ad3f7a02cfeee897e9e719fbf | https://raw.githubusercontent.com/grpc/grpc/v1.84.0/src/core/server/server.cc l.1774-1805 the registered method looked up by the :path string
+2026-09-25T06:53:07Z | 200 | sha256 0adc1910b11795d2af2ad30d290af4c06e338fdeb09977c052cf7bdd9900808d | https://raw.githubusercontent.com/grpc/grpc/v1.84.0/src/python/grpcio/grpc/_cython/_cygrpc/aio/server.pyx.pxi l.375-389 the handler resolved by the method string, exactly
+2026-09-25T06:53:07Z | 200 | sha256 6a3e3140ce3f7a75029e14709be3eb5bf540ad993c1f62d16418b84174539da6 | https://raw.githubusercontent.com/grpc/grpc/v1.84.0/src/core/lib/slice/percent_encoding.cc (read; not used on the path)
+2026-09-25T07:31:21Z | 200 | https://github.com/istio/istio/releases/download/1.31.0/istioctl-1.31.0-osx-arm64.tar.gz.sha256: a0c4d35320f930e5254de119512f0761f65a76fb614973281bf9435e24306d66, equal to the tarball used; the lab-scoped binary equal byte for byte to the tarball's
+Go 1.27.1 standard library (the toolchain go.mod names):
+    net/http/server.go sha256 8a46dd48f65aba82 l.2711-2765 findHandler: cleanPath on the escaped path, a 307 to the cleaned path; l.2537 a GET pattern matches HEAD
+    net/http/routing_tree.go sha256 555d7ae16166612d l.140-141 GET matches HEAD; l.154-199 matchPath; l.205-215 firstSegment unescapes each segment
+    net/http/internal/httpcommon/httpcommon.go sha256 875db0f0226dd240 l.611 url.ParseRequestURI of the HTTP/2 :path
+a2a-go v2.5.0 (module cache, go.sum):
+    a2asrv/rest.go sha256 73fd0372ea98e501 l.51-60 the REST mux; l.211-236 idAndAction and CutSuffix ":subscribe" on GET and POST
+    a2asrv/jsonrpc.go sha256 9d53a6d5196aa611 l.52-55 POST only; l.63-67 one json.Decoder, the first value; l.79 streaming by method
+    internal/jsonrpc/jsonrpc.go sha256 49173b901fee7dc7 l.38-48 the method names; l.218-223 ServerRequest
+    a2asrv/agentcard.go l.27 WellKnownAgentCardPath
+    a2apb/v1/a2av1.pb.go l.3261-3263 SubscribeToTaskRequest: tenant field 1, id field 2
+grpc-go v1.83.2 (module cache, go.sum):
+    server.go sha256 a09f192cb707172d l.1095-1130 ServeHTTP; l.1825-1836 service and method from the stream's method
+    internal/transport/handler_server.go sha256 65c8274e186e499a l.53-72 POST, content-type, HTTP/2; l.419 method is req.URL.Path
+The orchestrator's locked environment (uv sync --frozen --check: no changes; starlette 1.6.0, uvicorn 0.53.0 with h11 0.16.0
+and no httptools, a2a-sdk 1.1.4, grpcio 1.84.0):
+    uvicorn/protocols/http/h11_impl.py sha256 a3154a6c2cfaaaeb l.204-205 path = unquote(the target before "?")
+    starlette/routing.py sha256 a5f6d288a218b8a0 l.111-164 compile_path ends the pattern in "$"; l.236-238 GET routes take HEAD; l.242-257 Route.matches; l.704-718 redirect_slashes
+    a2a/server/routes/rest_routes.py sha256 8716a6be7785ef9f l.75-114 the REST routes; l.116 the tenant mount the orchestrator leaves out
+    a2a/server/routes/jsonrpc_routes.py sha256 46643f27eb7e723a l.62-68 Route(rpc_url, POST)
+    a2a/server/routes/jsonrpc_dispatcher.py sha256 6d56a5763a283c4e l.228 request.json(); l.263-310 the method routed by name
+The lab's own receivers at the built tree: agents/worker/bindings.go and main.go (the patterns, now internal/workermux);
+agents/orchestrator/orchestrator/server.py l.76-80 (the routes) and grpc_ingress.py l.212-221 (the gRPC server).

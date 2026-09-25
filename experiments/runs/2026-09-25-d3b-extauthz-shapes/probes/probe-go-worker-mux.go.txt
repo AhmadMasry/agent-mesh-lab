@@ -1,0 +1,138 @@
+// Scratch probe (not committed): the worker's mux chain (agents/worker/bindings.go newA2AMux, main.go newRootMux) and
+// its gRPC server, built from a2a-go v2.5.0 and grpc-go v1.83.2 at go1.27.1, with a stub handler recording dispatch.
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"iter"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"strings"
+
+	"github.com/a2aproject/a2a-go/v2/a2a"
+	a2agrpc "github.com/a2aproject/a2a-go/v2/a2agrpc/v1"
+	"github.com/a2aproject/a2a-go/v2/a2asrv"
+	"google.golang.org/grpc"
+)
+
+var got string
+
+type stub struct{ a2asrv.RequestHandler }
+
+func (stub) SubscribeToTask(_ context.Context, r *a2a.SubscribeToTaskRequest) iter.Seq2[a2a.Event, error] {
+	got = "SubscribeToTask(" + string(r.ID) + ")"
+	return func(y func(a2a.Event, error) bool) { y(nil, a2a.ErrTaskNotFound) }
+}
+func (stub) SendMessage(context.Context, *a2a.SendMessageRequest) (a2a.SendMessageResult, error) {
+	got = "SendMessage"
+	return nil, a2a.ErrInvalidParams
+}
+func (stub) GetTask(_ context.Context, r *a2a.GetTaskRequest) (*a2a.Task, error) {
+	got = "GetTask(" + string(r.ID) + ")"
+	return nil, a2a.ErrTaskNotFound
+}
+
+var restPaths = []string{"/message:send", "/message:stream", "/tasks", "/tasks/", "/extendedAgentCard"}
+
+func mux8080() http.Handler {
+	card := &a2a.AgentCard{Name: "x"}
+	m := http.NewServeMux()
+	m.Handle(a2asrv.WellKnownAgentCardPath, a2asrv.NewStaticAgentCardHandler(card))
+	rest := a2asrv.NewRESTHandler(stub{})
+	for _, p := range restPaths {
+		m.Handle(p, rest)
+	}
+	m.Handle("/", a2asrv.NewJSONRPCHandler(stub{}))
+	return root(m)
+}
+
+func root(a http.Handler) http.Handler {
+	r := http.NewServeMux()
+	r.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { got = "healthz" })
+	r.HandleFunc("/control/inject", func(w http.ResponseWriter, _ *http.Request) { got = "control" })
+	r.HandleFunc("/control/reset", func(w http.ResponseWriter, _ *http.Request) { got = "control" })
+	r.Handle("/", a)
+	return r
+}
+
+func main() {
+	h := mux8080()
+	s := grpc.NewServer()
+	a2agrpc.NewHandler(stub{}).RegisterWith(s)
+	g := root(s)
+	sub := `{"jsonrpc":"2.0","id":"1","method":"SubscribeToTask","params":{"id":"t9"}}`
+	for _, c := range [][3]string{
+		{"POST", "/", sub}, {"POST", "/x", sub}, {"POST", "/a2a/v1", sub}, {"POST", "/%0A", sub}, {"POST", "//", sub}, {"POST", "/./", sub},
+		{"POST", "/message:send/", sub}, {"POST", "/message:send", sub}, {"POST", "/message%3Asend", `{"message":{"messageId":"m","role":"ROLE_USER","parts":[{"text":"a"}]}}`},
+		{"POST", "/lf.a2a.v1.A2AService/SendMessage", sub}, {"POST", "/healthz/", sub}, {"POST", "/.well-known/agent-card.json/", sub},
+		{"POST", "/tenant/tasks/t9:subscribe", sub}, {"POST", "/tasks%2Ft9:subscribe", sub},
+		{"POST", "/", `{"jsonrpc":"2.0","id":"1","METHOD":"SubscribeToTask","params":{"id":"t9"}}`},
+		{"POST", "/", `{"jsonrpc":"2.0","id":"1","method":"SendMessage","METHOD":"SubscribeToTask","params":{"id":"t9"}}`},
+		{"POST", "/", `{"jsonrpc":"2.0","id":"1","METHOD":"SubscribeToTask","method":"SendMessage","params":{"id":"t9"}}`},
+		{"POST", "/", sub + ` trailing`}, {"POST", "/", "\xef\xbb\xbf" + sub}, {"POST", "/", `{"jsonrpc":"2.0","id":"1","method":"SubscribeToTask","params":{"id":"t9"}}`},
+		{"POST", "/", `{"jsonrpc":"2.0","id":"1","method":"subscribetotask","params":{"id":"t9"}}`},
+		{"POST", "/tasks/t9:subscribe", ""}, {"GET", "/tasks/t9:subscribe", ""}, {"HEAD", "/tasks/t9:subscribe", ""}, {"PUT", "/tasks/t9:subscribe", ""},
+		{"POST", "/tasks/t9%3Asubscribe", ""}, {"POST", "/tasks/t9%3asubscribe", ""}, {"POST", "/%74asks/t9:%73ubscribe", ""},
+		{"POST", "/tasks/a%2Fb:subscribe", ""}, {"POST", "/tasks/t9%253Asubscribe", ""}, {"GET", "/tasks/t9%253Asubscribe", ""},
+		{"POST", "//tasks/t9:subscribe", ""}, {"POST", "/tasks/./t9:subscribe", ""}, {"POST", "/tasks/t9:subscribe/", ""},
+		{"POST", "/tasks/t9:subscribe%0A", ""}, {"POST", "/tasks/t9:Subscribe", ""}, {"POST", "/Tasks/t9:subscribe", ""},
+		{"POST", "/tasks/%2E%2E/t9:subscribe", ""}, {"POST", "/tasks%2F%7Bx%7D:subscribe", ""},
+	} {
+		got = "-"
+		raw := fmt.Sprintf("%s %s HTTP/1.1\r\nHost: w\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", c[0], c[1], len(c[2]), c[2])
+		req, err := http.ReadRequest(bufio.NewReader(strings.NewReader(raw)))
+		if err != nil {
+			fmt.Printf("8080 %-5s %-40q parse error: %v\n", c[0], c[1], err)
+			continue
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		b := rec.Body.String()
+		if len(b) > 70 {
+			b = b[:70]
+		}
+		fmt.Printf("8080 %-5s %-48q http=%d dispatched=%s loc=%q body=%q\n", c[0], c[1], rec.Code, got, rec.Header().Get("Location"), strings.TrimSpace(b))
+	}
+	// gRPC on 8081: HTTP/2 request built as net/http's h2 server builds it (url.ParseRequestURI of :path,
+	// internal/httpcommon/httpcommon.go l.611).
+	pb := []byte{0x12, 0x02, 't', '9'} // field 2 = id (a2av1.pb.go l.3263)
+	frame := make([]byte, 5+len(pb))
+	binary.BigEndian.PutUint32(frame[1:5], uint32(len(pb)))
+	copy(frame[5:], pb)
+	for _, p := range []string{"/lf.a2a.v1.A2AService/SubscribeToTask", "/lf.a2a.v1.A2AService/Subscribe%54oTask", "/lf.a2a.v1.A2AService%2FSubscribeToTask",
+		"/lf.a2a.v1.A2AService/SubscribeToTask?x=1", "//lf.a2a.v1.A2AService/SubscribeToTask", "/lf.a2a.v1.A2AService/SubscribeToTask/", "/lf.a2a.v1.A2AService/SubscribeToTask%0A", "/lf.a2a.v1.A2AService/subscribetotask"} {
+		got = "-"
+		u, err := url.ParseRequestURI(p)
+		if err != nil {
+			fmt.Println("8081 parse", p, err)
+			continue
+		}
+		req := &http.Request{Method: "POST", URL: u, Proto: "HTTP/2.0", ProtoMajor: 2, Header: http.Header{"Content-Type": {"application/grpc"}, "Te": {"trailers"}},
+			Body: ioNop(frame), RequestURI: p, Host: "w", ContentLength: -1}
+		req = req.WithContext(context.Background())
+		rec := httptest.NewRecorder()
+		g.ServeHTTP(rec, req)
+		fmt.Printf("8081 POST %-48q http=%d dispatched=%s grpc-status=%s loc=%q\n", p, rec.Code, got, rec.Header().Get("Grpc-Status")+rec.Result().Trailer.Get("Grpc-Status"), rec.Header().Get("Location"))
+	}
+	var v struct {
+		Method string `json:"method"`
+	}
+	for _, b := range []string{`{"method":"SendMessage","METHOD":"SubscribeToTask"}`, `{"METHOD":"SubscribeToTask","method":"SendMessage"}`, `{"METHOD":"SubscribeToTask"}`} {
+		v.Method = ""
+		err := json.NewDecoder(bytes.NewReader([]byte(b))).Decode(&v)
+		fmt.Printf("json %s -> %q err=%v\n", b, v.Method, err)
+	}
+	_ = os.Stdout
+}
+
+type nopCloser struct{ *bytes.Reader }
+
+func (nopCloser) Close() error { return nil }
+func ioNop(b []byte) nopCloser  { return nopCloser{bytes.NewReader(b)} }
