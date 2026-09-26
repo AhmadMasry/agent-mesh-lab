@@ -1,0 +1,16 @@
+$ mkdir -p "${TMPDIR:-/tmp}"/b4 "${TMPDIR:-/tmp}"/d1/work
+mkdir -p experiments/runs/2026-09-26-walkthrough/drivers
+sed -e 's#^RUNREL=2026-09-21-b3-streaming-client$#RUNREL=2026-09-26-walkthrough/b3#' \
+    -e 's#-e "s/\\${TASK_ID}/${task}/g" \\$#-e "s/\\${TASK_ID}/${task}/g" -e "s/\\${CANCEL_AFTER_MS}//g" -e "s/\\${CLIENT_HOST}//g" \\#' \
+    experiments/runs/2026-09-21-b3-streaming-client/rows.sh > experiments/runs/2026-09-26-walkthrough/drivers/b3-rows.sh
+diff experiments/runs/2026-09-21-b3-streaming-client/rows.sh experiments/runs/2026-09-26-walkthrough/drivers/b3-rows.sh
+# istioctl on PATH at this step's start: client version: 1.31.1
+59c59
+< RUNREL=2026-09-21-b3-streaming-client
+---
+> RUNREL=2026-09-26-walkthrough/b3
+177c177
+< 		-e "s/\${MODE}/${mode}/g" -e "s/\${TASK_ID}/${task}/g" \
+---
+> 		-e "s/\${MODE}/${mode}/g" -e "s/\${TASK_ID}/${task}/g" -e "s/\${CANCEL_AFTER_MS}//g" -e "s/\${CLIENT_HOST}//g" \
+wall 0.053s exit 1

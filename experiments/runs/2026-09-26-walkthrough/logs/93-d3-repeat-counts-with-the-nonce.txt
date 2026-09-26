@@ -1,0 +1,40 @@
+$ sed -e 's#^        m = re.match(r"^(\\w+)-(jsonrpc|rest|grpc)-(go|py)-(\\w+)-d3a-(\\d+)$", name)$#        m = re.match(r"^(\\w+)-(jsonrpc|rest|grpc)-(go|py)-(\\w+)-d3ar-(\\d+)$", name)#' \
+  experiments/runs/2026-09-24-d3-extauthz/counts.py > experiments/runs/2026-09-26-walkthrough/d3-repeat/counts.py
+diff experiments/runs/2026-09-24-d3-extauthz/counts.py experiments/runs/2026-09-26-walkthrough/d3-repeat/counts.py
+python3 experiments/runs/2026-09-26-walkthrough/d3-repeat/counts.py | tee experiments/runs/2026-09-26-walkthrough/d3-repeat/counts.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+88c88
+<         m = re.match(r"^(\w+)-(jsonrpc|rest|grpc)-(go|py)-(\w+)-d3a-(\d+)$", name)
+---
+>         m = re.match(r"^(\w+)-(jsonrpc|rest|grpc)-(go|py)-(\w+)-d3ar-(\d+)$", name)
+# D-3 counts, from this directory alone (counts.py). One line per cell: phase binding receiver kind, sends,
+# then each distinct value with how many sends had it.
+allow jsonrpc go batch: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:batch:allow:jsonrpc:len=151:size=151 x1
+    arrivals       1 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py batch: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:batch:allow:jsonrpc:len=151:size=151 x1
+    arrivals       1 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+# sends: 2; decision lines by phase and the setting each line carries: allow/allow=2
+# gRPC sends: 0; with grpc attempts other than 1 or a transparent attempt: 0
+# decision lines by phase, binding, receiver, kind and what was checked (joined on work item):
+#   allow: 2 lines (operation 2)
+#     jsonrpc  go  batch  operation 1
+#     jsonrpc  py  batch  operation 1
+# decision lines not joined to their send's work item: 0
+# decision lines with source_principal empty: 2 of 2
+wall 0.072s exit 0

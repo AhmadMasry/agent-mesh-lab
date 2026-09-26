@@ -1,0 +1,81 @@
+# Experiment C, step C-7, part 2: what agentgateway's CEL sees as source.identity on each caller path. The author
+# decided (docs/proposal-notes.md, 2026-09-23) that identity at agentgateway is recorded as a limit, not exercised
+# with new accounts: every workload in lab runs as the one default ServiceAccount. This is a READING of the value,
+# not a rule that refuses callers. source.identity is "The (Istio SPIFFE) identity of the downstream connection, if
+# available" (schema/cel.md at agentgateway v1.5.0, l.112-115).
+# The expression fires only when the request carries x-c7-probe: identity AND source.identity.serviceAccount is
+# default. A request without the probe header cannot match. A probe on a path where the proxy has an identity for
+# the connection is refused 403 by the proxy; a probe on a path where it has none is not (the field is missing, and
+# a Deny over a missing field "does not fire", authorization.md l.276) and is delivered. The probe's status per
+# path is the reading; each access line's src.identity is the proxy's own second reading of the same connection.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c7-identity-probe-worker-ingress
+  namespace: lab
+spec:
+  # the ingress, worker path
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - "request.headers['x-c7-probe'] == 'identity' && source.identity.serviceAccount == 'default'"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c7-identity-probe-orchestrator-ingress
+  namespace: lab
+spec:
+  # the ingress, orchestrator path
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - "request.headers['x-c7-probe'] == 'identity' && source.identity.serviceAccount == 'default'"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c7-identity-probe-worker
+  namespace: lab
+spec:
+  # agw-central, worker Service
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - "request.headers['x-c7-probe'] == 'identity' && source.identity.serviceAccount == 'default'"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c7-identity-probe-orchestrator
+  namespace: lab
+spec:
+  # agw-central, orchestrator Service
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - "request.headers['x-c7-probe'] == 'identity' && source.identity.serviceAccount == 'default'"

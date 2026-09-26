@@ -1,0 +1,17 @@
+# C-3R2: lines 67-81 of the same YAML block, verbatim: the draft's policy B. Applied and removed
+# C-3R2: by rep.sh, three times.
+# policy B: workload-selector scope, otherwise identical
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: repro-selector
+  namespace: repro
+spec:
+  selector:
+    matchLabels:
+      app: server
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/repro/sa/someone-else"]

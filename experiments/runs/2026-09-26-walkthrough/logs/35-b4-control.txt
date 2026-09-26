@@ -1,0 +1,28 @@
+$ RUN_ID=wtb4 RUNREL=2026-09-26-walkthrough/b4 bash experiments/runs/2026-09-22-b4-control/rows.sh 2
+# istioctl on PATH at this step's start: client version: 1.31.1
+2026-09-26T14:44:12Z row control, reps 2 per receiver, receivers [go py], RUN_ID wtb4; HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08; this driver sha256 40a35349ddcc3fd21f98d486066165a7863cf599911ac2963c7d4eede6dc563e; istioctl on PATH: client version: 1.31.1
+2026-09-26T14:44:12Z N_MS=45000 K_MS=5000; template deploy/base/loadgen-a2-job.yaml blob 96769f9218cba5396206e7aac50cb13cad840465; go path: TARGET_URL=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local CLIENT_DIAL=target CLIENT_HOST=worker.lab.internal; py path: TARGET_URL=http://orchestrator.lab.svc.cluster.local:8080 CLIENT_DIAL=<empty> CLIENT_HOST=<empty>
+2026-09-26T14:44:12Z deployment/worker replicas spec=1 ready=1
+2026-09-26T14:44:12Z deployment/orchestrator replicas spec=1 ready=1
+2026-09-26T14:44:13Z deployment/mockllm replicas spec=1 ready=1
+2026-09-26T14:44:13Z certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default
+2026-09-26T14:44:13Z worker env MODEL_TIMEOUT_S=<- empty means unset, default 60 s; MODEL_RETRIES=
+2026-09-26T14:44:13Z retry stanzas on HTTPRoutes: 0; AuthorizationPolicies: 0
+2026-09-26T14:44:13Z proxy pods: agentgateway-ingress/agentgateway-ingress-6d6864b975-25lgd ip=10.244.1.25 uid=67501da3-f79d-49bf-a383-3b0193467c2f restarts=0; agentgateway-waypoint/agw-central-8566ffb797-5v7zx ip=10.244.1.17 uid=faaea7c3-3273-4d71-af59-c3ca0c7977ba restarts=0; 
+2026-09-26T14:44:32Z image resolved once for the row: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379 (2026-09-26T14:44:13.273648Z -> 2026-09-26T14:44:32.202146Z)
+2026-09-26T14:44:32Z orchestrator before: DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080 PLAN_MODEL_CALL=off MODEL_MAX_RETRIES=0
+2026-09-26T14:44:32Z == control x go: 2 repetitions; agent pods before: mockllm-58b7487955-f7pdz=740ed5cd-377f-489d-b3c9-ab49a7300e51/ip=10.244.1.29/restarts=0 orchestrator-679ddcc47c-jnsrs=0158c050-9125-4272-a42b-4155026a5d72/ip=10.244.1.105/restarts=0 worker-f85ff8b86-c24wz=82e6ba25-4805-41a2-b517-717c4166f06e/ip=10.244.1.31/restarts=0 
+2026-09-26T14:44:32Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (nothing armed on the receiver for this row)
+2026-09-26T14:45:24Z   go b4-ct-go-wtb4-01 job1=Failed job2=Complete task=01a0de2c-cbec-7293-822d-f2ad3adeb670 ingress=4 execution=13 invocation=1 client=3 client-sub=4
+2026-09-26T14:46:14Z   go b4-ct-go-wtb4-02 job1=Failed job2=Complete task=01a0de2d-95a6-7a93-9296-bffadd6d5e44 ingress=4 execution=13 invocation=1 client=3 client-sub=4
+2026-09-26T14:46:14Z == control x go done; agent pods after: mockllm-58b7487955-f7pdz=740ed5cd-377f-489d-b3c9-ab49a7300e51/ip=10.244.1.29/restarts=0 orchestrator-679ddcc47c-jnsrs=0158c050-9125-4272-a42b-4155026a5d72/ip=10.244.1.105/restarts=0 worker-f85ff8b86-c24wz=82e6ba25-4805-41a2-b517-717c4166f06e/ip=10.244.1.31/restarts=0 
+2026-09-26T14:46:17Z orchestrator in model mode: DOWNSTREAM_A2A_URL removed; pod orchestrator-5bf7698589-lqsjk uid 21e74213-a658-46b3-8dbb-aa04d4e30b86
+2026-09-26T14:46:17Z == control x py: 2 repetitions; agent pods before: mockllm-58b7487955-f7pdz=740ed5cd-377f-489d-b3c9-ab49a7300e51/ip=10.244.1.29/restarts=0 orchestrator-5bf7698589-lqsjk=21e74213-a658-46b3-8dbb-aa04d4e30b86/ip=10.244.1.111/restarts=0 orchestrator-679ddcc47c-jnsrs=0158c050-9125-4272-a42b-4155026a5d72/ip=10.244.1.105/restarts=0 worker-f85ff8b86-c24wz=82e6ba25-4805-41a2-b517-717c4166f06e/ip=10.244.1.31/restarts=0 
+2026-09-26T14:46:17Z POST http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204 (nothing armed on the receiver for this row)
+2026-09-26T14:47:09Z   py b4-ct-py-wtb4-01 job1=Failed job2=Complete task=312e87fa-ba46-4780-85d9-b9143fd14162 ingress=4 execution=13 invocation=1 client=3 client-sub=4
+2026-09-26T14:48:01Z   py b4-ct-py-wtb4-02 job1=Failed job2=Complete task=d0afc486-6897-4c7b-81b3-260b3631372a ingress=4 execution=13 invocation=1 client=3 client-sub=4
+2026-09-26T14:48:01Z == control x py done; agent pods after: mockllm-58b7487955-f7pdz=740ed5cd-377f-489d-b3c9-ab49a7300e51/ip=10.244.1.29/restarts=0 orchestrator-5bf7698589-lqsjk=21e74213-a658-46b3-8dbb-aa04d4e30b86/ip=10.244.1.111/restarts=0 worker-f85ff8b86-c24wz=82e6ba25-4805-41a2-b517-717c4166f06e/ip=10.244.1.31/restarts=0 
+2026-09-26T14:48:04Z restored the orchestrator: DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080
+2026-09-26T14:48:04Z mock reset after the row; row control done
+2026-09-26T14:48:04Z row control driver exit=0
+wall 232.216s exit 0

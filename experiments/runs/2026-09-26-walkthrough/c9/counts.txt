@@ -1,0 +1,84 @@
+==== phase base (experiments/runs/2026-09-26-walkthrough/c9/base)
+access lines: 22; on the lab/* routes (A2A Services): 18; model route: 4
+-- access lines on lab/* routes, by proxy, route, kind of request and what the proxy wrote:
+    4  agentgateway-ingress | lab/orchestrator-ingress | POST | / | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | GET | /.well-known/agent-card.json | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | POST | / | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agw-central | lab/orchestrator | GET | /.well-known/agent-card.json | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    2  agw-central | lab/worker | POST | / | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+-- model route lines: protocol values {'http': 4} a2a.method values {'<absent>': 4}
+-- other a2a.* keys on any access line: 0 ; keys naming a message or task id: 0
+-- proxy SERVER spans: 22
+    4  agentgateway-ingress | lab/orchestrator-ingress | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | GET | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agw-central | agentgateway-waypoint/model-via-agw | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agw-central | lab/orchestrator | GET | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    2  agw-central | lab/worker | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+-- other a2a.* keys on any proxy span: 0 ; keys naming a message or task id: 0
+-- ingress-ledger arrivals: 10; by work item's receiver, kind, the agent it arrived at, method, sender:
+    1  go | sm | worker | SendMessage | agentgateway-ingress
+    1  go | sr | worker | SendStreamingMessage | agentgateway-ingress
+    1  go | sr | worker | SubscribeToTask | agentgateway-ingress
+    1  go | st | worker | SubscribeToTask | agentgateway-ingress
+    1  py | sm | orchestrator | SendMessage | agentgateway-ingress
+    1  py | sm | worker | SendMessage | agw-central
+    1  py | sr | orchestrator | SendStreamingMessage | agentgateway-ingress
+    1  py | sr | orchestrator | SubscribeToTask | agentgateway-ingress
+    1  py | sr | worker | SendMessage | agw-central
+    1  py | st | orchestrator | SubscribeToTask | agentgateway-ingress
+   A2A-Version on arrivals: {'1.0': 10}
+-- client end lines: 8; by receiver, kind, method, advertised -> dialled, outcome:
+    1  go | sm | SendMessage | http://worker.lab.svc.cluster.local:8080 http://worker.lab.svc.cluster.local:8080 worker.lab.svc.cluster.local:8081 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED |  | 
+    1  go | sr | SendStreamingMessage | http://worker.lab.svc.cluster.local:8080 http://worker.lab.svc.cluster.local:8080 worker.lab.svc.cluster.local:8081 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED | eof | 0
+    1  go | sr | SubscribeToTask | http://worker.lab.svc.cluster.local:8080 http://worker.lab.svc.cluster.local:8080 worker.lab.svc.cluster.local:8081 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED | eof | 0
+    1  go | st | SubscribeToTask | http://worker.lab.svc.cluster.local:8080 http://worker.lab.svc.cluster.local:8080 worker.lab.svc.cluster.local:8081 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal |  | error | -32001
+    1  py | sm | SendMessage | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | - | TASK_STATE_COMPLETED |  | 
+    1  py | sr | SendStreamingMessage | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | - | TASK_STATE_COMPLETED | eof | 0
+    1  py | sr | SubscribeToTask | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | - | TASK_STATE_COMPLETED | eof | 0
+    1  py | st | SubscribeToTask | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | - |  | eof | -32001
+-- agreement with the ledgers (access lines, then spans):
+    3  method: absent on every POST line to orchestrator
+    5  method: absent on every POST line to worker
+   22  access line and its span carry the same seven keys and values
+
+==== phase after (experiments/runs/2026-09-26-walkthrough/c9/after)
+access lines: 26; on the lab/* routes (A2A Services): 22; model route: 4
+-- access lines on lab/* routes, by proxy, route, kind of request and what the proxy wrote:
+    8  agentgateway-ingress | lab/worker-ingress | GET | /.well-known/agent-card.json | a2a | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    2  agentgateway-ingress | lab/worker-ingress | POST | / | a2a | SendMessage | success | <absent> | task | TASK_STATE_COMPLETED | set
+    2  agentgateway-ingress | lab/worker-ingress | POST | / | a2a | SendStreamingMessage | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | POST | / | a2a | SubscribeToTask | <absent> | <absent> | <absent> | <absent> | <absent>
+    6  agw-central | lab/orchestrator | GET | /.well-known/agent-card.json | a2a | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+-- model route lines: protocol values {'http': 4} a2a.method values {'<absent>': 4}
+-- other a2a.* keys on any access line: 0 ; keys naming a message or task id: 0
+-- proxy SERVER spans: 26
+    8  agentgateway-ingress | lab/worker-ingress | GET | a2a | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    2  agentgateway-ingress | lab/worker-ingress | POST | a2a | SendMessage | success | <absent> | task | TASK_STATE_COMPLETED | set
+    2  agentgateway-ingress | lab/worker-ingress | POST | a2a | SendStreamingMessage | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | POST | a2a | SubscribeToTask | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agw-central | agentgateway-waypoint/model-via-agw | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    6  agw-central | lab/orchestrator | GET | a2a | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+-- other a2a.* keys on any proxy span: 0 ; keys naming a message or task id: 0
+-- ingress-ledger arrivals: 8; by work item's receiver, kind, the agent it arrived at, method, sender:
+    2  go | sm | worker | SendMessage | agentgateway-ingress
+    2  go | sr | worker | SendStreamingMessage | agentgateway-ingress
+    2  go | sr | worker | SubscribeToTask | agentgateway-ingress
+    2  go | st | worker | SubscribeToTask | agentgateway-ingress
+   A2A-Version on arrivals: {'1.0': 8}
+-- client end lines: 14; by receiver, kind, method, advertised -> dialled, outcome:
+    2  go | sm | SendMessage | http://worker.lab.internal/ http://worker.lab.internal/ http://worker.lab.internal | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED |  | 
+    2  go | sr | SendStreamingMessage | http://worker.lab.internal/ http://worker.lab.internal/ http://worker.lab.internal | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED | eof | 0
+    2  go | sr | SubscribeToTask | http://worker.lab.internal/ http://worker.lab.internal/ http://worker.lab.internal | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED | eof | 0
+    2  go | st | SubscribeToTask | http://worker.lab.internal/ http://worker.lab.internal/ http://worker.lab.internal | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal |  | error | -32001
+    2  py | sm | SendMessage | https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080 | https://orchestrator.lab.svc.cluster.local:8080/ | - | None |  | 
+    2  py | sr | SendStreamingMessage | https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080 | https://orchestrator.lab.svc.cluster.local:8080/ | - |  | error | 0
+    2  py | st | SubscribeToTask | https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080 | https://orchestrator.lab.svc.cluster.local:8080/ | - |  | error | 0
+-- agreement with the ledgers (access lines, then spans):
+    6  method: a2a.method multiset == ingress-ledger arrivals at worker
+    2  response attrs absent: agentgateway-ingress SendStreamingMessage (ledger result lines 1, stream_end ['complete'])
+    2  response attrs absent: agentgateway-ingress SubscribeToTask (ledger result lines 1, stream_end ['complete'])
+    2  response attrs absent: agentgateway-ingress SubscribeToTask (ledger result lines 1, stream_end ['error'])
+    2  response attrs vs execution result: agentgateway-ingress SendMessage outcome=agree kind=agree state=agree context=agree
+   26  access line and its span carry the same seven keys and values
+

@@ -1,0 +1,25 @@
+# phase receiver kind -> sends; the ingress proxy's POST line (status, route, method and path); arrivals at the receiver asked; executes; invocations; the caller's status
+c7h go cst -> sends=2 post_status=200 route=lab/worker-ingress method_path=POST / arrivals=2 executes=0 invocations=0 client=200
+c7h go sm -> sends=2 post_status=200 route=lab/worker-ingress method_path=POST / arrivals=2 executes=2 invocations=2 client=ok:TASK_STATE_COMPLETED
+c7h go ss -> sends=2 post_status=403 route=lab/worker-ingress method_path=POST / arrivals=0 executes=0 invocations=0 client=403
+c7h go st -> sends=2 post_status=403 route=lab/worker-ingress method_path=POST / arrivals=0 executes=0 invocations=0 client=403
+c7h py cst -> sends=2 post_status=200 route=lab/orchestrator-ingress method_path=POST / arrivals=2 executes=0 invocations=0 client=200
+c7h py sm -> sends=2 post_status=200 route=lab/orchestrator-ingress method_path=POST / arrivals=2 executes=4 invocations=2 client=ok:TASK_STATE_COMPLETED
+c7h py ss -> sends=2 post_status=403 route=lab/orchestrator-ingress method_path=POST / arrivals=0 executes=0 invocations=0 client=403
+c7h py st -> sends=2 post_status=403 route=lab/orchestrator-ingress method_path=POST / arrivals=0 executes=0 invocations=0 client=403
+sends: 16 refused by the proxy (403): 8 of them with an arrival: 0
+# part 2: path, proxy, route, the src.identity the proxy logged, status, reason -> lines
+agw-go agw-central lab/worker spiffe://cluster.local/ns/lab/sa/default 403 Authorization -> 2
+agw-py agw-central lab/orchestrator spiffe://cluster.local/ns/lab/sa/default 403 Authorization -> 2
+ingress-go agw-central agentgateway-waypoint/model-via-agw spiffe://cluster.local/ns/lab/sa/worker 200  -> 2
+ingress-go ingress lab/worker-ingress <absent> 200  -> 2
+ingress-py agw-central agentgateway-waypoint/model-via-agw spiffe://cluster.local/ns/lab/sa/worker 200  -> 2
+ingress-py agw-central lab/worker spiffe://cluster.local/ns/lab/sa/orchestrator 200  -> 2
+ingress-py ingress lab/orchestrator-ingress <absent> 200  -> 2
+pf-go agw-central agentgateway-waypoint/model-via-agw spiffe://cluster.local/ns/lab/sa/worker 200  -> 2
+pf-go ingress lab/worker-ingress <absent> 200  -> 2
+probe path agw-go: probes=2 client_status=403 with an arrival=0
+probe path agw-py: probes=2 client_status=403 with an arrival=0
+probe path ingress-go: probes=2 client_status=200 with an arrival=2
+probe path ingress-py: probes=2 client_status=200 with an arrival=2
+probe path pf-go: probes=2 client_status=200 with an arrival=2

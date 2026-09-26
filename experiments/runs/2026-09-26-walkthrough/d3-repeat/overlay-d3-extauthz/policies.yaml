@@ -1,0 +1,92 @@
+# Follow-on D-3: agentgateway's external authorization on the ingress routes, calling the lab's fixture
+# (fixtures/extauthz; Service lab/extauthz, port 9000, appProtocol kubernetes.io/h2c).
+#   grpc: {}          the gRPC Check protocol (envoy.service.auth.v3.Authorization/Check), the dataplane's default and
+#                     the form of the bring-your-own page at v1.5.0 (byo-extauth.md l.171-181). With no header list,
+#                     gRPC sends every request header and the pseudo-headers (ext_authz.rs l.182-185, l.418-440).
+#   forwardBody       maxSize 2097152, the limit C-8's body rule met (the controller's ruling of 2026-09-24). The CRD
+#                     says a body past maxSize "will be rejected with a response" (types l.3084-3092); the controller
+#                     sets AllowPartialMessage true (traffic_plugin.go l.1356-1367), and the dataplane then sends the
+#                     first maxSize bytes with size -1 (ext_authz.rs l.289-317, l.498). Which of the two holds is
+#                     counted, not expected.
+#   failureMode       unset: the default, FailClosed ("FailClosed" (default) denies the request; the installed CRD).
+#   cache             unset: no decision is cached (ext_authz.rs l.232-252).
+# One policy per route; the routes themselves are not edited.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d3-extauthz-worker-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+  traffic:
+    extAuth:
+      backendRef:
+        name: extauthz
+        namespace: lab
+        port: 9000
+      grpc: {}
+      forwardBody:
+        maxSize: 2097152
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d3-extauthz-orchestrator-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+  traffic:
+    extAuth:
+      backendRef:
+        name: extauthz
+        namespace: lab
+        port: 9000
+      grpc: {}
+      forwardBody:
+        maxSize: 2097152
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d3-extauthz-worker-grpc-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: GRPCRoute
+      name: worker-grpc-ingress
+  traffic:
+    extAuth:
+      backendRef:
+        name: extauthz
+        namespace: lab
+        port: 9000
+      grpc: {}
+      forwardBody:
+        maxSize: 2097152
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d3-extauthz-orchestrator-grpc-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: GRPCRoute
+      name: orchestrator-grpc-ingress
+  traffic:
+    extAuth:
+      backendRef:
+        name: extauthz
+        namespace: lab
+        port: 9000
+      grpc: {}
+      forwardBody:
+        maxSize: 2097152

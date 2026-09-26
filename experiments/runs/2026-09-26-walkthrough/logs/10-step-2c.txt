@@ -1,0 +1,81 @@
+$ make step-2c
+# istioctl on PATH at this step's start: client version: 1.31.1
+kubectl kustomize deploy/step-2c-gate2 | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=agent-mesh-lab ko apply --platform=linux/arm64 -f -
+2026/09/26 17:11:30 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/agents/worker
+2026/09/26 17:11:30 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/extauthz
+2026/09/26 17:11:30 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm
+2026/09/26 17:11:31 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 17:11:31 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/extauthz for linux/arm64/v8
+2026/09/26 17:11:31 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 17:11:31 Building github.com/AhmadMasry/agent-mesh-lab/agents/worker for linux/arm64/v8
+2026/09/26 17:11:31 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 17:11:31 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/mockllm for linux/arm64/v8
+2026/09/26 17:11:32 Loading kind.local/extauthz-a6fd0adf6a8a419bfe7dae02450617d3:e2803f95abbd114da13403fa70b8ee88130045efecec2e2dc8f1861b9edf5c0f
+2026/09/26 17:11:32 Loading kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:4f6cd3da618e4391a710e35b35dd739e3e223fe68d57087b42c5f64197577157
+2026/09/26 17:11:32 Loading kind.local/worker-918a018b7a581926ead34dec2ba0fb83:899f0eae301b3e75b30c84cfdfa86270726b9b1daae1ebd5562954751006871a
+2026/09/26 17:11:47 Loaded kind.local/mockllm-d7e8f9e58ff4838298fc2d1892c03051:4f6cd3da618e4391a710e35b35dd739e3e223fe68d57087b42c5f64197577157
+2026/09/26 17:11:47 Adding tag latest
+2026/09/26 17:11:47 Loaded kind.local/extauthz-a6fd0adf6a8a419bfe7dae02450617d3:e2803f95abbd114da13403fa70b8ee88130045efecec2e2dc8f1861b9edf5c0f
+2026/09/26 17:11:47 Adding tag latest
+2026/09/26 17:11:47 Added tag latest
+2026/09/26 17:11:47 Added tag latest
+2026/09/26 17:11:48 Loaded kind.local/worker-918a018b7a581926ead34dec2ba0fb83:899f0eae301b3e75b30c84cfdfa86270726b9b1daae1ebd5562954751006871a
+2026/09/26 17:11:48 Adding tag latest
+2026/09/26 17:11:48 Added tag latest
+namespace/agentgateway-ingress unchanged
+namespace/agentgateway-waypoint unchanged
+namespace/lab unchanged
+serviceaccount/loadgen unchanged
+serviceaccount/orchestrator unchanged
+serviceaccount/worker unchanged
+service/extauthz unchanged
+service/mockllm unchanged
+service/orchestrator configured
+service/worker unchanged
+deployment.apps/extauthz unchanged
+deployment.apps/mockllm unchanged
+deployment.apps/orchestrator configured
+deployment.apps/worker configured
+agentgatewaybackend.agentgateway.dev/mockllm unchanged
+agentgatewayparameters.agentgateway.dev/agentgateway-ingress-params unchanged
+agentgatewayparameters.agentgateway.dev/agw-central-params unchanged
+grpcroute.gateway.networking.k8s.io/orchestrator-grpc-ingress created
+grpcroute.gateway.networking.k8s.io/worker-grpc-ingress created
+gateway.gateway.networking.k8s.io/agentgateway-ingress unchanged
+gateway.gateway.networking.k8s.io/agw-central unchanged
+httproute.gateway.networking.k8s.io/model-via-agw configured
+httproute.gateway.networking.k8s.io/orchestrator created
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker configured
+httproute.gateway.networking.k8s.io/worker-ingress created
+serviceentry.networking.istio.io/model-external unchanged
+peerauthentication.security.istio.io/agentgateway-ingress-metrics unchanged
+peerauthentication.security.istio.io/default unchanged
+# No proxy is created by this overlay, so there is no Gateway or rollout to wait for.
+# What it adds to the central proxy is one route, waited for the way step-2b waits
+# for the model route: Accepted by agentgateway's controller, or the target fails.
+kubectl -n lab wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/orchestrator --timeout=180s
+httproute.gateway.networking.k8s.io/orchestrator condition met
+kubectl -n lab rollout status deployment/worker --timeout=180s
+deployment "worker" successfully rolled out
+kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+deployment "orchestrator" successfully rolled out
+kubectl -n lab rollout status deployment/extauthz --timeout=120s
+deployment "extauthz" successfully rolled out
+kubectl -n lab annotate --overwrite deployment/worker deployment/mockllm deployment/extauthz lab.agent-mesh/go-sources=2645ebf6ecdfc6968f00e72bdcdb612cc649a760
+deployment.apps/worker annotated
+deployment.apps/mockllm annotated
+deployment.apps/extauthz annotated
+wall 20.125s exit 0

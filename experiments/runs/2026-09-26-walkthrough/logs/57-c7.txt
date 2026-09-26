@@ -1,0 +1,223 @@
+$ mkdir -p experiments/runs/2026-09-26-walkthrough/c7
+cp -R experiments/runs/2026-09-23-c7-agw-authorization/overlay-c7-header experiments/runs/2026-09-23-c7-agw-authorization/overlay-c7-identity experiments/runs/2026-09-23-c7-agw-authorization/counts.py experiments/runs/2026-09-26-walkthrough/c7/
+export RUNREL=2026-09-26-walkthrough/c7 RUN_ID=wtc7
+SENDS="bash experiments/runs/2026-09-23-c6-httproute/sends.sh"; C7="bash experiments/runs/2026-09-23-c7-agw-authorization/c7.sh"
+export IMAGE=$($SENDS image | sed -n 's/.* image=\([^ ]*\) .*/\1/p'); echo "IMAGE=$IMAGE"
+S=$(date -u +%FT%TZ)
+$C7 read before "$S"
+A=$(date -u +%FT%TZ); $C7 apply overlay-c7-header
+$C7 read header-applied "$A"
+$SENDS pod-up
+for n in 1 2; do for r in go py; do for k in sm st ss cst; do $SENDS c7h $k $r $n; done; done; done
+$SENDS pod-down
+B=$(date -u +%FT%TZ); $C7 remove overlay-c7-header
+$C7 read header-removed "$B"
+I=$(date -u +%FT%TZ); $C7 apply overlay-c7-identity
+$C7 read identity-applied "$I"
+RUN_ID=c7id RUN_ITEM=2026-09-26-walkthrough/c7/identity-in-force-clean experiments/gate2-single-clean.sh
+$C7 pod-up
+for n in 1 2; do for p in ingress-go ingress-py agw-go agw-py pf-go; do $C7 probe $p $n; done; done
+$C7 pod-down
+J=$(date -u +%FT%TZ); $C7 remove overlay-c7-identity
+$C7 read identity-removed "$J"
+RUN_ID=c7after RUN_ITEM=2026-09-26-walkthrough/c7/after experiments/gate2-single-clean.sh
+python3 experiments/runs/2026-09-26-walkthrough/c7/counts.py | tee experiments/runs/2026-09-26-walkthrough/c7/counts.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+IMAGE=kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 39: 61147 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 32: 61154 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:30:14Z read before -> experiments/runs/2026-09-26-walkthrough/c7/readings-before.txt
+2026-09-26T15:30:14Z apply -k overlay-c7-header
+2026-09-26T15:30:14Z apply done
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 39: 61230 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 32: 61236 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:30:15Z read header-applied -> experiments/runs/2026-09-26-walkthrough/c7/readings-header-applied.txt
+2026-09-26T15:30:16Z pod-up c6-curl ip=10.244.1.14
+2026-09-26T15:30:22Z c7h go sm c7h-go-sm-wtc7-1 job=Complete ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 client=1 ingress-proxy-status=[200 200]
+2026-09-26T15:30:28Z c7h go st c7h-go-st-wtc7-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[200 403]
+2026-09-26T15:30:34Z c7h go ss c7h-go-ss-wtc7-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[200 403]
+2026-09-26T15:30:37Z c7h go cst c7h-go-cst-wtc7-1 http=200 exit=0 ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 client=1 ingress-proxy-status=[200]
+2026-09-26T15:30:43Z c7h py sm c7h-py-sm-wtc7-1 job=Complete ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 client=1 ingress-proxy-status=[200]
+2026-09-26T15:30:49Z c7h py st c7h-py-st-wtc7-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:30:55Z c7h py ss c7h-py-ss-wtc7-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:30:57Z c7h py cst c7h-py-cst-wtc7-1 http=200 exit=0 ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 client=1 ingress-proxy-status=[200]
+2026-09-26T15:31:03Z c7h go sm c7h-go-sm-wtc7-2 job=Complete ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 client=1 ingress-proxy-status=[200 200]
+2026-09-26T15:31:10Z c7h go st c7h-go-st-wtc7-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[200 403]
+2026-09-26T15:31:16Z c7h go ss c7h-go-ss-wtc7-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[200 403]
+2026-09-26T15:31:18Z c7h go cst c7h-go-cst-wtc7-2 http=200 exit=0 ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 client=1 ingress-proxy-status=[200]
+2026-09-26T15:31:24Z c7h py sm c7h-py-sm-wtc7-2 job=Complete ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 client=1 ingress-proxy-status=[200]
+2026-09-26T15:31:31Z c7h py st c7h-py-st-wtc7-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:31:37Z c7h py ss c7h-py-ss-wtc7-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:31:39Z c7h py cst c7h-py-cst-wtc7-2 http=200 exit=0 ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 client=1 ingress-proxy-status=[200]
+2026-09-26T15:32:10Z pod-down c6-curl
+2026-09-26T15:32:10Z delete -k overlay-c7-header
+2026-09-26T15:32:10Z delete done
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 39: 63567 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 32: 63573 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:32:11Z read header-removed -> experiments/runs/2026-09-26-walkthrough/c7/readings-header-removed.txt
+2026-09-26T15:32:11Z apply -k overlay-c7-identity
+2026-09-26T15:32:11Z apply done
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 39: 63647 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 32: 63653 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:32:12Z read identity-applied -> experiments/runs/2026-09-26-walkthrough/c7/readings-identity-applied.txt
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c7id-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:32:14 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:32:15 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:32:15 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:32:16 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:32:31 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:32:31 Adding tag latest
+2026/09/26 18:32:31 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c7id-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:32:37 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:32:38 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:32:38 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:32:39 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:32:54 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:32:54 Adding tag latest
+2026/09/26 18:32:54 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c7id-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c7id-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+2026-09-26T15:32:59Z pod-up c7-curl ip=10.244.1.36
+2026-09-26T15:33:02Z probe ingress-go c7-id-ingress-go-wtc7-1 http=200 exit=0 ledgers-exit=0 ingress=2 execution=6 invocation=1 src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/worker ]
+2026-09-26T15:33:05Z probe ingress-py c7-id-ingress-py-wtc7-1 http=200 exit=0 ledgers-exit=0 ingress=4 execution=12 invocation=1 src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/orchestrator src.identity=spiffe://cluster.local/ns/lab/sa/worker ]
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-go-wtc7-1/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-go-wtc7-1/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-go-wtc7-1/invocation.jsonl: No such file or directory
+2026-09-26T15:33:08Z probe agw-go c7-id-agw-go-wtc7-1 http=403 exit=0 ledgers-exit=2 ingress= execution= invocation= src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/default ]
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-py-wtc7-1/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-py-wtc7-1/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-py-wtc7-1/invocation.jsonl: No such file or directory
+2026-09-26T15:33:11Z probe agw-py c7-id-agw-py-wtc7-1 http=403 exit=0 ledgers-exit=2 ingress= execution= invocation= src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/default ]
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 45: 64441 Terminated: 15          kubectl -n agentgateway-ingress port-forward svc/agentgateway-ingress "$PF_PORT:80" > /dev/null 2>&1
+2026-09-26T15:33:14Z probe pf-go c7-id-pf-go-wtc7-1 http=200 exit=0 ledgers-exit=0 ingress=2 execution=6 invocation=1 src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/worker ]
+2026-09-26T15:33:17Z probe ingress-go c7-id-ingress-go-wtc7-2 http=200 exit=0 ledgers-exit=0 ingress=2 execution=6 invocation=1 src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/worker ]
+2026-09-26T15:33:19Z probe ingress-py c7-id-ingress-py-wtc7-2 http=200 exit=0 ledgers-exit=0 ingress=4 execution=12 invocation=1 src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/orchestrator src.identity=spiffe://cluster.local/ns/lab/sa/worker ]
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-go-wtc7-2/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-go-wtc7-2/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-go-wtc7-2/invocation.jsonl: No such file or directory
+2026-09-26T15:33:22Z probe agw-go c7-id-agw-go-wtc7-2 http=403 exit=0 ledgers-exit=2 ingress= execution= invocation= src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/default ]
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-py-wtc7-2/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-py-wtc7-2/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 130: experiments/runs/2026-09-26-walkthrough/c7/identity/c7-id-agw-py-wtc7-2/invocation.jsonl: No such file or directory
+2026-09-26T15:33:25Z probe agw-py c7-id-agw-py-wtc7-2 http=403 exit=0 ledgers-exit=2 ingress= execution= invocation= src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/default ]
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 45: 65025 Terminated: 15          kubectl -n agentgateway-ingress port-forward svc/agentgateway-ingress "$PF_PORT:80" > /dev/null 2>&1
+2026-09-26T15:33:28Z probe pf-go c7-id-pf-go-wtc7-2 http=200 exit=0 ledgers-exit=0 ingress=2 execution=6 invocation=1 src.identity=[src.identity=spiffe://cluster.local/ns/lab/sa/worker ]
+2026-09-26T15:33:58Z pod-down c7-curl
+2026-09-26T15:33:58Z delete -k overlay-c7-identity
+2026-09-26T15:33:58Z delete done
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 39: 65217 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c7-agw-authorization/c7.sh: line 32: 65223 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:33:59Z read identity-removed -> experiments/runs/2026-09-26-walkthrough/c7/readings-identity-removed.txt
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c7after-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:34:01 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:34:02 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:34:02 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:34:03 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:34:17 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:34:17 Adding tag latest
+2026/09/26 18:34:18 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c7after-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:34:23 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:34:24 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:34:24 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:34:25 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:34:39 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:34:39 Adding tag latest
+2026/09/26 18:34:39 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c7after-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c7after-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+# phase receiver kind -> sends; the ingress proxy's POST line (status, route, method and path); arrivals at the receiver asked; executes; invocations; the caller's status
+c7h go cst -> sends=2 post_status=200 route=lab/worker-ingress method_path=POST / arrivals=2 executes=0 invocations=0 client=200
+c7h go sm -> sends=2 post_status=200 route=lab/worker-ingress method_path=POST / arrivals=2 executes=2 invocations=2 client=ok:TASK_STATE_COMPLETED
+c7h go ss -> sends=2 post_status=403 route=lab/worker-ingress method_path=POST / arrivals=0 executes=0 invocations=0 client=403
+c7h go st -> sends=2 post_status=403 route=lab/worker-ingress method_path=POST / arrivals=0 executes=0 invocations=0 client=403
+c7h py cst -> sends=2 post_status=200 route=lab/orchestrator-ingress method_path=POST / arrivals=2 executes=0 invocations=0 client=200
+c7h py sm -> sends=2 post_status=200 route=lab/orchestrator-ingress method_path=POST / arrivals=2 executes=4 invocations=2 client=ok:TASK_STATE_COMPLETED
+c7h py ss -> sends=2 post_status=403 route=lab/orchestrator-ingress method_path=POST / arrivals=0 executes=0 invocations=0 client=403
+c7h py st -> sends=2 post_status=403 route=lab/orchestrator-ingress method_path=POST / arrivals=0 executes=0 invocations=0 client=403
+sends: 16 refused by the proxy (403): 8 of them with an arrival: 0
+# part 2: path, proxy, route, the src.identity the proxy logged, status, reason -> lines
+agw-go agw-central lab/worker spiffe://cluster.local/ns/lab/sa/default 403 Authorization -> 2
+agw-py agw-central lab/orchestrator spiffe://cluster.local/ns/lab/sa/default 403 Authorization -> 2
+ingress-go agw-central agentgateway-waypoint/model-via-agw spiffe://cluster.local/ns/lab/sa/worker 200  -> 2
+ingress-go ingress lab/worker-ingress <absent> 200  -> 2
+ingress-py agw-central agentgateway-waypoint/model-via-agw spiffe://cluster.local/ns/lab/sa/worker 200  -> 2
+ingress-py agw-central lab/worker spiffe://cluster.local/ns/lab/sa/orchestrator 200  -> 2
+ingress-py ingress lab/orchestrator-ingress <absent> 200  -> 2
+pf-go agw-central agentgateway-waypoint/model-via-agw spiffe://cluster.local/ns/lab/sa/worker 200  -> 2
+pf-go ingress lab/worker-ingress <absent> 200  -> 2
+probe path agw-go: probes=2 client_status=403 with an arrival=0
+probe path agw-py: probes=2 client_status=403 with an arrival=0
+probe path ingress-go: probes=2 client_status=200 with an arrival=2
+probe path ingress-py: probes=2 client_status=200 with an arrival=2
+probe path pf-go: probes=2 client_status=200 with an arrival=2
+wall 291.343s exit 0

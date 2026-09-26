@@ -1,0 +1,29 @@
+$ RUNREL=2026-09-26-walkthrough/c9 RUN_ID=b1 OUTROOT=experiments/runs/2026-09-26-walkthrough/c9 bash experiments/runs/2026-09-24-c9-a2a-marking/c9.sh base 1
+# istioctl on PATH at this step's start: client version: 1.31.1
+2026-09-26T16:46:23Z phase base, reps 1, RUN_ID b1; HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08 (docs(proposal-notes): the walkthrough extended to every row of Experiments B and C for the author's end-to-end test, decided by the author); deploy subtree 05784506a7c9508415d8c0b887adeaae3d8f15a7; this driver sha256 0c475174639affc8df889df220b8f259d6bbf5ada33e20f1c4c9eddca523266a
+2026-09-26T16:46:23Z N_MS=10000; template deploy/base/loadgen-a2-job.yaml blob 96769f9218cba5396206e7aac50cb13cad840465
+2026-09-26T16:46:23Z lab Services' ports: {"extauthz":["grpc:9000:kubernetes.io/h2c"],"mockllm":["http:8080:<unset>"],"orchestrator":["http:8080:<unset>","grpc:8081:kubernetes.io/h2c"],"worker":["http:8080:<unset>","grpc:8081:kubernetes.io/h2c"]}
+2026-09-26T16:46:23Z routes: agentgateway-waypoint/model-via-agw retry=0 hosts=model.lab.internal;lab/orchestrator retry=0 hosts=orchestrator.lab.svc.cluster.local;lab/orchestrator-ingress retry=0 hosts=;lab/worker retry=0 hosts=worker.lab.svc.cluster.local;lab/worker-ingress retry=0 hosts=worker.lab.internal;
+2026-09-26T16:46:23Z AgentgatewayPolicies: 4; AuthorizationPolicies: 0
+2026-09-26T16:46:24Z pods: agentgateway-ingress/agentgateway-ingress-94f7846f-5x8n7 ip=10.244.1.204 uid=6d27dc0a-e9f4-412f-b3e8-e3d834794e5d restarts=0;agentgateway-waypoint/agw-central-57d6777d5f-k58kb ip=10.244.1.212 uid=d90d9c2a-32ed-4c99-9d97-fda78640386f restarts=0;lab/mockllm-58b7487955-f7pdz ip=10.244.1.29 uid=740ed5cd-377f-489d-b3c9-ab49a7300e51 restarts=0;lab/orchestrator-679ddcc47c-9wtdg ip=10.244.1.99 uid=9b4bef43-30fa-4ae8-987e-88d195ec0ce2 restarts=0;lab/worker-f85ff8b86-prfr6 ip=10.244.1.98 uid=580412ec-83be-4f99-946b-24099efcdc85 restarts=0;
+2026-09-26T16:46:24Z proxy pod IPs: agentgateway-ingress=10.244.1.204 agw-central=10.244.1.212
+2026-09-26T16:46:24Z deployment/worker env PUBLIC_URL=http://worker.lab.svc.cluster.local:8080 DOWNSTREAM_A2A_URL= REFUSE_OPERATION=[]
+2026-09-26T16:46:24Z deployment/orchestrator env PUBLIC_URL=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080 REFUSE_OPERATION=[]
+2026-09-26T16:46:24Z curl pod c9-curl ip=10.244.1.109
+2026-09-26T16:46:25Z certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default
+2026-09-26T16:46:43Z image resolved once for the phase: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026-09-26T16:46:43Z mock reset before the phase
+2026-09-26T16:46:43Z == repetition 1: cards
+2026-09-26T16:46:54Z   go sm c9-base-go-sm-b1-01 job1=Complete ingress=2 execution=6 invocation=1 client=1 ingress-proxy-lines=2 agw-central-lines=1
+2026-09-26T16:47:12Z   go sr c9-base-go-sr-b1-01 job1=Complete job2=Complete task=01a0de9c-d489-7a0d-8df3-afec962088b5 ingress=4 execution=15 invocation=1 client=5 ingress-proxy-lines=4 agw-central-lines=1
+2026-09-26T16:47:18Z   go st c9-base-go-st-b1-01 job1=Failed ingress=2 execution=2 invocation=0 client=1 ingress-proxy-lines=2 agw-central-lines=0
+2026-09-26T16:47:24Z   py sm c9-base-py-sm-b1-01 job1=Complete ingress=4 execution=12 invocation=1 client=1 ingress-proxy-lines=1 agw-central-lines=3
+2026-09-26T16:47:40Z   py sr c9-base-py-sr-b1-01 job1=Complete job2=Complete task=c8182576-12d8-47f8-a414-8a6a0db92b92 ingress=6 execution=21 invocation=1 client=5 ingress-proxy-lines=2 agw-central-lines=4
+2026-09-26T16:47:46Z   py st c9-base-py-st-b1-01 job1=Failed ingress=2 execution=2 invocation=0 client=1 ingress-proxy-lines=1 agw-central-lines=1
+2026-09-26T16:47:57Z traces exported: 6 of 6
+2026-09-26T16:47:57Z config dump agw-central: policies 2; A2A policies 0
+2026-09-26T16:47:58Z config dump agentgateway-ingress: policies 2; A2A policies 0
+2026-09-26T16:47:58Z pods after: agentgateway-ingress/agentgateway-ingress-94f7846f-5x8n7 ip=10.244.1.204 uid=6d27dc0a-e9f4-412f-b3e8-e3d834794e5d restarts=0;agentgateway-waypoint/agw-central-57d6777d5f-k58kb ip=10.244.1.212 uid=d90d9c2a-32ed-4c99-9d97-fda78640386f restarts=0;lab/mockllm-58b7487955-f7pdz ip=10.244.1.29 uid=740ed5cd-377f-489d-b3c9-ab49a7300e51 restarts=0;lab/orchestrator-679ddcc47c-9wtdg ip=10.244.1.99 uid=9b4bef43-30fa-4ae8-987e-88d195ec0ce2 restarts=0;lab/worker-f85ff8b86-prfr6 ip=10.244.1.98 uid=580412ec-83be-4f99-946b-24099efcdc85 restarts=0;
+2026-09-26T16:47:58Z phase base done
+2026-09-26T16:47:58Z phase base driver exit=0
+wall 94.867s exit 0

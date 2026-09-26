@@ -1,0 +1,311 @@
+$ C=experiments/runs/2026-09-26-walkthrough/c3c4; REC=$C/rec.sh; SO=experiments/runs/2026-09-26-walkthrough/drivers/c3c4-send-one.sh
+node=agent-mesh-lab-worker
+bash $REC $C/start-state.txt "kubectl get authorizationpolicy -A; kubectl get peerauthentication -A; kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'"
+echo "== P0, no policy =="
+bash $SO p0-nopolicy direct c34-p0-direct
+bash $SO p0-nopolicy ingress c34-p0-ingress
+A=$(date -u +%FT%TZ)
+echo "== C-3: the waypoint page's ALLOW on the worker, applied at $A =="
+bash $REC $C/c3-policy.txt "kubectl apply -k $C/overlay-c3"
+for i in $(seq 1 60); do n=$(istioctl ztunnel-config policy --node $node -o json 2>/dev/null | jq '[.[] | select(.name=="require-agw-central")] | length'); [ "${n:-0}" -ge 1 ] && { echo "ztunnel holds the policy after ${i}s"; break; }; sleep 1; done
+bash $REC $C/c3-policy.txt "kubectl get authorizationpolicy -A"
+bash $REC $C/c3-policy.txt "istioctl ztunnel-config policy --node $node -o json"
+bash $REC $C/c3-policy.txt "kubectl -n lab get authorizationpolicy require-agw-central -o yaml"
+RUN_ID=c3 RUN_ITEM=2026-09-26-walkthrough/c3c4 experiments/gate2-single-clean.sh
+bash $SO c3-l4 direct c34-c3-direct || echo "send-one exit=$? (a refused send leaves no ledger line, and make ledgers exits 1)"
+bash $SO c3-l4 ingress c34-c3-ingress || echo "send-one exit=$?"
+bash $REC $C/c3-istiod.txt "kubectl -n istio-system logs deploy/istiod --since-time=$A"
+bash $REC $C/c3-ztunnel.txt "kubectl -n istio-system get pods -l app=ztunnel -o wide"
+ZT=$(kubectl -n istio-system get pod -l app=ztunnel --field-selector spec.nodeName=$node -o jsonpath='{.items[0].metadata.name}')
+bash $REC $C/c3-ztunnel.txt "kubectl -n istio-system logs $ZT --since-time=$A"
+bash $REC $C/c3-ztunnel-connections.txt "istioctl ztunnel-config connections --node $node -o json"
+bash $REC $C/c3-proxies.txt "kubectl -n agentgateway-waypoint logs deploy/agw-central --since-time=$A | grep 'route=lab/worker'"
+bash $REC $C/c3-proxies.txt "kubectl -n agentgateway-ingress logs deploy/agentgateway-ingress --since-time=$A | grep 'route=lab/worker-ingress'"
+echo "== waiting on ztunnel's own close line for the held ingress-to-worker connection (300 s bound) =="
+WIP=$(kubectl -n lab get pod -l app=worker -o jsonpath='{.items[0].status.podIP}')
+closed=""
+for i in $(seq 1 300); do
+  l=$(kubectl -n istio-system logs "$ZT" --since-time=$A | grep 'connection complete' | grep 'src.workload="agentgateway-ingress-' | grep "$WIP:8080" | head -1)
+  [ -n "$l" ] && { closed=$i; echo "closed after ${i}s: $l"; break; }
+  sleep 1
+done
+[ -n "$closed" ] || echo "the held connection's close line was NOT observed within 300 s; sending anyway"
+bash $SO c3-l4 ingress c34-c3-ingress-2 || echo "send-one exit=$?"
+B=$(date -u +%FT%TZ)
+bash $REC $C/c3-proxies.txt "kubectl -n agentgateway-ingress logs deploy/agentgateway-ingress --since-time=$A | grep 'route=lab/worker-ingress'"
+echo "== C-4: the same policy given to.operation.methods GET, applied at $B =="
+bash $REC $C/c4-policy.txt "kubectl apply -k $C/overlay-c4"
+for i in $(seq 1 60); do g=$(kubectl -n lab get authorizationpolicy require-agw-central -o jsonpath='{.status.conditions[0].observedGeneration}' 2>/dev/null); [ "$g" = 2 ] && { echo "observedGeneration=2 after ${i}s"; break; }; sleep 1; done
+bash $REC $C/c4-policy.txt "kubectl -n lab get authorizationpolicy require-agw-central -o yaml"
+bash $REC $C/c4-policy.txt "istioctl ztunnel-config policy --node $node -o json | jq '.[] | select(.name==\"require-agw-central\")'"
+bash $SO c4-l7rule service c34-c4-service || echo "send-one exit=$?"
+bash $SO c4-l7rule direct c34-c4-direct || echo "send-one exit=$?"
+bash $SO c4-l7rule ingress c34-c4-ingress || echo "send-one exit=$?"
+bash $REC $C/c4-istiod.txt "kubectl -n istio-system logs deploy/istiod --since-time=$B"
+bash $REC $C/c4-ztunnel.txt "kubectl -n istio-system logs $ZT --since-time=$B"
+bash $REC $C/c4-proxies.txt "kubectl -n agentgateway-waypoint logs deploy/agw-central --since-time=$B | grep 'route=lab/worker'"
+bash $REC $C/c4-proxies.txt "kubectl -n agentgateway-ingress logs deploy/agentgateway-ingress --since-time=$B | grep 'route=lab/worker-ingress'"
+echo "== removal =="
+bash $REC $C/removal.txt "kubectl delete -k $C/overlay-c4"
+for i in $(seq 1 60); do n=$(istioctl ztunnel-config policy --node $node -o json 2>/dev/null | jq '[.[] | select(.name=="require-agw-central")] | length'); [ "${n:-0}" = 0 ] && { echo "ztunnel dropped the policy after ${i}s"; break; }; sleep 1; done
+bash $REC $C/removal.txt "kubectl get authorizationpolicy -A"
+bash $REC $C/removal.txt "istioctl ztunnel-config policy --node $node -o json | jq -c '.[] | {name,namespace,action}'"
+bash $REC $C/removal.txt "kubectl get peerauthentication -A"
+bash $REC $C/removal.txt "kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'"
+echo "== after =="
+bash $SO after-removal direct c34-after-direct
+bash $SO after-removal ingress c34-after-ingress
+RUN_ID=c34after RUN_ITEM=2026-09-26-walkthrough/c3c4/after experiments/gate2-single-clean.sh
+bash experiments/runs/2026-09-26-walkthrough/drivers/c3c4-counts.sh > $C/counts.csv && cat $C/counts.csv
+bash experiments/runs/2026-09-26-walkthrough/drivers/c3c4-proxy-spans.sh | tee $C/proxy-spans.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+== P0, no policy ==
+p0-nopolicy direct c34-p0-direct GetAgentCard: GET http://10.244.1.31:8080/.well-known/agent-card.json -> status=200 exit=0 trace=5a91688a8df14e82c8b3df15a5c44560
+p0-nopolicy direct c34-p0-direct SendMessage: POST http://10.244.1.31:8080/ -> status=200 exit=0 trace=5a91688a8df14e82c8b3df15a5c44560
+ledgers: warning: no pod logs for job loadgen-c34-p0-direct or replay-c34-p0-direct (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: experiments/runs/2026-09-26-walkthrough/c3c4/c34-p0-direct/client.jsonl exists and was kept; the client lines collected here were not written
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+ingress=2 execution=6 invocation=1 
+p0-nopolicy ingress c34-p0-ingress GetAgentCard: GET http://127.0.0.1:18080/.well-known/agent-card.json -> status=200 exit=0 trace=649ff17d88601f8f8d0f4aeebf749ad9
+p0-nopolicy ingress c34-p0-ingress SendMessage: POST http://127.0.0.1:18080/ -> status=200 exit=0 trace=649ff17d88601f8f8d0f4aeebf749ad9
+ledgers: warning: no pod logs for job loadgen-c34-p0-ingress or replay-c34-p0-ingress (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: experiments/runs/2026-09-26-walkthrough/c3c4/c34-p0-ingress/client.jsonl exists and was kept; the client lines collected here were not written
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+ingress=2 execution=6 invocation=1 
+== C-3: the waypoint page's ALLOW on the worker, applied at 2026-09-26T15:14:30Z ==
+ztunnel holds the policy after 2s
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c3-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:14:57 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:14:58 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:14:58 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:14:59 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:15:15 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:15:15 Adding tag latest
+2026/09/26 18:15:15 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c3-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:15:21 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:15:22 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:15:22 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:15:22 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:15:37 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:15:37 Adding tag latest
+2026/09/26 18:15:37 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c3-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c3-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+c3-l4 direct c34-c3-direct GetAgentCard: GET http://10.244.1.31:8080/.well-known/agent-card.json -> status=000 exit=56 trace=ce648ddf08eb4cf7fb5c7d045cd34fc0
+c3-l4 direct c34-c3-direct SendMessage: POST http://10.244.1.31:8080/ -> status=000 exit=56 trace=ce648ddf08eb4cf7fb5c7d045cd34fc0
+ledgers: warning: no pod logs for job loadgen-c34-c3-direct or replay-c34-c3-direct (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: no ledger lines of any kind for logical_work_item_id=c34-c3-direct
+make: *** [ledgers] Error 1
+send-one exit=2 (a refused send leaves no ledger line, and make ledgers exits 1)
+c3-l4 ingress c34-c3-ingress GetAgentCard: GET http://127.0.0.1:18080/.well-known/agent-card.json -> status=200 exit=0 trace=fccbc5b5a1620f01aefbab468e02d81b
+c3-l4 ingress c34-c3-ingress SendMessage: POST http://127.0.0.1:18080/ -> status=200 exit=0 trace=fccbc5b5a1620f01aefbab468e02d81b
+ledgers: warning: no pod logs for job loadgen-c34-c3-ingress or replay-c34-c3-ingress (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: experiments/runs/2026-09-26-walkthrough/c3c4/c34-c3-ingress/client.jsonl exists and was kept; the client lines collected here were not written
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+ingress=2 execution=6 invocation=1 
+== waiting on ztunnel's own close line for the held ingress-to-worker connection (300 s bound) ==
+closed after 113s: 2026-09-26T15:17:43.943126Z	info	access	connection complete	src.addr=10.244.1.204:34800 src.workload="agentgateway-ingress-94f7846f-5x8n7" src.namespace="agentgateway-ingress" src.identity="spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress" src.cluster="Kubernetes" dst.addr=10.244.1.31:15008 dst.hbone_addr=10.244.1.31:8080 dst.workload="worker-f85ff8b86-c24wz" dst.namespace="lab" dst.identity="spiffe://cluster.local/ns/lab/sa/worker" dst.cluster="Kubernetes" direction="outbound" bytes_sent=1554 bytes_recv=2997 duration="194571ms"
+c3-l4 ingress c34-c3-ingress-2 GetAgentCard: GET http://127.0.0.1:18080/.well-known/agent-card.json -> status=503 exit=0 trace=9d4201f105ca9b71feb46a55893caec7
+c3-l4 ingress c34-c3-ingress-2 SendMessage: POST http://127.0.0.1:18080/ -> status=503 exit=0 trace=9d4201f105ca9b71feb46a55893caec7
+ledgers: warning: no pod logs for job loadgen-c34-c3-ingress-2 or replay-c34-c3-ingress-2 (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: no ledger lines of any kind for logical_work_item_id=c34-c3-ingress-2
+make: *** [ledgers] Error 1
+send-one exit=2
+== C-4: the same policy given to.operation.methods GET, applied at 2026-09-26T15:17:44Z ==
+observedGeneration=2 after 1s
+c4-l7rule service c34-c4-service GetAgentCard: GET http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json -> status=503 exit=0 trace=24cbad8c44772fbb58eed91ae98d4d27
+c4-l7rule service c34-c4-service SendMessage: POST http://worker.lab.svc.cluster.local:8080/ -> status=503 exit=0 trace=24cbad8c44772fbb58eed91ae98d4d27
+ledgers: warning: no pod logs for job loadgen-c34-c4-service or replay-c34-c4-service (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: no ledger lines of any kind for logical_work_item_id=c34-c4-service
+make: *** [ledgers] Error 1
+send-one exit=2
+c4-l7rule direct c34-c4-direct GetAgentCard: GET http://10.244.1.31:8080/.well-known/agent-card.json -> status=000 exit=56 trace=c9a55e43f0dda0c0927fb9f34396d8b8
+c4-l7rule direct c34-c4-direct SendMessage: POST http://10.244.1.31:8080/ -> status=000 exit=56 trace=c9a55e43f0dda0c0927fb9f34396d8b8
+ledgers: warning: no pod logs for job loadgen-c34-c4-direct or replay-c34-c4-direct (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: no ledger lines of any kind for logical_work_item_id=c34-c4-direct
+make: *** [ledgers] Error 1
+send-one exit=2
+c4-l7rule ingress c34-c4-ingress GetAgentCard: GET http://127.0.0.1:18080/.well-known/agent-card.json -> status=503 exit=0 trace=3aff4f7dea5225f0fd6d68339b1da2f5
+c4-l7rule ingress c34-c4-ingress SendMessage: POST http://127.0.0.1:18080/ -> status=503 exit=0 trace=3aff4f7dea5225f0fd6d68339b1da2f5
+ledgers: warning: no pod logs for job loadgen-c34-c4-ingress or replay-c34-c4-ingress (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: no ledger lines of any kind for logical_work_item_id=c34-c4-ingress
+make: *** [ledgers] Error 1
+send-one exit=2
+== removal ==
+ztunnel dropped the policy after 2s
+== after ==
+after-removal direct c34-after-direct GetAgentCard: GET http://10.244.1.31:8080/.well-known/agent-card.json -> status=200 exit=0 trace=f69060fa229c08cd6f5c4b523b9c5976
+after-removal direct c34-after-direct SendMessage: POST http://10.244.1.31:8080/ -> status=200 exit=0 trace=f69060fa229c08cd6f5c4b523b9c5976
+ledgers: warning: no pod logs for job loadgen-c34-after-direct or replay-c34-after-direct (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: experiments/runs/2026-09-26-walkthrough/c3c4/c34-after-direct/client.jsonl exists and was kept; the client lines collected here were not written
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+ingress=2 execution=6 invocation=1 
+after-removal ingress c34-after-ingress GetAgentCard: GET http://127.0.0.1:18080/.well-known/agent-card.json -> status=200 exit=0 trace=baffb0bf1195feba04b6099d576d1d2f
+after-removal ingress c34-after-ingress SendMessage: POST http://127.0.0.1:18080/ -> status=200 exit=0 trace=baffb0bf1195feba04b6099d576d1d2f
+ledgers: warning: no pod logs for job loadgen-c34-after-ingress or replay-c34-after-ingress (no such Job, its pods are gone, or the work item was sent from this host)
+ledgers: experiments/runs/2026-09-26-walkthrough/c3c4/c34-after-ingress/client.jsonl exists and was kept; the client lines collected here were not written
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+ingress=2 execution=6 invocation=1 
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c34after-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:18:54 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:18:55 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:18:55 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:18:55 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:19:11 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:19:11 Adding tag latest
+2026/09/26 18:19:11 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c34after-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:19:16 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:19:17 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:19:17 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:19:18 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:19:33 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:19:33 Adding tag latest
+2026/09/26 18:19:33 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c34after-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c34after-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+work_item,phase,via,get,post,send_arrivals,received,executes,tasks,invocations,remote_of_send
+c34-after-direct,after-removal,direct,200/exit0,200/exit0,1,1,1,1,1,10.244.1.224:47615
+c34-after-ingress,after-removal,ingress,200/exit0,200/exit0,1,1,1,1,1,10.244.1.204:52519
+c34-c3-direct,c3-l4,direct,000/exit56,000/exit56,0,0,0,0,0,none
+c34-c3-ingress,c3-l4,ingress,200/exit0,200/exit0,1,1,1,1,1,10.244.1.204:45209
+c34-c3-ingress-2,c3-l4,ingress,503/exit0,503/exit0,0,0,0,0,0,none
+c34-c4-direct,c4-l7rule,direct,000/exit56,000/exit56,0,0,0,0,0,none
+c34-c4-ingress,c4-l7rule,ingress,503/exit0,503/exit0,0,0,0,0,0,none
+c34-c4-service,c4-l7rule,service,503/exit0,503/exit0,0,0,0,0,0,none
+c34-p0-direct,p0-nopolicy,direct,200/exit0,200/exit0,1,1,1,1,1,10.244.1.217:47557
+c34-p0-ingress,p0-nopolicy,ingress,200/exit0,200/exit0,1,1,1,1,1,10.244.1.204:45209
+g2c-c3-worker,c3-l4,service-loadgen,loadgen,task/TASK_STATE_COMPLETED,1,1,1,1,1,10.244.1.212:40859
+g2c-c34after-worker,after-removal,service-loadgen,loadgen,task/TASK_STATE_COMPLETED,1,1,1,1,1,10.244.1.212:36973
+c34-after-direct trace=f69060fa229c08cd6f5c4b523b9c5976 spans=7
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/worker error=- status=-
+c34-after-ingress trace=baffb0bf1195feba04b6099d576d1d2f spans=11
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/worker error=- status=-
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=200 src.identity=- error=- status=-
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=200 src.identity=- error=- status=-
+c34-c3-direct trace=ce648ddf08eb4cf7fb5c7d045cd34fc0 spans=0
+c34-c3-ingress-2 trace=9d4201f105ca9b71feb46a55893caec7 spans=4
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=503 src.identity=- error=- status=2
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=503 src.identity=- error=- status=2
+c34-c3-ingress trace=fccbc5b5a1620f01aefbab468e02d81b spans=11
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=200 src.identity=- error=- status=-
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=200 src.identity=- error=- status=-
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/worker error=- status=-
+c34-c4-direct trace=c9a55e43f0dda0c0927fb9f34396d8b8 spans=0
+c34-c4-ingress trace=3aff4f7dea5225f0fd6d68339b1da2f5 spans=4
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=503 src.identity=- error=- status=2
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=503 src.identity=- error=- status=2
+c34-c4-service trace=24cbad8c44772fbb58eed91ae98d4d27 spans=4
+  agw-central SERVER GET /* route=lab/worker http.method=GET http.status=503 src.identity=spiffe://cluster.local/ns/lab/sa/default error=- status=2
+  agw-central SERVER POST /* route=lab/worker http.method=POST http.status=503 src.identity=spiffe://cluster.local/ns/lab/sa/default error=- status=2
+c34-p0-direct trace=5a91688a8df14e82c8b3df15a5c44560 spans=7
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/worker error=- status=-
+c34-p0-ingress trace=649ff17d88601f8f8d0f4aeebf749ad9 spans=11
+  mockllm SERVER POST /v1/chat/completions route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER GET /.well-known/agent-card.json route=- http.method=- http.status=- src.identity=- error=- status=-
+  worker SERVER POST / route=- http.method=- http.status=- src.identity=- error=- status=-
+  agentgateway-ingress SERVER GET /* route=lab/worker-ingress http.method=GET http.status=200 src.identity=- error=- status=-
+  agentgateway-ingress SERVER POST /* route=lab/worker-ingress http.method=POST http.status=200 src.identity=- error=- status=-
+  agw-central SERVER POST /* route=agentgateway-waypoint/model-via-agw http.method=POST http.status=200 src.identity=spiffe://cluster.local/ns/lab/sa/worker error=- status=-
+wall 311.242s exit 0

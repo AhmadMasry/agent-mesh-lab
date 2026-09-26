@@ -1,0 +1,340 @@
+$ mkdir -p experiments/runs/2026-09-26-walkthrough/c8
+cp -R experiments/runs/2026-09-23-c8-body-rule/overlay-c8-deny experiments/runs/2026-09-23-c8-body-rule/overlay-c8-require experiments/runs/2026-09-23-c8-body-rule/overlay-c8-require-scoped experiments/runs/2026-09-23-c8-body-rule/counts.py experiments/runs/2026-09-26-walkthrough/c8/
+export RUNREL=2026-09-26-walkthrough/c8 RUN_ID=wtc8
+SENDS="bash experiments/runs/2026-09-23-c6-httproute/sends.sh"; C8="bash experiments/runs/2026-09-23-c8-body-rule/c8.sh"
+export IMAGE=$($SENDS image | sed -n 's/.* image=\([^ ]*\) .*/\1/p'); echo "IMAGE=$IMAGE"
+rows() { for n in 1 2; do for r in go py; do for k in sm st ss cst; do $SENDS "$1" $k $r $n; done; done; done; }
+S=$(date -u +%FT%TZ)
+$C8 read before "$S"
+$SENDS pod-up
+T=$(date -u +%FT%TZ); $C8 apply overlay-c8-deny; sleep 10; $C8 read deny-applied "$T"
+rows c8d
+for r in go py; do $C8 probe c8d pad $r 1; done
+for r in go py; do $C8 probe c8d batch $r 1; $C8 probe c8d dup $r 1; done
+U=$(date -u +%FT%TZ); $C8 read deny-end "$T"; $C8 remove overlay-c8-deny; sleep 10; $C8 read deny-removed "$U"
+T=$(date -u +%FT%TZ); $C8 apply overlay-c8-require; sleep 10; $C8 read require-applied "$T"
+rows c8r
+for r in go py; do $C8 probe c8r pad $r 1; done
+U=$(date -u +%FT%TZ); $C8 read require-end "$T"; $C8 remove overlay-c8-require; sleep 10; $C8 read require-removed "$U"
+$SENDS pod-down
+RUN_ID=c8after RUN_ITEM=2026-09-26-walkthrough/c8/after experiments/gate2-single-clean.sh
+$C8 read after "$U"
+$SENDS pod-up
+T=$(date -u +%FT%TZ); $C8 apply overlay-c8-deny; sleep 10; $C8 read deny2-applied "$T"
+$C8 probe c8p padt py 1
+U=$(date -u +%FT%TZ); $C8 read deny2-end "$T"; $C8 remove overlay-c8-deny; sleep 10; $C8 read deny2-removed "$U"
+T=$(date -u +%FT%TZ); $C8 apply overlay-c8-require-scoped; sleep 10; $C8 read scoped-applied "$T"
+rows c8s
+for r in go py; do $C8 probe c8s pad $r 1; done
+U=$(date -u +%FT%TZ); $C8 read scoped-end "$T"; $C8 remove overlay-c8-require-scoped; sleep 10; $C8 read scoped-removed "$U"
+$SENDS pod-down
+RUN_ID=c8after2 RUN_ITEM=2026-09-26-walkthrough/c8/after-2 experiments/gate2-single-clean.sh
+$C8 read after-2 "$U"
+python3 experiments/runs/2026-09-26-walkthrough/c8/counts.py | tee experiments/runs/2026-09-26-walkthrough/c8/counts.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+IMAGE=kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 66030 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 66036 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:35:03Z read before -> experiments/runs/2026-09-26-walkthrough/c8/readings-before.txt
+2026-09-26T15:35:03Z pod-up c6-curl ip=10.244.1.40
+2026-09-26T15:35:03Z apply -k overlay-c8-deny
+2026-09-26T15:35:03Z apply done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 66273 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 66279 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:35:14Z read deny-applied -> experiments/runs/2026-09-26-walkthrough/c8/readings-deny-applied.txt
+2026-09-26T15:35:20Z c8d go sm c8d-go-sm-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 client=1 ingress-proxy-status=[200 200]
+2026-09-26T15:35:26Z c8d go st c8d-go-st-wtc8-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[200 403]
+2026-09-26T15:35:32Z c8d go ss c8d-go-ss-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=2 execution=10 invocation=1 client=5 ingress-proxy-status=[200 200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-go-cst-wtc8-1/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-go-cst-wtc8-1/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-go-cst-wtc8-1/invocation.jsonl: No such file or directory
+2026-09-26T15:35:35Z c8d go cst c8d-go-cst-wtc8-1 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:35:41Z c8d py sm c8d-py-sm-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 client=1 ingress-proxy-status=[200]
+2026-09-26T15:35:47Z c8d py st c8d-py-st-wtc8-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:35:53Z c8d py ss c8d-py-ss-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=4 execution=16 invocation=1 client=5 ingress-proxy-status=[200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-py-cst-wtc8-1/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-py-cst-wtc8-1/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-py-cst-wtc8-1/invocation.jsonl: No such file or directory
+2026-09-26T15:35:56Z c8d py cst c8d-py-cst-wtc8-1 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:36:02Z c8d go sm c8d-go-sm-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 client=1 ingress-proxy-status=[200 200]
+2026-09-26T15:36:08Z c8d go st c8d-go-st-wtc8-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[200 403]
+2026-09-26T15:36:14Z c8d go ss c8d-go-ss-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=2 execution=10 invocation=1 client=5 ingress-proxy-status=[200 200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-go-cst-wtc8-2/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-go-cst-wtc8-2/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-go-cst-wtc8-2/invocation.jsonl: No such file or directory
+2026-09-26T15:36:17Z c8d go cst c8d-go-cst-wtc8-2 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:36:23Z c8d py sm c8d-py-sm-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 client=1 ingress-proxy-status=[200]
+2026-09-26T15:36:29Z c8d py st c8d-py-st-wtc8-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:36:35Z c8d py ss c8d-py-ss-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=4 execution=16 invocation=1 client=5 ingress-proxy-status=[200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-py-cst-wtc8-2/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-py-cst-wtc8-2/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8d/c8d-py-cst-wtc8-2/invocation.jsonl: No such file or directory
+2026-09-26T15:36:38Z c8d py cst c8d-py-cst-wtc8-2 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:36:41Z c8d go pad c8d-go-pad-wtc8-1 http=200 exit=0 body_len=2200000 ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 ingress-proxy-status=[200]
+2026-09-26T15:36:44Z c8d py pad c8d-py-pad-wtc8-1 http=200 exit=0 body_len=2200000 ledgers-exit=0 ingress-ledger=2 execution=0 invocation=0 ingress-proxy-status=[200]
+2026-09-26T15:36:46Z c8d go batch c8d-go-batch-wtc8-1 http=200 exit=0 body_len=141 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[200]
+2026-09-26T15:36:49Z c8d go dup c8d-go-dup-wtc8-1 http=403 exit=0 body_len=160 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[403]
+2026-09-26T15:36:52Z c8d py batch c8d-py-batch-wtc8-1 http=200 exit=0 body_len=141 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[200]
+2026-09-26T15:36:55Z c8d py dup c8d-py-dup-wtc8-1 http=403 exit=0 body_len=160 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[403]
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 70022 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 70030 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:36:56Z read deny-end -> experiments/runs/2026-09-26-walkthrough/c8/readings-deny-end.txt
+2026-09-26T15:36:56Z delete -k overlay-c8-deny
+2026-09-26T15:36:56Z delete done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 70316 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 70389 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:37:07Z read deny-removed -> experiments/runs/2026-09-26-walkthrough/c8/readings-deny-removed.txt
+2026-09-26T15:37:07Z apply -k overlay-c8-require
+2026-09-26T15:37:07Z apply done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 70510 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 70516 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:37:18Z read require-applied -> experiments/runs/2026-09-26-walkthrough/c8/readings-require-applied.txt
+2026-09-26T15:37:24Z c8r go sm c8r-go-sm-wtc8-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:37:30Z c8r go st c8r-go-st-wtc8-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:37:36Z c8r go ss c8r-go-ss-wtc8-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-go-cst-wtc8-1/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-go-cst-wtc8-1/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-go-cst-wtc8-1/invocation.jsonl: No such file or directory
+2026-09-26T15:37:39Z c8r go cst c8r-go-cst-wtc8-1 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:37:45Z c8r py sm c8r-py-sm-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 client=1 ingress-proxy-status=[200]
+2026-09-26T15:37:51Z c8r py st c8r-py-st-wtc8-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:37:57Z c8r py ss c8r-py-ss-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=4 execution=16 invocation=1 client=5 ingress-proxy-status=[200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-py-cst-wtc8-1/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-py-cst-wtc8-1/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-py-cst-wtc8-1/invocation.jsonl: No such file or directory
+2026-09-26T15:38:00Z c8r py cst c8r-py-cst-wtc8-1 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:38:06Z c8r go sm c8r-go-sm-wtc8-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:38:12Z c8r go st c8r-go-st-wtc8-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:38:18Z c8r go ss c8r-go-ss-wtc8-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-go-cst-wtc8-2/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-go-cst-wtc8-2/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-go-cst-wtc8-2/invocation.jsonl: No such file or directory
+2026-09-26T15:38:21Z c8r go cst c8r-go-cst-wtc8-2 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:38:27Z c8r py sm c8r-py-sm-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 client=1 ingress-proxy-status=[200]
+2026-09-26T15:38:33Z c8r py st c8r-py-st-wtc8-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:38:39Z c8r py ss c8r-py-ss-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=4 execution=16 invocation=1 client=5 ingress-proxy-status=[200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-py-cst-wtc8-2/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-py-cst-wtc8-2/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8r/c8r-py-cst-wtc8-2/invocation.jsonl: No such file or directory
+2026-09-26T15:38:42Z c8r py cst c8r-py-cst-wtc8-2 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:38:45Z c8r go pad c8r-go-pad-wtc8-1 http=403 exit=0 body_len=2200000 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[403]
+2026-09-26T15:38:47Z c8r py pad c8r-py-pad-wtc8-1 http=403 exit=0 body_len=2200000 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[403]
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 73552 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 73559 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:38:48Z read require-end -> experiments/runs/2026-09-26-walkthrough/c8/readings-require-end.txt
+2026-09-26T15:38:48Z delete -k overlay-c8-require
+2026-09-26T15:38:48Z delete done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 73646 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 73652 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:38:59Z read require-removed -> experiments/runs/2026-09-26-walkthrough/c8/readings-require-removed.txt
+2026-09-26T15:39:30Z pod-down c6-curl
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c8after-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:39:32 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:39:33 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:39:33 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:39:34 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:39:48 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:39:48 Adding tag latest
+2026/09/26 18:39:48 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c8after-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:39:54 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:39:55 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:39:55 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:39:56 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:40:11 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:40:11 Adding tag latest
+2026/09/26 18:40:11 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c8after-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c8after-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 74003 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 74009 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:40:17Z read after -> experiments/runs/2026-09-26-walkthrough/c8/readings-after.txt
+2026-09-26T15:40:17Z pod-up c6-curl ip=10.244.1.68
+2026-09-26T15:40:17Z apply -k overlay-c8-deny
+2026-09-26T15:40:18Z apply done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 74105 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 74111 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:40:29Z read deny2-applied -> experiments/runs/2026-09-26-walkthrough/c8/readings-deny2-applied.txt
+2026-09-26T15:40:31Z c8p py padt c8p-py-padt-wtc8-1 http=200 exit=0 body_len=2200000 ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 ingress-proxy-status=[200]
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 74305 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 74311 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:40:32Z read deny2-end -> experiments/runs/2026-09-26-walkthrough/c8/readings-deny2-end.txt
+2026-09-26T15:40:32Z delete -k overlay-c8-deny
+2026-09-26T15:40:32Z delete done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 74398 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 74404 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:40:43Z read deny2-removed -> experiments/runs/2026-09-26-walkthrough/c8/readings-deny2-removed.txt
+2026-09-26T15:40:43Z apply -k overlay-c8-require-scoped
+2026-09-26T15:40:43Z apply done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 74510 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 74516 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:40:54Z read scoped-applied -> experiments/runs/2026-09-26-walkthrough/c8/readings-scoped-applied.txt
+2026-09-26T15:41:00Z c8s go sm c8s-go-sm-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 client=1 ingress-proxy-status=[200 200]
+2026-09-26T15:41:06Z c8s go st c8s-go-st-wtc8-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[200 403]
+2026-09-26T15:41:13Z c8s go ss c8s-go-ss-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=2 execution=10 invocation=1 client=5 ingress-proxy-status=[200 200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-go-cst-wtc8-1/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-go-cst-wtc8-1/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-go-cst-wtc8-1/invocation.jsonl: No such file or directory
+2026-09-26T15:41:15Z c8s go cst c8s-go-cst-wtc8-1 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:41:21Z c8s py sm c8s-py-sm-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 client=1 ingress-proxy-status=[200]
+2026-09-26T15:41:27Z c8s py st c8s-py-st-wtc8-1 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:41:33Z c8s py ss c8s-py-ss-wtc8-1 job=Complete ledgers-exit=0 ingress-ledger=4 execution=16 invocation=1 client=5 ingress-proxy-status=[200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-py-cst-wtc8-1/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-py-cst-wtc8-1/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-py-cst-wtc8-1/invocation.jsonl: No such file or directory
+2026-09-26T15:41:36Z c8s py cst c8s-py-cst-wtc8-1 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:41:42Z c8s go sm c8s-go-sm-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 client=1 ingress-proxy-status=[200 200]
+2026-09-26T15:41:48Z c8s go st c8s-go-st-wtc8-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[200 403]
+2026-09-26T15:41:54Z c8s go ss c8s-go-ss-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=2 execution=10 invocation=1 client=5 ingress-proxy-status=[200 200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-go-cst-wtc8-2/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-go-cst-wtc8-2/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-go-cst-wtc8-2/invocation.jsonl: No such file or directory
+2026-09-26T15:41:57Z c8s go cst c8s-go-cst-wtc8-2 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:42:03Z c8s py sm c8s-py-sm-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 client=1 ingress-proxy-status=[200]
+2026-09-26T15:42:09Z c8s py st c8s-py-st-wtc8-2 job=Failed ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 client=1 ingress-proxy-status=[403]
+2026-09-26T15:42:15Z c8s py ss c8s-py-ss-wtc8-2 job=Complete ledgers-exit=0 ingress-ledger=4 execution=16 invocation=1 client=5 ingress-proxy-status=[200]
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-py-cst-wtc8-2/ingress.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-py-cst-wtc8-2/execution.jsonl: No such file or directory
+experiments/runs/2026-09-23-c6-httproute/sends.sh: line 137: experiments/runs/2026-09-26-walkthrough/c8/c8s/c8s-py-cst-wtc8-2/invocation.jsonl: No such file or directory
+2026-09-26T15:42:18Z c8s py cst c8s-py-cst-wtc8-2 http=403 exit=0 ledgers-exit=2 ingress-ledger= execution= invocation= client=1 ingress-proxy-status=[403]
+2026-09-26T15:42:21Z c8s go pad c8s-go-pad-wtc8-1 http=403 exit=0 body_len=2200000 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[403]
+2026-09-26T15:42:24Z c8s py pad c8s-py-pad-wtc8-1 http=403 exit=0 body_len=2200000 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[403]
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 76855 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 76861 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:42:25Z read scoped-end -> experiments/runs/2026-09-26-walkthrough/c8/readings-scoped-end.txt
+2026-09-26T15:42:25Z delete -k overlay-c8-require-scoped
+2026-09-26T15:42:25Z delete done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 76943 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 76949 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:42:36Z read scoped-removed -> experiments/runs/2026-09-26-walkthrough/c8/readings-scoped-removed.txt
+2026-09-26T15:43:06Z pod-down c6-curl
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c8after2-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:43:08 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:43:09 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:43:09 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:43:10 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:43:25 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:43:25 Adding tag latest
+2026/09/26 18:43:25 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c8after2-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:43:30 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:43:31 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:43:31 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:43:32 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:43:48 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:43:48 Adding tag latest
+2026/09/26 18:43:48 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c8after2-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c8after2-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 77297 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 77303 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T15:43:53Z read after-2 -> experiments/runs/2026-09-26-walkthrough/c8/readings-after-2.txt
+# rule receiver kind -> sends; the ingress proxy's GET (card) statuses and POST line (status, route, error); arrivals at the receiver asked and their methods; executes; invocations; the caller's status; the receiver's JSON-RPC answer (curl sends); the proxy's non-request lines in the windows (curl probes only)
+Deny go batch -> sends=1 get=- agw_card_get=- post_status=200 route=lab/worker-ingress post_error=- arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=200 answer=error -32602 invalid params: json: cannot unmarshal array into Go value o proxy_other_lines=0
+Deny go cst -> sends=2 get=- agw_card_get=- post_status=403 route=lab/worker-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Deny go dup -> sends=1 get=- agw_card_get=- post_status=403 route=lab/worker-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Deny go pad -> sends=1 get=- agw_card_get=- post_status=200 route=lab/worker-ingress post_error=- arrivals=1 arrival_methods=SubscribeToTask sdk_received=1 received_methods=SubscribeToTask executes=0 invocations=0 client=200 answer=sse:error -32001 task not found: no active execution proxy_other_lines=0
+Deny go sm -> sends=2 get=200 agw_card_get=- post_status=200 route=lab/worker-ingress post_error=- arrivals=2 arrival_methods=SendMessage sdk_received=2 received_methods=SendMessage executes=2 invocations=2 client=ok:TASK_STATE_COMPLETED answer=- proxy_other_lines=0
+Deny go ss -> sends=2 get=200 agw_card_get=- post_status=200 route=lab/worker-ingress post_error=- arrivals=2 arrival_methods=SendStreamingMessage sdk_received=2 received_methods=SendStreamingMessage executes=2 invocations=2 client=200/stream_end=eof answer=- proxy_other_lines=0
+Deny go st -> sends=2 get=200 agw_card_get=- post_status=403 route=lab/worker-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403/stream_end=error answer=- proxy_other_lines=0
+Deny py batch -> sends=1 get=- agw_card_get=- post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=200 answer=error -32600 Batch requests are not supported proxy_other_lines=0
+Deny py cst -> sends=2 get=- agw_card_get=- post_status=403 route=lab/orchestrator-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Deny py dup -> sends=1 get=- agw_card_get=- post_status=403 route=lab/orchestrator-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Deny py pad -> sends=1 get=- agw_card_get=- post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=1 arrival_methods=SubscribeToTask sdk_received=0 received_methods=- executes=0 invocations=0 client=200 answer=error -32600 Invalid Request proxy_other_lines=0
+Deny py sm -> sends=2 get=- agw_card_get=200 post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=2 arrival_methods=SendMessage sdk_received=4 received_methods=SendMessage executes=4 invocations=2 client=ok:TASK_STATE_COMPLETED answer=- proxy_other_lines=0
+Deny py ss -> sends=2 get=- agw_card_get=200 post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=2 arrival_methods=SendStreamingMessage sdk_received=4 received_methods=SendMessage SendStreamingMessage executes=4 invocations=2 client=200/stream_end=eof answer=- proxy_other_lines=0
+Deny py st -> sends=2 get=- agw_card_get=200 post_status=403 route=lab/orchestrator-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403/stream_end=error answer=- proxy_other_lines=0
+Require go cst -> sends=2 get=- agw_card_get=- post_status=403 route=lab/worker-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Require go pad -> sends=1 get=- agw_card_get=- post_status=403 route=lab/worker-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Require go sm -> sends=2 get=403 agw_card_get=- post_status=<no POST line> route= post_error=- arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=err:resolve card: card request failed, status: 403 Forbidden answer=- proxy_other_lines=0
+Require go ss -> sends=2 get=403 agw_card_get=- post_status=<no POST line> route= post_error=- arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=0/stream_end=not-sent/err:resolve card: card request failed, status: 403 Forbidden answer=- proxy_other_lines=0
+Require go st -> sends=2 get=403 agw_card_get=- post_status=<no POST line> route= post_error=- arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=0/stream_end=not-sent/err:resolve card: card request failed, status: 403 Forbidden answer=- proxy_other_lines=0
+Require py cst -> sends=2 get=- agw_card_get=- post_status=403 route=lab/orchestrator-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Require py pad -> sends=1 get=- agw_card_get=- post_status=403 route=lab/orchestrator-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Require py sm -> sends=2 get=- agw_card_get=200 post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=2 arrival_methods=SendMessage sdk_received=4 received_methods=SendMessage executes=4 invocations=2 client=ok:TASK_STATE_COMPLETED answer=- proxy_other_lines=0
+Require py ss -> sends=2 get=- agw_card_get=200 post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=2 arrival_methods=SendStreamingMessage sdk_received=4 received_methods=SendMessage SendStreamingMessage executes=4 invocations=2 client=200/stream_end=eof answer=- proxy_other_lines=0
+Require py st -> sends=2 get=- agw_card_get=200 post_status=403 route=lab/orchestrator-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403/stream_end=error answer=- proxy_other_lines=0
+Deny (re-applied) py padt -> sends=1 get=- agw_card_get=- post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=1 arrival_methods=SubscribeToTask sdk_received=1 received_methods=SubscribeToTask executes=0 invocations=0 client=200 answer=error -32001 Task not found proxy_other_lines=0
+Require (scoped) go cst -> sends=2 get=- agw_card_get=- post_status=403 route=lab/worker-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Require (scoped) go pad -> sends=1 get=- agw_card_get=- post_status=403 route=lab/worker-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Require (scoped) go sm -> sends=2 get=200 agw_card_get=- post_status=200 route=lab/worker-ingress post_error=- arrivals=2 arrival_methods=SendMessage sdk_received=2 received_methods=SendMessage executes=2 invocations=2 client=ok:TASK_STATE_COMPLETED answer=- proxy_other_lines=0
+Require (scoped) go ss -> sends=2 get=200 agw_card_get=- post_status=200 route=lab/worker-ingress post_error=- arrivals=2 arrival_methods=SendStreamingMessage sdk_received=2 received_methods=SendStreamingMessage executes=2 invocations=2 client=200/stream_end=eof answer=- proxy_other_lines=0
+Require (scoped) go st -> sends=2 get=200 agw_card_get=- post_status=403 route=lab/worker-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403/stream_end=error answer=- proxy_other_lines=0
+Require (scoped) py cst -> sends=2 get=- agw_card_get=- post_status=403 route=lab/orchestrator-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Require (scoped) py pad -> sends=1 get=- agw_card_get=- post_status=403 route=lab/orchestrator-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403 answer=text:authorization failed proxy_other_lines=0
+Require (scoped) py sm -> sends=2 get=- agw_card_get=200 post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=2 arrival_methods=SendMessage sdk_received=4 received_methods=SendMessage executes=4 invocations=2 client=ok:TASK_STATE_COMPLETED answer=- proxy_other_lines=0
+Require (scoped) py ss -> sends=2 get=- agw_card_get=200 post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=2 arrival_methods=SendStreamingMessage sdk_received=4 received_methods=SendMessage SendStreamingMessage executes=4 invocations=2 client=200/stream_end=eof answer=- proxy_other_lines=0
+Require (scoped) py st -> sends=2 get=- agw_card_get=200 post_status=403 route=lab/orchestrator-ingress post_error=authorization failed Authorization arrivals=0 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=403/stream_end=error answer=- proxy_other_lines=0
+Deny: sends=22 POST refused by the proxy (403)=10 of them with an arrival=0; card GET lines=6 of them 403=0
+Require: sends=18 POST refused by the proxy (403)=8 of them with an arrival=0; card GET lines=6 of them 403=6
+Deny (re-applied): sends=1 POST refused by the proxy (403)=0 of them with an arrival=0; card GET lines=0 of them 403=0
+Require (scoped): sends=18 POST refused by the proxy (403)=10 of them with an arrival=0; card GET lines=6 of them 403=0
+wall 549.072s exit 0

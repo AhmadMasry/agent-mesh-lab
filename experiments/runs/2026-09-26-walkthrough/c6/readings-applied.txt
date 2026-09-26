@@ -1,0 +1,64 @@
+
+# read 2026-09-26T15:27:09Z
+$ kubectl get httproute -A -o json | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name) hostnames=\(.spec.hostnames // [] | join(",")) rules=\([.spec.rules[] | {matches: (.matches // []), backends: ([.backendRefs[]?.name])}] | tostring) status=\([.status.parents[]? | .conditions[]? | "\(.type)=\(.status)/\(.reason)"] | join(","))"'
+agentgateway-waypoint/model-via-agw hostnames=model.lab.internal rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["mockllm"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/c6-refuse-event-stream-orchestrator hostnames= rules=[{"matches":[{"headers":[{"name":"Accept","type":"Exact","value":"text/event-stream"}],"path":{"type":"PathPrefix","value":"/"}}],"backends":[]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/c6-refuse-event-stream-worker hostnames=worker.lab.internal rules=[{"matches":[{"headers":[{"name":"Accept","type":"Exact","value":"text/event-stream"}],"path":{"type":"PathPrefix","value":"/"}}],"backends":[]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/orchestrator hostnames=orchestrator.lab.svc.cluster.local rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["orchestrator"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/orchestrator-ingress hostnames= rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["orchestrator"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/worker hostnames=worker.lab.svc.cluster.local rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["worker"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+lab/worker-ingress hostnames=worker.lab.internal rules=[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"backends":["worker"]}] status=Accepted=True/Accepted,ResolvedRefs=True/ResolvedRefs
+# exit 0
+
+# read 2026-09-26T15:27:09Z
+$ kubectl get httproute -A -o json | jq '[.items[].spec.rules[]? | select(.retry != null)] | length'
+0
+# exit 0
+
+# read 2026-09-26T15:27:09Z
+$ kubectl get authorizationpolicy -A --no-headers | wc -l
+No resources found
+       0
+# exit 0
+
+# read 2026-09-26T15:27:09Z
+$ kubectl get agentgatewaypolicy -A -o json | jq -r '.items[] | "\(.metadata.namespace)/\(.metadata.name) authorization=\(.spec.traffic.authorization != null)"'
+agentgateway-ingress/access-logs authorization=false
+agentgateway-ingress/tracing authorization=false
+agentgateway-waypoint/access-logs authorization=false
+agentgateway-waypoint/tracing authorization=false
+# exit 0
+
+# read 2026-09-26T15:27:09Z
+$ kubectl -n agentgateway-system logs deploy/agentgateway --since-time=2026-09-26T15:27:09Z
+{"time":"2026-09-26T15:27:09.187080545Z","level":"info","msg":"push debounce stable","component":"krtxds","id":720,"debounced_events":2,"last_change":"10.755459ms","last_push":"14.854708ms","cause":"route/lab/c6-refuse-event-stream-orchestrator.00.http and 1 more configs"}
+{"time":"2026-09-26T15:27:09.187108795Z","level":"info","msg":"XDS: Pushing","component":"krtxds","clients":2,"version":"2026-09-26T15:27:09Z/720"}
+{"time":"2026-09-26T15:27:09.187159253Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.212~agw-central-57d6777d5f-k58kb.agentgateway-waypoint~agentgateway-waypoint.svc.cluster.local","resources":0,"removed":2,"size":"0B"}
+{"time":"2026-09-26T15:27:09.18716092Z","level":"info","msg":"push response","component":"krtxds","type":"RDS","reason":"","node":"agentgateway~10.244.1.204~agentgateway-ingress-94f7846f-5x8n7.agentgateway-ingress~agentgateway-ingress.svc.cluster.local","resources":2,"removed":0,"size":"391B"}
+# exit 0
+
+# read 2026-09-26T15:27:09Z
+$ kubectl -n agentgateway-ingress logs deploy/agentgateway-ingress --since-time=2026-09-26T15:27:09Z | grep -v 'request gateway='
+# exit 1
+
+# read 2026-09-26T15:27:09Z
+$ jq -r '[.. | objects | select(has("matches") and has("backends"))] | .[] | "route key=\(.key // .name | tostring) hostnames=\(.hostnames|tostring) matches=\(.matches|tostring|.[0:300]) backends=\(.backends|tostring|.[0:200])"' experiments/runs/2026-09-26-walkthrough/c6/config-dump-ingress-applied.json
+route key=lab/worker-ingress.00.http hostnames=["worker.lab.internal"] matches=[{"path":{"pathPrefix":"/"}}] backends=[{"weight":1,"service":{"name":"lab/worker.lab.svc.cluster.local","port":8080}}]
+route key=lab/orchestrator-grpc-ingress.00.grpc.http hostnames=["orchestrator-grpc.lab.internal"] matches=[{"path":{"pathPrefix":"/"}}] backends=[{"weight":1,"service":{"name":"lab/orchestrator.lab.svc.cluster.local","port":8081}}]
+route key=lab/orchestrator-ingress.00.http hostnames=null matches=[{"path":{"pathPrefix":"/"}}] backends=[{"weight":1,"service":{"name":"lab/orchestrator.lab.svc.cluster.local","port":8080}}]
+route key=lab/worker-grpc-ingress.00.grpc.http hostnames=["worker-grpc.lab.internal"] matches=[{"path":{"pathPrefix":"/"}}] backends=[{"weight":1,"service":{"name":"lab/worker.lab.svc.cluster.local","port":8081}}]
+# exit 0
+
+# read 2026-09-26T15:27:09Z
+$ jq -c '[.. | objects | select(.kind? == "HTTPRoute" and has("key"))] | .[] | {key, hostnames, matches, backends}' experiments/runs/2026-09-26-walkthrough/c6/config-dump-ingress-applied.json
+{"key":"lab/worker-ingress.00.http","hostnames":["worker.lab.internal"],"matches":[{"path":{"pathPrefix":"/"}}],"backends":[{"weight":1,"service":{"name":"lab/worker.lab.svc.cluster.local","port":8080}}]}
+{"key":"lab/c6-refuse-event-stream-orchestrator.00.http","hostnames":null,"matches":[{"headers":[{"name":"accept","value":{"exact":"text/event-stream"}}],"path":{"pathPrefix":"/"}}],"backends":null}
+{"key":"lab/c6-refuse-event-stream-worker.00.http","hostnames":["worker.lab.internal"],"matches":[{"headers":[{"name":"accept","value":{"exact":"text/event-stream"}}],"path":{"pathPrefix":"/"}}],"backends":null}
+{"key":"lab/orchestrator-ingress.00.http","hostnames":null,"matches":[{"path":{"pathPrefix":"/"}}],"backends":[{"weight":1,"service":{"name":"lab/orchestrator.lab.svc.cluster.local","port":8080}}]}
+# exit 0
+
+# read 2026-09-26T15:27:09Z
+$ wc -c < experiments/runs/2026-09-26-walkthrough/c6/config-dump-ingress-applied.json; shasum -a 256 experiments/runs/2026-09-26-walkthrough/c6/config-dump-ingress-applied.json
+   49293
+f876055a7dcd9f17c73dc1e5aebe637e64774db3781a5d97473a33a862cbc1c8  experiments/runs/2026-09-26-walkthrough/c6/config-dump-ingress-applied.json
+# exit 0

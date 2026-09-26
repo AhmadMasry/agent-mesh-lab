@@ -1,0 +1,806 @@
+$ mkdir -p experiments/runs/2026-09-26-walkthrough/d3
+cp -R experiments/runs/2026-09-24-d3-extauthz/overlay-d3-extauthz experiments/runs/2026-09-24-d3-extauthz/counts.py experiments/runs/2026-09-26-walkthrough/d3/
+export RUNREL=2026-09-26-walkthrough/d3 RUN_ID=d3a
+X="bash experiments/runs/2026-09-24-d3-extauthz/d3.sh"; W=experiments/runs/2026-09-26-walkthrough/d3
+export IMAGE=$($X image | sed -n 's/.* image=\([^ ]*\) .*/\1/p'); echo "IMAGE=$IMAGE"
+row34() { for r in go py; do for k in pad padt padsm batch dup; do $X send "$1" jsonrpc $k $r 1; done; done; }
+$X pod-up
+echo "== p0 =="
+$X read p0-before
+for r in go py; do $X send p0 jsonrpc csm $r 1; done
+echo "== deny =="
+$X read deny-before; $X apply; sleep 8; $X read deny-applied
+for r in go py; do for n in 1 2; do for k in sm st ss cst; do $X send deny jsonrpc $k $r $n; done; done; done
+$X hop deny-row1
+for b in rest grpc; do for r in go py; do for n in 1 2; do $X send deny $b sm $r $n; $X send deny $b st $r $n; done; done; done
+row34 deny
+$X read deny-end
+echo "== allow =="
+$X setting allow; $X read allow-applied
+row34 allow
+$X read allow-end
+echo "== unavail =="
+$X setting deny; $X read deny-restored
+$X scale 0; $X read unavail-scaled-0
+for r in go py; do for n in 1 2; do $X send unavail jsonrpc sm $r $n; $X send unavail jsonrpc st $r $n; done; done
+$X read unavail-end
+$X scale 1; $X read unavail-restored
+echo "== off =="
+$X remove; sleep 8; $X read removed
+$X pod-down
+RUN_ID=d3after RUN_ITEM=2026-09-26-walkthrough/d3/after experiments/gate2-single-clean.sh
+echo "== shapes =="
+$X pod-up
+$X read shapes-before; $X apply; sleep 8; $X read shapes-applied
+for n in 1 2; do for k in xp xa xg xr; do $X send shapes jsonrpc $k go $n; done; done
+for n in 1 2; do for k in xg xr; do $X send shapes jsonrpc $k py $n; done; done
+$X read shapes-end
+$X remove; sleep 8; $X read shapes-removed
+$X pod-down
+RUN_ID=d3after2 RUN_ITEM=2026-09-26-walkthrough/d3/after-2 experiments/gate2-single-clean.sh
+python3 $W/counts.py | tee $W/counts.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+IMAGE=kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026-09-26T16:01:29Z pod-up d3-curl ip=10.244.1.217
+== p0 ==
+2026-09-26T16:01:30Z read p0-before -> experiments/runs/2026-09-26-walkthrough/d3/readings-p0-before.txt
+2026-09-26T16:01:33Z p0 jsonrpc go csm p0-jsonrpc-go-csm-d3a-1 http=200 exit=0 body_len=295 grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 extauthz-lines=0 extauthz=[] ingress-proxy-status=[200]
+2026-09-26T16:01:36Z p0 jsonrpc py csm p0-jsonrpc-py-csm-d3a-1 http=200 exit=0 body_len=295 grpc=-/-/- ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 extauthz-lines=0 extauthz=[] ingress-proxy-status=[200]
+== deny ==
+2026-09-26T16:01:37Z read deny-before -> experiments/runs/2026-09-26-walkthrough/d3/readings-deny-before.txt
+2026-09-26T16:01:37Z apply -k overlay-d3-extauthz
+2026-09-26T16:01:37Z apply done
+2026-09-26T16:01:46Z read deny-applied -> experiments/runs/2026-09-26-walkthrough/d3/readings-deny-applied.txt
+2026-09-26T16:01:52Z deny jsonrpc go sm deny-jsonrpc-go-sm-d3a-1 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 allow/operation:SendMessage/deny/len=296/size=296] ingress-proxy-status=[200 200]
+2026-09-26T16:01:58Z deny jsonrpc go st deny-jsonrpc-go-st-d3a-1 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 deny/operation:SubscribeToTask/deny/len=144/size=144] ingress-proxy-status=[200 403]
+2026-09-26T16:02:04Z deny jsonrpc go ss deny-jsonrpc-go-ss-d3a-1 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=10 invocation=1 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 allow/operation:SendStreamingMessage/deny/len=305/size=305] ingress-proxy-status=[200 200]
+2026-09-26T16:02:07Z deny jsonrpc go cst deny-jsonrpc-go-cst-d3a-1 http=403 exit=0 body_len=145 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=145/size=145] ingress-proxy-status=[403]
+2026-09-26T16:02:13Z deny jsonrpc go sm deny-jsonrpc-go-sm-d3a-2 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 allow/operation:SendMessage/deny/len=296/size=296] ingress-proxy-status=[200 200]
+2026-09-26T16:02:19Z deny jsonrpc go st deny-jsonrpc-go-st-d3a-2 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 deny/operation:SubscribeToTask/deny/len=144/size=144] ingress-proxy-status=[200 403]
+2026-09-26T16:02:25Z deny jsonrpc go ss deny-jsonrpc-go-ss-d3a-2 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=10 invocation=1 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 allow/operation:SendStreamingMessage/deny/len=305/size=305] ingress-proxy-status=[200 200]
+2026-09-26T16:02:28Z deny jsonrpc go cst deny-jsonrpc-go-cst-d3a-2 http=403 exit=0 body_len=145 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=145/size=145] ingress-proxy-status=[403]
+2026-09-26T16:02:34Z deny jsonrpc py sm deny-jsonrpc-py-sm-d3a-1 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 extauthz-lines=1 extauthz=[allow/operation:SendMessage/deny/len=296/size=296] ingress-proxy-status=[200]
+2026-09-26T16:02:40Z deny jsonrpc py st deny-jsonrpc-py-st-d3a-1 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=144/size=144] ingress-proxy-status=[403]
+2026-09-26T16:02:46Z deny jsonrpc py ss deny-jsonrpc-py-ss-d3a-1 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=4 execution=16 invocation=1 extauthz-lines=1 extauthz=[allow/operation:SendStreamingMessage/deny/len=305/size=305] ingress-proxy-status=[200]
+2026-09-26T16:02:49Z deny jsonrpc py cst deny-jsonrpc-py-cst-d3a-1 http=403 exit=0 body_len=145 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=145/size=145] ingress-proxy-status=[403]
+2026-09-26T16:02:55Z deny jsonrpc py sm deny-jsonrpc-py-sm-d3a-2 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 extauthz-lines=1 extauthz=[allow/operation:SendMessage/deny/len=296/size=296] ingress-proxy-status=[200]
+2026-09-26T16:03:01Z deny jsonrpc py st deny-jsonrpc-py-st-d3a-2 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=144/size=144] ingress-proxy-status=[403]
+2026-09-26T16:03:07Z deny jsonrpc py ss deny-jsonrpc-py-ss-d3a-2 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=4 execution=16 invocation=1 extauthz-lines=1 extauthz=[allow/operation:SendStreamingMessage/deny/len=305/size=305] ingress-proxy-status=[200]
+2026-09-26T16:03:10Z deny jsonrpc py cst deny-jsonrpc-py-cst-d3a-2 http=403 exit=0 body_len=145 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=145/size=145] ingress-proxy-status=[403]
+2026-09-26T16:03:46Z hop deny-row1 -> experiments/runs/2026-09-26-walkthrough/d3/hop-deny-row1.txt
+2026-09-26T16:03:52Z deny rest go sm deny-rest-go-sm-d3a-1 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 allow/operation:SendMessage/deny/len=196/size=196] ingress-proxy-status=[200 200]
+2026-09-26T16:03:58Z deny rest go st deny-rest-go-st-d3a-1 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 deny/operation:SubscribeToTask/deny/len=0/size=0] ingress-proxy-status=[200 403]
+2026-09-26T16:04:04Z deny rest go sm deny-rest-go-sm-d3a-2 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 allow/operation:SendMessage/deny/len=196/size=196] ingress-proxy-status=[200 200]
+2026-09-26T16:04:10Z deny rest go st deny-rest-go-st-d3a-2 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 deny/operation:SubscribeToTask/deny/len=0/size=0] ingress-proxy-status=[200 403]
+2026-09-26T16:04:16Z deny rest py sm deny-rest-py-sm-d3a-1 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 extauthz-lines=1 extauthz=[allow/operation:SendMessage/deny/len=196/size=196] ingress-proxy-status=[200]
+2026-09-26T16:04:22Z deny rest py st deny-rest-py-st-d3a-1 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=0/size=0] ingress-proxy-status=[403]
+2026-09-26T16:04:28Z deny rest py sm deny-rest-py-sm-d3a-2 job=Complete grpc=-/-/- ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 extauthz-lines=1 extauthz=[allow/operation:SendMessage/deny/len=196/size=196] ingress-proxy-status=[200]
+2026-09-26T16:04:34Z deny rest py st deny-rest-py-st-d3a-2 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=0/size=0] ingress-proxy-status=[403]
+2026-09-26T16:04:40Z deny grpc go sm deny-grpc-go-sm-d3a-1 job=Complete grpc=1/0/0 ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 allow/operation:SendMessage/deny/len=135/size=133] ingress-proxy-status=[200 200]
+2026-09-26T16:04:46Z deny grpc go st deny-grpc-go-st-d3a-1 job=Failed grpc=1/0/7 ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 deny/operation:SubscribeToTask/deny/len=41/size=41] ingress-proxy-status=[200 403]
+2026-09-26T16:04:52Z deny grpc go sm deny-grpc-go-sm-d3a-2 job=Complete grpc=1/0/0 ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 allow/operation:SendMessage/deny/len=135/size=133] ingress-proxy-status=[200 200]
+2026-09-26T16:04:58Z deny grpc go st deny-grpc-go-st-d3a-2 job=Failed grpc=1/0/7 ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=2 extauthz=[allow/not-subscribe/deny/len=0/size=0 deny/operation:SubscribeToTask/deny/len=41/size=41] ingress-proxy-status=[200 403]
+2026-09-26T16:05:04Z deny grpc py sm deny-grpc-py-sm-d3a-1 job=Complete grpc=1/0/0 ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 extauthz-lines=1 extauthz=[allow/operation:SendMessage/deny/len=135/size=133] ingress-proxy-status=[200]
+2026-09-26T16:05:10Z deny grpc py st deny-grpc-py-st-d3a-1 job=Failed grpc=1/0/7 ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=41/size=41] ingress-proxy-status=[403]
+2026-09-26T16:05:16Z deny grpc py sm deny-grpc-py-sm-d3a-2 job=Complete grpc=1/0/0 ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 extauthz-lines=1 extauthz=[allow/operation:SendMessage/deny/len=135/size=133] ingress-proxy-status=[200]
+2026-09-26T16:05:22Z deny grpc py st deny-grpc-py-st-d3a-2 job=Failed grpc=1/0/7 ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=41/size=41] ingress-proxy-status=[403]
+2026-09-26T16:05:25Z deny jsonrpc go pad deny-jsonrpc-go-pad-d3a-1 http=403 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:partial-body/deny/len=2097152/size=-1] ingress-proxy-status=[403]
+2026-09-26T16:05:28Z deny jsonrpc go padt deny-jsonrpc-go-padt-d3a-1 http=403 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:partial-body/deny/len=2097152/size=-1] ingress-proxy-status=[403]
+2026-09-26T16:05:31Z deny jsonrpc go padsm deny-jsonrpc-go-padsm-d3a-1 http=403 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:partial-body/deny/len=2097152/size=-1] ingress-proxy-status=[403]
+2026-09-26T16:05:33Z deny jsonrpc go batch deny-jsonrpc-go-batch-d3a-1 http=403 exit=0 body_len=149 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:batch/deny/len=149/size=149] ingress-proxy-status=[403]
+2026-09-26T16:05:36Z deny jsonrpc go dup deny-jsonrpc-go-dup-d3a-1 http=403 exit=0 body_len=168 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:duplicate-key/deny/len=168/size=168] ingress-proxy-status=[403]
+2026-09-26T16:05:39Z deny jsonrpc py pad deny-jsonrpc-py-pad-d3a-1 http=403 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:partial-body/deny/len=2097152/size=-1] ingress-proxy-status=[403]
+2026-09-26T16:05:42Z deny jsonrpc py padt deny-jsonrpc-py-padt-d3a-1 http=403 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:partial-body/deny/len=2097152/size=-1] ingress-proxy-status=[403]
+2026-09-26T16:05:45Z deny jsonrpc py padsm deny-jsonrpc-py-padsm-d3a-1 http=403 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:partial-body/deny/len=2097152/size=-1] ingress-proxy-status=[403]
+2026-09-26T16:05:48Z deny jsonrpc py batch deny-jsonrpc-py-batch-d3a-1 http=403 exit=0 body_len=149 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:batch/deny/len=149/size=149] ingress-proxy-status=[403]
+2026-09-26T16:05:50Z deny jsonrpc py dup deny-jsonrpc-py-dup-d3a-1 http=403 exit=0 body_len=168 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/undecidable:duplicate-key/deny/len=168/size=168] ingress-proxy-status=[403]
+2026-09-26T16:05:51Z read deny-end -> experiments/runs/2026-09-26-walkthrough/d3/readings-deny-end.txt
+== allow ==
+2026-09-26T16:05:51Z setting EXTAUTHZ_UNDECIDABLE=allow begin
+2026-09-26T16:05:54Z setting EXTAUTHZ_UNDECIDABLE=allow done, pod extauthz-75d4bdbd58-tbxw2
+2026-09-26T16:05:55Z read allow-applied -> experiments/runs/2026-09-26-walkthrough/d3/readings-allow-applied.txt
+2026-09-26T16:05:58Z allow jsonrpc go pad allow-jsonrpc-go-pad-d3a-1 http=200 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:partial-body/allow/len=2097152/size=-1] ingress-proxy-status=[200]
+2026-09-26T16:06:01Z allow jsonrpc go padt allow-jsonrpc-go-padt-d3a-1 http=200 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:partial-body/allow/len=2097152/size=-1] ingress-proxy-status=[200]
+2026-09-26T16:06:04Z allow jsonrpc go padsm allow-jsonrpc-go-padsm-d3a-1 http=200 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=6 invocation=1 extauthz-lines=1 extauthz=[allow/undecidable:partial-body/allow/len=2097152/size=-1] ingress-proxy-status=[200]
+2026-09-26T16:06:07Z allow jsonrpc go batch allow-jsonrpc-go-batch-d3a-1 http=200 exit=0 body_len=150 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:batch/allow/len=150/size=150] ingress-proxy-status=[200]
+2026-09-26T16:06:10Z allow jsonrpc go dup allow-jsonrpc-go-dup-d3a-1 http=200 exit=0 body_len=169 grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:duplicate-key/allow/len=169/size=169] ingress-proxy-status=[200]
+2026-09-26T16:06:12Z allow jsonrpc py pad allow-jsonrpc-py-pad-d3a-1 http=200 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=0 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:partial-body/allow/len=2097152/size=-1] ingress-proxy-status=[200]
+2026-09-26T16:06:15Z allow jsonrpc py padt allow-jsonrpc-py-padt-d3a-1 http=200 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:partial-body/allow/len=2097152/size=-1] ingress-proxy-status=[200]
+2026-09-26T16:06:19Z allow jsonrpc py padsm allow-jsonrpc-py-padsm-d3a-1 http=200 exit=0 body_len=2200000 grpc=-/-/- ledgers-exit=0 ingress-ledger=4 execution=12 invocation=1 extauthz-lines=1 extauthz=[allow/undecidable:partial-body/allow/len=2097152/size=-1] ingress-proxy-status=[200]
+2026-09-26T16:06:21Z allow jsonrpc py batch allow-jsonrpc-py-batch-d3a-1 http=200 exit=0 body_len=150 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:batch/allow/len=150/size=150] ingress-proxy-status=[200]
+2026-09-26T16:06:24Z allow jsonrpc py dup allow-jsonrpc-py-dup-d3a-1 http=200 exit=0 body_len=169 grpc=-/-/- ledgers-exit=0 ingress-ledger=2 execution=2 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:duplicate-key/allow/len=169/size=169] ingress-proxy-status=[200]
+2026-09-26T16:06:25Z read allow-end -> experiments/runs/2026-09-26-walkthrough/d3/readings-allow-end.txt
+== unavail ==
+2026-09-26T16:06:25Z setting EXTAUTHZ_UNDECIDABLE=deny begin
+2026-09-26T16:06:27Z setting EXTAUTHZ_UNDECIDABLE=deny done, pod extauthz-5b7b57c5bf-7m6c5
+2026-09-26T16:06:28Z read deny-restored -> experiments/runs/2026-09-26-walkthrough/d3/readings-deny-restored.txt
+2026-09-26T16:06:28Z scale extauthz to 0 begin
+2026-09-26T16:06:30Z scale extauthz to 0 done, pods 0
+2026-09-26T16:06:51Z read unavail-scaled-0 -> experiments/runs/2026-09-26-walkthrough/d3/readings-unavail-scaled-0.txt
+2026-09-26T16:07:37Z unavail jsonrpc go sm unavail-jsonrpc-go-sm-d3a-1 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=0 extauthz=[] ingress-proxy-status=[403]
+2026-09-26T16:08:23Z unavail jsonrpc go st unavail-jsonrpc-go-st-d3a-1 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=0 extauthz=[] ingress-proxy-status=[403]
+2026-09-26T16:09:09Z unavail jsonrpc go sm unavail-jsonrpc-go-sm-d3a-2 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=0 extauthz=[] ingress-proxy-status=[403]
+2026-09-26T16:09:55Z unavail jsonrpc go st unavail-jsonrpc-go-st-d3a-2 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=0 extauthz=[] ingress-proxy-status=[403]
+2026-09-26T16:10:41Z unavail jsonrpc py sm unavail-jsonrpc-py-sm-d3a-1 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=0 extauthz=[] ingress-proxy-status=[403]
+2026-09-26T16:11:27Z unavail jsonrpc py st unavail-jsonrpc-py-st-d3a-1 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=0 extauthz=[] ingress-proxy-status=[403]
+2026-09-26T16:12:14Z unavail jsonrpc py sm unavail-jsonrpc-py-sm-d3a-2 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=0 extauthz=[] ingress-proxy-status=[403]
+2026-09-26T16:13:00Z unavail jsonrpc py st unavail-jsonrpc-py-st-d3a-2 job=Failed grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=0 extauthz=[] ingress-proxy-status=[403]
+2026-09-26T16:13:21Z read unavail-end -> experiments/runs/2026-09-26-walkthrough/d3/readings-unavail-end.txt
+2026-09-26T16:13:21Z scale extauthz to 1 begin
+2026-09-26T16:13:23Z scale extauthz to 1 done, pods 1
+2026-09-26T16:13:24Z read unavail-restored -> experiments/runs/2026-09-26-walkthrough/d3/readings-unavail-restored.txt
+== off ==
+2026-09-26T16:13:24Z delete -k overlay-d3-extauthz
+2026-09-26T16:13:24Z delete done
+2026-09-26T16:13:34Z read removed -> experiments/runs/2026-09-26-walkthrough/d3/readings-removed.txt
+2026-09-26T16:14:05Z pod-down d3-curl
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-d3after-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 19:14:07 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 19:14:08 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 19:14:08 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 19:14:08 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:14:24 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:14:24 Adding tag latest
+2026/09/26 19:14:24 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-d3after-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 19:14:30 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 19:14:31 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 19:14:31 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 19:14:32 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:14:46 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:14:46 Adding tag latest
+2026/09/26 19:14:47 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-d3after-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-d3after-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+== shapes ==
+2026-09-26T16:14:51Z pod-up d3-curl ip=10.244.1.7
+2026-09-26T16:14:53Z read shapes-before -> experiments/runs/2026-09-26-walkthrough/d3/readings-shapes-before.txt
+2026-09-26T16:14:53Z apply -k overlay-d3-extauthz
+2026-09-26T16:14:53Z apply done
+2026-09-26T16:15:02Z read shapes-applied -> experiments/runs/2026-09-26-walkthrough/d3/readings-shapes-applied.txt
+2026-09-26T16:15:05Z shapes jsonrpc go xp shapes-jsonrpc-go-xp-d3a-1 http=403 exit=0 body_len=146 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=146/size=146] ingress-proxy-status=[403]
+2026-09-26T16:15:07Z shapes jsonrpc go xa shapes-jsonrpc-go-xa-d3a-1 http=403 exit=0 body_len=146 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=146/size=146] ingress-proxy-status=[403]
+2026-09-26T16:15:10Z shapes jsonrpc go xg shapes-jsonrpc-go-xg-d3a-1 http=403 exit=0 body_len=146 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=146/size=146] ingress-proxy-status=[403]
+2026-09-26T16:15:13Z shapes jsonrpc go xr shapes-jsonrpc-go-xr-d3a-1 http=403 exit=0 body_len=0 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=0/size=0] ingress-proxy-status=[403]
+2026-09-26T16:15:16Z shapes jsonrpc go xp shapes-jsonrpc-go-xp-d3a-2 http=403 exit=0 body_len=146 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=146/size=146] ingress-proxy-status=[403]
+2026-09-26T16:15:18Z shapes jsonrpc go xa shapes-jsonrpc-go-xa-d3a-2 http=403 exit=0 body_len=146 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=146/size=146] ingress-proxy-status=[403]
+2026-09-26T16:15:21Z shapes jsonrpc go xg shapes-jsonrpc-go-xg-d3a-2 http=403 exit=0 body_len=146 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=146/size=146] ingress-proxy-status=[403]
+2026-09-26T16:15:24Z shapes jsonrpc go xr shapes-jsonrpc-go-xr-d3a-2 http=403 exit=0 body_len=0 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=0/size=0] ingress-proxy-status=[403]
+2026-09-26T16:15:27Z shapes jsonrpc py xg shapes-jsonrpc-py-xg-d3a-1 http=403 exit=0 body_len=146 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=146/size=146] ingress-proxy-status=[403]
+2026-09-26T16:15:29Z shapes jsonrpc py xr shapes-jsonrpc-py-xr-d3a-1 http=403 exit=0 body_len=0 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=0/size=0] ingress-proxy-status=[403]
+2026-09-26T16:15:32Z shapes jsonrpc py xg shapes-jsonrpc-py-xg-d3a-2 http=403 exit=0 body_len=146 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=146/size=146] ingress-proxy-status=[403]
+2026-09-26T16:15:35Z shapes jsonrpc py xr shapes-jsonrpc-py-xr-d3a-2 http=403 exit=0 body_len=0 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[deny/operation:SubscribeToTask/deny/len=0/size=0] ingress-proxy-status=[403]
+2026-09-26T16:15:36Z read shapes-end -> experiments/runs/2026-09-26-walkthrough/d3/readings-shapes-end.txt
+2026-09-26T16:15:36Z delete -k overlay-d3-extauthz
+2026-09-26T16:15:36Z delete done
+2026-09-26T16:15:45Z read shapes-removed -> experiments/runs/2026-09-26-walkthrough/d3/readings-shapes-removed.txt
+2026-09-26T16:16:16Z pod-down d3-curl
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-d3after2-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 19:16:18 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 19:16:19 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 19:16:19 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 19:16:20 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:16:35 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:16:35 Adding tag latest
+2026/09/26 19:16:35 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-d3after2-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 19:16:41 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 19:16:42 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 19:16:42 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 19:16:42 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:16:57 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:16:57 Adding tag latest
+2026/09/26 19:16:57 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-d3after2-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-d3after2-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+# D-3 counts, from this directory alone (counts.py). One line per cell: phase binding receiver kind, sends,
+# then each distinct value with how many sends had it.
+p0 jsonrpc go csm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 0 x1
+    extauthz        x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+p0 jsonrpc py csm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 0 x1
+    extauthz        x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+deny grpc go sm: sends=2
+    client         task/TASK_STATE_COMPLETED grpc=0 attempts=1 transparent=0 x2
+    proxy          200 200 x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendMessage:deny:grpc:len=135:size=133 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny grpc go st: sends=2
+    client         unexpected HTTP status code received from server: 403 (Forbidden); malformed header: missing HTTP content-type
+data: "denied by the lab's extauthz fixture: operation:SubscribeToTask\n" stream_end=error grpc=7 attempts=1 transparent=0 x2
+    proxy          200 403/DirectResponse x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 deny:operation:SubscribeToTask:deny:grpc:len=41:size=41 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny grpc py sm: sends=2
+    client         task/TASK_STATE_COMPLETED grpc=0 attempts=1 transparent=0 x2
+    proxy          200 x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendMessage:deny:grpc:len=135:size=133 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny grpc py st: sends=2
+    client         unexpected HTTP status code received from server: 403 (Forbidden); malformed header: missing HTTP content-type
+data: "denied by the lab's extauthz fixture: operation:SubscribeToTask\n" stream_end=error grpc=7 attempts=1 transparent=0 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:grpc:len=41:size=41 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc go batch: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:batch:deny:jsonrpc:len=149:size=149 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go cst: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=145:size=145 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc go dup: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:duplicate-key:deny:jsonrpc:len=168:size=168 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go pad: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go padsm: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go padt: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 200 x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendMessage:deny:jsonrpc:len=296:size=296 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc go ss: sends=2
+    client         / last_event_state=TASK_STATE_COMPLETED stream_end=eof x2
+    proxy          200 200 x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendStreamingMessage:deny:jsonrpc:len=305:size=305 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc go st: sends=2
+    client         unexpected HTTP status: 403 Forbidden stream_end=error x2
+    proxy          200 403/DirectResponse x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 deny:operation:SubscribeToTask:deny:jsonrpc:len=144:size=144 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc py batch: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:batch:deny:jsonrpc:len=149:size=149 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py cst: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=145:size=145 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc py dup: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:duplicate-key:deny:jsonrpc:len=168:size=168 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py pad: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py padsm: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py padt: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendMessage:deny:jsonrpc:len=296:size=296 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc py ss: sends=2
+    client         / last_event_state=TASK_STATE_COMPLETED stream_end=eof x2
+    proxy          200 x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendStreamingMessage:deny:jsonrpc:len=305:size=305 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc py st: sends=2
+    client         unexpected HTTP status: 403 Forbidden stream_end=error x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=144:size=144 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny rest go sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 200 x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendMessage:deny:rest:len=196:size=196 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny rest go st: sends=2
+    client         server error stream_end=error x2
+    proxy          200 403/DirectResponse x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny rest py sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendMessage:deny:rest:len=196:size=196 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny rest py st: sends=2
+    client         server error stream_end=error x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+allow jsonrpc go batch: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:batch:allow:jsonrpc:len=150:size=150 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc go dup: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:duplicate-key:allow:jsonrpc:len=169:size=169 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc go pad: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc go padsm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+allow jsonrpc go padt: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py batch: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:batch:allow:jsonrpc:len=150:size=150 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py dup: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:duplicate-key:allow:jsonrpc:len=169:size=169 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py pad: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py padsm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+allow jsonrpc py padt: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+unavail jsonrpc go sm: sends=2
+    client         resolve card: card request failed, status: 403 Forbidden x2
+    proxy          403/external authorization failed/ExtAuth x2
+    extauthz_lines 0 x2
+    extauthz        x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+unavail jsonrpc go st: sends=2
+    client         resolve card: card request failed, status: 403 Forbidden stream_end=not-sent x2
+    proxy          403/external authorization failed/ExtAuth x2
+    extauthz_lines 0 x2
+    extauthz        x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+unavail jsonrpc py sm: sends=2
+    client         unexpected HTTP status: 403 Forbidden x2
+    proxy          403/external authorization failed/ExtAuth x2
+    extauthz_lines 0 x2
+    extauthz        x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+unavail jsonrpc py st: sends=2
+    client         unexpected HTTP status: 403 Forbidden stream_end=error x2
+    proxy          403/external authorization failed/ExtAuth x2
+    extauthz_lines 0 x2
+    extauthz        x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xa: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xg: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xp: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xr: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xg: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xr: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+# sends: 74; decision lines by phase and the setting each line carries: allow/allow=10, deny/deny=56, shapes/deny=12
+# gRPC sends: 8; with grpc attempts other than 1 or a transparent attempt: 0
+# decision lines by phase, binding, receiver, kind and what was checked (joined on work item):
+#   deny: 56 lines (card GET 14, operation 42)
+#     grpc     go  sm     card GET  2
+#     grpc     go  sm     operation 2
+#     grpc     go  st     card GET  2
+#     grpc     go  st     operation 2
+#     grpc     py  sm     operation 2
+#     grpc     py  st     operation 2
+#     jsonrpc  go  batch  operation 1
+#     jsonrpc  go  cst    operation 2
+#     jsonrpc  go  dup    operation 1
+#     jsonrpc  go  pad    operation 1
+#     jsonrpc  go  padsm  operation 1
+#     jsonrpc  go  padt   operation 1
+#     jsonrpc  go  sm     card GET  2
+#     jsonrpc  go  sm     operation 2
+#     jsonrpc  go  ss     card GET  2
+#     jsonrpc  go  ss     operation 2
+#     jsonrpc  go  st     card GET  2
+#     jsonrpc  go  st     operation 2
+#     jsonrpc  py  batch  operation 1
+#     jsonrpc  py  cst    operation 2
+#     jsonrpc  py  dup    operation 1
+#     jsonrpc  py  pad    operation 1
+#     jsonrpc  py  padsm  operation 1
+#     jsonrpc  py  padt   operation 1
+#     jsonrpc  py  sm     operation 2
+#     jsonrpc  py  ss     operation 2
+#     jsonrpc  py  st     operation 2
+#     rest     go  sm     card GET  2
+#     rest     go  sm     operation 2
+#     rest     go  st     card GET  2
+#     rest     go  st     operation 2
+#     rest     py  sm     operation 2
+#     rest     py  st     operation 2
+#   allow: 10 lines (operation 10)
+#     jsonrpc  go  batch  operation 1
+#     jsonrpc  go  dup    operation 1
+#     jsonrpc  go  pad    operation 1
+#     jsonrpc  go  padsm  operation 1
+#     jsonrpc  go  padt   operation 1
+#     jsonrpc  py  batch  operation 1
+#     jsonrpc  py  dup    operation 1
+#     jsonrpc  py  pad    operation 1
+#     jsonrpc  py  padsm  operation 1
+#     jsonrpc  py  padt   operation 1
+#   shapes: 12 lines (operation 12)
+#     jsonrpc  go  xa     operation 2
+#     jsonrpc  go  xg     operation 2
+#     jsonrpc  go  xp     operation 2
+#     jsonrpc  go  xr     operation 2
+#     jsonrpc  py  xg     operation 2
+#     jsonrpc  py  xr     operation 2
+# decision lines not joined to their send's work item: 0
+# decision lines with source_principal empty: 78 of 78
+# unavail: Job end -> make ledgers exit, 8 sends: min 42.7 s, median 42.7 s, max 42.8 s; send start -> make ledgers exit: median 46.1 s
+wall 952.285s exit 0

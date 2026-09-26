@@ -1,0 +1,44 @@
+# Experiment C, step C-7, part 1: agentgateway's own authorization, on a header. spec.traffic.authorization holds
+# ONE action and CEL matchExpressions over request.*, source.* and jwt (agentgateway website at 10cda98d,
+# assets/agw-docs/pages/security/authorization.md, l.11-15, l.24-28); a traffic policy may target an HTTPRoute
+# (controller/api/v1alpha1/agentgateway/agentgateway_policy_types.go at v1.5.0, l.67). "Authorization denials
+# return a 403" (l.43).
+# The rule is the one header C-6 found on the wire: refuse what carries Accept: text/event-stream. It is written as
+# a Deny because that is the rule stated directly. The page warns that a Deny expression over a field that may be
+# missing "evaluates to false and the rule does not fire" (l.276) and asks for attributes that are always present
+# (l.280); here the field is missing exactly on the requests that are to pass -- the load client's SendMessage
+# carries no Accept header -- so a missing header lets the request through, which is what the rule means. The
+# policies sit beside the routes they target (targetRefs are local, as in the lab's other policies).
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c7-deny-event-stream-worker-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - "request.headers['accept'] == 'text/event-stream'"
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c7-deny-event-stream-orchestrator-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - "request.headers['accept'] == 'text/event-stream'"

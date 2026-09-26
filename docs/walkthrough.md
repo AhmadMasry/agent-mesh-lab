@@ -6,13 +6,18 @@ and Istio Ambient with agentgateway on the path. This walkthrough builds the who
 then runs six of Experiment A's rows on it, so that by the end you have counted duplicate deliveries yourself rather
 than read about them; the topology it ends at is the figure below.
 
-Everything printed here was taken from one run on 2026-09-25, 21:49:38Z to 22:13:18Z, **23 min 40 s** end to end, on
-the author's machine, at the tree of the commit `fix(experiments): the make test guard refuses a later change to
-GO_SOURCES_PATHS and a git command kept only in a comment, two committed mutants; gate3-matrix.sh's stamp comment names
-the three binaries`. This text replaces the walkthrough of 2026-09-20, which lives in git history; that run's record,
-`experiments/runs/2026-09-20-walkthrough/`, stands as it was committed. Timings are what this run observed; yours will
-differ with your machine and your network. The whole of it is committed under
-`experiments/runs/2026-09-25-walkthrough/`:
+The build and the six Experiment A rows below were taken from one run on 2026-09-25, 21:49:38Z to 22:13:18Z, **23 min
+40 s** end to end, on the author's machine, at the tree of the commit `fix(experiments): the make test guard refuses a
+later change to GO_SOURCES_PATHS and a git command kept only in a comment, two committed mutants; gate3-matrix.sh's
+stamp comment names the three binaries`, whose record is `experiments/runs/2026-09-25-walkthrough/`. On 2026-09-26 the
+same commands were walked again from a deleted cluster, at the tree of the commit `docs(proposal-notes): the walkthrough
+extended to every row of Experiments B and C for the author's end-to-end test, decided by the author`, and then every
+row of Experiments B and C was run on the cluster they leave standing: that run's record is
+`experiments/runs/2026-09-26-walkthrough/` (14:03:08Z to 17:05:15Z, with two steps appended after it), the six A rows
+read 74 of 74 cells as their entries again, and the B and C rows are [`walkthrough-b.md`](walkthrough-b.md) and
+[`walkthrough-c.md`](walkthrough-c.md), which start where this document ends. This text replaces the walkthrough of
+2026-09-20, which lives in git history. Timings are what the 2026-09-25 run observed; yours will differ with your
+machine and your network. The 2026-09-25 record holds:
 
 ```
 logs/                   the unabridged stdout+stderr of every command below, one file per step, in order
@@ -1532,11 +1537,15 @@ on the controller, the lab Deployments' images and accounts, and the nine Helm r
 
 ## Where to go next
 
+The cluster this walkthrough leaves standing at step 3 is where the two companion documents begin:
+[`walkthrough-b.md`](walkthrough-b.md) re-takes every row of Experiment B (what happens to a streamed task when the
+proxy under it is removed or replaced, and what one resubscription gets) and [`walkthrough-c.md`](walkthrough-c.md)
+every row of Experiment C (what each layer can see and enforce of an A2A operation, on JSON-RPC, REST and gRPC, with
+the identities step 2 showed), the D-series rows filed under them included, each at two repetitions with its committed
+driver and read against its entry by heading; their record is `experiments/runs/2026-09-26-walkthrough/`.
 `findings.md` holds one entry per gate, receiver and mode or run — the numbers first and the interpretation second,
-and no entry without a run. Experiment A, whose rows this walkthrough re-took, is one part of it; Experiment B (what
-happens to a streamed task when a proxy is removed under it) and Experiment C (what each layer can see and enforce of
-an A2A operation, on JSON-RPC, REST and gRPC, with the identities step 2 showed), and the D series that completed
-them, are recorded there too, each read from the run directories under `experiments/runs/`.
+and no entry without a run. Experiment A, whose rows this walkthrough re-took, is one part of it; B, C and the D series
+are recorded there too, each read from the run directories under `experiments/runs/`.
 `docs/proposal-notes.md` holds the author's dated decisions since the proposal froze, and every one of them is in
 force: the topology this walkthrough builds is the note of 2026-09-19, the ServiceAccounts, the REST and gRPC bindings
 and the authorization fixture are the notes of 2026-09-24 and 2026-09-25, and the pins are the currency pass of

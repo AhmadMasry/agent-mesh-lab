@@ -1,0 +1,155 @@
+$ C=experiments/runs/2026-09-26-walkthrough/c3r; REC=$C/rec.sh
+for c in "kubectl get authorizationpolicy -A" "kubectl -n istio-system get pods -l app=ztunnel -o wide" "kubectl -n lab get pods -o wide"; do bash $REC $C/start-state.txt "$c"; done
+bash $REC $C/objects-created.txt "kubectl apply -f $C/objects/namespace.yaml"
+bash $REC $C/objects-created.txt "kubectl apply -f $C/objects/server.yaml -f $C/objects/client.yaml"
+bash $REC $C/objects-created.txt "kubectl -n c3r wait --for=condition=Available deploy/c3r-server --timeout=120s && kubectl -n c3r wait --for=condition=Ready pod/c3r-client --timeout=120s"
+bash $REC $C/objects-created.txt "kubectl -n c3r get pods -o wide"
+W=$(date -u +%FT%TZ)
+for r in none-1 selector-1 namespace-1 selector-2 namespace-2; do
+  sleep 5
+  bash experiments/runs/2026-09-26-walkthrough/drivers/c3r-rep.sh "${r%-*}" "${r##*-}"
+done
+ZT=$(kubectl -n istio-system get pod -l app=ztunnel --field-selector spec.nodeName=agent-mesh-lab-worker -o jsonpath='{.items[0].metadata.name}')
+bash $REC $C/window.txt "kubectl -n c3r logs deploy/c3r-server"
+bash $REC $C/window.txt "kubectl -n istio-system logs $ZT --since-time=$W | grep -E 'no longer allowed|policy change|skipping unknown policy|handling RBAC'"
+bash $REC $C/window.txt "kubectl -n istio-system logs $ZT --since-time=$W | awk -F'\t' '\$2 == \"warn\"' | wc -l"
+bash $REC $C/window.txt "kubectl -n istio-system logs deploy/istiod --since-time=$W | grep -E 'PUSH for node:$ZT' | grep -E 'WDS|WADS'"
+bash $REC $C/objects-deleted.txt "kubectl delete -f $C/objects/client.yaml -f $C/objects/server.yaml --wait=true"
+bash $REC $C/objects-deleted.txt "kubectl delete -f $C/objects/namespace.yaml --wait=true --timeout=180s"
+bash $REC $C/objects-deleted.txt "kubectl get authorizationpolicy -A; istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq '[.[] | select(.namespace == \"c3r\")] | length'"
+RUN_ID=c3rafter RUN_ITEM=2026-09-26-walkthrough/c3r/after experiments/gate2-single-clean.sh
+python3 $C/counts.py
+# istioctl on PATH at this step's start: client version: 1.31.1
+2026-09-26T15:19:46.758Z rep none-1 start T0=2026-09-26T15:19:46Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=c3r-server-59b7c54f5-mmz7f 10.244.1.229:8080 policy=none
+2026-09-26T15:19:47.308Z held connection: kubectl -n c3r exec -i c3r-client -- nc 10.244.1.229 8080 (stdin held open by this script)
+2026-09-26T15:19:47.312Z r1 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-none-1-r1
+2026-09-26T15:19:47.381Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:19:47.550Z r2 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-none-1-r2 on the held connection
+2026-09-26T15:19:47.594Z r2 result: complete responses on the held connection: 2 200 200; nc running
+2026-09-26T15:19:47.598Z new connection: one curl --retry 0, X-Logical-Work-Item-Id: c3r-none-1-new
+2026-09-26T15:19:47.805Z close: EOF on nc's input
+2026-09-26T15:19:47.836Z held connection ended: nc exited 2026-09-26T15:19:47.812Z exit=0; complete responses on it: 2 200 200
+2026-09-26T15:19:48.010Z rep none-1 end
+2026-09-26T15:19:53.193Z rep selector-1 start T0=2026-09-26T15:19:53Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=c3r-server-59b7c54f5-mmz7f 10.244.1.229:8080 policy=c3r-selector
+2026-09-26T15:19:53.337Z held connection: kubectl -n c3r exec -i c3r-client -- nc 10.244.1.229 8080 (stdin held open by this script)
+2026-09-26T15:19:53.342Z r1 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-selector-1-r1
+2026-09-26T15:19:53.410Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:19:53.587Z apply: kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-selector.yaml
+2026-09-26T15:19:53.754Z ztunnel holds c3r/c3r-selector (istioctl ztunnel-config policy)
+2026-09-26T15:19:53.817Z ztunnel lists c3r/c3r-selector on the server workload (istioctl ztunnel-config workloads)
+2026-09-26T15:19:53.840Z held connection after the push: complete responses 1 200; nc running
+2026-09-26T15:19:54.184Z r2 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-selector-1-r2 on the held connection
+2026-09-26T15:19:54.229Z r2 result: complete responses on the held connection: 2 200 200; nc running
+2026-09-26T15:19:54.232Z new connection: one curl --retry 0, X-Logical-Work-Item-Id: c3r-selector-1-new
+2026-09-26T15:19:54.439Z close: EOF on nc's input
+2026-09-26T15:19:54.470Z held connection ended: nc exited 2026-09-26T15:19:54.446Z exit=0; complete responses on it: 2 200 200
+2026-09-26T15:19:54.603Z remove: kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-selector.yaml
+2026-09-26T15:19:54.762Z ztunnel no longer holds c3r/c3r-selector
+2026-09-26T15:19:54.826Z ztunnel no longer lists c3r/c3r-selector on the server workload
+2026-09-26T15:19:55.082Z rep selector-1 end
+2026-09-26T15:20:00.268Z rep namespace-1 start T0=2026-09-26T15:20:00Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=c3r-server-59b7c54f5-mmz7f 10.244.1.229:8080 policy=c3r-namespace
+2026-09-26T15:20:00.421Z held connection: kubectl -n c3r exec -i c3r-client -- nc 10.244.1.229 8080 (stdin held open by this script)
+2026-09-26T15:20:00.425Z r1 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-namespace-1-r1
+2026-09-26T15:20:00.495Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:20:00.673Z apply: kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-namespace.yaml
+2026-09-26T15:20:00.837Z ztunnel holds c3r/c3r-namespace (istioctl ztunnel-config policy)
+2026-09-26T15:20:00.859Z held connection after the push: complete responses 1 200; nc running
+2026-09-26T15:20:01.203Z r2 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-namespace-1-r2 on the held connection
+2026-09-26T15:20:21.020Z r2 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:20:21.024Z new connection: one curl --retry 0, X-Logical-Work-Item-Id: c3r-namespace-1-new
+2026-09-26T15:20:21.250Z close: EOF on nc's input
+2026-09-26T15:20:21.289Z held connection ended: nc exited 2026-09-26T15:20:21.265Z exit=0; complete responses on it: 1 200
+2026-09-26T15:20:21.423Z remove: kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-namespace.yaml
+2026-09-26T15:20:21.586Z ztunnel no longer holds c3r/c3r-namespace
+2026-09-26T15:20:21.838Z rep namespace-1 end
+2026-09-26T15:20:27.019Z rep selector-2 start T0=2026-09-26T15:20:26Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=c3r-server-59b7c54f5-mmz7f 10.244.1.229:8080 policy=c3r-selector
+2026-09-26T15:20:27.161Z held connection: kubectl -n c3r exec -i c3r-client -- nc 10.244.1.229 8080 (stdin held open by this script)
+2026-09-26T15:20:27.165Z r1 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-selector-2-r1
+2026-09-26T15:20:27.235Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:20:27.415Z apply: kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-selector.yaml
+2026-09-26T15:20:27.580Z ztunnel holds c3r/c3r-selector (istioctl ztunnel-config policy)
+2026-09-26T15:20:27.643Z ztunnel lists c3r/c3r-selector on the server workload (istioctl ztunnel-config workloads)
+2026-09-26T15:20:27.666Z held connection after the push: complete responses 1 200; nc running
+2026-09-26T15:20:28.008Z r2 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-selector-2-r2 on the held connection
+2026-09-26T15:20:28.054Z r2 result: complete responses on the held connection: 2 200 200; nc running
+2026-09-26T15:20:28.057Z new connection: one curl --retry 0, X-Logical-Work-Item-Id: c3r-selector-2-new
+2026-09-26T15:20:28.265Z close: EOF on nc's input
+2026-09-26T15:20:28.297Z held connection ended: nc exited 2026-09-26T15:20:28.272Z exit=0; complete responses on it: 2 200 200
+2026-09-26T15:20:28.430Z remove: kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-selector.yaml
+2026-09-26T15:20:28.592Z ztunnel no longer holds c3r/c3r-selector
+2026-09-26T15:20:28.659Z ztunnel no longer lists c3r/c3r-selector on the server workload
+2026-09-26T15:20:28.913Z rep selector-2 end
+2026-09-26T15:20:34.090Z rep namespace-2 start T0=2026-09-26T15:20:33Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=c3r-server-59b7c54f5-mmz7f 10.244.1.229:8080 policy=c3r-namespace
+2026-09-26T15:20:34.235Z held connection: kubectl -n c3r exec -i c3r-client -- nc 10.244.1.229 8080 (stdin held open by this script)
+2026-09-26T15:20:34.240Z r1 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-namespace-2-r1
+2026-09-26T15:20:34.309Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:20:34.489Z apply: kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-namespace.yaml
+2026-09-26T15:20:34.655Z ztunnel holds c3r/c3r-namespace (istioctl ztunnel-config policy)
+2026-09-26T15:20:34.677Z held connection after the push: complete responses 1 200; nc running
+2026-09-26T15:20:35.015Z r2 write: GET /.well-known/agent-card.json X-Logical-Work-Item-Id: c3r-namespace-2-r2 on the held connection
+2026-09-26T15:20:55.020Z r2 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:20:55.023Z new connection: one curl --retry 0, X-Logical-Work-Item-Id: c3r-namespace-2-new
+2026-09-26T15:20:55.251Z close: EOF on nc's input
+2026-09-26T15:20:55.295Z held connection ended: nc exited 2026-09-26T15:20:55.268Z exit=0; complete responses on it: 1 200
+2026-09-26T15:20:55.431Z remove: kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-namespace.yaml
+2026-09-26T15:20:55.591Z ztunnel no longer holds c3r/c3r-namespace
+2026-09-26T15:20:55.885Z rep namespace-2 end
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c3rafter-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:21:34 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:21:35 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:21:35 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:21:35 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:21:49 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:21:49 Adding tag latest
+2026/09/26 18:21:49 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c3rafter-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:21:55 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:21:56 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:21:56 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:21:57 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:22:12 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:22:12 Adding tag latest
+2026/09/26 18:22:12 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c3rafter-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c3rafter-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+scope,n,client_port,ztunnel_inbound,server_remote,push_apply,push_remove,zt_scope,wl_list_after,rbac_update,watcher_lines,watcher_at,late_close_lines,sock_before_r2,r2_on_held,server_arrivals_held,held_responses,held_outbound_close,held_outbound_close_at,r2_server_arrival,r2_after_rbac_ms,new_conn,server_arrivals_other,ap_after_remove
+none,1,10.244.1.228:40105,10.244.1.228:59842,10.244.1.228:53655,,,,,,0,,0,ESTABLISHED,delivered,2,2 200 200,no error,2026-09-26T15:19:47.806920Z,2026-09-26T15:19:47.55170859Z,,curl exit 0; ztunnel outbound: no error,1,
+selector,1,10.244.1.228:34523,10.244.1.228:59842,10.244.1.228:52913,WDS none / WADS none,WDS none / WADS none,WorkloadSelector,c3r/c3r-selector|istio-system/istio_converted_static_strict,2026-09-26T15:19:53.729817Z,0,,0,ESTABLISHED,delivered,2,2 200 200,no error,2026-09-26T15:19:54.440983Z,2026-09-26T15:19:54.185129344Z,455,"curl exit 56; ztunnel outbound: http status: 401 Unauthorized; inbound: connection closed due to policy rejection: allow policies exist, but none allowed",0,No resources found 
+selector,2,10.244.1.228:33899,10.244.1.228:59842,10.244.1.228:40293,WDS none / WADS none,WDS none / WADS none,WorkloadSelector,c3r/c3r-selector|istio-system/istio_converted_static_strict,2026-09-26T15:20:27.556474Z,0,,0,ESTABLISHED,delivered,2,2 200 200,no error,2026-09-26T15:20:28.267244Z,2026-09-26T15:20:28.009510304Z,453,"curl exit 56; ztunnel outbound: http status: 401 Unauthorized; inbound: connection closed due to policy rejection: allow policies exist, but none allowed",0,No resources found 
+namespace,1,10.244.1.228:46417,10.244.1.228:59842,10.244.1.228:43077,WDS none / WADS none,WDS none / WADS none,Namespace,istio-system/istio_converted_static_strict,2026-09-26T15:20:00.812855Z,1,2026-09-26T15:20:00.813212Z,1,CLOSE_WAIT,not delivered,1,1 200,while closing connection: send: io error: broken pipe,2026-09-26T15:20:01.204636Z,,392,"curl exit 56; ztunnel outbound: http status: 401 Unauthorized; inbound: connection closed due to policy rejection: allow policies exist, but none allowed",0,No resources found 
+namespace,2,10.244.1.228:44301,10.244.1.228:59842,10.244.1.228:60717,WDS none / WADS none,WDS none / WADS none,Namespace,istio-system/istio_converted_static_strict,2026-09-26T15:20:34.628778Z,1,2026-09-26T15:20:34.628943Z,1,CLOSE_WAIT,not delivered,1,1 200,while closing connection: send: io error: broken pipe,2026-09-26T15:20:35.016202Z,,387,"curl exit 56; ztunnel outbound: http status: 401 Unauthorized; inbound: connection closed due to policy rejection: allow policies exist, but none allowed",0,No resources found 
+wall 158.312s exit 0

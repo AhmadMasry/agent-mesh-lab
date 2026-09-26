@@ -1,0 +1,196 @@
+
+# read 2026-09-26T15:20:27Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "c3r") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"c3r-client","inbound":[],"outbound":[]}
+{"pod":"c3r-server-59b7c54f5-mmz7f","inbound":[],"outbound":[]}
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ kubectl -n c3r exec c3r-client -- netstat -tn
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 10.244.1.228:33899      10.244.1.229:8080       ESTABLISHED 
+tcp        0      0 10.244.1.228:34523      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:39226      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:40105      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:59842      10.244.1.229:15008      ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.228:33899 ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.228:46417 TIME_WAIT   
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "c3r") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"c3r-client","inbound":[],"outbound":[{"src":"10.244.1.228:33899","originalDst":"10.244.1.229:8080","actualDst":"10.244.1.229:15008","protocol":"HBONE"}]}
+{"pod":"c3r-server-59b7c54f5-mmz7f","inbound":[{"src":"10.244.1.228:59842","originalDst":"","actualDst":"10.244.1.229:8080","protocol":"HBONE"}],"outbound":[]}
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ kubectl -n c3r logs c3r-server-59b7c54f5-mmz7f --since-time=2026-09-26T15:20:26Z | grep '"ledger":"ingress"'
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-26T15:20:27.206307803Z","remote":"10.244.1.228:40293","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-26T15:20:27.206307803Z","remote":"10.244.1.228:40293","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0,"status":200}
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-selector.yaml
+authorizationpolicy.security.istio.io/c3r-selector created
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ kubectl -n c3r get authorizationpolicy c3r-selector -o yaml
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"security.istio.io/v1","kind":"AuthorizationPolicy","metadata":{"annotations":{},"name":"c3r-selector","namespace":"c3r"},"spec":{"action":"ALLOW","rules":[{"from":[{"source":{"principals":["cluster.local/ns/c3r/sa/c3r-admitted"]}}]}],"selector":{"matchLabels":{"app":"c3r-server"}}}}
+  creationTimestamp: "2026-09-26T15:20:27Z"
+  generation: 1
+  name: c3r-selector
+  namespace: c3r
+  resourceVersion: "19502"
+  uid: b86eb996-2455-4735-95d4-7166ff2d35f2
+spec:
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals:
+        - cluster.local/ns/c3r/sa/c3r-admitted
+  selector:
+    matchLabels:
+      app: c3r-server
+status:
+  conditions:
+  - lastTransitionTime: "2026-09-26T15:20:27.454183095Z"
+    message: attached to ztunnel
+    observedGeneration: "1"
+    reason: Accepted
+    status: "True"
+    type: ZtunnelAccepted
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq '.[] | select(.namespace == "c3r")'
+{
+  "name": "c3r-selector",
+  "namespace": "c3r",
+  "scope": "WorkloadSelector",
+  "action": "Allow",
+  "rules": [
+    [
+      [
+        {
+          "principals": [
+            {
+              "Exact": "cluster.local/ns/c3r/sa/c3r-admitted"
+            }
+          ]
+        }
+      ]
+    ]
+  ]
+}
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.namespace == "c3r") | {name, uid, authorizationPolicies}'
+{"name":"c3r-client","uid":"Kubernetes//Pod/c3r/c3r-client","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+{"name":"c3r-server-59b7c54f5-mmz7f","uid":"Kubernetes//Pod/c3r/c3r-server-59b7c54f5-mmz7f","authorizationPolicies":["c3r/c3r-selector","istio-system/istio_converted_static_strict"]}
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "c3r") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"c3r-client","inbound":[],"outbound":[{"src":"10.244.1.228:33899","originalDst":"10.244.1.229:8080","actualDst":"10.244.1.229:15008","protocol":"HBONE"}]}
+{"pod":"c3r-server-59b7c54f5-mmz7f","inbound":[{"src":"10.244.1.228:59842","originalDst":"","actualDst":"10.244.1.229:8080","protocol":"HBONE"}],"outbound":[]}
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ kubectl -n istio-system logs ztunnel-2w54j --since-time=2026-09-26T15:20:26Z | grep -E 'no longer allowed|policy change|policy rejection|RBAC|10\.244\.1\.229'
+2026-09-26T15:20:27.556474Z	info	xds:xds{id=3}	handling RBAC update c3r-selector	
+# exit 0
+
+# read 2026-09-26T15:20:27Z
+$ kubectl -n c3r exec c3r-client -- netstat -tn
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 10.244.1.228:33899      10.244.1.229:8080       ESTABLISHED 
+tcp        0      0 10.244.1.228:34523      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:39226      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:40105      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:59842      10.244.1.229:15008      ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.228:33899 ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.228:46417 TIME_WAIT   
+# exit 0
+
+# read 2026-09-26T15:20:28Z
+$ kubectl -n c3r exec c3r-client -- curl -sS --retry 0 --max-time 10 -o /dev/null -w 'http_code=%{http_code} local_port=%{local_port} num_connects=%{num_connects}\n' -H 'A2A-Version: 1.0' -H 'X-Logical-Work-Item-Id: c3r-selector-2-new' http://10.244.1.229:8080/.well-known/agent-card.json
+curl: (56) Recv failure: Connection reset by peer
+http_code=000 local_port=36820 num_connects=1
+command terminated with exit code 56
+# exit 56
+
+# read 2026-09-26T15:20:28Z
+$ kubectl -n c3r logs c3r-server-59b7c54f5-mmz7f --since-time=2026-09-26T15:20:26Z | grep '"ledger":"ingress"'
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-26T15:20:27.206307803Z","remote":"10.244.1.228:40293","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-26T15:20:27.206307803Z","remote":"10.244.1.228:40293","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0,"status":200}
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-26T15:20:28.009510304Z","remote":"10.244.1.228:40293","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-26T15:20:28.009510304Z","remote":"10.244.1.228:40293","method":"GET /.well-known/agent-card.json","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"","body_sha256":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","body_len":0,"status":200}
+# exit 0
+
+# read 2026-09-26T15:20:28Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "c3r") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"c3r-client","inbound":[],"outbound":[{"src":"10.244.1.228:33899","originalDst":"10.244.1.229:8080","actualDst":"10.244.1.229:15008","protocol":"HBONE"}]}
+{"pod":"c3r-server-59b7c54f5-mmz7f","inbound":[{"src":"10.244.1.228:59842","originalDst":"","actualDst":"10.244.1.229:8080","protocol":"HBONE"}],"outbound":[]}
+# exit 0
+
+# read 2026-09-26T15:20:28Z
+$ kubectl -n istio-system logs ztunnel-2w54j --since-time=2026-09-26T15:20:26Z | grep -E 'no longer allowed|policy change|policy rejection|RBAC|10\.244\.1\.229'
+2026-09-26T15:20:27.556474Z	info	xds:xds{id=3}	handling RBAC update c3r-selector	
+2026-09-26T15:20:28.112708Z	error	access	connection complete	src.addr=10.244.1.228:59842 src.workload="c3r-client" src.namespace="c3r" src.identity="spiffe://cluster.local/ns/c3r/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.229:15008 dst.hbone_addr=10.244.1.229:8080 dst.workload="c3r-server-59b7c54f5-mmz7f" dst.namespace="c3r" dst.identity="spiffe://cluster.local/ns/c3r/sa/default" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: allow policies exist, but none allowed"
+2026-09-26T15:20:28.112791Z	error	access	connection complete	src.addr=10.244.1.228:36820 src.workload="c3r-client" src.namespace="c3r" src.identity="spiffe://cluster.local/ns/c3r/sa/default" src.cluster="Kubernetes" dst.addr=10.244.1.229:15008 dst.hbone_addr=10.244.1.229:8080 dst.workload="c3r-server-59b7c54f5-mmz7f" dst.namespace="c3r" dst.identity="spiffe://cluster.local/ns/c3r/sa/default" dst.cluster="Kubernetes" direction="outbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="http status: 401 Unauthorized"
+# exit 0
+
+# read 2026-09-26T15:20:28Z
+$ kubectl -n c3r exec c3r-client -- netstat -tn
+Active Internet connections (w/o servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       
+tcp        0      0 10.244.1.228:33899      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:34523      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:39226      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:40105      10.244.1.229:8080       TIME_WAIT   
+tcp        0      0 10.244.1.228:59842      10.244.1.229:15008      ESTABLISHED 
+tcp        0      0 ::ffff:127.0.0.1:15001  ::ffff:10.244.1.228:46417 TIME_WAIT   
+# exit 0
+
+# read 2026-09-26T15:20:28Z
+$ istioctl ztunnel-config connections --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.info.namespace == "c3r") | {pod: .info.name, inbound: .connections.inbound, outbound: .connections.outbound}'
+{"pod":"c3r-client","inbound":[],"outbound":[]}
+{"pod":"c3r-server-59b7c54f5-mmz7f","inbound":[],"outbound":[]}
+# exit 0
+
+# read 2026-09-26T15:20:28Z
+$ kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r/objects/policy-selector.yaml
+authorizationpolicy.security.istio.io "c3r-selector" deleted from c3r namespace
+# exit 0
+
+# read 2026-09-26T15:20:28Z
+$ kubectl get authorizationpolicy -A
+No resources found
+# exit 0
+
+# read 2026-09-26T15:20:28Z
+$ istioctl ztunnel-config policy --node agent-mesh-lab-worker -o json | jq -c '.[] | {name, namespace, scope, action}'
+{"name":"converted_peer_authentication_agentgateway-ingress-metrics","namespace":"agentgateway-ingress","scope":"WorkloadSelector","action":"Deny"}
+{"name":"istio_converted_static_strict","namespace":"istio-system","scope":"WorkloadSelector","action":"Deny"}
+# exit 0
+
+# read 2026-09-26T15:20:28Z
+$ istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq -c '.[] | select(.namespace == "c3r") | {name, authorizationPolicies}'
+{"name":"c3r-client","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+{"name":"c3r-server-59b7c54f5-mmz7f","authorizationPolicies":["istio-system/istio_converted_static_strict"]}
+# exit 0

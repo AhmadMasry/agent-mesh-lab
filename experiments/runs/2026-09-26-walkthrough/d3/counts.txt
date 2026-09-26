@@ -1,0 +1,542 @@
+# D-3 counts, from this directory alone (counts.py). One line per cell: phase binding receiver kind, sends,
+# then each distinct value with how many sends had it.
+p0 jsonrpc go csm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 0 x1
+    extauthz        x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+p0 jsonrpc py csm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 0 x1
+    extauthz        x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+deny grpc go sm: sends=2
+    client         task/TASK_STATE_COMPLETED grpc=0 attempts=1 transparent=0 x2
+    proxy          200 200 x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendMessage:deny:grpc:len=135:size=133 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny grpc go st: sends=2
+    client         unexpected HTTP status code received from server: 403 (Forbidden); malformed header: missing HTTP content-type
+data: "denied by the lab's extauthz fixture: operation:SubscribeToTask\n" stream_end=error grpc=7 attempts=1 transparent=0 x2
+    proxy          200 403/DirectResponse x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 deny:operation:SubscribeToTask:deny:grpc:len=41:size=41 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny grpc py sm: sends=2
+    client         task/TASK_STATE_COMPLETED grpc=0 attempts=1 transparent=0 x2
+    proxy          200 x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendMessage:deny:grpc:len=135:size=133 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny grpc py st: sends=2
+    client         unexpected HTTP status code received from server: 403 (Forbidden); malformed header: missing HTTP content-type
+data: "denied by the lab's extauthz fixture: operation:SubscribeToTask\n" stream_end=error grpc=7 attempts=1 transparent=0 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:grpc:len=41:size=41 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc go batch: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:batch:deny:jsonrpc:len=149:size=149 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go cst: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=145:size=145 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc go dup: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:duplicate-key:deny:jsonrpc:len=168:size=168 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go pad: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go padsm: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go padt: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 200 x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendMessage:deny:jsonrpc:len=296:size=296 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc go ss: sends=2
+    client         / last_event_state=TASK_STATE_COMPLETED stream_end=eof x2
+    proxy          200 200 x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendStreamingMessage:deny:jsonrpc:len=305:size=305 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc go st: sends=2
+    client         unexpected HTTP status: 403 Forbidden stream_end=error x2
+    proxy          200 403/DirectResponse x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 deny:operation:SubscribeToTask:deny:jsonrpc:len=144:size=144 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc py batch: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:batch:deny:jsonrpc:len=149:size=149 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py cst: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=145:size=145 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc py dup: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:duplicate-key:deny:jsonrpc:len=168:size=168 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py pad: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py padsm: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py padt: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendMessage:deny:jsonrpc:len=296:size=296 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc py ss: sends=2
+    client         / last_event_state=TASK_STATE_COMPLETED stream_end=eof x2
+    proxy          200 x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendStreamingMessage:deny:jsonrpc:len=305:size=305 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc py st: sends=2
+    client         unexpected HTTP status: 403 Forbidden stream_end=error x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=144:size=144 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny rest go sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 200 x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendMessage:deny:rest:len=196:size=196 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny rest go st: sends=2
+    client         server error stream_end=error x2
+    proxy          200 403/DirectResponse x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny rest py sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendMessage:deny:rest:len=196:size=196 x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny rest py st: sends=2
+    client         server error stream_end=error x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+allow jsonrpc go batch: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:batch:allow:jsonrpc:len=150:size=150 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc go dup: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:duplicate-key:allow:jsonrpc:len=169:size=169 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc go pad: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc go padsm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+allow jsonrpc go padt: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py batch: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:batch:allow:jsonrpc:len=150:size=150 x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py dup: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:duplicate-key:allow:jsonrpc:len=169:size=169 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py pad: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py padsm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+allow jsonrpc py padt: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+unavail jsonrpc go sm: sends=2
+    client         resolve card: card request failed, status: 403 Forbidden x2
+    proxy          403/external authorization failed/ExtAuth x2
+    extauthz_lines 0 x2
+    extauthz        x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+unavail jsonrpc go st: sends=2
+    client         resolve card: card request failed, status: 403 Forbidden stream_end=not-sent x2
+    proxy          403/external authorization failed/ExtAuth x2
+    extauthz_lines 0 x2
+    extauthz        x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+unavail jsonrpc py sm: sends=2
+    client         unexpected HTTP status: 403 Forbidden x2
+    proxy          403/external authorization failed/ExtAuth x2
+    extauthz_lines 0 x2
+    extauthz        x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+unavail jsonrpc py st: sends=2
+    client         unexpected HTTP status: 403 Forbidden stream_end=error x2
+    proxy          403/external authorization failed/ExtAuth x2
+    extauthz_lines 0 x2
+    extauthz        x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xa: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xg: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xp: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xr: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xg: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xr: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+# sends: 74; decision lines by phase and the setting each line carries: allow/allow=10, deny/deny=56, shapes/deny=12
+# gRPC sends: 8; with grpc attempts other than 1 or a transparent attempt: 0
+# decision lines by phase, binding, receiver, kind and what was checked (joined on work item):
+#   deny: 56 lines (card GET 14, operation 42)
+#     grpc     go  sm     card GET  2
+#     grpc     go  sm     operation 2
+#     grpc     go  st     card GET  2
+#     grpc     go  st     operation 2
+#     grpc     py  sm     operation 2
+#     grpc     py  st     operation 2
+#     jsonrpc  go  batch  operation 1
+#     jsonrpc  go  cst    operation 2
+#     jsonrpc  go  dup    operation 1
+#     jsonrpc  go  pad    operation 1
+#     jsonrpc  go  padsm  operation 1
+#     jsonrpc  go  padt   operation 1
+#     jsonrpc  go  sm     card GET  2
+#     jsonrpc  go  sm     operation 2
+#     jsonrpc  go  ss     card GET  2
+#     jsonrpc  go  ss     operation 2
+#     jsonrpc  go  st     card GET  2
+#     jsonrpc  go  st     operation 2
+#     jsonrpc  py  batch  operation 1
+#     jsonrpc  py  cst    operation 2
+#     jsonrpc  py  dup    operation 1
+#     jsonrpc  py  pad    operation 1
+#     jsonrpc  py  padsm  operation 1
+#     jsonrpc  py  padt   operation 1
+#     jsonrpc  py  sm     operation 2
+#     jsonrpc  py  ss     operation 2
+#     jsonrpc  py  st     operation 2
+#     rest     go  sm     card GET  2
+#     rest     go  sm     operation 2
+#     rest     go  st     card GET  2
+#     rest     go  st     operation 2
+#     rest     py  sm     operation 2
+#     rest     py  st     operation 2
+#   allow: 10 lines (operation 10)
+#     jsonrpc  go  batch  operation 1
+#     jsonrpc  go  dup    operation 1
+#     jsonrpc  go  pad    operation 1
+#     jsonrpc  go  padsm  operation 1
+#     jsonrpc  go  padt   operation 1
+#     jsonrpc  py  batch  operation 1
+#     jsonrpc  py  dup    operation 1
+#     jsonrpc  py  pad    operation 1
+#     jsonrpc  py  padsm  operation 1
+#     jsonrpc  py  padt   operation 1
+#   shapes: 12 lines (operation 12)
+#     jsonrpc  go  xa     operation 2
+#     jsonrpc  go  xg     operation 2
+#     jsonrpc  go  xp     operation 2
+#     jsonrpc  go  xr     operation 2
+#     jsonrpc  py  xg     operation 2
+#     jsonrpc  py  xr     operation 2
+# decision lines not joined to their send's work item: 0
+# decision lines with source_principal empty: 78 of 78
+# unavail: Job end -> make ledgers exit, 8 sends: min 42.7 s, median 42.7 s, max 42.8 s; send start -> make ledgers exit: median 46.1 s

@@ -1,0 +1,16 @@
+# C-3R scope (b), namespace-scoped: the same ALLOW policy with no `selector`, in the
+# throwaway namespace, so it governs every workload in `c3r` and nothing outside it;
+# istiod scopes it Namespace for ztunnel. The same one principal, which the client
+# does not hold. Applied and removed by rep.sh, three times.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: c3r-namespace
+  namespace: c3r
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/c3r/sa/c3r-admitted

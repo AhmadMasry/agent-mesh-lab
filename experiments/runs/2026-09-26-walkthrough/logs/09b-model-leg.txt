@@ -1,0 +1,10 @@
+$ echo '## agw-central model-route lines'; kubectl -n agentgateway-waypoint logs deploy/agw-central | grep chat/completions | tail -2; echo; echo '## mockllm invocation ledger, both clean work items'; kubectl -n lab logs deploy/mockllm | grep -E 'g2c-wt2b-(worker|orchestrator)'
+# istioctl on PATH at this step's start: client version: 1.31.1
+## agw-central model-route lines
+2026-09-26T14:10:53.216805Z	info	request gateway=agentgateway-waypoint/agw-central listener=inner-http route=agentgateway-waypoint/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.24:50936 src.identity=spiffe://cluster.local/ns/lab/sa/worker http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 http.status=200 protocol=http duration=203ms
+2026-09-26T14:11:17.515875Z	info	request gateway=agentgateway-waypoint/agw-central listener=inner-http route=agentgateway-waypoint/model-via-agw endpoint=mockllm.lab.svc.cluster.local:8080 src.addr=10.244.1.24:50936 src.identity=spiffe://cluster.local/ns/lab/sa/worker http.method=POST http.host=model.lab.internal http.path=/v1/chat/completions http.version=HTTP/1.1 http.status=200 protocol=http duration=201ms
+
+## mockllm invocation ledger, both clean work items
+{"ledger":"invocation","ts":"2026-09-26T14:10:53.216340177Z","logical_work_item_id":"g2c-wt2b-worker","messageId":"01a0de0d-f9d3-7a67-8b16-f4d7a6e95ee8","taskId":"01a0de0d-f9d4-726a-bd6d-4eda505f362e","caller":"worker","body_sha256":"f18bfd0627f99e89b4f91c23f0e7a9402d854a765ee0b5fb3aa65c83e74663ab","stream":false,"injection":"none","outcome":"ok","latency_ms":201.085}
+{"ledger":"invocation","ts":"2026-09-26T14:11:17.515566257Z","logical_work_item_id":"g2c-wt2b-orchestrator","messageId":"e8cedbb8-13b2-4ac0-bae5-9b706cc2c76c","taskId":"01a0de0e-58c2-7450-a928-8351a856bcbc","caller":"worker","body_sha256":"0fcde9674099b2c769c22a1029c9b8afc5703b2586d0be8135bc83a7b86aeda1","stream":false,"injection":"none","outcome":"ok","latency_ms":200.893}
+wall 0.113s exit 0

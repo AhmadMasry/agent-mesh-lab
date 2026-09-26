@@ -1,0 +1,19 @@
+$ CLIENT=go LAYER=http RETRY_ON=transport+503 REPS=2 RUN_ID=wta2 \
+  RUN_ITEM=2026-09-26-walkthrough/a2-go-http-503 experiments/gate2-a2.sh
+# istioctl on PATH at this step's start: client version: 1.31.1
+== certificate check ==
+certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/worker and spiffe://cluster.local/ns/lab/sa/orchestrator; ztunnel not restarted
+== starting the control pod ==
+2026-09-26T14:18:30Z run wta2: client=go layer=http knobs: CLIENT_RETRIES=1 CLIENT_RETRY_ON=transport+503
+2026-09-26T14:18:30Z deployment/worker replicas: spec=1 ready=1
+2026-09-26T14:18:30Z deployment/mockllm replicas: spec=1 ready=1
+== disarming the worker before the run ==
+2026-09-26T14:18:30Z POST http://worker.lab.svc.cluster.local:8080/control/reset -> 204 (pre-run)
+== go client, http layer, CLIENT_RETRIES=1 CLIENT_RETRY_ON=transport+503: 2 repetitions ==
+  go,http,a2-go-http-503-wta2-01,2,yes,yes,yes,1,1,1,task/TASK_STATE_COMPLETED,knob=CLIENT_RETRIES=1 CLIENT_RETRY_ON=transport+503;client_lines=1;
+  go,http,a2-go-http-503-wta2-02,2,yes,yes,yes,1,1,1,task/TASK_STATE_COMPLETED,knob=CLIENT_RETRIES=1 CLIENT_RETRY_ON=transport+503;client_lines=1;
+== summary ==
+client,layer,work_item,arrivals,messageId_reused,id_reused,body_identical,injection_fired,executes,invocations,client_result,notes
+go,http,a2-go-http-503-wta2-01,2,yes,yes,yes,1,1,1,task/TASK_STATE_COMPLETED,knob=CLIENT_RETRIES=1 CLIENT_RETRY_ON=transport+503;client_lines=1;
+go,http,a2-go-http-503-wta2-02,2,yes,yes,yes,1,1,1,task/TASK_STATE_COMPLETED,knob=CLIENT_RETRIES=1 CLIENT_RETRY_ON=transport+503;client_lines=1;
+wall 52.827s exit 0

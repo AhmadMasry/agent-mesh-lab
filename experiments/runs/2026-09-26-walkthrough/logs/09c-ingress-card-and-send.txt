@@ -1,0 +1,41 @@
+$ S="${TMPDIR:-/tmp}"
+kubectl -n agentgateway-ingress port-forward svc/agentgateway-ingress 18080:80 >/dev/null 2>&1 &
+PF=$!
+for i in $(seq 1 30); do
+  curl -sS -o /dev/null --max-time 2 http://127.0.0.1:18080/.well-known/agent-card.json 2>/dev/null && break
+  python3 -c "import time;time.sleep(1)"
+done
+echo "## the card the ingress serves"
+curl -s http://127.0.0.1:18080/.well-known/agent-card.json | jq -c "{name, supportedInterfaces}"
+echo
+echo "## the advertised address, resolved from this host"
+curl -sS -o /dev/null --max-time 5 http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ ; echo "exit=$?"
+echo
+echo "## the send, by hand"
+LWI=wt2b-ingress
+OUT="${TMPDIR:-/tmp}/ingress-resp.json"
+curl -s -o "$OUT" -w "http=%{http_code}\n" -X POST http://127.0.0.1:18080/ \
+  -H "Host: orchestrator.lab.internal" -H "Content-Type: application/json" -H "A2A-Version: 1.0" \
+  -H "X-Logical-Work-Item-Id: $LWI" \
+  -d "{\"jsonrpc\":\"2.0\",\"id\":\"$(uuidgen)\",\"method\":\"SendMessage\",\"params\":{\"message\":{\"messageId\":\"$(uuidgen)\",\"role\":\"ROLE_USER\",\"parts\":[{\"text\":\"lwi:$LWI hello\"}],\"metadata\":{\"logical_work_item_id\":\"$LWI\"}}}}"
+echo
+echo "## the answer"
+jq -c "{taskId: .result.task.id, contextId: .result.task.contextId, state: .result.task.status.state}" "$OUT"
+kill "$PF" >/dev/null 2>&1 || true
+wait "$PF" >/dev/null 2>&1 || true
+echo "## port-forward closed"
+# istioctl on PATH at this step's start: client version: 1.31.1
+## the card the ingress serves
+{"name":"orchestrator","supportedInterfaces":[{"url":"http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","protocolBinding":"JSONRPC","protocolVersion":"1.0"},{"url":"http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","protocolBinding":"HTTP+JSON","protocolVersion":"1.0"},{"url":"agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80","protocolBinding":"GRPC","protocolVersion":"1.0"}]}
+
+## the advertised address, resolved from this host
+curl: (28) Resolving timed out after 5002 milliseconds
+exit=28
+
+## the send, by hand
+http=200
+
+## the answer
+{"taskId":"ee2d9ff3-cb1b-43bc-b13f-9daf7744cf96","contextId":"2f7211e2-7ac4-4fc3-bc7c-658c0285ab18","state":"TASK_STATE_COMPLETED"}
+## port-forward closed
+wall 6.432s exit 0

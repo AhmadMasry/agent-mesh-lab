@@ -1,0 +1,7 @@
+$ for g in agentgateway-ingress/agentgateway-ingress agentgateway-waypoint/agw-central; do
+  kubectl -n "${g%%/*}" get deploy "${g##*/}" -o jsonpath='{.metadata.namespace}/{.metadata.name} generation={.metadata.generation} restartedAt=[{.spec.template.metadata.annotations.kubectl\.kubernetes\.io/restartedAt}]{"\n"}'
+done
+# istioctl on PATH at this step's start: client version: 1.31.1
+agentgateway-ingress/agentgateway-ingress generation=1 restartedAt=[]
+agentgateway-waypoint/agw-central generation=1 restartedAt=[]
+wall 0.110s exit 0

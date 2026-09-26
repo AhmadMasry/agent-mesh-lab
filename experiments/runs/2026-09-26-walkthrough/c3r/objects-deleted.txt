@@ -1,0 +1,17 @@
+
+# read 2026-09-26T15:20:56Z
+$ kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r/objects/client.yaml -f experiments/runs/2026-09-26-walkthrough/c3r/objects/server.yaml --wait=true
+pod "c3r-client" deleted from c3r namespace
+deployment.apps "c3r-server" deleted from c3r namespace
+# exit 0
+
+# read 2026-09-26T15:21:27Z
+$ kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r/objects/namespace.yaml --wait=true --timeout=180s
+namespace "c3r" deleted
+# exit 0
+
+# read 2026-09-26T15:21:32Z
+$ kubectl get authorizationpolicy -A; istioctl ztunnel-config workloads --node agent-mesh-lab-worker -o json | jq '[.[] | select(.namespace == "c3r")] | length'
+No resources found
+0
+# exit 0

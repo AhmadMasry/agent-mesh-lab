@@ -1,0 +1,16 @@
+$ kubectl -n telemetry port-forward svc/jaeger 16686:16686 >/dev/null 2>&1 &
+PF=$!
+for i in $(seq 1 30); do curl -sS -o /dev/null --max-time 2 http://127.0.0.1:16686/api/v3/services >/dev/null 2>&1 && break; python3 -c "import time;time.sleep(1)"; done
+curl -s http://127.0.0.1:16686/api/v3/services | jq -r ".services[]" | sort
+kill "$PF" >/dev/null 2>&1 || true
+wait "$PF" >/dev/null 2>&1 || true
+exit 0
+# istioctl on PATH at this step's start: client version: 1.31.1
+agentgateway-ingress
+agw-central
+jaeger
+loadgen
+mockllm
+orchestrator
+worker
+wall 1.116s exit 0

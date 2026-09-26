@@ -1,0 +1,893 @@
+$ python3 experiments/runs/2026-09-26-walkthrough/d3b/counts.py | tee experiments/runs/2026-09-26-walkthrough/d3b/counts.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+# D-3b counts, from this directory alone (counts.py). One line per cell: phase binding receiver kind, sends,
+# then each distinct value with how many sends had it.
+deny grpc go sm: sends=2
+    client         task/TASK_STATE_COMPLETED grpc=0 attempts=1 transparent=0 x2
+    proxy          200 200 x2
+    proxy_paths    /.well-known/agent-card.json /lf.a2a.v1.A2AService/SendMessage x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendMessage:deny:grpc:len=135:size=133 x2
+    extauthz_path  /.well-known/agent-card.json|"/.well-known/agent-card.json"|reach=none /lf.a2a.v1.A2AService/SendMessage|"/lf.a2a.v1.A2AService/SendMessage"|reach=go x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny grpc go st: sends=2
+    client         unexpected HTTP status code received from server: 403 (Forbidden); malformed header: missing HTTP content-type
+data: "denied by the lab's extauthz fixture: operation:SubscribeToTask\n" stream_end=error grpc=7 attempts=1 transparent=0 x2
+    proxy          200 403/DirectResponse x2
+    proxy_paths    /.well-known/agent-card.json /lf.a2a.v1.A2AService/SubscribeToTask x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 deny:operation:SubscribeToTask:deny:grpc:len=41:size=41 x2
+    extauthz_path  /.well-known/agent-card.json|"/.well-known/agent-card.json"|reach=none /lf.a2a.v1.A2AService/SubscribeToTask|"/lf.a2a.v1.A2AService/SubscribeToTask"|reach=go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny grpc py sm: sends=2
+    client         task/TASK_STATE_COMPLETED grpc=0 attempts=1 transparent=0 x2
+    proxy          200 x2
+    proxy_paths    /lf.a2a.v1.A2AService/SendMessage x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendMessage:deny:grpc:len=135:size=133 x2
+    extauthz_path  /lf.a2a.v1.A2AService/SendMessage|"/lf.a2a.v1.A2AService/SendMessage"|reach=go x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny grpc py st: sends=2
+    client         unexpected HTTP status code received from server: 403 (Forbidden); malformed header: missing HTTP content-type
+data: "denied by the lab's extauthz fixture: operation:SubscribeToTask\n" stream_end=error grpc=7 attempts=1 transparent=0 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /lf.a2a.v1.A2AService/SubscribeToTask x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:grpc:len=41:size=41 x2
+    extauthz_path  /lf.a2a.v1.A2AService/SubscribeToTask|"/lf.a2a.v1.A2AService/SubscribeToTask"|reach=go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc go batch: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:batch:deny:jsonrpc:len=149:size=149 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go cst: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=145:size=145 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc go dup: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:duplicate-key:deny:jsonrpc:len=168:size=168 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go pad: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go padsm: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go padt: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc go sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 200 x2
+    proxy_paths    /.well-known/agent-card.json / x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendMessage:deny:jsonrpc:len=296:size=296 x2
+    extauthz_path  /.well-known/agent-card.json|"/.well-known/agent-card.json"|reach=none /|"/"|reach=py+go x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc go ss: sends=2
+    client         / last_event_state=TASK_STATE_COMPLETED stream_end=eof x2
+    proxy          200 200 x2
+    proxy_paths    /.well-known/agent-card.json / x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendStreamingMessage:deny:jsonrpc:len=305:size=305 x2
+    extauthz_path  /.well-known/agent-card.json|"/.well-known/agent-card.json"|reach=none /|"/"|reach=py+go x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc go st: sends=2
+    client         unexpected HTTP status: 403 Forbidden stream_end=error x2
+    proxy          200 403/DirectResponse x2
+    proxy_paths    /.well-known/agent-card.json / x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 deny:operation:SubscribeToTask:deny:jsonrpc:len=144:size=144 x2
+    extauthz_path  /.well-known/agent-card.json|"/.well-known/agent-card.json"|reach=none /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc py batch: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:batch:deny:jsonrpc:len=149:size=149 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py cst: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=145:size=145 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny jsonrpc py dup: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:duplicate-key:deny:jsonrpc:len=168:size=168 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py pad: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py padsm: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py padt: sends=1
+    client         http=403 x1
+    proxy          403/DirectResponse x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       deny:undecidable:partial-body:deny:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       0 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+deny jsonrpc py sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendMessage:deny:jsonrpc:len=296:size=296 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc py ss: sends=2
+    client         / last_event_state=TASK_STATE_COMPLETED stream_end=eof x2
+    proxy          200 x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendStreamingMessage:deny:jsonrpc:len=305:size=305 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny jsonrpc py st: sends=2
+    client         unexpected HTTP status: 403 Forbidden stream_end=error x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=144:size=144 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny rest go sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 200 x2
+    proxy_paths    /.well-known/agent-card.json /message:send x2
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 allow:operation:SendMessage:deny:rest:len=196:size=196 x2
+    extauthz_path  /.well-known/agent-card.json|"/.well-known/agent-card.json"|reach=none /message:send|"/message:send"|reach=none x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny rest go st: sends=2
+    client         server error stream_end=error x2
+    proxy          200 403/DirectResponse x2
+    proxy_paths    /.well-known/agent-card.json /tasks/no-such-task-deny-rest-go-st-d3b-1:subscribe x1, /.well-known/agent-card.json /tasks/no-such-task-deny-rest-go-st-d3b-2:subscribe x1
+    extauthz_lines 2 x2
+    extauthz       allow:not-subscribe:deny:other:len=0:size=0 deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /.well-known/agent-card.json|"/.well-known/agent-card.json"|reach=none /tasks/no-such-task-deny-rest-go-st-d3b-1:subscribe|"/tasks/no-such-task-deny-rest-go-st-d3b-1:subscribe"|reach=none x1, /.well-known/agent-card.json|"/.well-known/agent-card.json"|reach=none /tasks/no-such-task-deny-rest-go-st-d3b-2:subscribe|"/tasks/no-such-task-deny-rest-go-st-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+deny rest py sm: sends=2
+    client         task/TASK_STATE_COMPLETED x2
+    proxy          200 x2
+    proxy_paths    /message:send x2
+    extauthz_lines 1 x2
+    extauthz       allow:operation:SendMessage:deny:rest:len=196:size=196 x2
+    extauthz_path  /message:send|"/message:send"|reach=none x2
+    arrivals       1 x2
+    sdk_received   1 x2
+    executes       1 x2
+    task_last_state TASK_STATE_COMPLETED x2
+    invocations    1 x2
+deny rest py st: sends=2
+    client         server error stream_end=error x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-deny-rest-py-st-d3b-1:subscribe x1, /tasks/no-such-task-deny-rest-py-st-d3b-2:subscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-deny-rest-py-st-d3b-1:subscribe|"/tasks/no-such-task-deny-rest-py-st-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-deny-rest-py-st-d3b-2:subscribe|"/tasks/no-such-task-deny-rest-py-st-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go gp: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /lf.a2a.v1.A2AService/Subscribe%54oTask x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:grpc:len=46:size=46 x2
+    extauthz_path  /lf.a2a.v1.A2AService/Subscribe%54oTask|"/lf.a2a.v1.A2AService/SubscribeToTask"|reach=go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go gq: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /lf.a2a.v1.A2AService/SubscribeToTask?x=1 x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:grpc:len=46:size=46 x2
+    extauthz_path  /lf.a2a.v1.A2AService/SubscribeToTask?x=1|"/lf.a2a.v1.A2AService/SubscribeToTask"|reach=go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go gs: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /lf.a2a.v1.A2AService%2FSubscribeToTask x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:grpc:len=46:size=46 x2
+    extauthz_path  /lf.a2a.v1.A2AService%2FSubscribeToTask|"/lf.a2a.v1.A2AService/SubscribeToTask"|reach=go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go rg: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-go-rg-d3b-1:subscribe x1, /tasks/no-such-task-shapes-jsonrpc-go-rg-d3b-2:subscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-go-rg-d3b-1:subscribe|"/tasks/no-such-task-shapes-jsonrpc-go-rg-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-go-rg-d3b-2:subscribe|"/tasks/no-such-task-shapes-jsonrpc-go-rg-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xa: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /a2a/v1 x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /a2a/v1|"/a2a/v1"|reach=go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xc: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-go-xc-d3b-1:subscribe x1, /tasks/no-such-task-shapes-jsonrpc-go-xc-d3b-2:subscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-go-xc-d3b-1:subscribe|"/tasks/no-such-task-shapes-jsonrpc-go-xc-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-go-xc-d3b-2:subscribe|"/tasks/no-such-task-shapes-jsonrpc-go-xc-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xg: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xh: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-go-xh-d3b-1:subscribe x1, /tasks/no-such-task-shapes-jsonrpc-go-xh-d3b-2:subscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-go-xh-d3b-1:subscribe|"/tasks/no-such-task-shapes-jsonrpc-go-xh-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-go-xh-d3b-2:subscribe|"/tasks/no-such-task-shapes-jsonrpc-go-xh-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xi: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/a%2Fno-such-task-shapes-jsonrpc-go-xi-d3b-1:subscribe x1, /tasks/a%2Fno-such-task-shapes-jsonrpc-go-xi-d3b-2:subscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/a%2Fno-such-task-shapes-jsonrpc-go-xi-d3b-1:subscribe|"/tasks/a/no-such-task-shapes-jsonrpc-go-xi-d3b-1:subscribe"|reach=none x1, /tasks/a%2Fno-such-task-shapes-jsonrpc-go-xi-d3b-2:subscribe|"/tasks/a/no-such-task-shapes-jsonrpc-go-xi-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xk: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /?x=1 x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /?x=1|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xl: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-go-xl-d3b-1:%73ubscribe x1, /tasks/no-such-task-shapes-jsonrpc-go-xl-d3b-2:%73ubscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-go-xl-d3b-1:%73ubscribe|"/tasks/no-such-task-shapes-jsonrpc-go-xl-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-go-xl-d3b-2:%73ubscribe|"/tasks/no-such-task-shapes-jsonrpc-go-xl-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xm: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /lf.a2a.v1.A2AService/SendMessage x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /lf.a2a.v1.A2AService/SendMessage|"/lf.a2a.v1.A2AService/SendMessage"|reach=go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xn: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /%0A x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /%0A|"/\n"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xp: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /x x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /x|"/x"|reach=go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xq: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=151:size=151 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xr: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-go-xr-d3b-1%3Asubscribe x1, /tasks/no-such-task-shapes-jsonrpc-go-xr-d3b-2%3Asubscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-go-xr-d3b-1%3Asubscribe|"/tasks/no-such-task-shapes-jsonrpc-go-xr-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-go-xr-d3b-2%3Asubscribe|"/tasks/no-such-task-shapes-jsonrpc-go-xr-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xt: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /message:send/ x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /message:send/|"/message:send/"|reach=go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc go xu: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py rg: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-py-rg-d3b-1:subscribe x1, /tasks/no-such-task-shapes-jsonrpc-py-rg-d3b-2:subscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-py-rg-d3b-1:subscribe|"/tasks/no-such-task-shapes-jsonrpc-py-rg-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-py-rg-d3b-2:subscribe|"/tasks/no-such-task-shapes-jsonrpc-py-rg-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py x16: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:undecidable:not-json:deny:jsonrpc:len=294:size=294 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xb: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=149:size=149 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xc: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-py-xc-d3b-1:subscribe x1, /tasks/no-such-task-shapes-jsonrpc-py-xc-d3b-2:subscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-py-xc-d3b-1:subscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xc-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-py-xc-d3b-2:subscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xc-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xe: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-py-xe-d3b-1:subscribe%0A x1, /tasks/no-such-task-shapes-jsonrpc-py-xe-d3b-2:subscribe%0A x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-py-xe-d3b-1:subscribe%0A|"/tasks/no-such-task-shapes-jsonrpc-py-xe-d3b-1:subscribe\n"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-py-xe-d3b-2:subscribe%0A|"/tasks/no-such-task-shapes-jsonrpc-py-xe-d3b-2:subscribe\n"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xg: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xh: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-py-xh-d3b-1:subscribe x1, /tasks/no-such-task-shapes-jsonrpc-py-xh-d3b-2:subscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-py-xh-d3b-1:subscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xh-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-py-xh-d3b-2:subscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xh-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xk: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /?x=1 x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /?x=1|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xl: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-py-xl-d3b-1:%73ubscribe x1, /tasks/no-such-task-shapes-jsonrpc-py-xl-d3b-2:%73ubscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-py-xl-d3b-1:%73ubscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xl-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-py-xl-d3b-2:%73ubscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xl-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xn: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /%0A x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=146:size=146 x2
+    extauthz_path  /%0A|"/\n"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xq: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    / x2
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:jsonrpc:len=151:size=151 x2
+    extauthz_path  /|"/"|reach=py+go x2
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xr: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks/no-such-task-shapes-jsonrpc-py-xr-d3b-1%3Asubscribe x1, /tasks/no-such-task-shapes-jsonrpc-py-xr-d3b-2%3Asubscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks/no-such-task-shapes-jsonrpc-py-xr-d3b-1%3Asubscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xr-d3b-1:subscribe"|reach=none x1, /tasks/no-such-task-shapes-jsonrpc-py-xr-d3b-2%3Asubscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xr-d3b-2:subscribe"|reach=none x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+shapes jsonrpc py xs: sends=2
+    client         http=403 x2
+    proxy          403/DirectResponse x2
+    proxy_paths    /tasks%2Fno-such-task-shapes-jsonrpc-py-xs-d3b-1:subscribe x1, /tasks%2Fno-such-task-shapes-jsonrpc-py-xs-d3b-2:subscribe x1
+    extauthz_lines 1 x2
+    extauthz       deny:operation:SubscribeToTask:deny:rest:len=0:size=0 x2
+    extauthz_path  /tasks%2Fno-such-task-shapes-jsonrpc-py-xs-d3b-1:subscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xs-d3b-1:subscribe"|reach=go x1, /tasks%2Fno-such-task-shapes-jsonrpc-py-xs-d3b-2:subscribe|"/tasks/no-such-task-shapes-jsonrpc-py-xs-d3b-2:subscribe"|reach=go x1
+    arrivals       0 x2
+    sdk_received   0 x2
+    executes       0 x2
+    task_last_state  x2
+    invocations    0 x2
+allow jsonrpc go batch: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:batch:allow:jsonrpc:len=150:size=150 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc go dup: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:duplicate-key:allow:jsonrpc:len=169:size=169 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc go pad: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc go padsm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+allow jsonrpc go padt: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py batch: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:batch:allow:jsonrpc:len=150:size=150 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py dup: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:duplicate-key:allow:jsonrpc:len=169:size=169 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py pad: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   0 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+allow jsonrpc py padsm: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       1 x1
+    task_last_state TASK_STATE_COMPLETED x1
+    invocations    1 x1
+allow jsonrpc py padt: sends=1
+    client         http=200 x1
+    proxy          200 x1
+    proxy_paths    / x1
+    extauthz_lines 1 x1
+    extauthz       allow:undecidable:partial-body:allow:jsonrpc:len=2097152:size=-1 x1
+    extauthz_path  /|"/"|reach=py+go x1
+    arrivals       1 x1
+    sdk_received   1 x1
+    executes       0 x1
+    task_last_state  x1
+    invocations    0 x1
+# sends: 114; decision lines by phase and the setting each line carries: allow/allow=10, deny/deny=56, shapes/deny=62
+# gRPC sends: 8; with grpc attempts other than 1 or a transparent attempt: 0
+# decision lines by phase, binding, receiver, kind and what was checked (joined on work item):
+#   deny: 56 lines (card GET 14, operation 42)
+#     grpc     go  sm     card GET  2
+#     grpc     go  sm     operation 2
+#     grpc     go  st     card GET  2
+#     grpc     go  st     operation 2
+#     grpc     py  sm     operation 2
+#     grpc     py  st     operation 2
+#     jsonrpc  go  batch  operation 1
+#     jsonrpc  go  cst    operation 2
+#     jsonrpc  go  dup    operation 1
+#     jsonrpc  go  pad    operation 1
+#     jsonrpc  go  padsm  operation 1
+#     jsonrpc  go  padt   operation 1
+#     jsonrpc  go  sm     card GET  2
+#     jsonrpc  go  sm     operation 2
+#     jsonrpc  go  ss     card GET  2
+#     jsonrpc  go  ss     operation 2
+#     jsonrpc  go  st     card GET  2
+#     jsonrpc  go  st     operation 2
+#     jsonrpc  py  batch  operation 1
+#     jsonrpc  py  cst    operation 2
+#     jsonrpc  py  dup    operation 1
+#     jsonrpc  py  pad    operation 1
+#     jsonrpc  py  padsm  operation 1
+#     jsonrpc  py  padt   operation 1
+#     jsonrpc  py  sm     operation 2
+#     jsonrpc  py  ss     operation 2
+#     jsonrpc  py  st     operation 2
+#     rest     go  sm     card GET  2
+#     rest     go  sm     operation 2
+#     rest     go  st     card GET  2
+#     rest     go  st     operation 2
+#     rest     py  sm     operation 2
+#     rest     py  st     operation 2
+#   shapes: 62 lines (operation 62)
+#     jsonrpc  go  gp     operation 2
+#     jsonrpc  go  gq     operation 2
+#     jsonrpc  go  gs     operation 2
+#     jsonrpc  go  rg     operation 2
+#     jsonrpc  go  xa     operation 2
+#     jsonrpc  go  xc     operation 2
+#     jsonrpc  go  xg     operation 2
+#     jsonrpc  go  xh     operation 2
+#     jsonrpc  go  xi     operation 2
+#     jsonrpc  go  xk     operation 2
+#     jsonrpc  go  xl     operation 2
+#     jsonrpc  go  xm     operation 2
+#     jsonrpc  go  xn     operation 2
+#     jsonrpc  go  xp     operation 2
+#     jsonrpc  go  xq     operation 2
+#     jsonrpc  go  xr     operation 2
+#     jsonrpc  go  xt     operation 2
+#     jsonrpc  go  xu     operation 2
+#     jsonrpc  py  rg     operation 2
+#     jsonrpc  py  x16    operation 2
+#     jsonrpc  py  xb     operation 2
+#     jsonrpc  py  xc     operation 2
+#     jsonrpc  py  xe     operation 2
+#     jsonrpc  py  xg     operation 2
+#     jsonrpc  py  xh     operation 2
+#     jsonrpc  py  xk     operation 2
+#     jsonrpc  py  xl     operation 2
+#     jsonrpc  py  xn     operation 2
+#     jsonrpc  py  xq     operation 2
+#     jsonrpc  py  xr     operation 2
+#     jsonrpc  py  xs     operation 2
+#   allow: 10 lines (operation 10)
+#     jsonrpc  go  batch  operation 1
+#     jsonrpc  go  dup    operation 1
+#     jsonrpc  go  pad    operation 1
+#     jsonrpc  go  padsm  operation 1
+#     jsonrpc  go  padt   operation 1
+#     jsonrpc  py  batch  operation 1
+#     jsonrpc  py  dup    operation 1
+#     jsonrpc  py  pad    operation 1
+#     jsonrpc  py  padsm  operation 1
+#     jsonrpc  py  padt   operation 1
+# decision lines not joined to their send's work item: 0
+# decision lines with source_principal empty: 128 of 128
+wall 0.091s exit 0

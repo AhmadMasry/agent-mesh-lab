@@ -1,0 +1,112 @@
+$ mkdir -p experiments/runs/2026-09-26-walkthrough/c8-repeat
+cp -R experiments/runs/2026-09-23-c8-body-rule/overlay-c8-deny experiments/runs/2026-09-23-c8-body-rule/counts.py experiments/runs/2026-09-26-walkthrough/c8-repeat/
+export RUNREL=2026-09-26-walkthrough/c8-repeat RUN_ID=wtc8r
+SENDS="bash experiments/runs/2026-09-23-c6-httproute/sends.sh"; C8="bash experiments/runs/2026-09-23-c8-body-rule/c8.sh"
+export IMAGE=$($SENDS image | sed -n 's/.* image=\([^ ]*\) .*/\1/p'); echo "IMAGE=$IMAGE"
+S=$(date -u +%FT%TZ)
+$C8 read before "$S"
+$SENDS pod-up
+T=$(date -u +%FT%TZ); $C8 apply overlay-c8-deny; sleep 10; $C8 read deny-applied "$T"
+for r in go py; do $C8 probe c8d batch $r 1; done
+echo "== the by-body-hash read, as the C-8 entry's ingress-by-body-hash.txt header gives it: the receiver's log since the apply, grepped for the sha256 of the body the client recorded =="
+for pair in go:worker py:orchestrator; do
+  recv=${pair%%:*}; app=${pair##*:}
+  P=experiments/runs/2026-09-26-walkthrough/c8-repeat/c8d/c8d-$recv-batch-wtc8r-1
+  H=$(shasum -a 256 $P/request.json | cut -d' ' -f1)
+  { echo "# $(date -u +%FT%TZ) kubectl -n lab logs deploy/$app --since-time=$T | grep $H  (make ledgers found no line by the work-item id: the body does not parse as an object, so the ledger line carries no identity; joined here on the body hash the client recorded)"
+    kubectl -n lab logs deploy/$app --since-time=$T | grep "$H"; } > $P/ingress-by-body-hash.txt
+  cat $P/ingress-by-body-hash.txt
+done
+U=$(date -u +%FT%TZ); $C8 read deny-end "$T"; $C8 remove overlay-c8-deny; sleep 10; $C8 read deny-removed "$U"
+$SENDS pod-down
+RUN_ID=c8rafter RUN_ITEM=2026-09-26-walkthrough/c8-repeat/after experiments/gate2-single-clean.sh
+python3 experiments/runs/2026-09-26-walkthrough/c8-repeat/counts.py | tee experiments/runs/2026-09-26-walkthrough/c8-repeat/counts.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+IMAGE=kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 65624 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 65630 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T17:06:20Z read before -> experiments/runs/2026-09-26-walkthrough/c8-repeat/readings-before.txt
+2026-09-26T17:06:20Z pod-up c6-curl ip=10.244.1.163
+2026-09-26T17:06:20Z apply -k overlay-c8-deny
+2026-09-26T17:06:20Z apply done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 66038 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 66044 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T17:06:31Z read deny-applied -> experiments/runs/2026-09-26-walkthrough/c8-repeat/readings-deny-applied.txt
+2026-09-26T17:06:34Z c8d go batch c8d-go-batch-wtc8r-1 http=200 exit=0 body_len=142 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[200]
+2026-09-26T17:06:37Z c8d py batch c8d-py-batch-wtc8r-1 http=200 exit=0 body_len=142 ledgers-exit=2 ingress-ledger=0 execution=0 invocation=0 ingress-proxy-status=[200]
+== the by-body-hash read, as the C-8 entry's ingress-by-body-hash.txt header gives it: the receiver's log since the apply, grepped for the sha256 of the body the client recorded ==
+# 2026-09-26T17:06:37Z kubectl -n lab logs deploy/worker --since-time=2026-09-26T17:06:20Z | grep f5cf6c56782f1205fdd30833ccf9239ac615cb5aa0137a49b65efec73fb75741  (make ledgers found no line by the work-item id: the body does not parse as an object, so the ledger line carries no identity; joined here on the body hash the client recorded)
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-26T17:06:31.781071055Z","remote":"10.244.1.204:36507","method":"","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"application/json","body_sha256":"f5cf6c56782f1205fdd30833ccf9239ac615cb5aa0137a49b65efec73fb75741","body_len":142}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-26T17:06:31.781071055Z","remote":"10.244.1.204:36507","method":"","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"application/json","body_sha256":"f5cf6c56782f1205fdd30833ccf9239ac615cb5aa0137a49b65efec73fb75741","body_len":142,"status":200}
+# 2026-09-26T17:06:37Z kubectl -n lab logs deploy/orchestrator --since-time=2026-09-26T17:06:20Z | grep 774eba27b0cdc7efa494d1072a8d24cd30c232c69d11da341191085aecbf00de  (make ledgers found no line by the work-item id: the body does not parse as an object, so the ledger line carries no identity; joined here on the body hash the client recorded)
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-26T17:06:34.516464Z","remote":"10.244.1.204:51731","method":"","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"application/json","body_sha256":"774eba27b0cdc7efa494d1072a8d24cd30c232c69d11da341191085aecbf00de","body_len":142}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-26T17:06:34.516464Z","remote":"10.244.1.204:51731","method":"","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"application/json","body_sha256":"774eba27b0cdc7efa494d1072a8d24cd30c232c69d11da341191085aecbf00de","body_len":142,"status":200}
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 66350 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 66357 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T17:06:38Z read deny-end -> experiments/runs/2026-09-26-walkthrough/c8-repeat/readings-deny-end.txt
+2026-09-26T17:06:38Z delete -k overlay-c8-deny
+2026-09-26T17:06:38Z delete done
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 43: 66561 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+experiments/runs/2026-09-23-c8-body-rule/c8.sh: line 36: 66626 Terminated: 15          kubectl -n "$1" port-forward "deploy/$2" "$4:15000" > /dev/null 2>&1
+2026-09-26T17:06:49Z read deny-removed -> experiments/runs/2026-09-26-walkthrough/c8-repeat/readings-deny-removed.txt
+2026-09-26T17:07:19Z pod-down c6-curl
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c8rafter-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 20:07:21 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 20:07:22 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 20:07:22 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 20:07:23 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:07:38 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:07:38 Adding tag latest
+2026/09/26 20:07:38 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c8rafter-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 20:07:44 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 20:07:45 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 20:07:45 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 20:07:46 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:08:02 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:08:02 Adding tag latest
+2026/09/26 20:08:02 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c8rafter-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c8rafter-orchestrator,1,1,1,1,0,task/TASK_STATE_FAILED
+# rule receiver kind -> sends; the ingress proxy's GET (card) statuses and POST line (status, route, error); arrivals at the receiver asked and their methods; executes; invocations; the caller's status; the receiver's JSON-RPC answer (curl sends); the proxy's non-request lines in the windows (curl probes only)
+Deny go batch -> sends=1 get=- agw_card_get=- post_status=200 route=lab/worker-ingress post_error=- arrivals=1 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=200 answer=error -32602 invalid params: json: cannot unmarshal array into Go value o proxy_other_lines=0
+Deny py batch -> sends=1 get=- agw_card_get=- post_status=200 route=lab/orchestrator-ingress post_error=- arrivals=1 arrival_methods=- sdk_received=0 received_methods=- executes=0 invocations=0 client=200 answer=error -32600 Batch requests are not supported proxy_other_lines=0
+Deny: sends=2 POST refused by the proxy (403)=0 of them with an arrival=0; card GET lines=0 of them 403=0
+Require: sends=0 POST refused by the proxy (403)=0 of them with an arrival=0; card GET lines=0 of them 403=0
+Deny (re-applied): sends=0 POST refused by the proxy (403)=0 of them with an arrival=0; card GET lines=0 of them 403=0
+Require (scoped): sends=0 POST refused by the proxy (403)=0 of them with an arrival=0; card GET lines=0 of them 403=0
+wall 125.331s exit 0

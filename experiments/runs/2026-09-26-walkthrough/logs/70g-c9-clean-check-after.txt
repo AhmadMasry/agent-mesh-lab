@@ -1,0 +1,154 @@
+$ RUN_ID=c9after RUN_ITEM=2026-09-26-walkthrough/c9/after experiments/gate2-single-clean.sh
+python3 experiments/runs/2026-09-24-c9-a2a-marking/counts.py experiments/runs/2026-09-26-walkthrough/c9/base experiments/runs/2026-09-26-walkthrough/c9/after | tee experiments/runs/2026-09-26-walkthrough/c9/counts.txt
+cat experiments/runs/2026-09-26-walkthrough/c9/cards-after/cards.txt experiments/runs/2026-09-26-walkthrough/c9/cards-reverted/cards.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c9after-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 20:01:11 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 20:01:12 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 20:01:12 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 20:01:13 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:01:28 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:01:28 Adding tag latest
+2026/09/26 20:01:28 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c9after-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 20:01:34 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 20:01:35 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 20:01:35 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 20:01:36 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:01:53 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:01:53 Adding tag latest
+2026/09/26 20:01:53 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c9after-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c9after-orchestrator,1,1,1,1,0,task/TASK_STATE_FAILED
+==== phase base (experiments/runs/2026-09-26-walkthrough/c9/base)
+access lines: 22; on the lab/* routes (A2A Services): 18; model route: 4
+-- access lines on lab/* routes, by proxy, route, kind of request and what the proxy wrote:
+    4  agentgateway-ingress | lab/orchestrator-ingress | POST | / | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | GET | /.well-known/agent-card.json | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | POST | / | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agw-central | lab/orchestrator | GET | /.well-known/agent-card.json | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    2  agw-central | lab/worker | POST | / | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+-- model route lines: protocol values {'http': 4} a2a.method values {'<absent>': 4}
+-- other a2a.* keys on any access line: 0 ; keys naming a message or task id: 0
+-- proxy SERVER spans: 22
+    4  agentgateway-ingress | lab/orchestrator-ingress | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | GET | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agw-central | agentgateway-waypoint/model-via-agw | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agw-central | lab/orchestrator | GET | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    2  agw-central | lab/worker | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+-- other a2a.* keys on any proxy span: 0 ; keys naming a message or task id: 0
+-- ingress-ledger arrivals: 10; by work item's receiver, kind, the agent it arrived at, method, sender:
+    1  go | sm | worker | SendMessage | agentgateway-ingress
+    1  go | sr | worker | SendStreamingMessage | agentgateway-ingress
+    1  go | sr | worker | SubscribeToTask | agentgateway-ingress
+    1  go | st | worker | SubscribeToTask | agentgateway-ingress
+    1  py | sm | orchestrator | SendMessage | agentgateway-ingress
+    1  py | sm | worker | SendMessage | agw-central
+    1  py | sr | orchestrator | SendStreamingMessage | agentgateway-ingress
+    1  py | sr | orchestrator | SubscribeToTask | agentgateway-ingress
+    1  py | sr | worker | SendMessage | agw-central
+    1  py | st | orchestrator | SubscribeToTask | agentgateway-ingress
+   A2A-Version on arrivals: {'1.0': 10}
+-- client end lines: 8; by receiver, kind, method, advertised -> dialled, outcome:
+    1  go | sm | SendMessage | http://worker.lab.svc.cluster.local:8080 http://worker.lab.svc.cluster.local:8080 worker.lab.svc.cluster.local:8081 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED |  | 
+    1  go | sr | SendStreamingMessage | http://worker.lab.svc.cluster.local:8080 http://worker.lab.svc.cluster.local:8080 worker.lab.svc.cluster.local:8081 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED | eof | 0
+    1  go | sr | SubscribeToTask | http://worker.lab.svc.cluster.local:8080 http://worker.lab.svc.cluster.local:8080 worker.lab.svc.cluster.local:8081 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED | eof | 0
+    1  go | st | SubscribeToTask | http://worker.lab.svc.cluster.local:8080 http://worker.lab.svc.cluster.local:8080 worker.lab.svc.cluster.local:8081 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal |  | error | -32001
+    1  py | sm | SendMessage | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | - | TASK_STATE_COMPLETED |  | 
+    1  py | sr | SendStreamingMessage | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | - | TASK_STATE_COMPLETED | eof | 0
+    1  py | sr | SubscribeToTask | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | - | TASK_STATE_COMPLETED | eof | 0
+    1  py | st | SubscribeToTask | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80 | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | - |  | eof | -32001
+-- agreement with the ledgers (access lines, then spans):
+    3  method: absent on every POST line to orchestrator
+    5  method: absent on every POST line to worker
+   22  access line and its span carry the same seven keys and values
+
+==== phase after (experiments/runs/2026-09-26-walkthrough/c9/after)
+access lines: 26; on the lab/* routes (A2A Services): 22; model route: 4
+-- access lines on lab/* routes, by proxy, route, kind of request and what the proxy wrote:
+    8  agentgateway-ingress | lab/worker-ingress | GET | /.well-known/agent-card.json | a2a | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    2  agentgateway-ingress | lab/worker-ingress | POST | / | a2a | SendMessage | success | <absent> | task | TASK_STATE_COMPLETED | set
+    2  agentgateway-ingress | lab/worker-ingress | POST | / | a2a | SendStreamingMessage | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | POST | / | a2a | SubscribeToTask | <absent> | <absent> | <absent> | <absent> | <absent>
+    6  agw-central | lab/orchestrator | GET | /.well-known/agent-card.json | a2a | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+-- model route lines: protocol values {'http': 4} a2a.method values {'<absent>': 4}
+-- other a2a.* keys on any access line: 0 ; keys naming a message or task id: 0
+-- proxy SERVER spans: 26
+    8  agentgateway-ingress | lab/worker-ingress | GET | a2a | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    2  agentgateway-ingress | lab/worker-ingress | POST | a2a | SendMessage | success | <absent> | task | TASK_STATE_COMPLETED | set
+    2  agentgateway-ingress | lab/worker-ingress | POST | a2a | SendStreamingMessage | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agentgateway-ingress | lab/worker-ingress | POST | a2a | SubscribeToTask | <absent> | <absent> | <absent> | <absent> | <absent>
+    4  agw-central | agentgateway-waypoint/model-via-agw | POST | http | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+    6  agw-central | lab/orchestrator | GET | a2a | <absent> | <absent> | <absent> | <absent> | <absent> | <absent>
+-- other a2a.* keys on any proxy span: 0 ; keys naming a message or task id: 0
+-- ingress-ledger arrivals: 8; by work item's receiver, kind, the agent it arrived at, method, sender:
+    2  go | sm | worker | SendMessage | agentgateway-ingress
+    2  go | sr | worker | SendStreamingMessage | agentgateway-ingress
+    2  go | sr | worker | SubscribeToTask | agentgateway-ingress
+    2  go | st | worker | SubscribeToTask | agentgateway-ingress
+   A2A-Version on arrivals: {'1.0': 8}
+-- client end lines: 14; by receiver, kind, method, advertised -> dialled, outcome:
+    2  go | sm | SendMessage | http://worker.lab.internal/ http://worker.lab.internal/ http://worker.lab.internal | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED |  | 
+    2  go | sr | SendStreamingMessage | http://worker.lab.internal/ http://worker.lab.internal/ http://worker.lab.internal | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED | eof | 0
+    2  go | sr | SubscribeToTask | http://worker.lab.internal/ http://worker.lab.internal/ http://worker.lab.internal | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal | TASK_STATE_COMPLETED | eof | 0
+    2  go | st | SubscribeToTask | http://worker.lab.internal/ http://worker.lab.internal/ http://worker.lab.internal | http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local | worker.lab.internal |  | error | -32001
+    2  py | sm | SendMessage | https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080 | https://orchestrator.lab.svc.cluster.local:8080/ | - | None |  | 
+    2  py | sr | SendStreamingMessage | https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080 | https://orchestrator.lab.svc.cluster.local:8080/ | - |  | error | 0
+    2  py | st | SubscribeToTask | https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080/ https://orchestrator.lab.svc.cluster.local:8080 | https://orchestrator.lab.svc.cluster.local:8080/ | - |  | error | 0
+-- agreement with the ledgers (access lines, then spans):
+    6  method: a2a.method multiset == ingress-ledger arrivals at worker
+    2  response attrs absent: agentgateway-ingress SendStreamingMessage (ledger result lines 1, stream_end ['complete'])
+    2  response attrs absent: agentgateway-ingress SubscribeToTask (ledger result lines 1, stream_end ['complete'])
+    2  response attrs absent: agentgateway-ingress SubscribeToTask (ledger result lines 1, stream_end ['error'])
+    2  response attrs vs execution result: agentgateway-ingress SendMessage outcome=agree kind=agree state=agree context=agree
+   26  access line and its span carry the same seven keys and values
+
+2026-09-26T16:53:21Z curl pod c9-cards ip=10.244.1.134
+2026-09-26T16:53:21.363531Z card go-ingress url=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json extra=[-H Host: worker.lab.internal] http=200 exit=0 interfaces=["http://worker.lab.internal/","http://worker.lab.internal/","http://worker.lab.internal"] content-length=644
+2026-09-26T16:53:22.540738Z card go-central url=http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json extra=[] http=200 exit=0 interfaces=["https://worker.lab.svc.cluster.local:8080/","https://worker.lab.svc.cluster.local:8080/","https://worker.lab.svc.cluster.local:8080"] content-length=689
+2026-09-26T16:53:23.725651Z card py-central url=http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json extra=[] http=200 exit=0 interfaces=["https://orchestrator.lab.svc.cluster.local:8080/","https://orchestrator.lab.svc.cluster.local:8080/","https://orchestrator.lab.svc.cluster.local:8080"] content-length=687
+2026-09-26T16:53:24.925816Z card py-ingress url=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json extra=[] http=200 exit=0 interfaces=["http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/","http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/","http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local"] content-length=744
+2026-09-26T16:53:26.117486Z card probe-go-central-xfp-http url=http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json extra=[-H X-Forwarded-Proto: http] http=200 exit=0 interfaces=["http://worker.lab.svc.cluster.local:8080/","http://worker.lab.svc.cluster.local:8080/","http://worker.lab.svc.cluster.local:8080"] content-length=686
+2026-09-26T16:53:27Z done
+2026-09-26T17:00:40Z curl pod c9r-cards ip=10.244.1.139
+2026-09-26T17:00:40.085221Z card go-ingress url=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json extra=[-H Host: worker.lab.internal] http=200 exit=0 interfaces=["http://worker.lab.svc.cluster.local:8080","http://worker.lab.svc.cluster.local:8080","worker.lab.svc.cluster.local:8081"] content-length=677
+2026-09-26T17:00:41.276469Z card go-central url=http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json extra=[] http=200 exit=0 interfaces=["http://worker.lab.svc.cluster.local:8080","http://worker.lab.svc.cluster.local:8080","worker.lab.svc.cluster.local:8081"] content-length=677
+2026-09-26T17:00:42.469137Z card py-central url=http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json extra=[] http=200 exit=0 interfaces=["http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80"] content-length=738
+2026-09-26T17:00:43.648590Z card py-ingress url=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json extra=[] http=200 exit=0 interfaces=["http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80"] content-length=738
+2026-09-26T17:00:44Z done
+wall 72.971s exit 0

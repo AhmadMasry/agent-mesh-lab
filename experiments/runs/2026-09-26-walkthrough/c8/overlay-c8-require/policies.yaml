@@ -1,0 +1,37 @@
+# Experiment C, step C-8, the Require row: the Deny row's rule written as Require, so that it must evaluate true
+# for a request to pass: "If any Require expression is false, the request is denied" (the website's authorization
+# page at v1.5.0, l.35), and a policy holding only Require rules "allows any request that satisfies all of those
+# rules" (l.39). Same variable, same routes, same targets as overlay-c8-deny; only the action and the comparison differ.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c8-require-not-subscribe-worker-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+  traffic:
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - 'json(request.body).method != "SubscribeToTask"'
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c8-require-not-subscribe-orchestrator-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+  traffic:
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - 'json(request.body).method != "SubscribeToTask"'

@@ -1,0 +1,42 @@
+$ RUN_ID=wtd1r RUNREL=2026-09-26-walkthrough/d1-rollout bash experiments/runs/2026-09-24-d1-current-topology/rows.sh go ingress rollout 2
+# istioctl on PATH at this step's start: client version: 1.31.1
+2026-09-26T15:07:12Z variant go-ingress-rollout: receiver go, proxy agentgateway-ingress/agentgateway-ingress, method rollout, 2 repetitions, RUN_ID wtd1r, DRY=no
+2026-09-26T15:07:12Z HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08; this driver sha256 555f7f9b258b33471ae9e8cdbb793498900aa56995473ef6c4accca5bc3bb361; istioctl on PATH: client version: 1.31.1
+2026-09-26T15:07:12Z N_MS=45000 REMOVE_AFTER_MS=2000; template deploy/base/loadgen-a2-job.yaml blob 96769f9218cba5396206e7aac50cb13cad840465; path: TARGET_URL=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local CLIENT_DIAL=target CLIENT_HOST=worker.lab.internal CANCEL_AFTER_MS=<empty>
+2026-09-26T15:07:13Z -- between-variant proof (before) --
+2026-09-26T15:07:13Z    deployment/worker replicas spec=1 ready=1
+2026-09-26T15:07:13Z    deployment/orchestrator replicas spec=1 ready=1
+2026-09-26T15:07:13Z    deployment/mockllm replicas spec=1 ready=1
+2026-09-26T15:07:13Z    deployment/agentgateway-ingress/agentgateway-ingress replicas spec=1 ready=1 generation=3 programmed=True
+2026-09-26T15:07:13Z    deployment/agentgateway-waypoint/agw-central replicas spec=1 ready=1 generation=3 programmed=True
+2026-09-26T15:07:13Z    proxy pods: agentgateway-ingress/agentgateway-ingress-768649d74c-f2g82 ip=10.244.1.182 uid=3eb5b969-4285-4ef7-867c-899fa0e67a5e restarts=0 created=2026-09-26T15:04:52Z; agentgateway-waypoint/agw-central-57d6777d5f-lpwt8 ip=10.244.1.189 uid=fd8d5685-e12b-4d4c-8e17-07b7d69f89b7 restarts=0 created=2026-09-26T15:06:55Z; 
+2026-09-26T15:07:13Z    retry stanzas on HTTPRoutes: 0; AuthorizationPolicies: 0
+2026-09-26T15:07:14Z    mock control lines: injects=37 resets=141; resets after the last inject: 2
+2026-09-26T15:07:14Z    mock last control line: {"ledger":"control","ts":"2026-09-26T15:07:11.811991296Z","endpoint":"/control/reset"}
+2026-09-26T15:07:14Z    worker log lines naming close-after-read: 5
+2026-09-26T15:07:14Z    orchestrator mode now: DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080 PLAN_MODEL_CALL=off MODEL_MAX_RETRIES=0
+2026-09-26T15:07:14Z    worker model client: MODEL_TIMEOUT_S=<- empty means unset, default 60 s; MODEL_RETRIES=<- empty means unset, default 0
+2026-09-26T15:07:14Z    certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default
+2026-09-26T15:07:14Z    agent pods: mockllm-58b7487955-f7pdz=740ed5cd-377f-489d-b3c9-ab49a7300e51/ip=10.244.1.29/restarts=0 orchestrator-679ddcc47c-2x2j5=23ab6a08-3a34-450d-beee-720a90a65915/ip=10.244.1.176/restarts=0 worker-f85ff8b86-c24wz=82e6ba25-4805-41a2-b517-717c4166f06e/ip=10.244.1.31/restarts=0 
+2026-09-26T15:07:33Z image resolved once for the variant: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379 (2026-09-26T15:07:14.308013Z -> 2026-09-26T15:07:33.262284Z)
+2026-09-26T15:07:33Z == variant go-ingress-rollout: 2 repetitions, one at a time
+2026-09-26T15:08:25Z   d1-go-ingress-rollout-wtd1r-01 job1=Failed job2=Complete task=01a0de41-dedb-707e-b331-cd9596558da9 old=agentgateway-ingress-768649d74c-f2g82 new=agentgateway-ingress-7c8b88f87c-hbfht ingress-ledger=4 execution=13 invocation=1 client=3 client-sub=4
+2026-09-26T15:09:17Z   d1-go-ingress-rollout-wtd1r-02 job1=Failed job2=Complete task=01a0de42-a9d8-728d-adde-b1ed632d37de old=agentgateway-ingress-7c8b88f87c-hbfht new=agentgateway-ingress-5789ccd4df-s2ccz ingress-ledger=4 execution=13 invocation=1 client=3 client-sub=4
+2026-09-26T15:09:17Z -- between-variant proof (after) --
+2026-09-26T15:09:17Z    deployment/worker replicas spec=1 ready=1
+2026-09-26T15:09:17Z    deployment/orchestrator replicas spec=1 ready=1
+2026-09-26T15:09:17Z    deployment/mockllm replicas spec=1 ready=1
+2026-09-26T15:09:17Z    deployment/agentgateway-ingress/agentgateway-ingress replicas spec=1 ready=1 generation=5 programmed=True
+2026-09-26T15:09:18Z    deployment/agentgateway-waypoint/agw-central replicas spec=1 ready=1 generation=3 programmed=True
+2026-09-26T15:09:18Z    proxy pods: agentgateway-ingress/agentgateway-ingress-5789ccd4df-s2ccz ip=10.244.1.196 uid=8c0f69a9-98d5-4ecb-9d6d-ad8c20e8cb5b restarts=0 created=2026-09-26T15:08:28Z; agentgateway-waypoint/agw-central-57d6777d5f-lpwt8 ip=10.244.1.189 uid=fd8d5685-e12b-4d4c-8e17-07b7d69f89b7 restarts=0 created=2026-09-26T15:06:55Z; 
+2026-09-26T15:09:18Z    retry stanzas on HTTPRoutes: 0; AuthorizationPolicies: 0
+2026-09-26T15:09:18Z    mock control lines: injects=39 resets=146; resets after the last inject: 2
+2026-09-26T15:09:18Z    mock last control line: {"ledger":"control","ts":"2026-09-26T15:09:17.584096966Z","endpoint":"/control/reset"}
+2026-09-26T15:09:18Z    worker log lines naming close-after-read: 5
+2026-09-26T15:09:18Z    orchestrator mode now: DOWNSTREAM_A2A_URL=http://worker.lab.svc.cluster.local:8080 PLAN_MODEL_CALL=off MODEL_MAX_RETRIES=0
+2026-09-26T15:09:18Z    worker model client: MODEL_TIMEOUT_S=<- empty means unset, default 60 s; MODEL_RETRIES=<- empty means unset, default 0
+2026-09-26T15:09:18Z    certificate check: VALID CERT true for spiffe://cluster.local/ns/lab/sa/default
+2026-09-26T15:09:18Z    agent pods: mockllm-58b7487955-f7pdz=740ed5cd-377f-489d-b3c9-ab49a7300e51/ip=10.244.1.29/restarts=0 orchestrator-679ddcc47c-2x2j5=23ab6a08-3a34-450d-beee-720a90a65915/ip=10.244.1.176/restarts=0 worker-f85ff8b86-c24wz=82e6ba25-4805-41a2-b517-717c4166f06e/ip=10.244.1.31/restarts=0 
+2026-09-26T15:09:18Z == variant go-ingress-rollout done
+2026-09-26T15:09:18Z variant go-ingress-rollout driver exit=0
+wall 125.647s exit 0

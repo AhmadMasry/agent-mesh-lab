@@ -1,0 +1,22 @@
+2026-09-26T14:53:27.870723Z repetition b5a-ingress-rollout-wtb5a-01 variant=ingress-rollout proxy=agentgateway-ingress/agentgateway-ingress method=rollout
+2026-09-26T14:53:27.910907Z agent pods before: mockllm-58b7487955-f7pdz=740ed5cd-377f-489d-b3c9-ab49a7300e51/ip=10.244.1.29/restarts=0 orchestrator-679ddcc47c-8z9cp=0578b8e5-3700-47ff-ab1e-8ace95f998ba/ip=10.244.1.116/restarts=0 worker-f85ff8b86-c24wz=82e6ba25-4805-41a2-b517-717c4166f06e/ip=10.244.1.31/restarts=0 
+2026-09-26T14:53:27.949075Z proxy pods before: agentgateway-ingress-6d6864b975-qllpm uid=7e592b6e-ca18-4ba7-9788-3a99ee0ece9b ip=10.244.1.129 created=2026-09-26T14:51:49Z restarts=0; 
+2026-09-26T14:53:27.986530Z old pod: agentgateway-ingress-6d6864b975-qllpm grace=60 rs=agentgateway-ingress-6d6864b975
+2026-09-26T14:53:28.081876Z started kubectl logs -f agentgateway-ingress-6d6864b975-qllpm (pid 99987)
+2026-09-26T14:53:28.156409Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T14:53:28.216135Z POST http://mockllm.lab.svc.cluster.local:8080/control/inject {"mode":"delay","lwi":"b5a-ingress-rollout-wtb5a-01","delay_ms":45000} -> 204
+2026-09-26T14:53:28.225589Z apply Job 1 loadgen-b5a-ingress-rollout-wtb5a-01 MODE=stream TASK_ID=<empty> CANCEL_AFTER_MS=<empty>
+2026-09-26T14:53:28.304568Z Job 1 applied
+2026-09-26T14:53:28.622019Z Job 1's client saw TASK_STATE_WORKING at 2026-09-26T14:53:28.517489971Z (client pod clock)
+2026-09-26T14:53:30.752394Z removal issued: rollout on agentgateway-ingress-6d6864b975-qllpm
+2026-09-26T14:53:32.512499Z apply probe Job loadgen-b5a-ingress-rollout-wtb5a-01-p MODE=stream, nothing armed on the mock
+2026-09-26T14:53:32.595850Z probe Job applied
+2026-09-26T14:53:54.922025Z Job 1 Failed
+2026-09-26T14:53:54.994239Z probe Job Complete
+2026-09-26T14:54:13.857297Z settled after 15.0s: terminal state=TASK_STATE_COMPLETED invocation outcome=ok (the invocation wait ran to the arm stamp plus N plus 30s at the latest, the whole wait to 180s; reads two pod logs, sends nothing)
+2026-09-26T14:54:13.924104Z POST http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T14:54:15.970844Z old-pod log capture stopped (11 lines)
+2026-09-26T14:54:16.543962Z make ledgers LWI=b5a-ingress-rollout-wtb5a-01 exit=0
+2026-09-26T14:54:17.350629Z agent pods after: mockllm-58b7487955-f7pdz=740ed5cd-377f-489d-b3c9-ab49a7300e51/ip=10.244.1.29/restarts=0 orchestrator-679ddcc47c-8z9cp=0578b8e5-3700-47ff-ab1e-8ace95f998ba/ip=10.244.1.116/restarts=0 worker-f85ff8b86-c24wz=82e6ba25-4805-41a2-b517-717c4166f06e/ip=10.244.1.31/restarts=0 
+2026-09-26T14:54:17.391918Z proxy pods after: agentgateway-ingress-864794ff89-55qr8 uid=f9af0ed0-c207-4676-88a1-9d8423f5a311 ip=10.244.1.133 created=2026-09-26T14:53:30Z ready=True; 
+2026-09-26T14:54:17.434583Z collected

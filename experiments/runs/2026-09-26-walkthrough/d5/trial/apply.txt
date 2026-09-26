@@ -1,0 +1,71 @@
+## 2026-09-26T17:02:19.137315Z $ kubectl apply -f experiments/runs/2026-09-26-walkthrough/d5/trial-overlay/backends.yaml
+agentgatewaybackend.agentgateway.dev/worker-a2a created
+agentgatewaybackend.agentgateway.dev/orchestrator-a2a created
+
+## 2026-09-26T17:02:19.237005Z $ kubectl -n lab patch httproute worker --type=json --patch-file experiments/runs/2026-09-26-walkthrough/d5/trial-overlay/route-to-worker-a2a.json
+httproute.gateway.networking.k8s.io/worker patched
+
+## 2026-09-26T17:02:19.279767Z $ kubectl -n lab patch httproute worker-ingress --type=json --patch-file experiments/runs/2026-09-26-walkthrough/d5/trial-overlay/route-to-worker-a2a.json
+httproute.gateway.networking.k8s.io/worker-ingress patched
+
+## 2026-09-26T17:02:19.323996Z $ kubectl -n lab patch httproute orchestrator --type=json --patch-file experiments/runs/2026-09-26-walkthrough/d5/trial-overlay/route-to-orchestrator-a2a.json
+httproute.gateway.networking.k8s.io/orchestrator patched
+
+## 2026-09-26T17:02:19.367690Z $ kubectl -n lab patch httproute orchestrator-ingress --type=json --patch-file experiments/runs/2026-09-26-walkthrough/d5/trial-overlay/route-to-orchestrator-a2a.json
+httproute.gateway.networking.k8s.io/orchestrator-ingress patched
+
+## 2026-09-26T17:02:19.411150Z $ kubectl -n lab get agentgatewaybackend -o yaml
+apiVersion: v1
+items:
+- apiVersion: agentgateway.dev/v1alpha1
+  kind: AgentgatewayBackend
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"agentgateway.dev/v1alpha1","kind":"AgentgatewayBackend","metadata":{"annotations":{},"name":"orchestrator-a2a","namespace":"lab"},"spec":{"a2a":{"host":"orchestrator.lab.svc.cluster.local","port":8080}}}
+    creationTimestamp: "2026-09-26T17:02:19Z"
+    generation: 1
+    name: orchestrator-a2a
+    namespace: lab
+    resourceVersion: "45690"
+    uid: 966efba6-99ee-4453-951d-6327d28329e5
+  spec:
+    a2a:
+      host: orchestrator.lab.svc.cluster.local
+      port: 8080
+  status:
+    conditions:
+    - lastTransitionTime: "2026-09-26T17:02:19Z"
+      message: Backend successfully accepted
+      observedGeneration: 1
+      reason: Accepted
+      status: "True"
+      type: Accepted
+- apiVersion: agentgateway.dev/v1alpha1
+  kind: AgentgatewayBackend
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"agentgateway.dev/v1alpha1","kind":"AgentgatewayBackend","metadata":{"annotations":{},"name":"worker-a2a","namespace":"lab"},"spec":{"a2a":{"host":"worker.lab.svc.cluster.local","port":8080}}}
+    creationTimestamp: "2026-09-26T17:02:19Z"
+    generation: 1
+    name: worker-a2a
+    namespace: lab
+    resourceVersion: "45688"
+    uid: aeca744a-9aa8-42e2-89a2-721315d3342f
+  spec:
+    a2a:
+      host: worker.lab.svc.cluster.local
+      port: 8080
+  status:
+    conditions:
+    - lastTransitionTime: "2026-09-26T17:02:19Z"
+      message: Backend successfully accepted
+      observedGeneration: 1
+      reason: Accepted
+      status: "True"
+      type: Accepted
+kind: List
+metadata:
+  resourceVersion: ""
+

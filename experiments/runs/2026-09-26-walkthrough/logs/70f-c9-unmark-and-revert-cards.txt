@@ -1,0 +1,20 @@
+$ RUNREL=2026-09-26-walkthrough/c9-marking RUN_ID=c9m bash experiments/runs/2026-09-25-d5-a2a-backend/d5.sh unmark
+kubectl -n lab get svc worker orchestrator -o jsonpath='{range .items[*]}{.metadata.name} appProtocol=[{.spec.ports[0].appProtocol}]{"\n"}{end}'
+bash experiments/runs/2026-09-24-c9-revert/cards.sh experiments/runs/2026-09-26-walkthrough/c9/cards-reverted
+# istioctl on PATH at this step's start: client version: 1.31.1
+2026-09-26T17:00:37.853473Z phase unmark  RUN_ID c9m; HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08; this driver sha256 f43a7345d30eca5cea0b6b3effa672436dfe1f7fa4b4541b833e1cc47d9b76f5
+2026-09-26T17:00:37.920211Z worker pod: worker-f85ff8b86-prfr6 ip=10.244.1.98; orchestrator pod: orchestrator-77b969b755-gpmhl ip=10.244.1.118
+2026-09-26T17:00:37.958383Z proxy pods: agentgateway-ingress/agentgateway-ingress-94f7846f-5x8n7 ip=10.244.1.204; agentgateway-waypoint/agw-central-57d6777d5f-k58kb ip=10.244.1.212; 
+2026-09-26T17:00:37.998538Z Services' http port: worker:http/8080/appProtocol=agentgateway.dev/a2a; orchestrator:http/8080/appProtocol=agentgateway.dev/a2a; 
+2026-09-26T17:00:38.419092Z agw-central dump: [[.policies[]? | tostring | test("a2a"; "i")] | map(select(.)) | length == 0] after ~0s
+2026-09-26T17:00:38.776312Z agentgateway-ingress dump: [[.policies[]? | tostring | test("a2a"; "i")] | map(select(.)) | length == 0] after ~0s
+2026-09-26T17:00:39.514503Z phase unmark driver exit
+worker appProtocol=[]
+orchestrator appProtocol=[]
+2026-09-26T17:00:40Z curl pod c9r-cards ip=10.244.1.139
+2026-09-26T17:00:40.085221Z card go-ingress url=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json extra=[-H Host: worker.lab.internal] http=200 exit=0 interfaces=["http://worker.lab.svc.cluster.local:8080","http://worker.lab.svc.cluster.local:8080","worker.lab.svc.cluster.local:8081"] content-length=677
+2026-09-26T17:00:41.276469Z card go-central url=http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json extra=[] http=200 exit=0 interfaces=["http://worker.lab.svc.cluster.local:8080","http://worker.lab.svc.cluster.local:8080","worker.lab.svc.cluster.local:8081"] content-length=677
+2026-09-26T17:00:42.469137Z card py-central url=http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json extra=[] http=200 exit=0 interfaces=["http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80"] content-length=738
+2026-09-26T17:00:43.648590Z card py-ingress url=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/.well-known/agent-card.json extra=[] http=200 exit=0 interfaces=["http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local","agentgateway-ingress.agentgateway-ingress.svc.cluster.local:80"] content-length=738
+2026-09-26T17:00:44Z done
+wall 7.098s exit 0

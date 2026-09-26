@@ -1,0 +1,32 @@
+# C-3R: the client. The lab's pinned curl image (versions.yaml curl-image). The held
+# connection is made by the image's own `nc` (driven from rep.sh through
+# `kubectl exec -i`), which sends exactly the bytes it is given, once, on one TCP
+# connection, and has no retry of any kind; the new-connection control is one
+# `curl --retry 0`. Nothing in the pod writes to its filesystem.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: c3r-client
+  namespace: c3r
+  labels:
+    app: c3r-client
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: client
+      image: curlimages/curl:8.22.0
+      imagePullPolicy: IfNotPresent
+      command: ["sleep", "7200"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        capabilities:
+          drop:
+            - ALL

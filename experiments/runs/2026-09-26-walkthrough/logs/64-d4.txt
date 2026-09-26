@@ -1,0 +1,505 @@
+$ mkdir -p experiments/runs/2026-09-26-walkthrough/d4
+for o in overlay-d4-z overlay-d4-a overlay-d4-r2; do cp -R experiments/runs/2026-09-25-d4-serviceaccounts/$o experiments/runs/2026-09-26-walkthrough/d4/; done
+export RUNREL=2026-09-26-walkthrough/d4
+ROWS="bash experiments/runs/2026-09-25-d4-serviceaccounts/rows.sh"; W=experiments/runs/2026-09-26-walkthrough/d4
+RUN_ID=d4cc RUN_ITEM=2026-09-26-walkthrough/d4/clean-check experiments/gate2-single-clean.sh
+RUN_ID=z1 $ROWS z
+RUN_ID=a1 $ROWS a
+RUN_ID=r1 $ROWS r2
+RUN_ID=x1 $ROWS xa
+RUN_ID=d4h1 bash experiments/runs/2026-09-24-d1-current-topology/headers.sh
+S=$(date -u +%FT%TZ)
+RUN_ID=d4after RUN_ITEM=2026-09-26-walkthrough/d4/after experiments/gate2-single-clean.sh
+mkdir -p $W/after/hop-lines
+for zt in $(kubectl -n istio-system get pods -l app=ztunnel -o jsonpath='{.items[*].metadata.name}'); do kubectl -n istio-system logs "$zt" --since-time="$S" | grep 'connection complete' | sed "s/^/$zt /"; done > $W/after/hop-lines/ztunnel-connections.txt
+kubectl -n agentgateway-waypoint logs deploy/agw-central --since-time="$S" | grep 'request gateway=' > $W/after/hop-lines/agw-central-access.txt
+kubectl -n agentgateway-ingress logs deploy/agentgateway-ingress --since-time="$S" | grep 'request gateway=' > $W/after/hop-lines/ingress-access.txt
+python3 experiments/runs/2026-09-25-d4-serviceaccounts/counts.py $W | tee $W/counts.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-d4cc-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 19:27:09 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 19:27:10 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 19:27:10 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 19:27:10 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:27:25 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:27:25 Adding tag latest
+2026/09/26 19:27:25 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-d4cc-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 19:27:31 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 19:27:32 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 19:27:32 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 19:27:33 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:27:48 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:27:48 Adding tag latest
+2026/09/26 19:27:48 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-d4cc-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-d4cc-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+2026-09-26T16:27:53.103645Z phase z RUN_ID z1; HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08; this driver sha256 829daf5a7382550d73f458589d13df9e5fbd23367dab9ccb265ea448729b7d27; istioctl client version: 1.31.1
+2026-09-26T16:27:53.669867Z worker pod: worker-f85ff8b86-w6wvs sa=worker ip=10.244.1.211; orchestrator pod: orchestrator-679ddcc47c-8hc6x sa=orchestrator ip=10.244.1.213
+2026-09-26T16:27:53.711051Z proxy pods: agentgateway-ingress/agentgateway-ingress-94f7846f-5x8n7 ip=10.244.1.204; agentgateway-waypoint/agw-central-57d6777d5f-k58kb ip=10.244.1.212; 
+2026-09-26T16:27:54.945808Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:27:55.007972Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:27:55.068114Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:28:13.737513Z loadgen image: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026-09-26T16:28:13.757627Z window opens
+2026-09-26T16:28:13.816602Z applied overlay-d4-z
+2026-09-26T16:28:14.967735Z ztunnel: d4-z-allow-orchestrator-and-agw-central present after 1s
+2026-09-26T16:28:16.452079Z probe up: d4-as-orchestrator sa=orchestrator automount=false ip=10.244.1.57 created=2026-09-26T16:28:16Z
+2026-09-26T16:28:16.678723Z probe up: d4-as-loadgen sa=loadgen automount=false ip=10.244.1.58 created=2026-09-26T16:28:16Z
+2026-09-26T16:28:16.817353Z   d4z-z1-orch-1 d4-as-orchestrator GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=200 exit=0 trace=82a4aea7774859432af7fd8bcae4de36
+2026-09-26T16:28:17.124854Z   d4z-z1-orch-1 d4-as-orchestrator SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=200 exit=0 trace=82a4aea7774859432af7fd8bcae4de36
+2026-09-26T16:28:17.578088Z   d4z-z1-orch-1 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:28:17.683994Z   d4z-z1-lg-1 d4-as-loadgen GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=000 exit=56 trace=00d90dfcf116b593b081b2a282680dea
+2026-09-26T16:28:17.771668Z   d4z-z1-lg-1 d4-as-loadgen SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=000 exit=56 trace=00d90dfcf116b593b081b2a282680dea
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-1/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-1/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-1/invocation.jsonl: No such file or directory
+2026-09-26T16:28:18.232758Z   d4z-z1-lg-1 ledgers ingress= execution= invocation=
+2026-09-26T16:28:18.343126Z   d4z-z1-orch-2 d4-as-orchestrator GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=200 exit=0 trace=0939ace4428e971c638768ef7520f38b
+2026-09-26T16:28:18.659677Z   d4z-z1-orch-2 d4-as-orchestrator SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=200 exit=0 trace=0939ace4428e971c638768ef7520f38b
+2026-09-26T16:28:19.116818Z   d4z-z1-orch-2 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:28:19.224616Z   d4z-z1-lg-2 d4-as-loadgen GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=000 exit=56 trace=6ee09285ed4db1bf00a4f54934114c02
+2026-09-26T16:28:19.313227Z   d4z-z1-lg-2 d4-as-loadgen SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=000 exit=56 trace=6ee09285ed4db1bf00a4f54934114c02
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-2/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-2/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-2/invocation.jsonl: No such file or directory
+2026-09-26T16:28:19.754662Z   d4z-z1-lg-2 ledgers ingress= execution= invocation=
+2026-09-26T16:28:19.863151Z   d4z-z1-orch-3 d4-as-orchestrator GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=200 exit=0 trace=0a951c2470ea6935b0bdd4bf55be4961
+2026-09-26T16:28:20.169775Z   d4z-z1-orch-3 d4-as-orchestrator SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=200 exit=0 trace=0a951c2470ea6935b0bdd4bf55be4961
+2026-09-26T16:28:20.627585Z   d4z-z1-orch-3 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:28:20.740012Z   d4z-z1-lg-3 d4-as-loadgen GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=000 exit=56 trace=7e95d5aae48295446f43ff2f82a81f2e
+2026-09-26T16:28:20.827117Z   d4z-z1-lg-3 d4-as-loadgen SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=000 exit=56 trace=7e95d5aae48295446f43ff2f82a81f2e
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-3/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-3/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-3/invocation.jsonl: No such file or directory
+2026-09-26T16:28:21.285250Z   d4z-z1-lg-3 ledgers ingress= execution= invocation=
+2026-09-26T16:28:21.398821Z   d4z-z1-orch-4 d4-as-orchestrator GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=200 exit=0 trace=9e5f8b6be5436ea4fda75ce94acad8f6
+2026-09-26T16:28:21.707792Z   d4z-z1-orch-4 d4-as-orchestrator SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=200 exit=0 trace=9e5f8b6be5436ea4fda75ce94acad8f6
+2026-09-26T16:28:22.183845Z   d4z-z1-orch-4 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:28:22.293951Z   d4z-z1-lg-4 d4-as-loadgen GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=000 exit=56 trace=adfc60f953ab0bd6e02e19acab3fcde9
+2026-09-26T16:28:22.381681Z   d4z-z1-lg-4 d4-as-loadgen SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=000 exit=56 trace=adfc60f953ab0bd6e02e19acab3fcde9
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-4/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-4/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-4/invocation.jsonl: No such file or directory
+2026-09-26T16:28:22.823906Z   d4z-z1-lg-4 ledgers ingress= execution= invocation=
+2026-09-26T16:28:22.935877Z   d4z-z1-orch-5 d4-as-orchestrator GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=200 exit=0 trace=e27eefac1c2997c6cfc8d90c6ad6cf07
+2026-09-26T16:28:23.244379Z   d4z-z1-orch-5 d4-as-orchestrator SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=200 exit=0 trace=e27eefac1c2997c6cfc8d90c6ad6cf07
+2026-09-26T16:28:23.703100Z   d4z-z1-orch-5 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:28:23.810512Z   d4z-z1-lg-5 d4-as-loadgen GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=000 exit=56 trace=48f7a0b30bf24e11108cc03886fdc45b
+2026-09-26T16:28:23.895416Z   d4z-z1-lg-5 d4-as-loadgen SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=000 exit=56 trace=48f7a0b30bf24e11108cc03886fdc45b
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-5/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-5/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/z/d4z-z1-lg-5/invocation.jsonl: No such file or directory
+2026-09-26T16:28:24.372503Z   d4z-z1-lg-5 ledgers ingress= execution= invocation=
+2026-09-26T16:28:24.392453Z job loadgen-d4z-z1-fwd-1 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:28:29.218179Z   d4z-z1-fwd-1 Complete pod-sa=loadgen ip=10.244.1.59 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:28:29.235968Z job loadgen-d4z-z1-fwd-2 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:28:34.018603Z   d4z-z1-fwd-2 Complete pod-sa=loadgen ip=10.244.1.60 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:28:34.036408Z job loadgen-d4z-z1-fwd-3 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:28:38.820513Z   d4z-z1-fwd-3 Complete pod-sa=loadgen ip=10.244.1.61 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:28:38.838268Z job loadgen-d4z-z1-fwd-4 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:28:43.628855Z   d4z-z1-fwd-4 Complete pod-sa=loadgen ip=10.244.1.62 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:28:43.646291Z job loadgen-d4z-z1-fwd-5 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:28:48.490760Z   d4z-z1-fwd-5 Complete pod-sa=loadgen ip=10.244.1.63 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:28:51.713670Z logs since 2026-09-26T16:28:13.747857Z (z-in-force): agw-central 20, ingress 5, ztunnel 138 lines
+2026-09-26T16:28:51.764878Z removed overlay-d4-z
+2026-09-26T16:28:52.942249Z ztunnel: d4-z-allow-orchestrator-and-agw-central absent after 1s
+2026-09-26T16:28:54.253880Z   d4z-z1-after-orch d4-as-orchestrator GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=200 exit=0 trace=dd78606a6114e0ad2ffc62aa39c50639
+2026-09-26T16:28:54.562967Z   d4z-z1-after-orch d4-as-orchestrator SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=200 exit=0 trace=dd78606a6114e0ad2ffc62aa39c50639
+2026-09-26T16:28:55.023124Z   d4z-z1-after-orch ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:28:55.141001Z   d4z-z1-after-lg d4-as-loadgen GetAgentCard GET http://10.244.1.211:8080/.well-known/agent-card.json host=10.244.1.211:8080 -> http=200 exit=0 trace=b7af6bf0ef6c6b2773a88fbc5c1af735
+2026-09-26T16:28:55.445832Z   d4z-z1-after-lg d4-as-loadgen SendMessage POST http://10.244.1.211:8080/ host=10.244.1.211:8080 -> http=200 exit=0 trace=b7af6bf0ef6c6b2773a88fbc5c1af735
+2026-09-26T16:28:55.899316Z   d4z-z1-after-lg ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:28:55.964169Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:28:56.024941Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:28:56.084646Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:28:56.129347Z phase z driver exit
+2026-09-26T16:28:56.206397Z phase a RUN_ID a1; HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08; this driver sha256 829daf5a7382550d73f458589d13df9e5fbd23367dab9ccb265ea448729b7d27; istioctl client version: 1.31.1
+2026-09-26T16:29:27.269073Z worker pod: worker-f85ff8b86-w6wvs sa=worker ip=10.244.1.211; orchestrator pod: orchestrator-679ddcc47c-8hc6x sa=orchestrator ip=10.244.1.213
+2026-09-26T16:29:27.310406Z proxy pods: agentgateway-ingress/agentgateway-ingress-94f7846f-5x8n7 ip=10.244.1.204; agentgateway-waypoint/agw-central-57d6777d5f-k58kb ip=10.244.1.212; 
+2026-09-26T16:29:28.543482Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:29:28.603996Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:29:28.664235Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:29:46.860136Z loadgen image: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026-09-26T16:29:46.881774Z window opens
+2026-09-26T16:29:46.948179Z applied overlay-d4-a
+2026-09-26T16:29:47.286407Z agw-central dump: serviceAccount == 'orchestrator' present after ~0s
+2026-09-26T16:29:48.517926Z job loadgen-d4a-a1-lg-1 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:29:53.347685Z   d4a-a1-lg-1 Failed pod-sa=loadgen ip=10.244.1.65 ingress=0 execution=0 invocation=0 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 403 Forbidden"}]
+2026-09-26T16:29:53.365539Z job loadgen-d4a-a1-fwd-1 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:29:58.182480Z   d4a-a1-fwd-1 Complete pod-sa=loadgen ip=10.244.1.66 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:29:58.200381Z job loadgen-d4a-a1-lg-2 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:30:03.029778Z   d4a-a1-lg-2 Failed pod-sa=loadgen ip=10.244.1.67 ingress=0 execution=0 invocation=0 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 403 Forbidden"}]
+2026-09-26T16:30:03.047225Z job loadgen-d4a-a1-fwd-2 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:30:07.838288Z   d4a-a1-fwd-2 Complete pod-sa=loadgen ip=10.244.1.68 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:30:07.855460Z job loadgen-d4a-a1-lg-3 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:30:12.669572Z   d4a-a1-lg-3 Failed pod-sa=loadgen ip=10.244.1.69 ingress=0 execution=0 invocation=0 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 403 Forbidden"}]
+2026-09-26T16:30:12.687621Z job loadgen-d4a-a1-fwd-3 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:30:17.579971Z   d4a-a1-fwd-3 Complete pod-sa=loadgen ip=10.244.1.70 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:30:17.597721Z job loadgen-d4a-a1-lg-4 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:30:22.414133Z   d4a-a1-lg-4 Failed pod-sa=loadgen ip=10.244.1.71 ingress=0 execution=0 invocation=0 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 403 Forbidden"}]
+2026-09-26T16:30:22.432629Z job loadgen-d4a-a1-fwd-4 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:30:27.230289Z   d4a-a1-fwd-4 Complete pod-sa=loadgen ip=10.244.1.72 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:30:27.248730Z job loadgen-d4a-a1-lg-5 target=http://worker.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:30:32.014848Z   d4a-a1-lg-5 Failed pod-sa=loadgen ip=10.244.1.73 ingress=0 execution=0 invocation=0 client-end=[{"result_kind":"","state":"","http_status":null,"error":"resolve card: card request failed, status: 403 Forbidden"}]
+2026-09-26T16:30:32.032175Z job loadgen-d4a-a1-fwd-5 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:30:36.842607Z   d4a-a1-fwd-5 Complete pod-sa=loadgen ip=10.244.1.74 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:30:40.067317Z logs since 2026-09-26T16:29:46.870954Z (a-in-force): agw-central 20, ingress 5, ztunnel 148 lines
+2026-09-26T16:30:40.117841Z removed overlay-d4-a
+2026-09-26T16:30:40.457000Z agw-central dump: serviceAccount == 'orchestrator' absent after ~0s
+2026-09-26T16:30:41.697886Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:30:41.758443Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:30:41.819377Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:30:41.863308Z phase a driver exit
+2026-09-26T16:30:41.938679Z phase r2 RUN_ID r1; HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08; this driver sha256 829daf5a7382550d73f458589d13df9e5fbd23367dab9ccb265ea448729b7d27; istioctl client version: 1.31.1
+2026-09-26T16:31:12.763695Z worker pod: worker-f85ff8b86-w6wvs sa=worker ip=10.244.1.211; orchestrator pod: orchestrator-679ddcc47c-8hc6x sa=orchestrator ip=10.244.1.213
+2026-09-26T16:31:12.803217Z proxy pods: agentgateway-ingress/agentgateway-ingress-94f7846f-5x8n7 ip=10.244.1.204; agentgateway-waypoint/agw-central-57d6777d5f-k58kb ip=10.244.1.212; 
+2026-09-26T16:31:14.065524Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:31:14.126713Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:31:14.185028Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:31:14.204554Z window opens
+2026-09-26T16:31:14.273880Z applied overlay-d4-r2
+2026-09-26T16:31:14.591022Z agentgateway-ingress dump: x-d4-probe present after ~0s
+2026-09-26T16:31:15.966474Z probe up: d4-as-loadgen sa=loadgen automount=false ip=10.244.1.76 created=2026-09-26T16:31:15Z
+2026-09-26T16:31:16.195594Z probe up: d4-as-orchestrator sa=orchestrator automount=false ip=10.244.1.77 created=2026-09-26T16:31:16Z
+2026-09-26T16:31:16.524840Z   d4r-r1-lg-verified-go-1 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: verified] -> http=200 exit=0 trace=6910bc6c46ad99ecc427560c97fe6176
+2026-09-26T16:31:16.995857Z   d4r-r1-lg-verified-go-1 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:17.378098Z   d4r-r1-lg-verified-py-1 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: verified] -> http=200 exit=0 trace=c9f051c4067974709096b10f272b2ed9
+2026-09-26T16:31:17.855233Z   d4r-r1-lg-verified-py-1 ledgers ingress=4 execution=12 invocation=1
+2026-09-26T16:31:17.969228Z   d4r-r1-lg-unverified-go-1 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=403 exit=0 trace=a875af03205f0f255ca7e9c273eb6012
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-1/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-1/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-1/invocation.jsonl: No such file or directory
+2026-09-26T16:31:18.424007Z   d4r-r1-lg-unverified-go-1 ledgers ingress= execution= invocation=
+2026-09-26T16:31:18.533771Z   d4r-r1-lg-unverified-py-1 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: unverified] -> http=403 exit=0 trace=2d11b3ddda1d5fe8d45bffa62aa92b8e
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-1/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-1/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-1/invocation.jsonl: No such file or directory
+2026-09-26T16:31:18.982522Z   d4r-r1-lg-unverified-py-1 ledgers ingress= execution= invocation=
+2026-09-26T16:31:19.317718Z   d4r-r1-orch-unverified-go-1 d4-as-orchestrator SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=200 exit=0 trace=46a158572d8a6b45d1cf447a230476a2
+2026-09-26T16:31:19.775738Z   d4r-r1-orch-unverified-go-1 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:20.113024Z   d4r-r1-lg-verified-go-2 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: verified] -> http=200 exit=0 trace=bc396b67d83ef562ff2573d1b10c5845
+2026-09-26T16:31:20.565310Z   d4r-r1-lg-verified-go-2 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:20.903522Z   d4r-r1-lg-verified-py-2 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: verified] -> http=200 exit=0 trace=0bc01c63a5c47c1b90eb0f897ae97694
+2026-09-26T16:31:21.399533Z   d4r-r1-lg-verified-py-2 ledgers ingress=4 execution=12 invocation=1
+2026-09-26T16:31:21.509126Z   d4r-r1-lg-unverified-go-2 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=403 exit=0 trace=eeef24f676566fc20ebf2cc3b76951f1
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-2/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-2/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-2/invocation.jsonl: No such file or directory
+2026-09-26T16:31:21.965579Z   d4r-r1-lg-unverified-go-2 ledgers ingress= execution= invocation=
+2026-09-26T16:31:22.077205Z   d4r-r1-lg-unverified-py-2 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: unverified] -> http=403 exit=0 trace=ba246c7b061c73af5b768465544df0be
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-2/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-2/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-2/invocation.jsonl: No such file or directory
+2026-09-26T16:31:22.532125Z   d4r-r1-lg-unverified-py-2 ledgers ingress= execution= invocation=
+2026-09-26T16:31:22.865464Z   d4r-r1-orch-unverified-go-2 d4-as-orchestrator SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=200 exit=0 trace=8c256f897cc8bbc1f740520268569926
+2026-09-26T16:31:23.335061Z   d4r-r1-orch-unverified-go-2 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:23.666218Z   d4r-r1-lg-verified-go-3 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: verified] -> http=200 exit=0 trace=69ef3470f542b8573a0c71cefdf5b055
+2026-09-26T16:31:24.136305Z   d4r-r1-lg-verified-go-3 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:24.462969Z   d4r-r1-lg-verified-py-3 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: verified] -> http=200 exit=0 trace=0558ef2c6ebfe871d8c22b28195d9789
+2026-09-26T16:31:24.952999Z   d4r-r1-lg-verified-py-3 ledgers ingress=4 execution=12 invocation=1
+2026-09-26T16:31:25.065319Z   d4r-r1-lg-unverified-go-3 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=403 exit=0 trace=faf917d310ae5e46ef2296948fdf2ff8
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-3/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-3/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-3/invocation.jsonl: No such file or directory
+2026-09-26T16:31:25.517218Z   d4r-r1-lg-unverified-go-3 ledgers ingress= execution= invocation=
+2026-09-26T16:31:25.627924Z   d4r-r1-lg-unverified-py-3 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: unverified] -> http=403 exit=0 trace=31fe709dad8a6a77c94382e8eb7cdbfb
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-3/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-3/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-3/invocation.jsonl: No such file or directory
+2026-09-26T16:31:26.077205Z   d4r-r1-lg-unverified-py-3 ledgers ingress= execution= invocation=
+2026-09-26T16:31:26.405906Z   d4r-r1-orch-unverified-go-3 d4-as-orchestrator SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=200 exit=0 trace=47b7a3b66c79dfd5f6c0f89f168b3e6f
+2026-09-26T16:31:26.868201Z   d4r-r1-orch-unverified-go-3 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:27.221239Z   d4r-r1-lg-verified-go-4 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: verified] -> http=200 exit=0 trace=57105885fac1872a8d787274b48162d6
+2026-09-26T16:31:27.702497Z   d4r-r1-lg-verified-go-4 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:28.041681Z   d4r-r1-lg-verified-py-4 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: verified] -> http=200 exit=0 trace=f9343d0461937d31bd69c081b1ed1d13
+2026-09-26T16:31:28.510283Z   d4r-r1-lg-verified-py-4 ledgers ingress=4 execution=12 invocation=1
+2026-09-26T16:31:28.620429Z   d4r-r1-lg-unverified-go-4 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=403 exit=0 trace=0e2510f92f50dc31ce556567834baa9c
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-4/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-4/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-4/invocation.jsonl: No such file or directory
+2026-09-26T16:31:29.082869Z   d4r-r1-lg-unverified-go-4 ledgers ingress= execution= invocation=
+2026-09-26T16:31:29.204637Z   d4r-r1-lg-unverified-py-4 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: unverified] -> http=403 exit=0 trace=f34a817728b5b256cba2290ce8c11ee8
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-4/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-4/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-4/invocation.jsonl: No such file or directory
+2026-09-26T16:31:29.671835Z   d4r-r1-lg-unverified-py-4 ledgers ingress= execution= invocation=
+2026-09-26T16:31:30.011358Z   d4r-r1-orch-unverified-go-4 d4-as-orchestrator SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=200 exit=0 trace=c3d23b90dc2040f9998b6c655b4ac838
+2026-09-26T16:31:30.481770Z   d4r-r1-orch-unverified-go-4 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:30.819679Z   d4r-r1-lg-verified-go-5 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: verified] -> http=200 exit=0 trace=00daaff94a536427d1104c57036cd9a1
+2026-09-26T16:31:31.287939Z   d4r-r1-lg-verified-go-5 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:31.614126Z   d4r-r1-lg-verified-py-5 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: verified] -> http=200 exit=0 trace=a02df6016473035919f5af732d834134
+2026-09-26T16:31:32.078984Z   d4r-r1-lg-verified-py-5 ledgers ingress=4 execution=12 invocation=1
+2026-09-26T16:31:32.186546Z   d4r-r1-lg-unverified-go-5 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=403 exit=0 trace=34b4c7ea486229c445222745a22ce88b
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-5/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-5/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-go-5/invocation.jsonl: No such file or directory
+2026-09-26T16:31:32.638582Z   d4r-r1-lg-unverified-go-5 ledgers ingress= execution= invocation=
+2026-09-26T16:31:32.748193Z   d4r-r1-lg-unverified-py-5 d4-as-loadgen SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local [x-d4-probe: unverified] -> http=403 exit=0 trace=54cdb620503e564a7d5c4b4d94509371
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-5/ingress.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-5/execution.jsonl: No such file or directory
+grep: experiments/runs/2026-09-26-walkthrough/d4/r2/d4r-r1-lg-unverified-py-5/invocation.jsonl: No such file or directory
+2026-09-26T16:31:33.211357Z   d4r-r1-lg-unverified-py-5 ledgers ingress= execution= invocation=
+2026-09-26T16:31:33.540652Z   d4r-r1-orch-unverified-go-5 d4-as-orchestrator SendMessage POST http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local/ host=worker.lab.internal [x-d4-probe: unverified] -> http=200 exit=0 trace=3f74a7c7cdcd8968b83d8069bb470b8f
+2026-09-26T16:31:34.015814Z   d4r-r1-orch-unverified-go-5 ledgers ingress=2 execution=6 invocation=1
+2026-09-26T16:31:37.228835Z logs since 2026-09-26T16:31:14.194937Z (r2-in-force): agw-central 22, ingress 25, ztunnel 64 lines
+2026-09-26T16:31:37.282092Z removed overlay-d4-r2
+2026-09-26T16:31:37.613188Z agentgateway-ingress dump: x-d4-probe absent after ~0s
+2026-09-26T16:31:38.868041Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:31:38.930890Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:31:38.992629Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:31:39.038863Z phase r2 driver exit
+2026-09-26T16:31:39.115345Z phase xa RUN_ID x1; HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08; this driver sha256 829daf5a7382550d73f458589d13df9e5fbd23367dab9ccb265ea448729b7d27; istioctl client version: 1.31.1
+2026-09-26T16:32:10.459996Z worker pod: worker-f85ff8b86-w6wvs sa=worker ip=10.244.1.211; orchestrator pod: orchestrator-679ddcc47c-8hc6x sa=orchestrator ip=10.244.1.213
+2026-09-26T16:32:10.501105Z proxy pods: agentgateway-ingress/agentgateway-ingress-94f7846f-5x8n7 ip=10.244.1.204; agentgateway-waypoint/agw-central-57d6777d5f-k58kb ip=10.244.1.212; 
+2026-09-26T16:32:11.729450Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:32:11.791723Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:32:11.851675Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:32:32.478543Z loadgen image: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026-09-26T16:32:32.547827Z extauthz setting: deny pod extauthz-5b7b57c5bf-jt82p sa=default
+2026-09-26T16:32:32.566492Z window opens
+2026-09-26T16:32:32.642523Z applied experiments/runs/2026-09-24-d3-extauthz/overlay-d3-extauthz
+2026-09-26T16:32:32.992945Z agentgateway-ingress dump: extAuthz present after ~0s
+2026-09-26T16:32:34.213767Z job loadgen-d4x-x1-go-1 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal
+2026-09-26T16:32:38.981893Z   d4x-x1-go-1 Complete pod-sa=loadgen ip=10.244.1.79 ingress=2 execution=6 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:32:38.999902Z job loadgen-d4x-x1-py-1 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:32:43.846231Z   d4x-x1-py-1 Complete pod-sa=loadgen ip=10.244.1.80 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:32:43.863810Z job loadgen-d4x-x1-go-2 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal
+2026-09-26T16:32:48.688060Z   d4x-x1-go-2 Complete pod-sa=loadgen ip=10.244.1.81 ingress=2 execution=6 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:32:48.705986Z job loadgen-d4x-x1-py-2 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:32:53.539223Z   d4x-x1-py-2 Complete pod-sa=loadgen ip=10.244.1.82 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:32:53.557914Z job loadgen-d4x-x1-go-3 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal
+2026-09-26T16:32:58.374135Z   d4x-x1-go-3 Complete pod-sa=loadgen ip=10.244.1.83 ingress=2 execution=6 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:32:58.393313Z job loadgen-d4x-x1-py-3 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:33:03.192126Z   d4x-x1-py-3 Complete pod-sa=loadgen ip=10.244.1.84 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:33:03.210232Z job loadgen-d4x-x1-go-4 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal
+2026-09-26T16:33:07.999121Z   d4x-x1-go-4 Complete pod-sa=loadgen ip=10.244.1.85 ingress=2 execution=6 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:33:08.016976Z job loadgen-d4x-x1-py-4 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:33:12.851635Z   d4x-x1-py-4 Complete pod-sa=loadgen ip=10.244.1.86 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:33:12.868305Z job loadgen-d4x-x1-go-5 target=http://agentgateway-ingress.agentgateway-ingress.svc.cluster.local dial=target host=worker.lab.internal
+2026-09-26T16:33:17.703560Z   d4x-x1-go-5 Complete pod-sa=loadgen ip=10.244.1.87 ingress=2 execution=6 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:33:17.720875Z job loadgen-d4x-x1-py-5 target=http://orchestrator.lab.svc.cluster.local:8080 dial=<empty> host=<empty>
+2026-09-26T16:33:22.510273Z   d4x-x1-py-5 Complete pod-sa=loadgen ip=10.244.1.88 ingress=4 execution=12 invocation=1 client-end=[{"result_kind":"task","state":"TASK_STATE_COMPLETED","http_status":null,"error":null}]
+2026-09-26T16:33:25.812836Z logs since 2026-09-26T16:32:32.557225Z (xa-in-force): agw-central 20, ingress 15, ztunnel 153 lines
+2026-09-26T16:33:25.861637Z extauthz decision lines: 15; source_principal values:   15 <empty>;
+2026-09-26T16:33:25.918764Z removed experiments/runs/2026-09-24-d3-extauthz/overlay-d3-extauthz
+2026-09-26T16:33:26.262840Z agentgateway-ingress dump: extAuthz absent after ~0s
+2026-09-26T16:33:27.533505Z reset http://mockllm.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:33:27.595257Z reset http://worker.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:33:27.656871Z reset http://orchestrator.lab.svc.cluster.local:8080/control/reset -> 204
+2026-09-26T16:33:27.698580Z phase xa driver exit
+2026-09-26T16:33:27Z header reading: RUN_ID d4h1; HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08; this driver sha256 461ab00625113f712800dba1f5cd8560db85547f617d5bd00ed43cc8e060529a
+2026-09-26T16:33:28Z before: deployment/worker LEDGER_HEADERS=[] FORWARD_RESUBSCRIBE=[] REFUSE_OPERATION=[] DOWNSTREAM_A2A_URL=[]
+2026-09-26T16:33:28Z before: deployment/orchestrator LEDGER_HEADERS=[] FORWARD_RESUBSCRIBE=[] REFUSE_OPERATION=[] DOWNSTREAM_A2A_URL=[http://worker.lab.svc.cluster.local:8080]
+2026-09-26T16:33:28Z set LEDGER_HEADERS=on on deployment/worker and deployment/orchestrator
+2026-09-26T16:33:32Z after set: worker pods worker-7b798ccffc-fcsw6 LEDGER_HEADERS=on uid=0627e009-a4c2-47bb-a2f0-9e9a439124e2; 
+2026-09-26T16:33:32Z after set: orchestrator pods orchestrator-6487f5fbd-65258 LEDGER_HEADERS=on uid=07a9cc95-daac-4faa-aeb3-5c04588f65d0; 
+2026-09-26T16:33:32Z proxy pods: agentgateway-ingress/agentgateway-ingress-94f7846f-5x8n7 ip=10.244.1.204; agentgateway-waypoint/agw-central-57d6777d5f-k58kb ip=10.244.1.212; 
+2026-09-26T16:33:32Z agent pods: mockllm-58b7487955-f7pdz ip=10.244.1.29; orchestrator-6487f5fbd-65258 ip=10.244.1.91; worker-7b798ccffc-fcsw6 ip=10.244.1.90; 
+2026-09-26T16:33:50Z image: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026-09-26T16:33:50Z mock reset -> 204
+2026-09-26T16:33:53Z   d1-hdr-go-unary-d4h1 Complete: unary TASK_STATE_COMPLETED task=01a0de90-dbb8-7763-95a2-4f1c884f7c86
+2026-09-26T16:33:56Z   d1-hdr-go-stream-d4h1 Complete: eof TASK_STATE_COMPLETED task=01a0de90-e8bc-7a7d-9c63-d1ab677066e3
+2026-09-26T16:34:00Z   d1-hdr-go-subscribe-d4h1 Failed: error  task=01a0de90-e8bc-7a7d-9c63-d1ab677066e3
+2026-09-26T16:34:03Z   d1-hdr-py-unary-d4h1 Complete: unary TASK_STATE_COMPLETED task=42f100a9-917c-4b72-a62a-022b0120774b
+2026-09-26T16:34:06Z   d1-hdr-py-stream-d4h1 Complete: eof TASK_STATE_COMPLETED task=1fcf360a-d36b-474b-8afd-2429654e66e4
+2026-09-26T16:34:10Z   d1-hdr-py-subscribe-d4h1 Failed: eof  task=1fcf360a-d36b-474b-8afd-2429654e66e4
+2026-09-26T16:34:13Z mock reset -> 204
+2026-09-26T16:34:13Z   worker: 18 ingress lines, 9 arrivals carrying the reading
+2026-09-26T16:34:13Z   orchestrator: 12 ingress lines, 6 arrivals carrying the reading
+2026-09-26T16:34:13Z done
+2026-09-26T16:34:16Z restored: LEDGER_HEADERS=[] on worker, [] on orchestrator (set env rc=0, rollouts rc=0)
+2026-09-26T16:34:16Z header reading driver exit=0
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-d4after-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 19:34:18 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 19:34:19 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 19:34:19 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 19:34:20 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:34:35 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:34:35 Adding tag latest
+2026/09/26 19:34:35 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-d4after-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 19:34:41 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 19:34:42 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 19:34:42 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 19:34:43 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:34:59 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 19:34:59 Adding tag latest
+2026/09/26 19:34:59 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-d4after-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-d4after-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+# D-4 counts, from d4
+
+## Row Z: ztunnel ALLOW on principals at the worker (agw-central's and the orchestrator's identities)
+  probe pods: {'d4-as-orchestrator': '10.244.1.57', 'd4-as-loadgen': '10.244.1.58'}
+  direct, as the orchestrator's account, policy in force: 5 work items
+    5 x {"client": ["GetAgentCard=200/exit0", "SendMessage=200/exit0"], "invocations": 1, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": ["10.244.1.57"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  direct, as the load client's account, policy in force: 5 work items
+    5 x {"client": ["GetAgentCard=000/exit56", "SendMessage=000/exit56"], "none": true}
+  the forward control (a load-client Job to the orchestrator's Service), policy in force: 5 work items
+    5 x {"client": "task/TASK_STATE_COMPLETED", "invocations": 1, "orchestrator_arrivals": 1, "orchestrator_executes": 1, "orchestrator_last_state": "TASK_STATE_COMPLETED", "orchestrator_received": 1, "orchestrator_tasks": 1, "remotes": ["10.244.1.204", "10.244.1.212"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  direct, as the orchestrator's account, after removal: 1 work items
+    1 x {"client": ["GetAgentCard=200/exit0", "SendMessage=200/exit0"], "invocations": 1, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": ["10.244.1.57"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  direct, as the load client's account, after removal: 1 work items
+    1 x {"client": ["GetAgentCard=200/exit0", "SendMessage=200/exit0"], "invocations": 1, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": ["10.244.1.58"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  ztunnel connection lines in the window, inbound to the worker's pod on its port 8080, by source address:
+    10 x ('d4-as-loadgen', 'spiffe://cluster.local/ns/lab/sa/loadgen', 'spiffe://cluster.local/ns/lab/sa/worker', 'policy-rejection')
+    10 x ('d4-as-orchestrator', 'spiffe://cluster.local/ns/lab/sa/orchestrator', 'spiffe://cluster.local/ns/lab/sa/worker', 'ok')
+  every policy-rejection line in the window: 10, naming {'spiffe://cluster.local/ns/lab/sa/loadgen': 10}
+  agw-central's access lines in the window (route, src.identity, path, status):
+    10 x ('agentgateway-waypoint/model-via-agw', 'spiffe://cluster.local/ns/lab/sa/worker', '/v1/chat/completions', '200')
+    5 x ('lab/orchestrator', 'spiffe://cluster.local/ns/lab/sa/loadgen', '/.well-known/agent-card.json', '200')
+    5 x ('lab/worker', 'spiffe://cluster.local/ns/lab/sa/orchestrator', '/', '200')
+
+## Row A: agentgateway Allow on source.identity (lab/orchestrator) on agw-central's route lab/worker
+  the load client's account to the worker Service: 5 work items
+    5 x {"client": "/ error=resolve card: card request failed, status: 403 Forbidden", "invocations": 0, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": [], "worker_arrivals": 0, "worker_executes": 0, "worker_last_state": "", "worker_received": 0, "worker_tasks": 0}
+  the load client's account to the orchestrator Service, forwarded by the orchestrator: 5 work items
+    5 x {"client": "task/TASK_STATE_COMPLETED", "invocations": 1, "orchestrator_arrivals": 1, "orchestrator_executes": 1, "orchestrator_last_state": "TASK_STATE_COMPLETED", "orchestrator_received": 1, "orchestrator_tasks": 1, "remotes": ["10.244.1.204", "10.244.1.212"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  agw-central's access lines in the window (route, src.identity, method, path, status, reason):
+    5 x ('agentgateway-waypoint/model-via-agw', 'spiffe://cluster.local/ns/lab/sa/worker', 'POST', '/v1/chat/completions', '200', '')
+    5 x ('lab/orchestrator', 'spiffe://cluster.local/ns/lab/sa/loadgen', 'GET', '/.well-known/agent-card.json', '200', '')
+    5 x ('lab/worker', 'spiffe://cluster.local/ns/lab/sa/loadgen', 'GET', '/.well-known/agent-card.json', '403', 'Authorization')
+    5 x ('lab/worker', 'spiffe://cluster.local/ns/lab/sa/orchestrator', 'POST', '/', '200', '')
+  the ingress's access lines in the window: {('lab/orchestrator-ingress', '/', '200'): 5}
+
+## R2: the ingress's source.identity and source.unverifiedWorkload (NOT cryptographically authenticated)
+  probe pods: {'d4-as-loadgen': '10.244.1.76', 'd4-as-orchestrator': '10.244.1.77'}
+  load client's account, x-d4-probe: verified, worker-ingress: 5 work items
+    5 x {"client": ["SendMessage=200/exit0"], "invocations": 1, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": ["10.244.1.204"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  load client's account, x-d4-probe: verified, orchestrator-ingress: 5 work items
+    5 x {"client": ["SendMessage=200/exit0"], "invocations": 1, "orchestrator_arrivals": 1, "orchestrator_executes": 1, "orchestrator_last_state": "TASK_STATE_COMPLETED", "orchestrator_received": 1, "orchestrator_tasks": 1, "remotes": ["10.244.1.204", "10.244.1.212"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  load client's account, x-d4-probe: unverified, worker-ingress: 5 work items
+    5 x {"client": ["SendMessage=403/exit0"], "none": true}
+  load client's account, x-d4-probe: unverified, orchestrator-ingress: 5 work items
+    5 x {"client": ["SendMessage=403/exit0"], "none": true}
+  orchestrator's account, x-d4-probe: unverified, worker-ingress: 5 work items
+    5 x {"client": ["SendMessage=200/exit0"], "invocations": 1, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": ["10.244.1.204"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  the ingress's access lines in the window (route, source address as the probe pod it is, src.identity, status, reason):
+    5 x ('lab/orchestrator-ingress', 'd4-as-loadgen', '<no src.identity>', '200', '')
+    5 x ('lab/orchestrator-ingress', 'd4-as-loadgen', '<no src.identity>', '403', 'Authorization')
+    5 x ('lab/worker-ingress', 'd4-as-loadgen', '<no src.identity>', '200', '')
+    5 x ('lab/worker-ingress', 'd4-as-loadgen', '<no src.identity>', '403', 'Authorization')
+    5 x ('lab/worker-ingress', 'd4-as-orchestrator', '<no src.identity>', '200', '')
+
+## the ingress's ext-authz source principal, D-3's overlay re-applied from its record
+  go path (the ingress, Host worker.lab.internal): 5 work items
+    5 x {"client": "task/TASK_STATE_COMPLETED", "invocations": 1, "orchestrator_arrivals": 0, "orchestrator_executes": 0, "orchestrator_last_state": "", "orchestrator_received": 0, "orchestrator_tasks": 0, "remotes": ["10.244.1.204"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  py path (the orchestrator's Service, the card through agw-central, the POST through the ingress): 5 work items
+    5 x {"client": "task/TASK_STATE_COMPLETED", "invocations": 1, "orchestrator_arrivals": 1, "orchestrator_executes": 1, "orchestrator_last_state": "TASK_STATE_COMPLETED", "orchestrator_received": 1, "orchestrator_tasks": 1, "remotes": ["10.244.1.204", "10.244.1.212"], "worker_arrivals": 1, "worker_executes": 1, "worker_last_state": "TASK_STATE_COMPLETED", "worker_received": 1, "worker_tasks": 1}
+  decision lines: 15; (binding, http_method, decision, source_principal): {('other', 'GET', 'allow', '<empty>'): 5, ('jsonrpc', 'POST', 'allow', '<empty>'): 10}
+
+## the header reading (D-1's headers.sh, unedited, from its record)
+  worker: 9 arrivals carrying the reading; names {'a2a-version': 5, 'accept': 5, 'accept-encoding': 9, 'content-length': 5, 'content-type': 5, 'host': 9, 'traceparent': 9, 'user-agent': 9, 'x-a2a-message-id': 2, 'x-caller': 9, 'x-logical-work-item-id': 8}
+    values {'host=worker.lab.internal': 6, 'host=worker.lab.svc.cluster.local:8080': 3, 'user-agent=Go-http-client/1.1': 6, 'user-agent=python-httpx/0.28.1': 3, 'x-caller=loadgen': 6, 'x-caller=orchestrator': 3}
+    authorization_present {False: 9}; remote {'10.244.1.204': 6, '10.244.1.212': 3}
+  orchestrator: 6 arrivals carrying the reading; names {'a2a-version': 3, 'accept': 2, 'accept-encoding': 6, 'content-length': 3, 'content-type': 3, 'host': 6, 'traceparent': 6, 'user-agent': 6, 'x-caller': 6, 'x-logical-work-item-id': 6}
+    values {'host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local': 3, 'host=orchestrator.lab.svc.cluster.local:8080': 3, 'user-agent=Go-http-client/1.1': 6, 'x-caller=loadgen': 6}
+    authorization_present {False: 6}; remote {'10.244.1.212': 3, '10.244.1.204': 3}
+
+## the clean checks
+  clean-check/summary.csv:
+    receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+    worker,g2c-d4cc-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+    orchestrator,g2c-d4cc-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+  after/summary.csv:
+    receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+    worker,g2c-d4after-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+    orchestrator,g2c-d4after-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+  after/hop-lines, the closing clean check's window:
+    ztunnel connection lines (direction, source workload, src.identity, dst.service, dst.identity):
+      1 x ('inbound', 'agentgateway-ingress-94f7846f', 'spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress', 'orchestrator.lab.svc.cluster.local', 'spiffe://cluster.local/ns/lab/sa/orchestrator')
+      1 x ('inbound', 'agw-central-57d6777d5f', 'spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central', 'orchestrator.lab.svc.cluster.local', 'spiffe://cluster.local/ns/lab/sa/orchestrator')
+      1 x ('inbound', 'loadgen-g2c-d4after-orchestrator', 'spiffe://cluster.local/ns/lab/sa/loadgen', 'agentgateway-ingress.agentgateway-ingress.svc.cluster.local', 'spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress')
+      3 x ('inbound', 'prometheus-5b9c9c7487', '-', '', '-')
+      1 x ('outbound', 'agentgateway-ingress-94f7846f', 'spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress', '', 'spiffe://cluster.local/ns/lab/sa/orchestrator')
+      3 x ('outbound', 'gate2-curl', '-', 'mockllm.lab.svc.cluster.local', '-')
+      3 x ('outbound', 'gate2-curl', 'spiffe://cluster.local/ns/lab/sa/default', 'orchestrator.lab.svc.cluster.local', 'spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central')
+      3 x ('outbound', 'gate2-curl', 'spiffe://cluster.local/ns/lab/sa/default', 'worker.lab.svc.cluster.local', 'spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central')
+      1 x ('outbound', 'loadgen-g2c-d4after-orchestrator', '-', 'otel-collector.telemetry.svc.cluster.local', '-')
+      1 x ('outbound', 'loadgen-g2c-d4after-orchestrator', 'spiffe://cluster.local/ns/lab/sa/loadgen', 'agentgateway-ingress.agentgateway-ingress.svc.cluster.local', 'spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress')
+      1 x ('outbound', 'loadgen-g2c-d4after-orchestrator', 'spiffe://cluster.local/ns/lab/sa/loadgen', 'orchestrator.lab.svc.cluster.local', 'spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central')
+      1 x ('outbound', 'loadgen-g2c-d4after-worker', '-', 'otel-collector.telemetry.svc.cluster.local', '-')
+      1 x ('outbound', 'loadgen-g2c-d4after-worker', 'spiffe://cluster.local/ns/lab/sa/loadgen', 'worker.lab.svc.cluster.local', 'spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central')
+      2 x ('outbound', 'orchestrator-6487f5fbd', '-', 'otel-collector.telemetry.svc.cluster.local', '-')
+      1 x ('outbound', 'orchestrator-6487f5fbd', 'spiffe://cluster.local/ns/lab/sa/orchestrator', 'worker.lab.svc.cluster.local', 'spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central')
+    agw-central-access.txt (route, src.identity, http.path, http.status):
+      2 x ('agentgateway-waypoint/model-via-agw', 'spiffe://cluster.local/ns/lab/sa/worker', '/v1/chat/completions', '200')
+      3 x ('lab/orchestrator', 'spiffe://cluster.local/ns/lab/sa/default', '/control/reset', '204')
+      1 x ('lab/orchestrator', 'spiffe://cluster.local/ns/lab/sa/loadgen', '/.well-known/agent-card.json', '200')
+      3 x ('lab/worker', 'spiffe://cluster.local/ns/lab/sa/default', '/control/reset', '204')
+      1 x ('lab/worker', 'spiffe://cluster.local/ns/lab/sa/loadgen', '/', '200')
+      1 x ('lab/worker', 'spiffe://cluster.local/ns/lab/sa/loadgen', '/.well-known/agent-card.json', '200')
+      1 x ('lab/worker', 'spiffe://cluster.local/ns/lab/sa/orchestrator', '/', '200')
+      1 x ('lab/worker', 'spiffe://cluster.local/ns/lab/sa/orchestrator', '/.well-known/agent-card.json', '200')
+    ingress-access.txt (route, src.identity, http.path, http.status):
+      1 x ('lab/orchestrator-ingress', '-', '/', '200')
+wall 507.908s exit 0

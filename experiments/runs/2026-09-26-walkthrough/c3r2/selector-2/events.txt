@@ -1,0 +1,17 @@
+2026-09-26T15:23:15.040Z rep selector-2 start T0=2026-09-26T15:23:14Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=server-64b5d85cf7-hgsjk 10.244.1.234:8080 policy=repro-selector REQ_PATH=/?rep=selector-2
+2026-09-26T15:23:15.185Z held connection: kubectl -n repro exec -i client -- nc 10.244.1.234 8080 (stdin held open by this script)
+2026-09-26T15:23:15.189Z r1 write: GET /?rep=selector-2 HTTP/1.1, Host: server
+2026-09-26T15:23:15.258Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:23:15.435Z apply: kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-selector.yaml
+2026-09-26T15:23:15.602Z ztunnel holds repro-selector (istioctl ztunnel-config policy, the draft's jq)
+2026-09-26T15:23:15.667Z ztunnel lists repro/repro-selector on the server workload (istioctl ztunnel-config workloads, the draft's jq)
+2026-09-26T15:23:15.690Z held connection after the push: complete responses 1 200; nc running
+2026-09-26T15:23:16.079Z r2 write: GET /?rep=selector-2 HTTP/1.1, Host: server, on the held connection
+2026-09-26T15:23:16.124Z r2 result: complete responses on the held connection: 2 200 200; nc running
+2026-09-26T15:23:16.128Z new connection: the draft's step 5, one curl -sS --retry 0
+2026-09-26T15:23:16.336Z close: exec 3>&- (EOF on nc's input)
+2026-09-26T15:23:16.369Z held connection ended: nc exited 2026-09-26T15:23:16.343Z exit=0; complete responses on it: 2 200 200
+2026-09-26T15:23:16.502Z remove: kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-selector.yaml
+2026-09-26T15:23:16.664Z ztunnel no longer holds repro-selector
+2026-09-26T15:23:16.729Z ztunnel no longer lists repro/repro-selector on the server workload
+2026-09-26T15:23:16.983Z rep selector-2 end

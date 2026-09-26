@@ -1,0 +1,34 @@
+
+# read 2026-09-26T16:25:07Z
+$ kubectl -n lab get pods -l app=extauthz -o wide --no-headers
+extauthz-75d4bdbd58-7ktfv   1/1   Running   0     35s   10.244.1.48   agent-mesh-lab-worker   <none>   <none>
+# exit 0
+
+# read 2026-09-26T16:25:07Z
+$ kubectl -n lab set env deploy/extauthz EXTAUTHZ_UNDECIDABLE=deny
+deployment.apps/extauthz env updated
+# exit 0
+
+# read 2026-09-26T16:25:07Z
+$ kubectl -n lab rollout status deploy/extauthz --timeout=120s
+Waiting for deployment "extauthz" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "extauthz" rollout to finish: 1 old replicas are pending termination...
+deployment "extauthz" successfully rolled out
+# exit 0
+
+# read 2026-09-26T16:25:08Z
+$ kubectl -n lab get deploy extauthz -o jsonpath='{.spec.template.spec.containers[0].env}{"\n"}'
+[{"name":"EXTAUTHZ_UNDECIDABLE","value":"deny"}]
+# exit 0
+
+# read 2026-09-26T16:25:08Z
+$ kubectl -n lab get pods -l app=extauthz -o wide --no-headers
+extauthz-5b7b57c5bf-jt82p   1/1   Running       0     1s    10.244.1.49   agent-mesh-lab-worker   <none>   <none>
+extauthz-75d4bdbd58-7ktfv   1/1   Terminating   0     36s   10.244.1.48   agent-mesh-lab-worker   <none>   <none>
+# exit 0
+
+# read 2026-09-26T16:25:08Z
+$ kubectl -n lab logs deploy/extauthz | grep -v '^{'
+Found 2 pods, using pod/extauthz-5b7b57c5bf-jt82p
+2026/09/26 16:25:07 extauthz listening on :9000 (gRPC envoy.service.auth.v3.Authorization); EXTAUTHZ_UNDECIDABLE=deny; JSON-RPC path /
+# exit 0

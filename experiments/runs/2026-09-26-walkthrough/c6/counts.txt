@@ -1,0 +1,14 @@
+# phase receiver kind -> sends; the ingress proxy's POST line (status, route, method and path); arrivals at the receiver asked; executes; invocations; the caller's status
+c6pa go sm -> sends=2 post_status=200 route=lab/worker-ingress method_path=POST / arrivals=2 executes=2 invocations=2 client=ok:TASK_STATE_COMPLETED
+c6pa go st -> sends=2 post_status=200 route=lab/worker-ingress method_path=POST / arrivals=2 executes=0 invocations=0 client=200
+c6pa py sm -> sends=2 post_status=200 route=lab/orchestrator-ingress method_path=POST / arrivals=2 executes=4 invocations=2 client=ok:TASK_STATE_COMPLETED
+c6pa py st -> sends=2 post_status=200 route=lab/orchestrator-ingress method_path=POST / arrivals=2 executes=0 invocations=0 client=200
+c6pb go cst -> sends=2 post_status=200 route=lab/worker-ingress method_path=POST / arrivals=2 executes=0 invocations=0 client=200
+c6pb go sm -> sends=2 post_status=200 route=lab/worker-ingress method_path=POST / arrivals=2 executes=2 invocations=2 client=ok:TASK_STATE_COMPLETED
+c6pb go ss -> sends=2 post_status=500 route=lab/c6-refuse-event-stream-worker method_path=POST / arrivals=0 executes=0 invocations=0 client=500
+c6pb go st -> sends=2 post_status=500 route=lab/c6-refuse-event-stream-worker method_path=POST / arrivals=0 executes=0 invocations=0 client=500
+c6pb py cst -> sends=2 post_status=200 route=lab/orchestrator-ingress method_path=POST / arrivals=2 executes=0 invocations=0 client=200
+c6pb py sm -> sends=2 post_status=200 route=lab/orchestrator-ingress method_path=POST / arrivals=2 executes=4 invocations=2 client=ok:TASK_STATE_COMPLETED
+c6pb py ss -> sends=2 post_status=500 route=lab/c6-refuse-event-stream-orchestrator method_path=POST / arrivals=0 executes=0 invocations=0 client=500
+c6pb py st -> sends=2 post_status=500 route=lab/c6-refuse-event-stream-orchestrator method_path=POST / arrivals=0 executes=0 invocations=0 client=500
+sends: 24 refused by the route (500): 8 of them with an arrival: 0

@@ -1,0 +1,70 @@
+# D-2, C-8's body rule UNCHANGED (its Deny, json(request.body).method == "SubscribeToTask"), on the four routes the
+# REST and gRPC rows cross.
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d2-deny-body-rest-worker
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'json(request.body).method == "SubscribeToTask"'
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d2-deny-body-rest-orchestrator
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'json(request.body).method == "SubscribeToTask"'
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d2-deny-body-grpc-worker
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: GRPCRoute
+      name: worker-grpc-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'json(request.body).method == "SubscribeToTask"'
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d2-deny-body-grpc-orchestrator
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: GRPCRoute
+      name: orchestrator-grpc-ingress
+  traffic:
+    authorization:
+      action: Deny
+      policy:
+        matchExpressions:
+          - 'json(request.body).method == "SubscribeToTask"'

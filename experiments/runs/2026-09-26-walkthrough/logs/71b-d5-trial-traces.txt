@@ -1,0 +1,12 @@
+$ W=experiments/runs/2026-09-26-walkthrough/d5/trial; mkdir -p $W/traces/by-id
+grep -h -o 'trace.id=[0-9a-f]*' $W/agw-central-access-in-force-with-cards.txt $W/ingress-access-in-force-with-cards.txt | cut -d= -f2 | sort -u > $W/traces/trace-ids.txt
+kubectl -n telemetry port-forward svc/jaeger 16686:16686 >/dev/null 2>&1 &
+PF=$!
+for i in $(seq 1 30); do curl -sS -o /dev/null --max-time 2 http://127.0.0.1:16686/api/v3/services >/dev/null 2>&1 && break; sleep 1; done
+while read -r t; do curl -sS --retry 0 --max-time 20 "http://127.0.0.1:16686/api/traces/$t" -o "$W/traces/by-id/$t.json"; done < $W/traces/trace-ids.txt
+kill "$PF" >/dev/null 2>&1 || true; wait "$PF" >/dev/null 2>&1 || true
+echo "# $(date -u +%FT%TZ) traces read from Jaeger by the trace.id on every proxy request line of the trial window (port-forward to svc/jaeger, /api/traces/<id>)" > $W/traces/README.txt
+echo "trace ids: $(wc -l < $W/traces/trace-ids.txt | tr -d ' '); files: $(ls $W/traces/by-id | wc -l | tr -d ' ')"
+# istioctl on PATH at this step's start: client version: 1.31.1
+trace ids: 18; files: 18
+wall 1.257s exit 0

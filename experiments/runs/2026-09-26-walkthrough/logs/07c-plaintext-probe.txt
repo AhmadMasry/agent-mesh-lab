@@ -1,0 +1,28 @@
+$ kubectl -n default run mtls-probe --image=curlimages/curl:8.22.0 --restart=Never --command -- sleep 300
+kubectl -n default wait --for=condition=Ready pod/mtls-probe --timeout=90s
+for h in worker orchestrator; do
+  echo "## $h"
+  kubectl -n default exec mtls-probe -- curl -sS -o /dev/null -w "http=%{http_code} exit=%{exitcode}\n" --retry 0 \
+    --connect-timeout 5 --max-time 10 "http://$h.lab.svc.cluster.local:8080/.well-known/agent-card.json"; echo "exit=$?"
+done
+echo "## ztunnel policy rejections"
+kubectl -n istio-system logs -l app=ztunnel --tail=-1 | grep "policy rejection" | tail -2
+kubectl -n default delete pod mtls-probe
+# istioctl on PATH at this step's start: client version: 1.31.1
+pod/mtls-probe created
+pod/mtls-probe condition met
+## worker
+http=000 exit=56
+curl: (56) Recv failure: Connection reset by peer
+command terminated with exit code 56
+exit=56
+## orchestrator
+curl: (56) Recv failure: Connection reset by peer
+http=000 exit=56
+command terminated with exit code 56
+exit=56
+## ztunnel policy rejections
+2026-09-26T14:09:03.030194Z	error	access	connection complete	src.addr=10.244.1.21:55250 dst.addr=10.244.1.16:8080 dst.service="worker.lab.svc.cluster.local" dst.workload="worker-7ff9b6f64d-bxkxr" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+2026-09-26T14:09:03.078137Z	error	access	connection complete	src.addr=10.244.1.21:53648 dst.addr=10.244.1.15:8080 dst.service="orchestrator.lab.svc.cluster.local" dst.workload="orchestrator-5c965bff65-j5fz6" dst.namespace="lab" dst.cluster="Kubernetes" direction="inbound" bytes_sent=0 bytes_recv=0 duration="0ms" error="connection closed due to policy rejection: explicitly denied by: istio-system/istio_converted_static_strict"
+pod "mtls-probe" deleted from default namespace
+wall 31.706s exit 0

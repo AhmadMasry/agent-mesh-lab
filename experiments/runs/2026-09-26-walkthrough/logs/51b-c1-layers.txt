@@ -1,0 +1,100 @@
+$ C=experiments/runs/2026-09-26-walkthrough/c1; S=$(cat $C/window-start.txt)
+echo "## the routes, as they stand"
+while read -r ns name; do kubectl -n "$ns" get httproute "$name" -o json \
+    | jq -c '{parents:[.spec.parentRefs[]|"\(.namespace // "-")/\(.name)"], hostnames:(.spec.hostnames // []),
+             rules:[.spec.rules[]|{matches:(.matches // []), filters:([(.filters//[])[].type]),
+                                   backends:[(.backendRefs//[])[]|"\(.name):\(.port // "-")"], retry:(.retry // null)}]}'
+  done < <(kubectl get httproute -A -o jsonpath='{range .items[*]}{.metadata.namespace} {.metadata.name}{"\n"}{end}') | tee $C/routes.txt
+kubectl -n lab get svc worker orchestrator mockllm -o json \
+    | jq -r '.items[] | "\(.metadata.name): " + ([.spec.ports[] | "name=\(.name // "-") port=\(.port) appProtocol=\(.appProtocol // "<none>")"] | join("; "))' | tee -a $C/routes.txt
+echo "## every policy each proxy holds, and the strings a2a, authorization, jwt, extAuth, rateLimit in its config_dump"
+for pair in "agentgateway-waypoint agw-central" "agentgateway-ingress agentgateway-ingress"; do
+  set -- $pair
+  bash experiments/runs/2026-09-19-waypoint-policy-recheck/config-dump.sh "$1" "$2" $C/config-dump-$2.json | head -4
+  for s in a2a authorization jwt extAuth rateLimit; do printf '%s "%s"=%s ' "$2" "$s" "$(grep -o "\"$s\"" $C/config-dump-$2.json | wc -l | tr -d ' ')"; done; echo
+done | tee $C/config-dump-policies.txt
+kubectl get agentgatewaypolicy -A --no-headers | wc -l | tr -d ' ' | sed 's/^/AgentgatewayPolicy objects: /' | tee -a $C/config-dump-policies.txt
+kubectl get authorizationpolicy -A --no-headers 2>/dev/null | wc -l | tr -d ' ' | sed 's/^/AuthorizationPolicy objects: /' | tee -a $C/config-dump-policies.txt
+echo "## both proxies' request lines of the window"
+kubectl -n agentgateway-waypoint logs deploy/agw-central --since-time=$S | grep 'request gateway=' > $C/agw-central-access.txt
+kubectl -n agentgateway-ingress logs deploy/agentgateway-ingress --since-time=$S | grep 'request gateway=' > $C/ingress-access.txt
+echo "agw-central request lines: $(wc -l < $C/agw-central-access.txt | tr -d ' '), carrying src.identity: $(grep -c 'src.identity=' $C/agw-central-access.txt); distinct path/method pairs on route=lab/worker: $(grep 'route=lab/worker ' $C/agw-central-access.txt | grep -o 'http.method=[A-Z]* http.host=[^ ]* http.path=[^ ]*' | sed 's/http.host=[^ ]* //' | sort -u | wc -l | tr -d ' ')"
+echo "ingress request lines: $(wc -l < $C/ingress-access.txt | tr -d ' '), carrying src.identity: $(grep -c 'src.identity=' $C/ingress-access.txt)"
+echo "## every attribute on every proxy SERVER span of the two work items"
+for w in worker orchestrator; do
+  jq -r --arg w "$w" '.result.resourceSpans[]? | (.resource.attributes[]? | select(.key=="service.name") | .value.stringValue) as $svc
+    | select($svc == "agw-central" or $svc == "agentgateway-ingress") | .scopeSpans[]?.spans[]? | select(.kind == 2 or .kind == "SPAN_KIND_SERVER")
+    | "\($w) \($svc) \(.name) attrs=\(.attributes | length) src.identity=\([.attributes[] | select(.key=="src.identity")] | length) a2a_keys=\([.attributes[] | select(.key | startswith("a2a."))] | length) protocol=\([.attributes[] | select(.key=="protocol") | .value.stringValue] | join(","))"' \
+    $C/g2c-wtc1-$w/trace.json
+done | tee $C/proxy-span-attributes.txt
+echo "## ztunnel, the node that runs every lab pod: what its lines carry"
+ZT=$(kubectl -n istio-system get pod -l app=ztunnel --field-selector spec.nodeName=agent-mesh-lab-worker -o jsonpath='{.items[0].metadata.name}')
+kubectl -n istio-system logs "$ZT" --since-time=$S > $C/ztunnel-window.txt
+echo "lines in the window: $(wc -l < $C/ztunnel-window.txt | tr -d ' ')"
+for s in messageId taskId SendMessage http.method http.path agent-card; do printf 'lines naming %-12s %s\n' "$s" "$(grep -c "$s" $C/ztunnel-window.txt)"; done
+echo "lines naming the work item g2c-wtc1: $(grep -c 'g2c-wtc1' $C/ztunnel-window.txt); of them outside a src.workload= or dst.workload= token: $(grep 'g2c-wtc1' $C/ztunnel-window.txt | sed 's/src.workload="[^"]*"//; s/dst.workload="[^"]*"//' | grep -c 'g2c-wtc1')"
+echo "## the proxy-to-receiver legs at ztunnel's inbound side (source identity, connection security)"
+grep 'connection complete' $C/ztunnel-window.txt | grep 'direction="inbound"' | grep -E 'dst.workload="(worker|orchestrator)-' | grep -o 'src.identity="[^"]*"' | sort | uniq -c
+experiments/runs/2026-09-12-mtls-enforced/promq.sh security > $C/ztunnel-series.txt 2>&1
+grep -E '"destination_workload": "(worker|orchestrator)"' $C/ztunnel-series.txt | jq -r '[.reporter, .connection_security_policy, .source_workload, .source_principal, .destination_workload] | @tsv' | sort | uniq -c
+echo "## the ledgers: what the application recorded before the SDK"
+cat $C/g2c-wtc1-worker/ingress.jsonl $C/g2c-wtc1-orchestrator/ingress.jsonl | jq -r 'select(.phase=="arrival") | "\(.source) method=\(.method) a2a_version=\(.a2a_version) remote=\(.remote) messageId=\(.messageId | .[0:8]) taskId=[\(.taskId)] body_sha256=\(.body_sha256 | .[0:8]) keys=\(keys | join(","))"'
+cat $C/g2c-wtc1-worker/execution.jsonl $C/g2c-wtc1-orchestrator/execution.jsonl | jq -r 'select(.event=="execute") | "\(.source) execute taskId=\(.taskId | .[0:8])"'
+cat $C/g2c-wtc1-worker/invocation.jsonl $C/g2c-wtc1-orchestrator/invocation.jsonl | jq -r '"invocation caller=\(.caller) lwi=\(.logical_work_item_id) messageId=\(.messageId | .[0:8]) taskId=\(.taskId | .[0:8])"'
+# istioctl on PATH at this step's start: client version: 1.31.1
+## the routes, as they stand
+{"parents":["-/agw-central"],"hostnames":["model.lab.internal"],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["mockllm:-"],"retry":null}]}
+{"parents":["agentgateway-waypoint/agw-central"],"hostnames":["orchestrator.lab.svc.cluster.local"],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["orchestrator:8080"],"retry":null}]}
+{"parents":["agentgateway-ingress/agentgateway-ingress"],"hostnames":[],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["orchestrator:8080"],"retry":null}]}
+{"parents":["agentgateway-waypoint/agw-central"],"hostnames":["worker.lab.svc.cluster.local"],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["worker:8080"],"retry":null}]}
+{"parents":["agentgateway-ingress/agentgateway-ingress"],"hostnames":["worker.lab.internal"],"rules":[{"matches":[{"path":{"type":"PathPrefix","value":"/"}}],"filters":[],"backends":["worker:8080"],"retry":null}]}
+worker: name=http port=8080 appProtocol=<none>; name=grpc port=8081 appProtocol=kubernetes.io/h2c
+orchestrator: name=http port=8080 appProtocol=<none>; name=grpc port=8081 appProtocol=kubernetes.io/h2c
+mockllm: name=http port=8080 appProtocol=<none>
+## every policy each proxy holds, and the strings a2a, authorization, jwt, extAuth, rateLimit in its config_dump
+policies: 2
+  key= frontend/agentgateway-waypoint/access-logs:frontend-logging:agentgateway-waypoint/agw-central name= {'kind': 'AgentgatewayPolicy', 'name': 'access-logs', 'namespace': 'agentgateway-waypoint'} target= {"gateway": {"gatewayName": "agw-central", "gatewayNamespace": "agentgateway-waypoint", "listenerName": null}}
+  key= frontend/agentgateway-waypoint/tracing:frontend-tracing:agentgateway-waypoint/agw-central name= {'kind': 'AgentgatewayPolicy', 'name': 'tracing', 'namespace': 'agentgateway-waypoint'} target= {"gateway": {"gatewayName": "agw-central", "gatewayNamespace": "agentgateway-waypoint", "listenerName": null}}
+config.tracing: null
+agw-central "a2a"=0 agw-central "authorization"=0 agw-central "jwt"=0 agw-central "extAuth"=0 agw-central "rateLimit"=0 
+policies: 2
+  key= frontend/agentgateway-ingress/access-logs:frontend-logging:agentgateway-ingress/agentgateway-ingress name= {'kind': 'AgentgatewayPolicy', 'name': 'access-logs', 'namespace': 'agentgateway-ingress'} target= {"gateway": {"gatewayName": "agentgateway-ingress", "gatewayNamespace": "agentgateway-ingress", "listenerName": null}}
+  key= frontend/agentgateway-ingress/tracing:frontend-tracing:agentgateway-ingress/agentgateway-ingress name= {'kind': 'AgentgatewayPolicy', 'name': 'tracing', 'namespace': 'agentgateway-ingress'} target= {"gateway": {"gatewayName": "agentgateway-ingress", "gatewayNamespace": "agentgateway-ingress", "listenerName": null}}
+config.tracing: null
+agentgateway-ingress "a2a"=0 agentgateway-ingress "authorization"=0 agentgateway-ingress "jwt"=0 agentgateway-ingress "extAuth"=0 agentgateway-ingress "rateLimit"=0 
+AgentgatewayPolicy objects: 4
+AuthorizationPolicy objects: 0
+## both proxies' request lines of the window
+agw-central request lines: 13, carrying src.identity: 13; distinct path/method pairs on route=lab/worker: 3
+ingress request lines: 1, carrying src.identity: 0
+## every attribute on every proxy SERVER span of the two work items
+worker agw-central POST /* attrs=17 src.identity=1 a2a_keys=0 protocol=http
+worker agw-central POST /* attrs=17 src.identity=1 a2a_keys=0 protocol=http
+worker agw-central GET /* attrs=17 src.identity=1 a2a_keys=0 protocol=http
+orchestrator agentgateway-ingress POST /* attrs=16 src.identity=0 a2a_keys=0 protocol=http
+orchestrator agw-central GET /* attrs=17 src.identity=1 a2a_keys=0 protocol=http
+orchestrator agw-central POST /* attrs=17 src.identity=1 a2a_keys=0 protocol=http
+orchestrator agw-central POST /* attrs=17 src.identity=1 a2a_keys=0 protocol=http
+orchestrator agw-central GET /* attrs=17 src.identity=1 a2a_keys=0 protocol=http
+## ztunnel, the node that runs every lab pod: what its lines carry
+lines in the window: 54
+lines naming messageId    0
+lines naming taskId       0
+lines naming SendMessage  0
+lines naming http.method  0
+lines naming http.path    0
+lines naming agent-card   0
+lines naming the work item g2c-wtc1: 18; of them outside a src.workload= or dst.workload= token: 12
+## the proxy-to-receiver legs at ztunnel's inbound side (source identity, connection security)
+jq: parse error: Invalid numeric literal at line 1, column 1221
+   1 destination	mutual_tls	agentgateway-ingress	spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress	orchestrator
+## the ledgers: what the application recorded before the SDK
+worker method=SendMessage a2a_version=1.0 remote=10.244.1.212:40859 messageId=01a0de47 taskId=[] body_sha256=a8eb34a2 keys=a2a_version,body_len,body_sha256,content_type,id,ledger,logical_work_item_id,messageId,method,phase,remote,source,taskId,ts_arrival
+worker method=SendMessage a2a_version=1.0 remote=10.244.1.212:40859 messageId=2cf2eb82 taskId=[] body_sha256=0746720e keys=a2a_version,body_len,body_sha256,content_type,id,ledger,logical_work_item_id,messageId,method,phase,remote,source,taskId,ts_arrival
+orchestrator method=SendMessage a2a_version=1.0 remote=10.244.1.204:39387 messageId=01a0de48 taskId=[] body_sha256=9b51e9de keys=a2a_version,body_len,body_sha256,content_type,id,ledger,logical_work_item_id,messageId,method,phase,remote,source,taskId,ts_arrival
+worker execute taskId=01a0de47
+worker execute taskId=01a0de48
+orchestrator execute taskId=975b56bb
+invocation caller=worker lwi=g2c-wtc1-worker messageId=01a0de47 taskId=01a0de47
+invocation caller=worker lwi=g2c-wtc1-orchestrator messageId=2cf2eb82 taskId=01a0de48
+wall 1.521s exit 0

@@ -1,0 +1,27 @@
+# C-3: Istio's own recipe, "Require traffic to traverse the waypoint"
+# (istio.io release-1.31, content/en/docs/ambient/usage/waypoint/index.md l.225-245,
+# re-fetched 2026-09-21): "make the waypoint mandatory with an `AuthorizationPolicy`
+# that allows only the waypoint's identity ... This policy uses a workload `selector`
+# rather than a `targetRef`, so it is enforced at Layer 4 by ztunnel."
+#
+# The waypoint here is `agw-central`, a Gateway of class `agentgateway` in the
+# unenrolled namespace `agentgateway-waypoint`; its pod runs as the service account
+# `agw-central` (read from the cluster), and the worker's ztunnel names it
+# spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central (C-1).
+# Only the names differ from the page's example. The lab's first AuthorizationPolicy:
+# applied for the C-3 readings and removed after them.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: require-agw-central
+  namespace: lab
+spec:
+  selector:
+    matchLabels:
+      app: worker
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/agentgateway-waypoint/sa/agw-central

@@ -1,0 +1,203 @@
+# every row: verdict, what, this rebuild | REBUILD-2
+## clean check (clean-check/summary.csv)
+  DIFFERS  worker [g2c-fu3cc-worker | g2c-fu3cc-worker] deliveries/received/executes/tasks_created/invocations/client_result: 2/2/2/2/2/task/TASK_STATE_COMPLETED | 1/1/1/1/1/task/TASK_STATE_COMPLETED
+  same     orchestrator [g2c-fu3cc-orchestrator | g2c-fu3cc-orchestrator] deliveries/received/executes/tasks_created/invocations/client_result: 1/1/1/1/1/task/TASK_STATE_COMPLETED | 1/1/1/1/1/task/TASK_STATE_COMPLETED
+  same     rows: 2 | 2
+## trace per work item (trace/summary.csv)
+  DIFFERS  r1-orchestrator trace_ids: 4 | 2
+  DIFFERS  r1-orchestrator spans: 147 | 81
+  DIFFERS  r1-orchestrator spans_by_service: agentgateway-ingress=4|agw-central=8|loadgen=6|mockllm=1|orchestrator=125|worker=3 | agentgateway-ingress=2|agw-central=6|loadgen=3|mockllm=1|orchestrator=66|worker=3
+  same     r1-orchestrator hops_without_span: none | none
+  DIFFERS  r1-orchestrator lab_work_item_on_all: no:13/147 | no:8/81
+  DIFFERS  r1-worker trace_ids: 4 | 2
+  DIFFERS  r1-worker spans: 28 | 14
+  DIFFERS  r1-worker spans_by_service: agw-central=12|loadgen=6|mockllm=2|worker=8 | agw-central=6|loadgen=3|mockllm=1|worker=4
+  same     r1-worker hops_without_span: none | none
+  DIFFERS  r1-worker lab_work_item_on_all: no:10/28 | no:5/14
+  DIFFERS  r2-orchestrator trace_ids: 4 | 2
+  DIFFERS  r2-orchestrator spans: 147 | 81
+  DIFFERS  r2-orchestrator spans_by_service: agentgateway-ingress=4|agw-central=8|loadgen=6|mockllm=1|orchestrator=125|worker=3 | agentgateway-ingress=2|agw-central=6|loadgen=3|mockllm=1|orchestrator=66|worker=3
+  same     r2-orchestrator hops_without_span: none | none
+  DIFFERS  r2-orchestrator lab_work_item_on_all: no:13/147 | no:8/81
+  DIFFERS  r2-worker trace_ids: 4 | 2
+  DIFFERS  r2-worker spans: 28 | 14
+  DIFFERS  r2-worker spans_by_service: agw-central=12|loadgen=6|mockllm=2|worker=8 | agw-central=6|loadgen=3|mockllm=1|worker=4
+  same     r2-worker hops_without_span: none | none
+  DIFFERS  r2-worker lab_work_item_on_all: no:10/28 | no:5/14
+## dangling parents (trace/dangling.csv)
+  DIFFERS  r1-orchestrator spans/trace_ids/roots/dangling_parents: 147/4/4/0 | 81/2/2/0
+  DIFFERS  r1-worker spans/trace_ids/roots/dangling_parents: 28/4/4/0 | 14/2/2/0
+  DIFFERS  r2-orchestrator spans/trace_ids/roots/dangling_parents: 147/4/4/0 | 81/2/2/0
+  DIFFERS  r2-worker spans/trace_ids/roots/dangling_parents: 28/4/4/0 | 14/2/2/0
+## GenAI spans (trace/genai/summary.csv)
+  DIFFERS  r1-orchestrator chat/invoke_agent/missing Required/missing expected/agent.id: 1/4/0/1/0 | 1/2/0/0/0
+  DIFFERS  r1-worker chat/invoke_agent/missing Required/missing expected/agent.id: 2/2/0/0/0 | 1/1/0/0/0
+  DIFFERS  r2-orchestrator chat/invoke_agent/missing Required/missing expected/agent.id: 1/4/0/1/0 | 1/2/0/0/0
+  DIFFERS  r2-worker chat/invoke_agent/missing Required/missing expected/agent.id: 2/2/0/0/0 | 1/1/0/0/0
+## Prometheus targets (prometheus-targets.txt)
+  same     the script's own total: 7/7 targets up | 7/7 targets up
+  same     jobs and health, sorted: agentgateway-controlplane=up|agentgateway-proxies=up|agentgateway-proxies=up|istiod=up|otel-collector=up|ztunnel=up|ztunnel=up | agentgateway-controlplane=up|agentgateway-proxies=up|agentgateway-proxies=up|istiod=up|otel-collector=up|ztunnel=up|ztunnel=up
+## STRICT: every ztunnel series (strict/hops-security.csv)
+  DIFFERS  legs (rows): 110 | 45
+  DIFFERS  legs with connection_security_policy=mutual_tls: 84 | 29
+  DIFFERS  legs with connection_security_policy=unknown: 26 | 16
+  same     legs present on both sides, by every column but the connection count: 45 | 45
+    only here:   destination,agentgateway-ingress,agentgateway-ingress,extauthz.lab.svc.cluster.local,extauthz,lab,mutual_tls,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress,spiffe://cluster.local/ns/lab/sa/default  connections_opened=7
+    only here:   destination,agw-central,agentgateway-waypoint,orchestrator.lab.svc.cluster.local,orchestrator,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/orchestrator  connections_opened=6
+    only here:   destination,agw-central,agentgateway-waypoint,worker.lab.svc.cluster.local,worker,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/worker  connections_opened=12
+    only here:   destination,c34-curl,lab,worker.lab.svc.cluster.local,worker,lab,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/lab/sa/worker  connections_opened=8
+    only here:   destination,c3r-client,c3r,unknown,c3r-server,c3r,mutual_tls,spiffe://cluster.local/ns/c3r/sa/default,spiffe://cluster.local/ns/c3r/sa/default  connections_opened=10
+    only here:   destination,c6-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=39
+    only here:   destination,c7-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=4
+    only here:   destination,c9-cards,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=2
+    only here:   destination,c9-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=6
+    only here:   destination,c9r-cards,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=2
+    only here:   destination,client,repro,unknown,server,repro,mutual_tls,spiffe://cluster.local/ns/repro/sa/default,spiffe://cluster.local/ns/repro/sa/default  connections_opened=10
+    only here:   destination,d2-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=22
+    only here:   destination,d3-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=126
+    only here:   destination,d4-as-loadgen,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/loadgen,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=20
+    only here:   destination,d4-as-loadgen,lab,worker.lab.svc.cluster.local,worker,lab,mutual_tls,spiffe://cluster.local/ns/lab/sa/loadgen,spiffe://cluster.local/ns/lab/sa/worker  connections_opened=12
+    only here:   destination,d4-as-orchestrator,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/orchestrator,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=5
+    only here:   destination,d4-as-orchestrator,lab,worker.lab.svc.cluster.local,worker,lab,mutual_tls,spiffe://cluster.local/ns/lab/sa/orchestrator,spiffe://cluster.local/ns/lab/sa/worker  connections_opened=12
+    only here:   destination,d5-as-loadgen,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/loadgen,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=14
+    only here:   source,agentgateway-ingress,agentgateway-ingress,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=1
+    only here:   source,agentgateway-ingress,agentgateway-ingress,unknown,extauthz,lab,mutual_tls,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress,spiffe://cluster.local/ns/lab/sa/default  connections_opened=7
+    only here:   source,agentgateway-ingress,agentgateway-ingress,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=1
+    only here:   source,b3-curl,lab,mockllm.lab.svc.cluster.local,mockllm,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/default  connections_opened=44
+    only here:   source,b3-curl,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=4
+    only here:   source,b3-curl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=4
+    only here:   source,b4-curl,lab,mockllm.lab.svc.cluster.local,mockllm,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/default  connections_opened=13
+    only here:   source,b4-curl,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=1
+    only here:   source,b4-curl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=1
+    only here:   source,b5a-curl,lab,mockllm.lab.svc.cluster.local,mockllm,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/default  connections_opened=42
+    only here:   source,b5b-curl,lab,mockllm.lab.svc.cluster.local,mockllm,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/default  connections_opened=28
+    only here:   source,c34-curl,lab,unknown,worker,lab,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/lab/sa/worker  connections_opened=8
+    only here:   source,c34-curl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=2
+    only here:   source,c3r-client,c3r,unknown,c3r-server,c3r,mutual_tls,spiffe://cluster.local/ns/c3r/sa/default,spiffe://cluster.local/ns/c3r/sa/default  connections_opened=10
+    only here:   source,c5-curl,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=8
+    only here:   source,c5-curl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=8
+    only here:   source,c6-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=39
+    only here:   source,c7-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=4
+    only here:   source,c7-curl,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=2
+    only here:   source,c7-curl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=2
+    only here:   source,c9-cards,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=2
+    only here:   source,c9-cards,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=1
+    only here:   source,c9-cards,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=2
+    only here:   source,c9-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=6
+    only here:   source,c9-curl,lab,mockllm.lab.svc.cluster.local,mockllm,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/default  connections_opened=46
+    only here:   source,c9-curl,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=3
+    only here:   source,c9-curl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=3
+    only here:   source,c9r-cards,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=2
+    only here:   source,c9r-cards,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=1
+    only here:   source,c9r-cards,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=1
+    only here:   source,client,repro,unknown,server,repro,mutual_tls,spiffe://cluster.local/ns/repro/sa/default,spiffe://cluster.local/ns/repro/sa/default  connections_opened=10
+    only here:   source,d1-curl,lab,mockllm.lab.svc.cluster.local,mockllm,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/default  connections_opened=25
+    only here:   source,d2-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=22
+    only here:   source,d3-curl,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=126
+    only here:   source,d4-as-loadgen,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/loadgen,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=20
+    only here:   source,d4-as-loadgen,lab,unknown,worker,lab,mutual_tls,spiffe://cluster.local/ns/lab/sa/loadgen,spiffe://cluster.local/ns/lab/sa/worker  connections_opened=12
+    only here:   source,d4-as-orchestrator,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/orchestrator,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=5
+    only here:   source,d4-as-orchestrator,lab,unknown,worker,lab,mutual_tls,spiffe://cluster.local/ns/lab/sa/orchestrator,spiffe://cluster.local/ns/lab/sa/worker  connections_opened=12
+    only here:   source,d4-ctl,lab,mockllm.lab.svc.cluster.local,mockllm,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/default  connections_opened=8
+    only here:   source,d4-ctl,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=8
+    only here:   source,d4-ctl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=8
+    only here:   source,d5-as-loadgen,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress,mutual_tls,spiffe://cluster.local/ns/lab/sa/loadgen,spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress  connections_opened=14
+    only here:   source,d5-as-loadgen,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/loadgen,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=7
+    only here:   source,d5-as-loadgen,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/loadgen,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=7
+    only here:   source,d5-ctl,lab,mockllm.lab.svc.cluster.local,mockllm,lab,unknown,unknown,spiffe://cluster.local/ns/lab/sa/default  connections_opened=5
+    only here:   source,d5-ctl,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=5
+    only here:   source,d5-ctl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint,mutual_tls,spiffe://cluster.local/ns/lab/sa/default,spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central  connections_opened=5
+  DIFFERS  of the common legs, connection counts equal on: 15 | 45
+    count differs: destination,agentgateway-ingress,agentgateway-ingress,orchestrator.lab.svc.cluster.local,orchestrator,lab  60 | 4
+    count differs: destination,agentgateway-ingress,agentgateway-ingress,worker.lab.svc.cluster.local,worker,lab  61 | 1
+    count differs: destination,agw-central,agentgateway-waypoint,orchestrator.lab.svc.cluster.local,orchestrator,lab  45 | 5
+    count differs: destination,agw-central,agentgateway-waypoint,worker.lab.svc.cluster.local,worker,lab  45 | 8
+    count differs: destination,loadgen,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress  427 | 8
+    count differs: destination,mtls-probe,default,orchestrator.lab.svc.cluster.local,orchestrator,lab  2 | 1
+    count differs: destination,prometheus,telemetry,unknown,agentgateway-ingress,agentgateway-ingress  790 | 74
+    count differs: destination,unknown,unknown,worker.lab.svc.cluster.local,worker,lab  3 | 2
+    count differs: source,a3t-curl,lab,mockllm.lab.svc.cluster.local,mockllm,lab  13 | 9
+    count differs: source,a3t-curl,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint  13 | 9
+    count differs: source,a3t-curl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint  13 | 9
+    count differs: source,agentgateway-ingress,agentgateway-ingress,agentgateway.agentgateway-system.svc.cluster.local,agentgateway,agentgateway-system  15 | 1
+    count differs: source,agentgateway-ingress,agentgateway-ingress,unknown,orchestrator,lab  60 | 4
+    count differs: source,agentgateway-ingress,agentgateway-ingress,unknown,otel-collector,telemetry  36 | 2
+    count differs: source,agentgateway-ingress,agentgateway-ingress,unknown,worker,lab  61 | 1
+    count differs: source,gate2-curl,lab,mockllm.lab.svc.cluster.local,mockllm,lab  84 | 12
+    count differs: source,gate2-curl,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint  78 | 6
+    count differs: source,gate2-curl,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint  84 | 12
+    count differs: source,loadgen,lab,agentgateway-ingress.agentgateway-ingress.svc.cluster.local,agentgateway-ingress,agentgateway-ingress  427 | 8
+    count differs: source,loadgen,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint  224 | 10
+    count differs: source,loadgen,lab,otel-collector.telemetry.svc.cluster.local,otel-collector,telemetry  470 | 26
+    count differs: source,loadgen,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint  66 | 18
+    count differs: source,orchestrator,lab,model.lab.internal,agw-central,agentgateway-waypoint  19 | 3
+    count differs: source,orchestrator,lab,otel-collector.telemetry.svc.cluster.local,otel-collector,telemetry  60 | 7
+    count differs: source,orchestrator,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint  125 | 10
+    count differs: source,worker,lab,model.lab.internal,agw-central,agentgateway-waypoint  48 | 3
+    count differs: source,worker,lab,otel-collector.telemetry.svc.cluster.local,otel-collector,telemetry  9 | 1
+    count differs: source,wt-cleanup,lab,mockllm.lab.svc.cluster.local,mockllm,lab  2 | 1
+    count differs: source,wt-cleanup,lab,orchestrator.lab.svc.cluster.local,agw-central,agentgateway-waypoint  2 | 1
+    count differs: source,wt-cleanup,lab,worker.lab.svc.cluster.local,agw-central,agentgateway-waypoint  2 | 1
+## STRICT: the named legs (strict/legs.csv)
+  DIFFERS  caller (loadgen) -> agw-central, to the worker Service: 1/mutual_tls/66/spiffe://cluster.local/ns/lab/sa/loadgen | 1/mutual_tls/18/spiffe://cluster.local/ns/lab/sa/loadgen
+  DIFFERS  caller (loadgen) -> agw-central, to the orchestrator Service (the card): 1/mutual_tls/224/spiffe://cluster.local/ns/lab/sa/loadgen | 1/mutual_tls/10/spiffe://cluster.local/ns/lab/sa/loadgen
+  DIFFERS  agw-central -> worker: 2/unknown/12/unknown | 1/mutual_tls/8/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  DIFFERS  agw-central -> orchestrator: 2/unknown/6/unknown | 1/mutual_tls/5/spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central
+  DIFFERS  worker -> model host, via agw-central: 1/mutual_tls/48/spiffe://cluster.local/ns/lab/sa/worker | 1/mutual_tls/3/spiffe://cluster.local/ns/lab/sa/worker
+  DIFFERS  orchestrator -> worker Service (the forward), via agw-central: 1/mutual_tls/125/spiffe://cluster.local/ns/lab/sa/orchestrator | 1/mutual_tls/10/spiffe://cluster.local/ns/lab/sa/orchestrator
+  same     agw-central -> mockllm (neither end captured): 0/no-series/0/ | 0/no-series/0/
+  DIFFERS  caller (loadgen) -> agentgateway-ingress, source side: 1/mutual_tls/427/spiffe://cluster.local/ns/lab/sa/loadgen | 1/mutual_tls/8/spiffe://cluster.local/ns/lab/sa/loadgen
+  DIFFERS  caller (loadgen) -> agentgateway-ingress, destination side: 1/mutual_tls/427/spiffe://cluster.local/ns/lab/sa/loadgen | 1/mutual_tls/8/spiffe://cluster.local/ns/lab/sa/loadgen
+  DIFFERS  agentgateway-ingress -> orchestrator: 1/mutual_tls/60/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress | 1/mutual_tls/4/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress
+  DIFFERS  agentgateway-ingress -> worker: 1/mutual_tls/61/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress | 1/mutual_tls/1/spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress
+  same     plaintext probe -> worker: 0/no-series/0/ | 0/no-series/0/
+  DIFFERS  plaintext probe -> orchestrator: 1/unknown/2/unknown | 1/unknown/1/unknown
+## plaintext probe (strict/plaintext-probe.csv, plaintext-probe-ztunnel.txt, ztunnel-other-error-lines.txt)
+  same     http://worker.lab.svc.cluster.local:8080/.well-known/agent-card.json: http=000 curl_exit=56 | http=000 curl_exit=56
+  same     http://orchestrator.lab.svc.cluster.local:8080/.well-known/agent-card.json: http=000 curl_exit=56 | http=000 curl_exit=56
+  same     ztunnel lines saying policy rejection: 2 | 2
+  same     of them naming istio-system/istio_converted_static_strict: 2 | 2
+  same     of them attributed to src.workload=mtls-probe: 1 | 1
+  DIFFERS  other ztunnel error/denied/reject lines, all: 219 | 18
+  DIFFERS    of them `no healthy upstream`: 15 | 10
+  DIFFERS    of them `policy rejection`: 50 | 3
+## A2A-Version (wire-version/summary.csv)
+  not taken here: reading (b) of REBUILD-2 is not part of this task's proof; nothing compared, nothing counted
+## retry knobs (retry-knobs/readings.txt | REBUILD-2's retry-knobs/readings.txt)
+  same     stanzas across every route after each make call: 1>0>2>0>1>0>0 | 1>0>2>0>1>0>0
+  same     agentgateway-waypoint/model-via-agw, stanza count at each read: 0>0>0>0>0>1>0>0 | 0>0>0>0>0>1>0>0
+  same     lab/orchestrator, stanza count at each read: 0>0>0>0>0>0>0>0 | 0>0>0>0>0>0>0>0
+  same     lab/orchestrator-ingress, stanza count at each read: 0>0>0>1>0>0>0>0 | 0>0>0>1>0>0>0>0
+  same     lab/worker, stanza count at each read: 0>1>0>0>0>0>0>0 | 0>1>0>0>0>0>0>0
+  same     lab/worker-ingress, stanza count at each read: 0>0>0>1>0>0>0>0 | 0>0>0>1>0>0>0>0
+  same     stanzas on every route at the last read: 0+0+0+0+0 | 0+0+0+0+0
+## cluster facts (cluster/facts.txt), stamps and durations masked, every differing line whole
+  same     lines: 112 | 112
+  differing lines (- REBUILD-2, + this rebuild): 26
+    -agentgateway-ingress    agentgateway-ingress   agentgateway   True         10.96.58.152
+    -agentgateway-waypoint   agw-central            agentgateway   True         10.96.18.93
+    +agentgateway-ingress    agentgateway-ingress   agentgateway   True         10.96.191.215
+    +agentgateway-waypoint   agw-central            agentgateway   True         10.96.158.213
+    -agw-central-5cb98f5c87-rr8fk   none             agw-central   <none>        cr.agentgateway.dev/agentgateway:v1.5.0   agw-central
+    +agw-central-57d6777d5f-k58kb   none             agw-central   <none>        cr.agentgateway.dev/agentgateway:v1.5.0   agw-central
+    -POD                                     DATAPLANE_MODE   GATEWAY                REDIRECTION   IMAGE                                     SA
+    -agentgateway-ingress-588d98974c-v9wp6   <none>           agentgateway-ingress   enabled       cr.agentgateway.dev/agentgateway:v1.5.0   agentgateway-ingress
+    +POD                                   DATAPLANE_MODE   GATEWAY                REDIRECTION   IMAGE                                     SA
+    +agentgateway-ingress-94f7846f-5x8n7   <none>           agentgateway-ingress   enabled       cr.agentgateway.dev/agentgateway:v1.5.0   agentgateway-ingress
+    -spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           c1a4e6469202093cbb27b9bb0f110bb0     <stamp>     <stamp>
+    -spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     <stamp>     <stamp>
+    -spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           5c19bd4f6c12f150b27883b1fe6034fe     <stamp>     <stamp>
+    -spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     <stamp>     <stamp>
+    -spiffe://cluster.local/ns/lab/sa/orchestrator                              Leaf     Available     true           da12095ea536d14456fddcf398b8763d     <stamp>     <stamp>
+    -spiffe://cluster.local/ns/lab/sa/orchestrator                              Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     <stamp>     <stamp>
+    -spiffe://cluster.local/ns/lab/sa/worker                                    Leaf     Available     true           7a348251734584a1ba72f1732e5fb936     <stamp>     <stamp>
+    -spiffe://cluster.local/ns/lab/sa/worker                                    Root     Available     true           5912e3de5d5ba329d2b42ed4c390850e     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Leaf     Available     true           cd0203f312efc6b14f850be6baff29ee     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress     Root     Available     true           6c2a980ce5418342ed826b80677cc5a4     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/lab/sa/default                                   Leaf     Available     true           29b2e8f5bc0fd56915dba6de5e6e594f     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/lab/sa/default                                   Root     Available     true           6c2a980ce5418342ed826b80677cc5a4     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/lab/sa/orchestrator                              Leaf     Available     true           e62124ba7d2f446fbdf8b9fdfb4db55      <stamp>     <stamp>
+    +spiffe://cluster.local/ns/lab/sa/orchestrator                              Root     Available     true           6c2a980ce5418342ed826b80677cc5a4     <stamp>     <stamp>
+    +spiffe://cluster.local/ns/lab/sa/worker                                    Leaf     Available     true           ffb30bfa6394e1bad592d07d0799302      <stamp>     <stamp>
+    +spiffe://cluster.local/ns/lab/sa/worker                                    Root     Available     true           6c2a980ce5418342ed826b80677cc5a4     <stamp>     <stamp>
+# rows: same=24 DIFFERS=43 (the cluster-facts lines above are listed, not counted here)

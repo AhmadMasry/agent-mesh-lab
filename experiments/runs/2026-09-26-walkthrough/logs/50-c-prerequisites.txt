@@ -1,0 +1,45 @@
+$ mkdir -p "${TMPDIR:-/tmp}"/c5/ko-build-2026-09-26-walkthrough "${TMPDIR:-/tmp}"/d2/ko-build-2026-09-26-walkthrough "${TMPDIR:-/tmp}"/d3 "${TMPDIR:-/tmp}"/d3b "${TMPDIR:-/tmp}"/c8 "${TMPDIR:-/tmp}"/c9
+mkdir -p experiments/runs/2026-09-26-walkthrough/drivers experiments/runs/2026-09-26-walkthrough/c3c4 experiments/runs/2026-09-26-walkthrough/c3r experiments/runs/2026-09-26-walkthrough/c3r2
+for f in send-one.sh counts.sh proxy-spans.sh; do
+  sed -e 's#^R="experiments/runs/2026-09-21-c3-c4-ztunnel"$#R="experiments/runs/2026-09-26-walkthrough/c3c4"#' \
+    experiments/runs/2026-09-21-c3-c4-ztunnel/$f > experiments/runs/2026-09-26-walkthrough/drivers/c3c4-$f
+done
+sed -e 's#^R="experiments/runs/2026-09-21-c3r-open-connections"$#R="experiments/runs/2026-09-26-walkthrough/c3r"#' \
+  experiments/runs/2026-09-21-c3r-open-connections/rep.sh > experiments/runs/2026-09-26-walkthrough/drivers/c3r-rep.sh
+sed -e 's#^R="experiments/runs/2026-09-21-c3r2-public-server"$#R="experiments/runs/2026-09-26-walkthrough/c3r2"#' \
+  experiments/runs/2026-09-21-c3r2-public-server/rep.sh > experiments/runs/2026-09-26-walkthrough/drivers/c3r2-rep.sh
+for f in send-one.sh counts.sh proxy-spans.sh; do diff experiments/runs/2026-09-21-c3-c4-ztunnel/$f experiments/runs/2026-09-26-walkthrough/drivers/c3c4-$f; done
+diff experiments/runs/2026-09-21-c3r-open-connections/rep.sh experiments/runs/2026-09-26-walkthrough/drivers/c3r-rep.sh
+diff experiments/runs/2026-09-21-c3r2-public-server/rep.sh experiments/runs/2026-09-26-walkthrough/drivers/c3r2-rep.sh
+cp -R experiments/runs/2026-09-21-c3-c4-ztunnel/overlay-c3 experiments/runs/2026-09-21-c3-c4-ztunnel/overlay-c4 experiments/runs/2026-09-21-c3-c4-ztunnel/rec.sh experiments/runs/2026-09-26-walkthrough/c3c4/
+cp -R experiments/runs/2026-09-21-c3r-open-connections/objects experiments/runs/2026-09-21-c3r-open-connections/rec.sh experiments/runs/2026-09-21-c3r-open-connections/responses.py experiments/runs/2026-09-21-c3r-open-connections/counts.py experiments/runs/2026-09-26-walkthrough/c3r/
+WORKER_IMAGE=$(kubectl -n lab get deploy worker -o jsonpath='{.spec.template.spec.containers[0].image}')
+sed -e "s#^\(          image: \).*#\1$WORKER_IMAGE#" experiments/runs/2026-09-21-c3r-open-connections/objects/server.yaml > experiments/runs/2026-09-26-walkthrough/c3r/objects/server.yaml
+diff experiments/runs/2026-09-21-c3r-open-connections/objects/server.yaml experiments/runs/2026-09-26-walkthrough/c3r/objects/server.yaml
+cp -R experiments/runs/2026-09-21-c3r2-public-server/objects experiments/runs/2026-09-21-c3r2-public-server/rec.sh experiments/runs/2026-09-21-c3r2-public-server/responses.py experiments/runs/2026-09-21-c3r2-public-server/counts.py experiments/runs/2026-09-26-walkthrough/c3r2/
+# istioctl on PATH at this step's start: client version: 1.31.1
+20c20
+< R="experiments/runs/2026-09-21-c3-c4-ztunnel"
+---
+> R="experiments/runs/2026-09-26-walkthrough/c3c4"
+13c13
+< R="experiments/runs/2026-09-21-c3-c4-ztunnel"
+---
+> R="experiments/runs/2026-09-26-walkthrough/c3c4"
+6c6
+< R="experiments/runs/2026-09-21-c3-c4-ztunnel"
+---
+> R="experiments/runs/2026-09-26-walkthrough/c3c4"
+41c41
+< R="experiments/runs/2026-09-21-c3r-open-connections"
+---
+> R="experiments/runs/2026-09-26-walkthrough/c3r"
+50c50
+< R="experiments/runs/2026-09-21-c3r2-public-server"
+---
+> R="experiments/runs/2026-09-26-walkthrough/c3r2"
+40c40
+<           image: kind.local/worker-918a018b7a581926ead34dec2ba0fb83:64e86fdffd5ef6c996132d6b64a7005fb1afcafb685ff75861b34313ff9851b4
+---
+>           image: kind.local/worker-918a018b7a581926ead34dec2ba0fb83:899f0eae301b3e75b30c84cfdfa86270726b9b1daae1ebd5562954751006871a
+wall 0.125s exit 0

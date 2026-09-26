@@ -1,0 +1,154 @@
+$ C=experiments/runs/2026-09-26-walkthrough/c3r2; REC=$C/rec.sh
+for c in "kubectl get authorizationpolicy -A" "kubectl -n istio-system get pods -l app=ztunnel -o wide"; do bash $REC $C/start-state.txt "$c"; done
+bash $REC $C/objects-created.txt "kubectl apply -f $C/objects/setup.yaml"
+bash $REC $C/objects-created.txt "kubectl -n repro wait --for=condition=Available deploy/server --timeout=180s && kubectl -n repro wait --for=condition=Ready pod/client --timeout=180s"
+bash $REC $C/objects-created.txt "kubectl -n repro get pods -o jsonpath='{range .items[*]}{.metadata.name}{\" \"}{.spec.serviceAccountName}{\" \"}{.status.containerStatuses[0].imageID}{\"\\n\"}{end}'"
+bash $REC $C/server-and-client.txt "kubectl -n repro exec deploy/server -- sh -c 'nginx -v 2>&1; id; nginx -T 2>&1 | grep -n -E \"listen|keepalive\"'"
+W=$(date -u +%FT%TZ)
+for r in none-1 selector-1 namespace-1 selector-2 namespace-2; do
+  sleep 5
+  bash experiments/runs/2026-09-26-walkthrough/drivers/c3r2-rep.sh "${r%-*}" "${r##*-}"
+done
+ZT=$(kubectl -n istio-system get pod -l app=ztunnel --field-selector spec.nodeName=agent-mesh-lab-worker -o jsonpath='{.items[0].metadata.name}')
+bash $REC $C/window.txt "kubectl -n repro logs deploy/server --timestamps --since-time=$W"
+bash $REC $C/window.txt "kubectl -n istio-system logs $ZT --since-time=$W | grep -E 'no longer allowed|policy change|skipping unknown policy|handling RBAC'"
+bash $REC $C/window.txt "kubectl -n istio-system logs deploy/istiod --since-time=$W | grep -E 'PUSH for node:$ZT' | grep -E 'WDS|WADS'"
+bash $REC $C/objects-deleted.txt "kubectl delete -f $C/objects/setup.yaml --wait=true --timeout=180s"
+bash $REC $C/objects-deleted.txt "kubectl get authorizationpolicy -A; kubectl get ns repro"
+bash $REC $C/objects-deleted.txt "docker exec agent-mesh-lab-worker crictl rmi docker.io/nginxinc/nginx-unprivileged@sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3"
+RUN_ID=c3r2after RUN_ITEM=2026-09-26-walkthrough/c3r2/after experiments/gate2-single-clean.sh
+python3 $C/counts.py
+# istioctl on PATH at this step's start: client version: 1.31.1
+2026-09-26T15:22:34.914Z rep none-1 start T0=2026-09-26T15:22:34Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=server-64b5d85cf7-hgsjk 10.244.1.234:8080 policy=none REQ_PATH=/?rep=none-1
+2026-09-26T15:22:35.646Z held connection: kubectl -n repro exec -i client -- nc 10.244.1.234 8080 (stdin held open by this script)
+2026-09-26T15:22:35.650Z r1 write: GET /?rep=none-1 HTTP/1.1, Host: server
+2026-09-26T15:22:35.719Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:22:35.890Z r2 write: GET /?rep=none-1 HTTP/1.1, Host: server, on the held connection
+2026-09-26T15:22:35.933Z r2 result: complete responses on the held connection: 2 200 200; nc running
+2026-09-26T15:22:35.936Z new connection: the draft's step 5, one curl -sS --retry 0
+2026-09-26T15:22:36.145Z close: exec 3>&- (EOF on nc's input)
+2026-09-26T15:22:36.176Z held connection ended: nc exited 2026-09-26T15:22:36.152Z exit=0; complete responses on it: 2 200 200
+2026-09-26T15:22:36.351Z rep none-1 end
+2026-09-26T15:22:41.527Z rep selector-1 start T0=2026-09-26T15:22:41Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=server-64b5d85cf7-hgsjk 10.244.1.234:8080 policy=repro-selector REQ_PATH=/?rep=selector-1
+2026-09-26T15:22:41.671Z held connection: kubectl -n repro exec -i client -- nc 10.244.1.234 8080 (stdin held open by this script)
+2026-09-26T15:22:41.675Z r1 write: GET /?rep=selector-1 HTTP/1.1, Host: server
+2026-09-26T15:22:41.744Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:22:41.921Z apply: kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-selector.yaml
+2026-09-26T15:22:42.090Z ztunnel holds repro-selector (istioctl ztunnel-config policy, the draft's jq)
+2026-09-26T15:22:42.155Z ztunnel lists repro/repro-selector on the server workload (istioctl ztunnel-config workloads, the draft's jq)
+2026-09-26T15:22:42.179Z held connection after the push: complete responses 1 200; nc running
+2026-09-26T15:22:42.569Z r2 write: GET /?rep=selector-1 HTTP/1.1, Host: server, on the held connection
+2026-09-26T15:22:42.615Z r2 result: complete responses on the held connection: 2 200 200; nc running
+2026-09-26T15:22:42.619Z new connection: the draft's step 5, one curl -sS --retry 0
+2026-09-26T15:22:42.829Z close: exec 3>&- (EOF on nc's input)
+2026-09-26T15:22:42.861Z held connection ended: nc exited 2026-09-26T15:22:42.836Z exit=0; complete responses on it: 2 200 200
+2026-09-26T15:22:42.995Z remove: kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-selector.yaml
+2026-09-26T15:22:43.158Z ztunnel no longer holds repro-selector
+2026-09-26T15:22:43.223Z ztunnel no longer lists repro/repro-selector on the server workload
+2026-09-26T15:22:43.481Z rep selector-1 end
+2026-09-26T15:22:48.660Z rep namespace-1 start T0=2026-09-26T15:22:48Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=server-64b5d85cf7-hgsjk 10.244.1.234:8080 policy=repro-namespace REQ_PATH=/?rep=namespace-1
+2026-09-26T15:22:48.803Z held connection: kubectl -n repro exec -i client -- nc 10.244.1.234 8080 (stdin held open by this script)
+2026-09-26T15:22:48.808Z r1 write: GET /?rep=namespace-1 HTTP/1.1, Host: server
+2026-09-26T15:22:48.876Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:22:49.057Z apply: kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-namespace.yaml
+2026-09-26T15:22:49.222Z ztunnel holds repro-namespace (istioctl ztunnel-config policy, the draft's jq)
+2026-09-26T15:22:49.245Z held connection after the push: complete responses 1 200; nc running
+2026-09-26T15:22:49.636Z r2 write: GET /?rep=namespace-1 HTTP/1.1, Host: server, on the held connection
+2026-09-26T15:23:09.036Z r2 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:23:09.040Z new connection: the draft's step 5, one curl -sS --retry 0
+2026-09-26T15:23:09.265Z close: exec 3>&- (EOF on nc's input)
+2026-09-26T15:23:09.305Z held connection ended: nc exited 2026-09-26T15:23:09.282Z exit=0; complete responses on it: 1 200
+2026-09-26T15:23:09.440Z remove: kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-namespace.yaml
+2026-09-26T15:23:09.600Z ztunnel no longer holds repro-namespace
+2026-09-26T15:23:09.854Z rep namespace-1 end
+2026-09-26T15:23:15.040Z rep selector-2 start T0=2026-09-26T15:23:14Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=server-64b5d85cf7-hgsjk 10.244.1.234:8080 policy=repro-selector REQ_PATH=/?rep=selector-2
+2026-09-26T15:23:15.185Z held connection: kubectl -n repro exec -i client -- nc 10.244.1.234 8080 (stdin held open by this script)
+2026-09-26T15:23:15.189Z r1 write: GET /?rep=selector-2 HTTP/1.1, Host: server
+2026-09-26T15:23:15.258Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:23:15.435Z apply: kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-selector.yaml
+2026-09-26T15:23:15.602Z ztunnel holds repro-selector (istioctl ztunnel-config policy, the draft's jq)
+2026-09-26T15:23:15.667Z ztunnel lists repro/repro-selector on the server workload (istioctl ztunnel-config workloads, the draft's jq)
+2026-09-26T15:23:15.690Z held connection after the push: complete responses 1 200; nc running
+2026-09-26T15:23:16.079Z r2 write: GET /?rep=selector-2 HTTP/1.1, Host: server, on the held connection
+2026-09-26T15:23:16.124Z r2 result: complete responses on the held connection: 2 200 200; nc running
+2026-09-26T15:23:16.128Z new connection: the draft's step 5, one curl -sS --retry 0
+2026-09-26T15:23:16.336Z close: exec 3>&- (EOF on nc's input)
+2026-09-26T15:23:16.369Z held connection ended: nc exited 2026-09-26T15:23:16.343Z exit=0; complete responses on it: 2 200 200
+2026-09-26T15:23:16.502Z remove: kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-selector.yaml
+2026-09-26T15:23:16.664Z ztunnel no longer holds repro-selector
+2026-09-26T15:23:16.729Z ztunnel no longer lists repro/repro-selector on the server workload
+2026-09-26T15:23:16.983Z rep selector-2 end
+2026-09-26T15:23:22.169Z rep namespace-2 start T0=2026-09-26T15:23:22Z ztunnel=ztunnel-2w54j istiod=istiod-6d7fbf75-5npwg server=server-64b5d85cf7-hgsjk 10.244.1.234:8080 policy=repro-namespace REQ_PATH=/?rep=namespace-2
+2026-09-26T15:23:22.395Z held connection: kubectl -n repro exec -i client -- nc 10.244.1.234 8080 (stdin held open by this script)
+2026-09-26T15:23:22.399Z r1 write: GET /?rep=namespace-2 HTTP/1.1, Host: server
+2026-09-26T15:23:22.467Z r1 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:23:22.634Z apply: kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-namespace.yaml
+2026-09-26T15:23:22.800Z ztunnel holds repro-namespace (istioctl ztunnel-config policy, the draft's jq)
+2026-09-26T15:23:22.822Z held connection after the push: complete responses 1 200; nc running
+2026-09-26T15:23:23.194Z r2 write: GET /?rep=namespace-2 HTTP/1.1, Host: server, on the held connection
+2026-09-26T15:23:43.039Z r2 result: complete responses on the held connection: 1 200; nc running
+2026-09-26T15:23:43.042Z new connection: the draft's step 5, one curl -sS --retry 0
+2026-09-26T15:23:43.265Z close: exec 3>&- (EOF on nc's input)
+2026-09-26T15:23:43.306Z held connection ended: nc exited 2026-09-26T15:23:43.282Z exit=0; complete responses on it: 1 200
+2026-09-26T15:23:43.443Z remove: kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/policy-namespace.yaml
+2026-09-26T15:23:43.608Z ztunnel no longer holds repro-namespace
+2026-09-26T15:23:43.865Z rep namespace-2 end
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-c3r2after-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:24:28 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:24:28 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:24:28 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:24:29 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:24:44 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:24:44 Adding tag latest
+2026/09/26 18:24:44 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-c3r2after-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 18:24:50 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 18:24:51 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 18:24:51 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 18:24:52 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:25:07 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 18:25:07 Adding tag latest
+2026/09/26 18:25:08 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-c3r2after-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-c3r2after-orchestrator,1,1,1,1,1,task/TASK_STATE_COMPLETED
+scope,n,client_port,ztunnel_inbound,push_apply,push_remove,zt_scope,server_list_after,client_list_after,rbac_update,watcher_lines,watcher_at,watcher_after_rbac_us,late_close_lines,sock_before_r2,r2_on_held,server_arrivals_nc,held_responses,held_outbound_close,held_outbound_close_at,r2_server_at,r2_after_rbac_ms,new_conn,server_arrivals_curl,ap_after_remove
+none,1,10.244.1.233:46165,10.244.1.233:55636,,,,,,,0,,,0,ESTABLISHED,delivered 200,2,2 200 200,no error,2026-09-26T15:22:36.146865Z,2026-09-26T15:22:35.891631418Z,,curl exit 0: <!DOCTYPE html>; ztunnel outbound: no error,1,
+selector,1,10.244.1.233:45389,10.244.1.233:55636,WDS none / WADS none,WDS none / WADS none,WorkloadSelector,repro/repro-selector|istio-system/istio_converted_static_strict,repro/repro-selector|istio-system/istio_converted_static_strict,2026-09-26T15:22:42.064528Z,0,,,0,ESTABLISHED,delivered 200,2,2 200 200,no error,2026-09-26T15:22:42.830391Z,2026-09-26T15:22:42.570106838Z,506,"curl exit 56: curl: (56) Recv failure: Connection reset by peer; ztunnel outbound: http status: 401 Unauthorized; inbound: connection closed due to policy rejection: allow policies exist, but none allowed",0,No resources found 
+selector,2,10.244.1.233:45231,10.244.1.233:55636,WDS none / WADS none,WDS none / WADS none,WorkloadSelector,repro/repro-selector|istio-system/istio_converted_static_strict,repro/repro-selector|istio-system/istio_converted_static_strict,2026-09-26T15:23:15.575363Z,0,,,0,ESTABLISHED,delivered 200,2,2 200 200,no error,2026-09-26T15:23:16.337608Z,2026-09-26T15:23:16.080582631Z,505,"curl exit 56: curl: (56) Recv failure: Connection reset by peer; ztunnel outbound: http status: 401 Unauthorized; inbound: connection closed due to policy rejection: allow policies exist, but none allowed",0,No resources found 
+namespace,1,10.244.1.233:36355,10.244.1.233:55636,WDS none / WADS none,WDS none / WADS none,Namespace,istio-system/istio_converted_static_strict,istio-system/istio_converted_static_strict,2026-09-26T15:22:49.196590Z,1,2026-09-26T15:22:49.196831Z,241,1,CLOSE_WAIT,not delivered,1,1 200,while closing connection: send: io error: broken pipe,2026-09-26T15:22:49.637580Z,,441,"curl exit 56: curl: (56) Recv failure: Connection reset by peer; ztunnel outbound: http status: 401 Unauthorized; inbound: connection closed due to policy rejection: allow policies exist, but none allowed",0,No resources found 
+namespace,2,10.244.1.233:33289,10.244.1.233:55636,WDS none / WADS none,WDS none / WADS none,Namespace,istio-system/istio_converted_static_strict,istio-system/istio_converted_static_strict,2026-09-26T15:23:22.775112Z,1,2026-09-26T15:23:22.775338Z,226,1,CLOSE_WAIT,not delivered,1,1 200,while closing connection: send: io error: broken pipe,2026-09-26T15:23:23.195521Z,,420,"curl exit 56: curl: (56) Recv failure: Connection reset by peer; ztunnel outbound: http status: 401 Unauthorized; inbound: connection closed due to policy rejection: allow policies exist, but none allowed",0,No resources found 
+wall 175.356s exit 0

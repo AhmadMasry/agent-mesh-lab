@@ -1,0 +1,106 @@
+$ mkdir -p experiments/runs/2026-09-26-walkthrough/d3-repeat
+cp -R experiments/runs/2026-09-24-d3-extauthz/overlay-d3-extauthz experiments/runs/2026-09-24-d3-extauthz/counts.py experiments/runs/2026-09-26-walkthrough/d3-repeat/
+export RUNREL=2026-09-26-walkthrough/d3-repeat RUN_ID=d3ar
+X="bash experiments/runs/2026-09-24-d3-extauthz/d3.sh"
+export IMAGE=$($X image | sed -n 's/.* image=\([^ ]*\) .*/\1/p'); echo "IMAGE=$IMAGE"
+$X pod-up
+$X read allow-before; $X apply; sleep 8; $X setting allow; $X read allow-applied
+for r in go py; do $X send allow jsonrpc batch $r 1; done
+echo "== the by-body-hash read, D-3's method (its ingress-by-body-hash.txt, which D-3b's batch-by-hash.sh writes the same way): each receiver's ingress-ledger lines whose body_sha256 is the one the client recorded, with the field source set as make ledgers sets it =="
+for pair in go:worker py:orchestrator; do
+  recv=${pair%%:*}; app=${pair##*:}
+  P=experiments/runs/2026-09-26-walkthrough/d3-repeat/allow/allow-jsonrpc-$recv-batch-d3ar-1
+  H=$(jq -r '.body_sha256' $P/client.jsonl)
+  kubectl -n lab logs deploy/$app --tail=-1 | grep '"ledger":"ingress"' | { grep -F "\"body_sha256\":\"$H\"" || true; } | jq -c --arg s "$app" '. + {source: $s}' > $P/ingress-by-body-hash.txt
+  echo "$(basename $P) $app sha256=$H lines=$(grep -c . $P/ingress-by-body-hash.txt)"; cat $P/ingress-by-body-hash.txt
+done
+$X read allow-end
+$X setting deny; $X read deny-restored
+$X remove; sleep 8; $X read removed
+$X pod-down
+RUN_ID=d3rafter RUN_ITEM=2026-09-26-walkthrough/d3-repeat/after experiments/gate2-single-clean.sh
+python3 experiments/runs/2026-09-26-walkthrough/d3-repeat/counts.py | tee experiments/runs/2026-09-26-walkthrough/d3-repeat/counts.txt
+# istioctl on PATH at this step's start: client version: 1.31.1
+IMAGE=kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026-09-26T17:08:26Z pod-up d3-curl ip=10.244.1.167
+2026-09-26T17:08:27Z read allow-before -> experiments/runs/2026-09-26-walkthrough/d3-repeat/readings-allow-before.txt
+2026-09-26T17:08:27Z apply -k overlay-d3-extauthz
+2026-09-26T17:08:27Z apply done
+2026-09-26T17:08:35Z setting EXTAUTHZ_UNDECIDABLE=allow begin
+2026-09-26T17:08:36Z setting EXTAUTHZ_UNDECIDABLE=allow done, pod extauthz-75d4bdbd58-7zzmv
+2026-09-26T17:08:37Z read allow-applied -> experiments/runs/2026-09-26-walkthrough/d3-repeat/readings-allow-applied.txt
+2026-09-26T17:08:40Z allow jsonrpc go batch allow-jsonrpc-go-batch-d3ar-1 http=200 exit=0 body_len=151 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:batch/allow/len=151/size=151] ingress-proxy-status=[200]
+2026-09-26T17:08:42Z allow jsonrpc py batch allow-jsonrpc-py-batch-d3ar-1 http=200 exit=0 body_len=151 grpc=-/-/- ledgers-exit=0 ingress-ledger=0 execution=0 invocation=0 extauthz-lines=1 extauthz=[allow/undecidable:batch/allow/len=151/size=151] ingress-proxy-status=[200]
+== the by-body-hash read, D-3's method (its ingress-by-body-hash.txt, which D-3b's batch-by-hash.sh writes the same way): each receiver's ingress-ledger lines whose body_sha256 is the one the client recorded, with the field source set as make ledgers sets it ==
+allow-jsonrpc-go-batch-d3ar-1 worker sha256=03cee53b282da5d9667d97743c0c126c942cde3a583fc8dc9d48ec666abefada lines=2
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-26T17:08:37.37009346Z","remote":"10.244.1.204:33611","method":"","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"application/json","body_sha256":"03cee53b282da5d9667d97743c0c126c942cde3a583fc8dc9d48ec666abefada","body_len":151,"source":"worker"}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-26T17:08:37.37009346Z","remote":"10.244.1.204:33611","method":"","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"application/json","body_sha256":"03cee53b282da5d9667d97743c0c126c942cde3a583fc8dc9d48ec666abefada","body_len":151,"status":200,"source":"worker"}
+allow-jsonrpc-py-batch-d3ar-1 orchestrator sha256=0be998168033ba3242177256543ecdada5f68098f77e0f2b041d21aff6bc47f7 lines=2
+{"ledger":"ingress","phase":"arrival","ts_arrival":"2026-09-26T17:08:40.212425Z","remote":"10.244.1.204:51731","method":"","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"application/json","body_sha256":"0be998168033ba3242177256543ecdada5f68098f77e0f2b041d21aff6bc47f7","body_len":151,"source":"orchestrator"}
+{"ledger":"ingress","phase":"response","ts_arrival":"2026-09-26T17:08:40.212425Z","remote":"10.244.1.204:51731","method":"","id":"","messageId":"","taskId":"","logical_work_item_id":"","a2a_version":"1.0","content_type":"application/json","body_sha256":"0be998168033ba3242177256543ecdada5f68098f77e0f2b041d21aff6bc47f7","body_len":151,"status":200,"source":"orchestrator"}
+2026-09-26T17:08:44Z read allow-end -> experiments/runs/2026-09-26-walkthrough/d3-repeat/readings-allow-end.txt
+2026-09-26T17:08:44Z setting EXTAUTHZ_UNDECIDABLE=deny begin
+2026-09-26T17:08:45Z setting EXTAUTHZ_UNDECIDABLE=deny done, pod extauthz-5b7b57c5bf-6lgnp
+2026-09-26T17:08:46Z read deny-restored -> experiments/runs/2026-09-26-walkthrough/d3-repeat/readings-deny-restored.txt
+2026-09-26T17:08:46Z delete -k overlay-d3-extauthz
+2026-09-26T17:08:46Z delete done
+2026-09-26T17:08:55Z read removed -> experiments/runs/2026-09-26-walkthrough/d3-repeat/readings-removed.txt
+2026-09-26T17:09:26Z pod-down d3-curl
+== starting the control pod ==
+== worker: one clean request, logical_work_item_id=g2c-d3rafter-worker ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 20:09:28 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 20:09:29 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 20:09:29 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 20:09:30 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:09:45 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:09:45 Adding tag latest
+2026/09/26 20:09:45 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== orchestrator: one clean request, logical_work_item_id=g2c-d3rafter-orchestrator ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+2026/09/26 20:09:51 Using base gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 for github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen
+2026/09/26 20:09:53 git doesn't contain any tags. Tag info will not be available
+git is in a dirty state
+Please check in your pipeline what can be changing the following files:
+?? experiments/runs/2026-09-26-walkthrough/
+
+2026/09/26 20:09:53 Building github.com/AhmadMasry/agent-mesh-lab/fixtures/loadgen for linux/arm64/v8
+2026/09/26 20:09:54 Loading kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:10:09 Loaded kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026/09/26 20:10:09 Adding tag latest
+2026/09/26 20:10:09 Added tag latest
+## ingress
+## execution
+## invocation
+## client
+## extauthz
+== after the run ==
+== resetting mockllm and both receivers' injectors ==
+reset http://mockllm.lab.svc.cluster.local:8080/control/reset: 204
+reset http://worker.lab.svc.cluster.local:8080/control/reset: 204
+reset http://orchestrator.lab.svc.cluster.local:8080/control/reset: 204
+== summary ==
+receiver,work_item,deliveries,received,executes,tasks_created,invocations,client_result
+worker,g2c-d3rafter-worker,1,1,1,1,1,task/TASK_STATE_COMPLETED
+orchestrator,g2c-d3rafter-orchestrator,1,1,1,1,0,task/TASK_STATE_FAILED
+Traceback (most recent call last):
+  File "$HOME/PycharmProjects/agent-mesh-lab/experiments/runs/2026-09-26-walkthrough/d3-repeat/counts.py", line 120, in <module>
+    wr = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+                                           ~~~~^^^
+IndexError: list index out of range
+wall 127.198s exit 0

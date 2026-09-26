@@ -1,0 +1,18 @@
+
+# read 2026-09-26T15:23:44Z
+$ kubectl delete -f experiments/runs/2026-09-26-walkthrough/c3r2/objects/setup.yaml --wait=true --timeout=180s
+namespace "repro" deleted
+deployment.apps "server" deleted from repro namespace
+pod "client" deleted from repro namespace
+# exit 0
+
+# read 2026-09-26T15:24:26Z
+$ kubectl get authorizationpolicy -A; kubectl get ns repro
+No resources found
+Error from server (NotFound): namespaces "repro" not found
+# exit 1
+
+# read 2026-09-26T15:24:26Z
+$ docker exec agent-mesh-lab-worker crictl rmi docker.io/nginxinc/nginx-unprivileged@sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3
+Deleted: docker.io/nginxinc/nginx-unprivileged@sha256:0918d093d6088225655ddf602fdf00679c1c0c9a89c01c6dcdce5ee5e6c2f3f3
+# exit 0

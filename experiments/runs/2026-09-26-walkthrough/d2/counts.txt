@@ -1,0 +1,65 @@
+clean | grpc | go | sm | 1 | 1x grpc=0 state=TASK_STATE_COMPLETED | 1x 1/0 | 1x lab/worker-grpc-ingress http=200 grpc=0 | 1 | grpc | 1 | 1 | 1 | 1x status=200 grpc_status=0
+clean | grpc | py | sm | 1 | 1x grpc=0 state=TASK_STATE_COMPLETED | 1x 1/0 | 1x lab/orchestrator-grpc-ingress http=200 grpc=0 | 1 | grpc | 1 | 1 | 1 | 1x status=None grpc_status=0
+clean | rest | go | sm | 1 | 1x http=- state=TASK_STATE_COMPLETED | - | 1x lab/worker-ingress http=200 | 1 | rest | 1 | 1 | 1 | 1x status=200
+clean | rest | py | sm | 1 | 1x http=- state=TASK_STATE_COMPLETED | - | 1x lab/orchestrator-ingress http=200 | 1 | rest | 1 | 1 | 1 | 1x status=200
+p0 | grpc | go | sm | 1 | 1x grpc=0 state=TASK_STATE_COMPLETED | 1x 1/0 | 1x lab/worker-grpc-ingress http=200 grpc=0 | 1 | grpc | 1 | 1 | 1 | 1x status=200 grpc_status=0
+p0 | grpc | go | st | 1 | 1x grpc=5 error=task not found: no active execution | 1x 1/0 | 1x lab/worker-grpc-ingress http=200 grpc=5 | 1 | grpc | 1 | 0 | 0 | 1x status=200 grpc_status=5
+p0 | grpc | py | sm | 1 | 1x grpc=0 state=TASK_STATE_COMPLETED | 1x 1/0 | 1x lab/orchestrator-grpc-ingress http=200 grpc=0 | 1 | grpc | 1 | 1 | 1 | 1x status=None grpc_status=0
+p0 | grpc | py | st | 1 | 1x grpc=5 error=Task not found | 1x 1/0 | 1x lab/orchestrator-grpc-ingress http=200 grpc=5 | 1 | grpc | 1 | 0 | 0 | 1x status=None grpc_status=5
+p0 | rest | go | cst | 1 | 1x curl http=200 | - | 1x lab/worker-ingress http=200 | 1 | rest | 1 | 0 | 0 | 1x status=200
+p0 | rest | go | sm | 1 | 1x http=- state=TASK_STATE_COMPLETED | - | 1x lab/worker-ingress http=200 | 1 | rest | 1 | 1 | 1 | 1x status=200
+p0 | rest | go | st | 1 | 1x http=200 error=task not found: no active execution | - | 1x lab/worker-ingress http=200 | 1 | rest | 1 | 0 | 0 | 1x status=200
+p0 | rest | py | cst | 1 | 1x curl http=404 | - | 1x lab/orchestrator-ingress http=404 | 1 | rest | 1 | 0 | 0 | 1x status=404
+p0 | rest | py | sm | 1 | 1x http=- state=TASK_STATE_COMPLETED | - | 1x lab/orchestrator-ingress http=200 | 1 | rest | 1 | 1 | 1 | 1x status=200
+p0 | rest | py | st | 1 | 1x http=404 error=Task not found | - | 1x lab/orchestrator-ingress http=404 | 1 | rest | 1 | 0 | 0 | 1x status=404
+l1-route | grpc | go | sm | 2 | 2x grpc=0 state=TASK_STATE_COMPLETED | 2x 1/0 | 2x lab/worker-grpc-ingress http=200 grpc=0 | 2 | grpc | 2 | 2 | 2 | 2x status=200 grpc_status=0
+l1-route | grpc | go | st | 2 | 2x grpc=14 error=no valid backends | 2x 1/0 | 2x lab/d2-refuse-subscribe-grpc-worker http=200 reason=NoHealthyBackend | 0 | - | 0 | 0 | 0 | -
+l1-route | grpc | py | sm | 2 | 2x grpc=0 state=TASK_STATE_COMPLETED | 2x 1/0 | 2x lab/orchestrator-grpc-ingress http=200 grpc=0 | 2 | grpc | 2 | 2 | 2 | 2x status=None grpc_status=0
+l1-route | grpc | py | st | 2 | 2x grpc=14 error=no valid backends | 2x 1/0 | 2x lab/d2-refuse-subscribe-grpc-orchestrator http=200 reason=NoHealthyBackend | 0 | - | 0 | 0 | 0 | -
+l1-route | rest | go | cst | 2 | 2x curl http=500 | - | 2x lab/d2-refuse-subscribe-rest-worker http=500 reason=NoHealthyBackend | 0 | - | 0 | 0 | 0 | -
+l1-route | rest | go | sm | 2 | 2x http=- state=TASK_STATE_COMPLETED | - | 2x lab/worker-ingress http=200 | 2 | rest | 2 | 2 | 2 | 2x status=200
+l1-route | rest | go | st | 2 | 2x http=500 error=server error | - | 2x lab/d2-refuse-subscribe-rest-worker http=500 reason=NoHealthyBackend | 0 | - | 0 | 0 | 0 | -
+l1-route | rest | py | cst | 2 | 2x curl http=500 | - | 2x lab/d2-refuse-subscribe-rest-orchestrator http=500 reason=NoHealthyBackend | 0 | - | 0 | 0 | 0 | -
+l1-route | rest | py | sm | 2 | 2x http=- state=TASK_STATE_COMPLETED | - | 2x lab/orchestrator-ingress http=200 | 2 | rest | 2 | 2 | 2 | 2x status=200
+l1-route | rest | py | st | 2 | 2x http=500 error=server error | - | 2x lab/d2-refuse-subscribe-rest-orchestrator http=500 reason=NoHealthyBackend | 0 | - | 0 | 0 | 0 | -
+l2-path | grpc | go | sm | 2 | 2x grpc=0 state=TASK_STATE_COMPLETED | 2x 1/0 | 2x lab/worker-grpc-ingress http=200 grpc=0 | 2 | grpc | 2 | 2 | 2 | 2x status=200 grpc_status=0
+l2-path | grpc | go | st | 2 | 2x grpc=7 error=authorization failed | 2x 1/0 | 2x lab/worker-grpc-ingress http=200 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l2-path | grpc | py | sm | 2 | 2x grpc=0 state=TASK_STATE_COMPLETED | 2x 1/0 | 2x lab/orchestrator-grpc-ingress http=200 grpc=0 | 2 | grpc | 2 | 2 | 2 | 2x status=None grpc_status=0
+l2-path | grpc | py | st | 2 | 2x grpc=7 error=authorization failed | 2x 1/0 | 2x lab/orchestrator-grpc-ingress http=200 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l2-path | rest | go | cst | 2 | 2x curl http=403 | - | 2x lab/worker-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l2-path | rest | go | sm | 2 | 2x http=- state=TASK_STATE_COMPLETED | - | 2x lab/worker-ingress http=200 | 2 | rest | 2 | 2 | 2 | 2x status=200
+l2-path | rest | go | st | 2 | 2x http=403 error=server error | - | 2x lab/worker-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l2-path | rest | py | cst | 2 | 2x curl http=403 | - | 2x lab/orchestrator-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l2-path | rest | py | sm | 2 | 2x http=- state=TASK_STATE_COMPLETED | - | 2x lab/orchestrator-ingress http=200 | 2 | rest | 2 | 2 | 2 | 2x status=200
+l2-path | rest | py | st | 2 | 2x http=403 error=server error | - | 2x lab/orchestrator-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-deny | grpc | go | sm | 2 | 2x grpc=0 state=TASK_STATE_COMPLETED | 2x 1/0 | 2x lab/worker-grpc-ingress http=200 grpc=0 | 2 | grpc | 2 | 2 | 2 | 2x status=200 grpc_status=0
+l3-deny | grpc | go | st | 2 | 2x grpc=5 error=task not found: no active execution | 2x 1/0 | 2x lab/worker-grpc-ingress http=200 grpc=5 | 2 | grpc | 2 | 0 | 0 | 2x status=200 grpc_status=5
+l3-deny | grpc | py | sm | 2 | 2x grpc=0 state=TASK_STATE_COMPLETED | 2x 1/0 | 2x lab/orchestrator-grpc-ingress http=200 grpc=0 | 2 | grpc | 2 | 2 | 2 | 2x status=None grpc_status=0
+l3-deny | grpc | py | st | 2 | 2x grpc=5 error=Task not found | 2x 1/0 | 2x lab/orchestrator-grpc-ingress http=200 grpc=5 | 2 | grpc | 2 | 0 | 0 | 2x status=None grpc_status=5
+l3-deny | rest | go | cst | 2 | 2x curl http=200 | - | 2x lab/worker-ingress http=200 | 2 | rest | 2 | 0 | 0 | 2x status=200
+l3-deny | rest | go | sm | 2 | 2x http=- state=TASK_STATE_COMPLETED | - | 2x lab/worker-ingress http=200 | 2 | rest | 2 | 2 | 2 | 2x status=200
+l3-deny | rest | go | st | 2 | 2x http=200 error=task not found: no active execution | - | 2x lab/worker-ingress http=200 | 2 | rest | 2 | 0 | 0 | 2x status=200
+l3-deny | rest | py | cst | 2 | 2x curl http=404 | - | 2x lab/orchestrator-ingress http=404 | 2 | rest | 2 | 0 | 0 | 2x status=404
+l3-deny | rest | py | sm | 2 | 2x http=- state=TASK_STATE_COMPLETED | - | 2x lab/orchestrator-ingress http=200 | 2 | rest | 2 | 2 | 2 | 2x status=200
+l3-deny | rest | py | st | 2 | 2x http=404 error=Task not found | - | 2x lab/orchestrator-ingress http=404 | 2 | rest | 2 | 0 | 0 | 2x status=404
+l3-require | grpc | go | sm | 2 | 2x grpc=7 error=authorization failed | 2x 1/0 | 2x lab/worker-grpc-ingress http=200 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-require | grpc | go | st | 2 | 2x grpc=7 error=authorization failed | 2x 1/0 | 2x lab/worker-grpc-ingress http=200 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-require | grpc | py | sm | 2 | 2x grpc=7 error=authorization failed | 2x 1/0 | 2x lab/orchestrator-grpc-ingress http=200 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-require | grpc | py | st | 2 | 2x grpc=7 error=authorization failed | 2x 1/0 | 2x lab/orchestrator-grpc-ingress http=200 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-require | rest | go | cst | 2 | 2x curl http=403 | - | 2x lab/worker-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-require | rest | go | sm | 2 | 2x http=- error=server error | - | 2x lab/worker-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-require | rest | go | st | 2 | 2x http=403 error=server error | - | 2x lab/worker-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-require | rest | py | cst | 2 | 2x curl http=403 | - | 2x lab/orchestrator-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-require | rest | py | sm | 2 | 2x http=- error=server error | - | 2x lab/orchestrator-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l3-require | rest | py | st | 2 | 2x http=403 error=server error | - | 2x lab/orchestrator-ingress http=403 reason=Authorization | 0 | - | 0 | 0 | 0 | -
+l4-app | grpc | go | sm | 2 | 2x grpc=0 state=TASK_STATE_COMPLETED | 2x 1/0 | 2x lab/worker-grpc-ingress http=200 grpc=0 | 2 | grpc | 2 | 2 | 2 | 2x status=200 grpc_status=0
+l4-app | grpc | go | st | 2 | 2x grpc=9 error=this operation is not supported: SubscribeToTask is refused  | 2x 1/0 | 2x lab/worker-grpc-ingress http=200 grpc=9 | 2 | grpc | 2 | 0 | 0 | 2x status=200 grpc_status=9
+l4-app | grpc | py | sm | 2 | 2x grpc=0 state=TASK_STATE_COMPLETED | 2x 1/0 | 2x lab/orchestrator-grpc-ingress http=200 grpc=0 | 2 | grpc | 2 | 2 | 2 | 2x status=None grpc_status=0
+l4-app | grpc | py | st | 2 | 2x grpc=9 error=this operation is not supported: SubscribeToTask is refused  | 2x 1/0 | 2x lab/orchestrator-grpc-ingress http=200 grpc=9 | 2 | grpc | 2 | 0 | 0 | 2x status=None grpc_status=9
+l4-app | rest | go | cst | 2 | 2x curl http=200 | - | 2x lab/worker-ingress http=200 | 2 | rest | 2 | 0 | 0 | 2x status=200
+l4-app | rest | go | sm | 2 | 2x http=- state=TASK_STATE_COMPLETED | - | 2x lab/worker-ingress http=200 | 2 | rest | 2 | 2 | 2 | 2x status=200
+l4-app | rest | go | st | 2 | 2x http=200 error=this operation is not supported: SubscribeToTask is refused  | - | 2x lab/worker-ingress http=200 | 2 | rest | 2 | 0 | 0 | 2x status=200
+l4-app | rest | py | cst | 2 | 2x curl http=400 | - | 2x lab/orchestrator-ingress http=400 | 2 | rest | 2 | 0 | 0 | 2x status=400
+l4-app | rest | py | sm | 2 | 2x http=- state=TASK_STATE_COMPLETED | - | 2x lab/orchestrator-ingress http=200 | 2 | rest | 2 | 2 | 2 | 2x status=200
+l4-app | rest | py | st | 2 | 2x http=400 error=this operation is not supported: SubscribeToTask is refused  | - | 2x lab/orchestrator-ingress http=400 | 2 | rest | 2 | 0 | 0 | 2x status=400
+# gRPC sends with a transparent attempt (grpc_transparent_attempts > 0): 0 []

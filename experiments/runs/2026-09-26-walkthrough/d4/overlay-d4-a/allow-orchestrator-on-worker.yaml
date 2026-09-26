@@ -1,0 +1,23 @@
+# Row A (the controller's ruling of 2026-09-25 on D-4's Step 1): agentgateway's authorization on agw-central, C-7's
+# layer, where agw-central terminates HBONE itself and source.identity is the caller's. The Allow action, the documented
+# and recommended one: "If any Allow rule is configured, requests that match none of them are denied"; denials return
+# 403 (agentgateway website security/authorization.md, main 30e8aa69, l.26 and l.43; the action table is the same at
+# 10cda98d, which C-7 cited). source.identity.namespace and .serviceAccount (schema/cel.md at v1.5.0, l.112-115).
+# Targeted at agw-central's route lab/worker only: the orchestrator's forward crosses it with the orchestrator's
+# identity, the load client's sends to the worker Service with the load client's.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: d4-a-allow-orchestrator-on-worker
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker
+  traffic:
+    authorization:
+      action: Allow
+      policy:
+        matchExpressions:
+          - "source.identity.namespace == 'lab' && source.identity.serviceAccount == 'orchestrator'"

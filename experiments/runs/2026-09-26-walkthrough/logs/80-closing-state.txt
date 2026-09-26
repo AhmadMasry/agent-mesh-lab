@@ -1,0 +1,46 @@
+$ echo "## retry stanzas across every HTTPRoute"; kubectl get httproute -A -o yaml | grep -c "retry:"
+echo "## AuthorizationPolicies, AgentgatewayPolicies, AgentgatewayBackends, the agent Services' appProtocol, the agents' settings"
+kubectl get authorizationpolicy -A --no-headers 2>/dev/null | wc -l | tr -d ' ' | sed 's/^/AuthorizationPolicy: /'
+kubectl get agentgatewaypolicy -A --no-headers | wc -l | tr -d ' ' | sed 's/^/AgentgatewayPolicy: /'
+kubectl get agentgatewaybackend -A --no-headers | wc -l | tr -d ' ' | sed 's/^/AgentgatewayBackend: /'
+kubectl -n lab get svc worker orchestrator -o jsonpath='{range .items[*]}{.metadata.name} appProtocol=[{.spec.ports[0].appProtocol}]{"\n"}{end}'
+kubectl -n lab get deploy -o json | jq -r '.items[] | .metadata.name as $n | ((.spec.template.spec.containers[0].env // [])[] | select(.name | test("^(CLIENT_|MODEL_RETRIES|MODEL_MAX_RETRIES|REFUSE_OPERATION|LEDGER_HEADERS|FORWARD_RESUBSCRIBE|DOWNSTREAM_A2A_URL|EXTAUTHZ_UNDECIDABLE)")) | "\($n): \(.name)=[\(.value)]")'
+kubectl -n lab get deploy extauthz -o jsonpath='extauthz replicas={.spec.replicas} ready={.status.readyReplicas}{"\n"}'
+echo "## namespaces and probe pods left"; kubectl get ns c3r repro 2>&1 | tail -2; kubectl -n lab get pods --no-headers | grep -v -E '^(worker|orchestrator|mockllm|extauthz|loadgen|replay)-' | wc -l | tr -d ' ' | sed 's/^/other pods in lab: /'
+echo "## Jobs and finished pods left in lab"; kubectl -n lab get jobs --no-headers | wc -l | tr -d " " | sed "s/^/jobs: /"; kubectl -n lab get pods --no-headers | awk '{print $3}' | sort | uniq -c
+echo "## the Deployments standing in lab"; kubectl -n lab get deploy
+# istioctl on PATH at this step's start: client version: 1.31.1
+## retry stanzas across every HTTPRoute
+0
+## AuthorizationPolicies, AgentgatewayPolicies, AgentgatewayBackends, the agent Services' appProtocol, the agents' settings
+AuthorizationPolicy: 0
+AgentgatewayPolicy: 4
+AgentgatewayBackend: 1
+worker appProtocol=[]
+orchestrator appProtocol=[]
+extauthz: EXTAUTHZ_UNDECIDABLE=[deny]
+orchestrator: MODEL_MAX_RETRIES=[0]
+orchestrator: REFUSE_OPERATION=[null]
+orchestrator: LEDGER_HEADERS=[null]
+orchestrator: FORWARD_RESUBSCRIBE=[null]
+orchestrator: DOWNSTREAM_A2A_URL=[http://worker.lab.svc.cluster.local:8080]
+worker: REFUSE_OPERATION=[null]
+worker: LEDGER_HEADERS=[null]
+extauthz replicas=1 ready=1
+## namespaces and probe pods left
+Error from server (NotFound): namespaces "c3r" not found
+Error from server (NotFound): namespaces "repro" not found
+other pods in lab: 1
+## Jobs and finished pods left in lab
+jobs: 456
+ 275 Completed
+ 181 Error
+   4 Running
+   1 Terminating
+## the Deployments standing in lab
+NAME           READY   UP-TO-DATE   AVAILABLE   AGE
+extauthz       1/1     1            1           174m
+mockllm        1/1     1            1           179m
+orchestrator   1/1     1            1           179m
+worker         1/1     1            1           179m
+wall 0.655s exit 0

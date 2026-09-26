@@ -1,0 +1,34 @@
+{
+  "hostnames": [
+    "orchestrator.lab.svc.cluster.local"
+  ],
+  "parentRefs": [
+    {
+      "group": "gateway.networking.k8s.io",
+      "kind": "Gateway",
+      "name": "agw-central",
+      "namespace": "agentgateway-waypoint",
+      "sectionName": "inner-http"
+    }
+  ],
+  "rules": [
+    {
+      "backendRefs": [
+        {
+          "group": "agentgateway.dev",
+          "kind": "AgentgatewayBackend",
+          "name": "orchestrator-a2a",
+          "weight": 1
+        }
+      ],
+      "matches": [
+        {
+          "path": {
+            "type": "PathPrefix",
+            "value": "/"
+          }
+        }
+      ]
+    }
+  ]
+}

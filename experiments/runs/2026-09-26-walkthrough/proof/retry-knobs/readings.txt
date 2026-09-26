@@ -1,0 +1,75 @@
+== 2026-09-26T17:29:00Z before anything: every route, stanza count ==
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=0
+== 2026-09-26T17:29:00Z make retry-on ROUTE=waypoint ==
+httproute.gateway.networking.k8s.io/worker configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=1 [{"attempts": 1, "backoff": "100ms", "codes": [503]}]
+  lab/worker-ingress retry_stanzas=0
+== 2026-09-26T17:29:01Z make retry-off ROUTE=waypoint ==
+httproute.gateway.networking.k8s.io/worker configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=0
+== 2026-09-26T17:29:01Z make retry-on ROUTE=ingress ==
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 2
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=1 [{"attempts": 1, "backoff": "100ms", "codes": [503]}]
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=1 [{"attempts": 1, "backoff": "100ms", "codes": [503]}]
+== 2026-09-26T17:29:01Z make retry-off ROUTE=ingress ==
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=0
+== 2026-09-26T17:29:02Z make retry-on ROUTE=egress ==
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 1
+  agentgateway-waypoint/model-via-agw retry_stanzas=1 [{"attempts": 1, "backoff": "100ms", "codes": [500, 503]}]
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=0
+== 2026-09-26T17:29:02Z make retry-off ROUTE=egress ==
+httproute.gateway.networking.k8s.io/model-via-agw configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=0
+== 2026-09-26T17:29:02Z make retry-off (every route set), the state every run starts and ends in ==
+httproute.gateway.networking.k8s.io/worker configured
+httproute.gateway.networking.k8s.io/orchestrator-ingress configured
+httproute.gateway.networking.k8s.io/worker-ingress configured
+httproute.gateway.networking.k8s.io/model-via-agw configured
+httproute.gateway.networking.k8s.io/orchestrator configured
+== retry stanzas across every HTTPRoute in the cluster ==
+kubectl get httproute -A -o yaml | grep -c 'retry:' -> 0
+  agentgateway-waypoint/model-via-agw retry_stanzas=0
+  lab/orchestrator retry_stanzas=0
+  lab/orchestrator-ingress retry_stanzas=0
+  lab/worker retry_stanzas=0
+  lab/worker-ingress retry_stanzas=0

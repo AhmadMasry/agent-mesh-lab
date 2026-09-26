@@ -1,0 +1,39 @@
+# Experiment C, step C-8, the scoped Require row (the controller's ruling of 2026-09-23): the Require row's rule with a
+# first term that exempts a request with no body, so that the agent-card GET is not asked for one. CEL's || in the
+# fork agentgateway v1.5.0 builds (crates/cel-fork/cel/src/objects.rs at v1.5.0, l.770-786): when the left side is
+# true the result is true and the right side is not evaluated; when the left side is false and the right side fails
+# to evaluate, the result is that error. A Require whose expression does not evaluate to true denies (the website's
+# authorization page at v1.5.0, l.35). Same routes, same targets as the other two overlays.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c8-require-scoped-worker-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: worker-ingress
+  traffic:
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - 'request.method == "GET" || json(request.body).method != "SubscribeToTask"'
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: c8-require-scoped-orchestrator-ingress
+  namespace: lab
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: orchestrator-ingress
+  traffic:
+    authorization:
+      action: Require
+      policy:
+        matchExpressions:
+          - 'request.method == "GET" || json(request.body).method != "SubscribeToTask"'

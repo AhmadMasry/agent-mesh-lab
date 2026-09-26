@@ -1,0 +1,40 @@
+
+# read 2026-09-26T15:43:54Z
+$ kubectl -n lab set env deployment/worker deployment/orchestrator REFUSE_OPERATION=SubscribeToTask
+deployment.apps/worker env updated
+deployment.apps/orchestrator env updated
+# exit 0
+
+# read 2026-09-26T15:43:54Z
+$ kubectl -n lab rollout status deployment/worker --timeout=180s
+Waiting for deployment "worker" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "worker" rollout to finish: 1 old replicas are pending termination...
+deployment "worker" successfully rolled out
+# exit 0
+
+# read 2026-09-26T15:43:55Z
+$ kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+deployment "orchestrator" successfully rolled out
+# exit 0
+
+# read 2026-09-26T15:46:15Z
+$ kubectl -n lab set env deployment/worker deployment/orchestrator REFUSE_OPERATION=
+deployment.apps/worker env updated
+deployment.apps/orchestrator env updated
+# exit 0
+
+# read 2026-09-26T15:46:15Z
+$ kubectl -n lab rollout status deployment/worker --timeout=180s
+Waiting for deployment "worker" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "worker" rollout to finish: 1 old replicas are pending termination...
+deployment "worker" successfully rolled out
+# exit 0
+
+# read 2026-09-26T15:46:16Z
+$ kubectl -n lab rollout status deployment/orchestrator --timeout=180s
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "orchestrator" rollout to finish: 1 old replicas are pending termination...
+deployment "orchestrator" successfully rolled out
+# exit 0

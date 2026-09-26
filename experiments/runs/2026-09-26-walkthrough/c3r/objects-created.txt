@@ -1,0 +1,24 @@
+
+# read 2026-09-26T15:19:39Z
+$ kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r/objects/namespace.yaml
+namespace/c3r created
+# exit 0
+
+# read 2026-09-26T15:19:39Z
+$ kubectl apply -f experiments/runs/2026-09-26-walkthrough/c3r/objects/server.yaml -f experiments/runs/2026-09-26-walkthrough/c3r/objects/client.yaml
+deployment.apps/c3r-server created
+pod/c3r-client created
+# exit 0
+
+# read 2026-09-26T15:19:39Z
+$ kubectl -n c3r wait --for=condition=Available deploy/c3r-server --timeout=120s && kubectl -n c3r wait --for=condition=Ready pod/c3r-client --timeout=120s
+deployment.apps/c3r-server condition met
+pod/c3r-client condition met
+# exit 0
+
+# read 2026-09-26T15:19:41Z
+$ kubectl -n c3r get pods -o wide
+NAME                         READY   STATUS    RESTARTS   AGE   IP             NODE                    NOMINATED NODE   READINESS GATES
+c3r-client                   1/1     Running   0          2s    10.244.1.228   agent-mesh-lab-worker   <none>           <none>
+c3r-server-59b7c54f5-mmz7f   1/1     Running   0          2s    10.244.1.229   agent-mesh-lab-worker   <none>           <none>
+# exit 0

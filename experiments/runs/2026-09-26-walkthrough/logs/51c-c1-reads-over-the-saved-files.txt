@@ -1,0 +1,32 @@
+$ C=experiments/runs/2026-09-26-walkthrough/c1
+echo "## the proxy-to-receiver legs' connection security from the saved series file (each line is one JSON object followed by ' => <value>', which the step-51b read did not strip)"
+sed 's/ => .*//' $C/ztunnel-series.txt | grep -E '"destination_workload": "(worker|orchestrator)"' | jq -r '[.reporter, .connection_security_policy, .source_workload, .source_principal, .destination_workload] | @tsv' | sort | uniq -c
+echo "## the saved ztunnel window's lines naming the work item, with the pod tokens (name=, wl=) stripped as well as the two workload tokens"
+echo "lines naming g2c-wtc1: $(grep -c 'g2c-wtc1' $C/ztunnel-window.txt); outside src.workload=, dst.workload=, name= and wl= tokens: $(grep 'g2c-wtc1' $C/ztunnel-window.txt | sed 's/src.workload="[^"]*"//; s/dst.workload="[^"]*"//; s/name="[^"]*"//; s/wl=[^ }]*//' | grep -c 'g2c-wtc1')"
+echo "## the 'connection complete' lines of the saved window, by direction and destination workload (prefix)"
+grep 'connection complete' $C/ztunnel-window.txt | grep -o 'direction="[a-z]*"\|dst.workload="[^"]*"' | paste - - | sed 's/-[0-9a-f]*-[0-9a-z]*"/"/' | sort | uniq -c
+# istioctl on PATH at this step's start: client version: 1.31.1
+## the proxy-to-receiver legs' connection security from the saved series file (each line is one JSON object followed by ' => <value>', which the step-51b read did not strip)
+   1 destination	mutual_tls	agentgateway-ingress	spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress	orchestrator
+   1 destination	mutual_tls	agentgateway-ingress	spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress	worker
+   1 destination	mutual_tls	agw-central	spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central	orchestrator
+   1 destination	mutual_tls	agw-central	spiffe://cluster.local/ns/agentgateway-waypoint/sa/agw-central	worker
+   1 destination	mutual_tls	gate2-curl	spiffe://cluster.local/ns/lab/sa/default	orchestrator
+   1 destination	mutual_tls	loadgen-g2c-wt2-orchestrator	spiffe://cluster.local/ns/lab/sa/loadgen	orchestrator
+   1 destination	mutual_tls	loadgen-g2c-wt2b-orchestrator	spiffe://cluster.local/ns/lab/sa/loadgen	orchestrator
+   1 destination	unknown	unknown	unknown	orchestrator
+   1 destination	unknown	unknown	unknown	worker
+   1 source	mutual_tls	agentgateway-ingress	spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress	orchestrator
+   1 source	mutual_tls	agentgateway-ingress	spiffe://cluster.local/ns/agentgateway-ingress/sa/agentgateway-ingress	worker
+   1 source	mutual_tls	gate2-curl	spiffe://cluster.local/ns/lab/sa/default	orchestrator
+   1 source	mutual_tls	loadgen-g2c-wt2-orchestrator	spiffe://cluster.local/ns/lab/sa/loadgen	orchestrator
+   1 source	mutual_tls	loadgen-g2c-wt2b-orchestrator	spiffe://cluster.local/ns/lab/sa/loadgen	orchestrator
+## the saved ztunnel window's lines naming the work item, with the pod tokens (name=, wl=) stripped as well as the two workload tokens
+lines naming g2c-wtc1: 18; outside src.workload=, dst.workload=, name= and wl= tokens: 0
+## the 'connection complete' lines of the saved window, by direction and destination workload (prefix)
+   4 dst.workload="agentgateway-ingress"	direction="inbound"
+   1 dst.workload="agentgateway-ingress"	direction="outbound"
+   8 dst.workload="agw-central"	direction="outbound"
+   3 dst.workload="mockllm"	direction="outbound"
+   2 dst.workload="otel-collector"	direction="outbound"
+wall 0.058s exit 0

@@ -1,0 +1,60 @@
+$ RUN_ID=wtd1h RUNREL=2026-09-26-walkthrough/d1-headers bash experiments/runs/2026-09-24-d1-current-topology/headers.sh
+H=experiments/runs/2026-09-26-walkthrough/d1-headers/headers
+for app in worker orchestrator; do
+  echo "== $app"
+  jq -r 'select(.phase=="arrival" and .headers != null) | "\(if (.method // "") == "" then "GET /.well-known/agent-card.json" else .method end) | lwi=\(.logical_work_item_id) | remote=\(.remote | sub(":[0-9]+$"; "")) | names=\(.headers.names | join(",")) | values=\([.headers.values | to_entries[] | "\(.key)=\(.value)"] | join(" ; ")) | authorization_present=\(.headers.authorization_present)"' $H/$app-ingress.jsonl
+done | tee $H/readings.txt
+echo "== names over every arrival carrying the reading"; cat $H/worker-ingress.jsonl $H/orchestrator-ingress.jsonl | jq -r 'select(.phase=="arrival" and .headers != null) | .headers.names[]' | sort | uniq -c | sort -rn
+# istioctl on PATH at this step's start: client version: 1.31.1
+2026-09-26T15:47:05Z header reading: RUN_ID wtd1h; HEAD ba7ffaf04209dbe8b90eeb4e8d3c4357df610c08; this driver sha256 461ab00625113f712800dba1f5cd8560db85547f617d5bd00ed43cc8e060529a
+2026-09-26T15:47:06Z before: deployment/worker LEDGER_HEADERS=[] FORWARD_RESUBSCRIBE=[] REFUSE_OPERATION=[] DOWNSTREAM_A2A_URL=[]
+2026-09-26T15:47:06Z before: deployment/orchestrator LEDGER_HEADERS=[] FORWARD_RESUBSCRIBE=[] REFUSE_OPERATION=[] DOWNSTREAM_A2A_URL=[http://worker.lab.svc.cluster.local:8080]
+2026-09-26T15:47:06Z set LEDGER_HEADERS=on on deployment/worker and deployment/orchestrator
+2026-09-26T15:47:10Z after set: worker pods worker-7b798ccffc-5dw6c LEDGER_HEADERS=on uid=4d32bbb8-f500-476d-9e5d-ee827a663e50; 
+2026-09-26T15:47:10Z after set: orchestrator pods orchestrator-6487f5fbd-xjhfj LEDGER_HEADERS=on uid=a1da3895-eb6d-4925-95cb-82fddb01a00d; 
+2026-09-26T15:47:10Z proxy pods: agentgateway-ingress/agentgateway-ingress-94f7846f-5x8n7 ip=10.244.1.204; agentgateway-waypoint/agw-central-57d6777d5f-k58kb ip=10.244.1.212; 
+2026-09-26T15:47:10Z agent pods: mockllm-58b7487955-f7pdz ip=10.244.1.29; orchestrator-6487f5fbd-xjhfj ip=10.244.1.106; worker-7b798ccffc-5dw6c ip=10.244.1.105; 
+2026-09-26T15:47:28Z image: kind.local/loadgen-3213c6ac35f3a712608a51068f91d823:284c8c9268c35e7eb7ca6ad89c782eaaf20a602e07a75afde886c0c6709e1379
+2026-09-26T15:47:28Z mock reset -> 204
+2026-09-26T15:47:31Z   d1-hdr-go-unary-wtd1h Complete: unary TASK_STATE_COMPLETED task=01a0de66-698d-70d0-90f5-c29b0605cf2b
+2026-09-26T15:47:35Z   d1-hdr-go-stream-wtd1h Complete: eof TASK_STATE_COMPLETED task=01a0de66-768e-7330-ae8f-440ade5acdb5
+2026-09-26T15:47:38Z   d1-hdr-go-subscribe-wtd1h Failed: error  task=01a0de66-768e-7330-ae8f-440ade5acdb5
+2026-09-26T15:47:41Z   d1-hdr-py-unary-wtd1h Complete: unary TASK_STATE_COMPLETED task=5e8b7408-c97a-4ff3-b804-a9f11799caec
+2026-09-26T15:47:45Z   d1-hdr-py-stream-wtd1h Complete: eof TASK_STATE_COMPLETED task=6cec7ef5-f931-410d-9996-d4c318f048df
+2026-09-26T15:47:48Z   d1-hdr-py-subscribe-wtd1h Failed: eof  task=6cec7ef5-f931-410d-9996-d4c318f048df
+2026-09-26T15:47:51Z mock reset -> 204
+2026-09-26T15:47:51Z   worker: 18 ingress lines, 9 arrivals carrying the reading
+2026-09-26T15:47:51Z   orchestrator: 12 ingress lines, 6 arrivals carrying the reading
+2026-09-26T15:47:51Z done
+2026-09-26T15:47:54Z restored: LEDGER_HEADERS=[] on worker, [] on orchestrator (set env rc=0, rollouts rc=0)
+2026-09-26T15:47:54Z header reading driver exit=0
+== worker
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.204 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SendMessage | lwi=d1-hdr-go-unary-wtd1h | remote=10.244.1.204 | names=a2a-version,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.204 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SendStreamingMessage | lwi=d1-hdr-go-stream-wtd1h | remote=10.244.1.204 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.204 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SubscribeToTask | lwi=d1-hdr-go-subscribe-wtd1h | remote=10.244.1.204 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=worker.lab.internal ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.212 | names=accept,accept-encoding,host,traceparent,user-agent,x-caller | values=host=worker.lab.svc.cluster.local:8080 ; user-agent=python-httpx/0.28.1 ; x-caller=orchestrator | authorization_present=false
+SendMessage | lwi=d1-hdr-py-unary-wtd1h | remote=10.244.1.212 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-a2a-message-id,x-caller,x-logical-work-item-id | values=host=worker.lab.svc.cluster.local:8080 ; user-agent=python-httpx/0.28.1 ; x-caller=orchestrator | authorization_present=false
+SendMessage | lwi=d1-hdr-py-stream-wtd1h | remote=10.244.1.212 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-a2a-message-id,x-caller,x-logical-work-item-id | values=host=worker.lab.svc.cluster.local:8080 ; user-agent=python-httpx/0.28.1 ; x-caller=orchestrator | authorization_present=false
+== orchestrator
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.212 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=orchestrator.lab.svc.cluster.local:8080 ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SendMessage | lwi=d1-hdr-py-unary-wtd1h | remote=10.244.1.204 | names=a2a-version,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.212 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=orchestrator.lab.svc.cluster.local:8080 ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SendStreamingMessage | lwi=d1-hdr-py-stream-wtd1h | remote=10.244.1.204 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+GET /.well-known/agent-card.json | lwi= | remote=10.244.1.212 | names=accept-encoding,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=orchestrator.lab.svc.cluster.local:8080 ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+SubscribeToTask | lwi=d1-hdr-py-subscribe-wtd1h | remote=10.244.1.204 | names=a2a-version,accept,accept-encoding,content-length,content-type,host,traceparent,user-agent,x-caller,x-logical-work-item-id | values=host=agentgateway-ingress.agentgateway-ingress.svc.cluster.local ; user-agent=Go-http-client/1.1 ; x-caller=loadgen | authorization_present=false
+== names over every arrival carrying the reading
+  15 x-caller
+  15 user-agent
+  15 traceparent
+  15 host
+  15 accept-encoding
+  14 x-logical-work-item-id
+   8 content-type
+   8 content-length
+   8 a2a-version
+   7 accept
+   2 x-a2a-message-id
+wall 48.866s exit 0

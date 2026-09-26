@@ -1,0 +1,73 @@
+# C-3R: the server. The worker image exactly as the lab runs it (the reference is
+# read from deploy/worker in `lab` at the time of writing; no image is built for
+# this run: rule 6). It is sent only agent-card GETs, which the worker answers
+# from its static card without a model call; MODEL_BASE_URL names a port nothing
+# listens on inside the pod, so a model call, if one were ever made, would fail in
+# the pod and reach nothing in `lab`. No OTEL_EXPORTER_OTLP_ENDPOINT: the binary
+# then sets up no tracing (internal/otel Setup), so nothing is sent to `telemetry`.
+# Its ingress ledger (stdout) records every card GET with r.RemoteAddr, which is
+# how the server names the connection a request arrived on. The HTTP server's
+# IdleTimeout is 120 s (agents/worker/main.go), so each repetition sends its second
+# request on the held connection well inside that.
+# The security context is the lab's (deploy/base/worker.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: c3r-server
+  namespace: c3r
+  labels:
+    app: c3r-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: c3r-server
+  template:
+    metadata:
+      labels:
+        app: c3r-server
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: kind.local/worker-918a018b7a581926ead34dec2ba0fb83:899f0eae301b3e75b30c84cfdfa86270726b9b1daae1ebd5562954751006871a
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: AGENT_NAME
+              value: "c3r-server"
+            - name: MODEL_BASE_URL
+              value: "http://127.0.0.1:9/v1"
+            - name: MODEL_NAME
+              value: "none"
+            - name: MODEL_API_KEY
+              value: "unused"
+            - name: PUBLIC_URL
+              value: "http://c3r-server.c3r.invalid:8080"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 1
+            periodSeconds: 2
+            failureThreshold: 3
