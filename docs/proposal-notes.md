@@ -444,3 +444,16 @@ deleted cluster, every printed output taken from that run.
 
 **Submission 3, observability (proposal §9), is pursued**, the decision §9 left for after 24 September: it is worked on together
 with submissions 1 and 2, after the fix and the walkthrough, from the findings already counted. The proposal text is unchanged.
+
+## 2026-09-26 — the walkthrough extended to every row of Experiments B and C, for an end-to-end test by the author
+
+Decision by the author, after the walkthrough of 2026-09-25 and an evaluation of B and C from the records. The author does not
+take the lab's findings on trust and will run the walkthrough end to end on their own machine; for that the walkthrough must
+re-take not only the build and Experiment A's six rows but **every row of Experiments B and C**, including the follow-on rows
+filed under them (D-1 to D-5), each at two repetitions (one where the entry ran one probe), each with its committed driver, each
+read against the entry that recorded it. A row whose configuration is not standing (the A2A marking of C-9, the A2A backend type of
+D-5) is walked as those entries walked it: applied from a run directory, counted, removed, and the clean check taken after. Where a
+committed driver cannot be run by a reader without writing into a dated run directory, it gains an output-path setting, the
+smallest change, test first where a test applies; the walk's rebuild from a deleted cluster proves the change. Nothing here adds a
+finding: the walkthrough re-takes counts already recorded, and a row that reads differently is reported before any text is written.
+The proposal text is unchanged.
