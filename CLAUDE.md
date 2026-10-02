@@ -103,4 +103,12 @@ A change to any deployed path (`deploy/`, `Makefile`, `agents/`, `fixtures/`, `i
 
 ## When unsure
 
-Stop and ask. A note in `docs/proposal-notes.md` is always preferable to a workaround, a guessed version, or a widened scope. If context is running long and rules start slipping, say so; the human will start a fresh session.
+Stop and ask. A note in `docs/proposal-notes.md` is always preferable to a workaround, a guessed version, or a widened scope. If you notice a rule in this file slipping, say so and re-read this file before continuing; do not stop or suggest a new session on account of context length.
+
+## Delegation in this repository
+
+Subagents may fetch pin documents and run `make test` or experiment scripts on your behalf; the pin value and its source URL still go into `versions.yaml`, and the counts still go into `findings.md`, in the same task. A subagent's report is not a recorded count.
+
+## Compact instructions
+
+When compacting, preserve exactly: every pin verified this session with its source URL; every ledger count and run output path produced this session; the checklist item or approved task in progress and its state; the decisions in force that were consulted; and any note written to `docs/proposal-notes.md`.
