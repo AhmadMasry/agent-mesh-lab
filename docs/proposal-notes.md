@@ -457,3 +457,15 @@ committed driver cannot be run by a reader without writing into a dated run dire
 smallest change, test first where a test applies; the walk's rebuild from a deleted cluster proves the change. Nothing here adds a
 finding: the walkthrough re-takes counts already recorded, and a row that reads differently is reported before any text is written.
 The proposal text is unchanged.
+
+## 2026-10-02 — the standard proof is taken only on a cluster no earlier proof has run on
+
+Decision by the author, after the walkthrough of 2026-09-26. The standard proof's driver,
+experiments/runs/2026-09-20-experiment-a-agentgateway-only/checks.sh, names its work items with fixed nonces (fu3cc for the clean
+check, fu3ct for the traces, its lines 69 and 70). A second proof on a cluster that still holds an earlier proof's items collects
+both: on 2026-09-26 the worker's log still held the first proof's ledger lines and the trace backend its traces, so the second
+proof's clean-check row read 2/2/2/2/2 and its trace checks 4 trace ids, and the per-proof values had to be split by trace id and
+stamp (the walkthrough entry of 2026-09-26, proof/per-proof-split.txt). The driver is a dated record and is not edited. The rule:
+**the standard proof is taken only on a cluster on which no earlier standard proof has run** — a fresh rebuild, as every
+rebuild-triggered proof already is. Where a second proof on the same cluster cannot be avoided, its record carries a per-proof split
+by trace id and stamp, as the 2026-09-26 record does, and says so. No code changes. The proposal text is unchanged.
