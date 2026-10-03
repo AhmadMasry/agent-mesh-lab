@@ -481,3 +481,19 @@ from the ledgers' own stamps (the receiver's ingress arrival to its result, and 
 percentiles, with the mock's delay set to zero so the path is what is measured.** It is a new experiment: its method is written
 as a dated note here and approved before any code, it runs on kind on a laptop and says so, and it is added **after the three
 submissions are in** (CFP closes 2026-10-11), not before. The proposal text is unchanged.
+
+## 2026-10-03 — the step-2 restart's stated reason is wrong; the right reason is pre-policy connections; a follow-up
+
+Observation by the author during their end-to-end run, recorded by the controller. The Makefile's step-2 recipe restarts the three
+lab Deployments after the overlay, with the comment "ztunnel captures a pod when it starts, so pods that predate the namespace's
+ambient label are restarted to be enrolled" (Makefile l.302-303), and docs/walkthrough.md's step-2 text repeats it. That reason is
+not how Istio ambient works: the CNI node agent enrols a running pod in place when its namespace gains the dataplane-mode label, and
+no restart is needed for capture. The restart does serve a purpose the lab has counted: a mesh-wide STRICT PeerAuthentication does
+not close connections opened before it (the STRICT entry of 2026-09-12, attempt 1 and its correction note), and a selector-scoped
+AuthorizationPolicy keeps a held connection (C-3R), so restarting the pods after the label and the policy guarantees that every
+connection read afterwards was opened under capture and under STRICT. **Nothing changes now**: the recipe is a deployed path, every
+recorded run ran with the restart, and the author's end-to-end run walks the committed text so its counts compare. Follow-up, after
+the submissions: either reword the Makefile comment and the walkthrough sentence to the pre-policy-connection reason, with a rebuild
+and proof as any Makefile change needs; or, better, measure ambient's claim: apply the label with the pods running, read
+istioctl ztunnel-config workloads and show they read HBONE with no restart, then read whether a connection opened before the label
+is still plaintext, and record both as a finding. The proposal text is unchanged.
