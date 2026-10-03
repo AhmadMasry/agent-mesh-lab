@@ -299,9 +299,14 @@ step-2: helm-required check-go-sources-clean orchestrator-image
 		--namespace agentgateway-system --version $(AGENTGATEWAY_CHART_VERSION) \
 		-f deploy/step-2-ambient-agw/agentgateway-values.yaml --wait
 	kubectl kustomize deploy/step-2-ambient-agw | KO_DOCKER_REPO=kind.local KIND_CLUSTER_NAME=$(CLUSTER_NAME) ko apply --platform=linux/$(shell go env GOARCH) -f -
-	# ztunnel captures a pod when it starts, so pods that predate the namespace's
-	# ambient label are restarted to be enrolled.
-	kubectl -n $(NAMESPACE) rollout restart deployment/mockllm deployment/worker deployment/orchestrator
+	# No restart of the lab Deployments here. Ambient enrols a running pod in place when
+	# its namespace gains the dataplane-mode label (the CNI node agent reconfigures the
+	# pod's network namespace), so none is needed for capture; the restart this recipe
+	# carried until 2026-10-03 gave that as its reason, which was wrong, and the
+	# author's note of 2026-10-03 records the test that removed it. What a restart did
+	# do is close connections opened before the STRICT policy, which the policy itself
+	# does not (the STRICT entry of 2026-09-12; C-3R); step 2's clean check is what
+	# counts whether that matters on a fresh build.
 	# The central proxy. Programmed is the wait agentgateway's egress page uses for this
 	# Gateway shape, and it says the controller accepted the Gateway; the rollout wait
 	# after it says the proxy pod is ready to carry traffic. The controller creates that

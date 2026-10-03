@@ -497,3 +497,21 @@ the submissions: either reword the Makefile comment and the walkthrough sentence
 and proof as any Makefile change needs; or, better, measure ambient's claim: apply the label with the pods running, read
 istioctl ztunnel-config workloads and show they read HBONE with no restart, then read whether a connection opened before the label
 is still plaintext, and record both as a finding. The proposal text is unchanged.
+
+## 2026-10-03 — the step-2 restart removed; ambient's in-place enrolment counted by the author
+
+Decision and reading by the author, during their end-to-end run, with the controller. The restart of the three lab Deployments at
+the end of step 2 is removed from the Makefile, with its wrong comment ("ztunnel captures a pod when it starts"), and the
+walkthrough's step-2 sentence corrected. The test, on the author's machine, from a deleted cluster at branch step2-no-restart
+(the Makefile change alone on main af26e3cc, tree clean so that ko resolved step 1's digests): make step-1, the three pods' UIDs
+read; make step-2 without the restart (ko apply read mockllm unchanged, orchestrator and worker configured with no pod-template
+change: each Deployment kept the one ReplicaSet step 1 created at 20:14:29Z); the UIDs read again, the same three (e6a50d10,
+16ad4317, e7201b2f), created 20:14:29Z; istioctl ztunnel-config workloads read HBONE for orchestrator and worker on those pods and
+TCP for the opted-out mock; the step-2 clean check (RUN_ID wt2nr) read 1/1/1/1/1 TASK_STATE_COMPLETED on both receivers; ztunnel's
+log for the window carried src lab/sa/loadgen, dst lab/sa/orchestrator and dst agentgateway-waypoint/sa/agw-central for the worker
+Service, and 0 policy rejections. So ambient enrols a running pod in place, as its documentation says, and the restart was never
+needed for capture. Limit, stated: the test's pods were fresh and held no connection from before the STRICT policy; a restart also
+closes such connections, which the policy does not (the STRICT entry of 2026-09-12; C-3R), and a long-running pod enrolled without
+one keeps any plaintext connection it already had until it closes. The record of this run is the author's own
+(experiments/runs/my-walkthrough/, untracked). The Makefile change is a deployed-path change proven by this rebuild; the standard
+proof is taken at the author's step 3 as the walkthrough reaches it. The proposal text is unchanged.

@@ -494,8 +494,15 @@ the four Istio charts at 1.31.1 in the order the ambient Helm page installs them
 OCI charts at `v1.5.0` from `oci://cr.agentgateway.dev/charts`, which install that project's own control plane into
 `agentgateway-system`, and then the overlay: the `lab` namespace labelled ambient, a mesh-wide STRICT
 `PeerAuthentication` in `istio-system`, the Gateway `agw-central` in its own unenrolled namespace
-`agentgateway-waypoint`, the worker Service bound to it, and the `worker` HTTPRoute. The three agents are restarted
-last, because `ztunnel` captures a pod when it starts and these predate the label.
+`agentgateway-waypoint`, the worker Service bound to it, and the `worker` HTTPRoute. The three agents are **not**
+restarted: ambient enrols a running pod in place when its namespace gains the label, and the author's run of
+2026-10-03 counted it on this step — the three pods kept their UIDs across the whole install, ztunnel read `HBONE`
+for both agents on those unreplaced pods, and the clean check below read 1/1/1/1/1 through the mesh (the note of
+2026-10-03 in `docs/proposal-notes.md`). Until that day this step restarted them, with the reason that ztunnel
+captures a pod only when it starts, which was wrong. What a restart does do is close connections opened before the
+STRICT policy, which the policy itself leaves open (`## Gate 3 / both receivers / STRICT` and C-3R): a pod built fresh
+at step 1 holds none, so nothing here depends on it, but a long-running pod enrolled this way would keep any
+plaintext connection it already had until that connection closed.
 
 ```
 helm list -A
