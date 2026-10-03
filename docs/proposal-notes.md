@@ -469,3 +469,15 @@ stamp (the walkthrough entry of 2026-09-26, proof/per-proof-split.txt). The driv
 **the standard proof is taken only on a cluster on which no earlier standard proof has run** — a fresh rebuild, as every
 rebuild-triggered proof already is. Where a second proof on the same cluster cannot be avoided, its record carries a per-proof split
 by trace id and stamp, as the 2026-09-26 record does, and says so. No code changes. The proposal text is unchanged.
+
+## 2026-10-03 — a latency comparison across the build's topologies, deferred until after the submissions
+
+Decision by the author, during their end-to-end run of the walkthrough. The lab's findings are counts, and no entry measures the
+latency the mesh, agentgateway or the telemetry pipeline add to a request; the timing figures the records hold (the mock's fixed
+200 ms, stream-end and resubscription offsets, step wall times) are timing cells, classed as such by every comparison and never
+written up as a cost. The author wants that measured: **one request shape sent at each of the build's four topologies (step 1 no
+mesh; step 2 ambient and agw-central; step 2b with the ingress; step 3 with telemetry), many repetitions each, the latency read
+from the ledgers' own stamps (the receiver's ingress arrival to its result, and the client's send to its answer), reported as
+percentiles, with the mock's delay set to zero so the path is what is measured.** It is a new experiment: its method is written
+as a dated note here and approved before any code, it runs on kind on a laptop and says so, and it is added **after the three
+submissions are in** (CFP closes 2026-10-11), not before. The proposal text is unchanged.
